@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  servers      Server[]
+}
+
+enum Edition {
+  JAVA
+  BEDROCK
+}
+
+enum Plan {
+  FREE
+  STARTER
+  STANDARD
+  PRO
+}
+
+enum ServerStatus {
+  PROVISIONING
+  RUNNING
+  SLEEPING
+  STOPPED
+  SUSPENDED
+}
+
+model Server {
+  id        String       @id @default(cuid())
+  name      String
+  edition   Edition      @default(JAVA)
+  plan      Plan         @default(FREE)
+  status    ServerStatus @default(PROVISIONING)
+  memoryMb  Int
+  owner     User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId   String
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([ownerId])
+}
