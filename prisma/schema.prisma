@@ -42,6 +42,9 @@ model Server {
   plan      Plan         @default(FREE)
   status    ServerStatus @default(PROVISIONING)
   memoryMb  Int
+  version   String       @default("LATEST")
+  // Host port players connect to (TCP for Java, UDP for Bedrock).
+  port      Int?         @unique
   owner     User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId   String
   createdAt DateTime     @default(now())
