@@ -30,7 +30,7 @@ AUTH_SECRET=$(secret)
 AGENT_TOKEN=$(secret)
 CRON_SECRET=$(secret)
 # From Stripe Dashboard → Developers. Leave empty until you're ready to take payments.
-# Prefer a restricted key (rk_…) with write access to Checkout Sessions only.
+# Prefer a restricted key (rk_…) with write access to Checkout Sessions, Customers and Invoices.
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 PORT_RANGE_START=30000

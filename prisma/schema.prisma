@@ -8,10 +8,10 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
+  id           String    @id @default(cuid())
+  email        String    @unique
   passwordHash String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime  @default(now())
   servers      Server[]
   payments     Payment[]
 }
@@ -67,23 +67,29 @@ enum PaymentStatus {
   PAID
   FAILED
   EXPIRED
+  // Paid, then fully refunded or charged back; its days were taken off the server.
+  REFUNDED
+  DISPUTED
 }
 
 // One Stripe Checkout payment buying `months` of `plan` for a server.
 model Payment {
-  id              String        @id @default(cuid())
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId          String
-  server          Server?       @relation(fields: [serverId], references: [id], onDelete: SetNull)
-  serverId        String?
-  plan            Plan
-  months          Int
-  amount          Int // in the currency's minor unit (grosze, cents)
-  currency        String
-  status          PaymentStatus @default(PENDING)
-  stripeSessionId String?       @unique
-  createdAt       DateTime      @default(now())
-  paidAt          DateTime?
+  id                    String        @id @default(cuid())
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  server                Server?       @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  serverId              String?
+  plan                  Plan
+  months                Int
+  amount                Int // in the currency's minor unit (grosze, cents)
+  currency              String
+  status                PaymentStatus @default(PENDING)
+  stripeSessionId       String?       @unique
+  // Set once paid; refunds and chargebacks are matched to the payment by it.
+  stripePaymentIntentId String?       @unique
+  amountRefunded        Int           @default(0)
+  createdAt             DateTime      @default(now())
+  paidAt                DateTime?
 
   @@index([userId])
   @@index([serverId])

@@ -1,5 +1,5 @@
 import "server-only";
-import type { Plan, Server, User } from "@prisma/client";
+import type { Payment, Plan, Server, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe } from "./stripe";
 import * as agent from "./agent";
@@ -52,6 +52,9 @@ export async function startCheckout(opts: {
       },
     ],
     customer_email: user.email,
+    // Emails a PDF invoice after payment. Business buyers can add their NIP.
+    invoice_creation: { enabled: true, invoice_data: { metadata: { paymentId: payment.id } } },
+    tax_id_collection: { enabled: true },
     client_reference_id: payment.id,
     metadata: { paymentId: payment.id, serverId: server.id },
     locale,
@@ -69,13 +72,13 @@ export async function startCheckout(opts: {
  * Applies a successful payment: extends or changes the server's plan, then
  * makes the game host match. Safe to call more than once for the same payment.
  */
-export async function fulfillPayment(paymentId: string) {
+export async function fulfillPayment(paymentId: string, paymentIntentId?: string) {
   const now = new Date();
   const server = await db.$transaction(async (tx) => {
     // Claim the payment first so a retried webhook can't apply it twice.
     const claimed = await tx.payment.updateMany({
       where: { id: paymentId, status: { in: ["PENDING", "PROCESSING"] } },
-      data: { status: "PAID", paidAt: now },
+      data: { status: "PAID", paidAt: now, stripePaymentIntentId: paymentIntentId },
     });
     if (claimed.count === 0) return null;
     const payment = await tx.payment.findUniqueOrThrow({ where: { id: paymentId }, include: { server: true } });
@@ -134,6 +137,48 @@ export async function markPayment(sessionId: string, status: "FAILED" | "EXPIRED
 /** The customer paid with a delayed method; keep the payment (and its server) until Stripe settles it. */
 export async function markProcessing(paymentId: string) {
   await db.payment.updateMany({ where: { id: paymentId, status: "PENDING" }, data: { status: "PROCESSING" } });
+}
+
+/**
+ * Takes refunded days back off the server. `refundedTotal` is Stripe's running
+ * total for the charge, so replayed events change nothing. Days are removed in
+ * proportion to the amount refunded; if that leaves the server unpaid, the
+ * billing job suspends it.
+ */
+export async function applyRefund(paymentIntentId: string, refundedTotal: number) {
+  await db.$transaction(async (tx) => {
+    const payment = await tx.payment.findUnique({ where: { stripePaymentIntentId: paymentIntentId } });
+    if (!payment || payment.status === "DISPUTED" || refundedTotal <= payment.amountRefunded) return;
+    const total = Math.min(refundedTotal, payment.amount);
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: { amountRefunded: total, ...(total >= payment.amount && { status: "REFUNDED" }) },
+    });
+    await removePaidDays(tx, payment, total - payment.amountRefunded);
+  });
+}
+
+/** A chargeback: the money is gone, so all of the payment's remaining days are too. */
+export async function applyDispute(paymentIntentId: string) {
+  await db.$transaction(async (tx) => {
+    const payment = await tx.payment.findUnique({ where: { stripePaymentIntentId: paymentIntentId } });
+    if (!payment || payment.status === "DISPUTED") return;
+    await tx.payment.update({ where: { id: payment.id }, data: { status: "DISPUTED" } });
+    await removePaidDays(tx, payment, payment.amount - payment.amountRefunded);
+  });
+}
+
+type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+
+async function removePaidDays(tx: Tx, payment: Payment, amount: number) {
+  if (!payment.serverId || payment.amount <= 0 || amount <= 0) return;
+  const server = await tx.server.findUnique({ where: { id: payment.serverId } });
+  if (!server?.paidUntil) return;
+  const removed = (payment.months * 30 * DAY * amount) / payment.amount;
+  await tx.server.update({
+    where: { id: server.id },
+    data: { paidUntil: new Date(server.paidUntil.getTime() - removed) },
+  });
 }
 
 /** Periodic housekeeping, run by /api/cron/billing. */
