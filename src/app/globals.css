@@ -30,7 +30,7 @@ body {
   line-height: 1.5;
 }
 
-main { max-width: 860px; margin: 0 auto; padding: 48px 16px; }
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
 main.narrow { max-width: 420px; }
 ul { list-style: none; padding: 0; }
 a { color: var(--accent); }
@@ -50,3 +50,38 @@ button, .button {
 }
 button.secondary { background: transparent; color: var(--fg); border: 1px solid var(--border); }
 button:disabled { opacity: 0.6; cursor: default; }
+
+h1, h2, h3 { margin: 0 0 12px; }
+
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  max-width: 860px; margin: 0 auto; padding: 16px;
+}
+.brand { font-weight: 700; font-size: 1.1rem; color: var(--fg); text-decoration: none; }
+
+.picker { position: relative; }
+.picker summary {
+  list-style: none; cursor: pointer; padding: 6px 12px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--card); font-weight: 600; white-space: nowrap;
+}
+.picker summary::-webkit-details-marker { display: none; }
+.picker summary::after { content: " ▾"; color: var(--muted); }
+.picker[open] summary::after { content: " ▴"; }
+.picker-panel {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 10; width: min(300px, calc(100vw - 32px));
+  background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.15);
+}
+.picker-label { margin: 0 0 6px; font-weight: 600; color: var(--muted); font-size: 0.85rem; }
+.picker-label:not(:first-child) { margin-top: 12px; }
+.picker-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+button.option {
+  background: var(--bg); color: var(--fg); border: 1px solid var(--border); font-weight: 500; text-align: left;
+}
+button.option[aria-pressed="true"] { border-color: var(--accent); outline: 1px solid var(--accent); }
+
+.hero { padding: 24px 0 40px; }
+.plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.price { font-size: 1.5rem; font-weight: 700; margin: 0; }
+.price .muted { font-size: 0.9rem; font-weight: 400; }
+.features { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 0.95rem; }

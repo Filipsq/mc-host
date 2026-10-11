@@ -24,3 +24,9 @@ npm run dev                   # http://localhost:3000
 - `src/app/actions.ts` — sign-up, log-in, log-out server actions
 - `src/app/dashboard` — the signed-in server list
 - `src/middleware.ts` — redirects signed-out users away from `/dashboard`
+- `src/i18n` — languages (Polish default, English) and currencies (PLN default, EUR, USD, GBP), stored in cookies and switched from the top-right picker
+- `src/lib/plans.ts` — plan limits and monthly prices per currency
+
+## Adding a language
+
+Copy `src/i18n/messages/en.ts` to a new file, translate it, register it in `src/i18n/messages.ts`, and add its code to `locales` in `src/i18n/config.ts`. TypeScript fails the build if a key is missing.
