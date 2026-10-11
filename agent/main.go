@@ -69,7 +69,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("game listener: %v", err)
 	}
-	rt := &router{lookup: a.lookupByHost, wake: a.wake, dial: dialLocal}
+	rt := &router{lookup: a.lookupByHost, wake: a.wake, dial: dialTCP}
 	go func() { log.Fatal(rt.serve(ln)) }()
 	log.Printf("routing Java players on %s", gameAddr)
 

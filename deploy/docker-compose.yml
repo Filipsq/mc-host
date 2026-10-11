@@ -1,0 +1,85 @@
+# Everything on one machine: website, database, agent (with the Java router)
+# and the Minecraft containers the agent starts. Run with ./setup.sh.
+#
+# All services use the host network and listen on 127.0.0.1, except Caddy
+# (80/443) and the agent's Java router (25565). The firewall set up by
+# setup.sh allows only those plus SSH and the Bedrock UDP ports.
+name: mchost
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    network_mode: host
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+    environment:
+      POSTGRES_USER: mchost
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: mchost
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "mchost"]
+      interval: 5s
+      retries: 10
+
+  agent:
+    build: ../agent
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      AGENT_TOKEN: ${AGENT_TOKEN}
+      AGENT_ADDR: 127.0.0.1:8081
+      GAME_ADDR: ":25565"
+      STATE_DIR: /state
+      IDLE_MINUTES: ${IDLE_MINUTES:-5}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - agent-state:/state
+
+  web:
+    build: ..
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://mchost:${POSTGRES_PASSWORD}@127.0.0.1:5432/mchost
+      AGENT_URL: http://127.0.0.1:8081
+      APP_URL: https://${DOMAIN}
+      AUTH_URL: https://${DOMAIN}
+      GAME_DOMAIN: ${DOMAIN}
+      GAME_HOST: ${DOMAIN}
+    depends_on:
+      db:
+        condition: service_healthy
+      agent:
+        condition: service_started
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  # Runs the billing job (expire, clean up, retry) every 5 minutes.
+  billing-cron:
+    image: curlimages/curl:8.16.0
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      CRON_SECRET: ${CRON_SECRET}
+    entrypoint:
+      - sh
+      - -c
+      - 'while true; do sleep 300; curl -fsS -H "Authorization: Bearer $$CRON_SECRET" http://127.0.0.1:3000/api/cron/billing; echo; done'
+
+volumes:
+  pgdata:
+  agent-state:
+  caddy-data:
+  caddy-config:

@@ -48,7 +48,7 @@ func startRouter(t *testing.T, targets map[string]*routeTarget, woke *atomic.Int
 	rt := &router{
 		lookup: func(_ context.Context, host string) (*routeTarget, error) { return targets[host], nil },
 		wake:   func(context.Context, string) error { woke.Add(1); return nil },
-		dial:   dialLocal,
+		dial:   dialTCP,
 	}
 	go rt.serve(ln)
 	return ln.Addr().String()
@@ -163,10 +163,9 @@ func TestRouterProxiesToRunningServer(t *testing.T) {
 		c.Write([]byte("hello from backend"))
 		got <- raw
 	}()
-	port := backend.Addr().(*net.TCPAddr).Port
 
 	var woke atomic.Int32
-	addr := startRouter(t, map[string]*routeTarget{"live.mchost.pl": {ID: "s3", Running: true, Port: port}}, &woke)
+	addr := startRouter(t, map[string]*routeTarget{"live.mchost.pl": {ID: "s3", Running: true, Addr: backend.Addr().String()}}, &woke)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
 		t.Fatal(err)
@@ -180,5 +179,17 @@ func TestRouterProxiesToRunningServer(t *testing.T) {
 	}
 	if raw := <-got; !bytes.Equal(raw, handshakePacket("live.mchost.pl", 2)) {
 		t.Fatal("backend should receive the original handshake")
+	}
+}
+
+func TestRouterStartingServer(t *testing.T) {
+	// Running container, but nothing listening yet: players see "starting".
+	ln, _ := net.Listen("tcp", "127.0.0.1:0")
+	addr := ln.Addr().String()
+	ln.Close()
+	var woke atomic.Int32
+	router := startRouter(t, map[string]*routeTarget{"boot.mchost.pl": {ID: "s4", Running: true, Addr: addr}}, &woke)
+	if msg := join(t, router, "boot.mchost.pl"); !strings.Contains(msg, "uruchamia") {
+		t.Fatalf("join message = %s", msg)
 	}
 }

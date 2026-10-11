@@ -22,6 +22,10 @@ auto-renewing subscriptions, since BLIK and Przelewy24 can't charge automaticall
 
 For local testing use Stripe test keys and `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
 
+## Deploy
+
+See [deploy/README.md](deploy/README.md): one Ubuntu server, one setup script.
+
 ## Run locally
 
 Requires Node 22+, Go 1.24+ and Docker.

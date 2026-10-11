@@ -23,7 +23,7 @@ var validHost = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?$`)
 
 type routeTarget struct {
 	ID      string
-	Port    int
+	Addr    string // where Minecraft listens, e.g. 172.17.0.5:25565
 	Running bool
 	Reason  string // why it isn't running: sleeping, stopped, crashed
 }
@@ -31,7 +31,7 @@ type routeTarget struct {
 type router struct {
 	lookup func(ctx context.Context, host string) (*routeTarget, error)
 	wake   func(ctx context.Context, id string) error
-	dial   func(port int) (net.Conn, error)
+	dial   func(addr string) (net.Conn, error)
 }
 
 // Shown to players in the server list and when they're turned away.
@@ -42,6 +42,7 @@ const (
 	msgStarting    = "§eSerwer się uruchamia...\n§7Server is starting..."
 	msgOffline     = "§cSerwer jest wyłączony\n§7Server is offline"
 	msgOfflineKick = "Serwer jest wyłączony przez właściciela.\nThe server has been turned off by its owner."
+	msgCrashedKick = "Serwer nie działa. Właściciel może go uruchomić w panelu.\nThe server is down. Its owner can start it from the panel."
 	msgUnknown     = "§cNie ma takiego serwera\n§7No server at this address"
 )
 
@@ -83,7 +84,7 @@ func (rt *router) handle(conn net.Conn) {
 
 	switch {
 	case target.Running:
-		backend, err := rt.dial(target.Port)
+		backend, err := rt.dial(target.Addr)
 		if err != nil {
 			// The container is up but Minecraft isn't listening yet.
 			rt.answer(conn, r, hs, "Starting", msgStarting, msgWaking)
@@ -106,6 +107,8 @@ func (rt *router) handle(conn net.Conn) {
 			return
 		}
 		rt.answer(conn, r, hs, "Sleeping", msgSleeping, "")
+	case target.Reason == "crashed":
+		rt.answer(conn, r, hs, "Offline", msgOffline, msgCrashedKick)
 	default:
 		rt.answer(conn, r, hs, "Offline", msgOffline, msgOfflineKick)
 	}
@@ -175,13 +178,20 @@ func (a *agent) lookupByHost(ctx context.Context, host string) (*routeTarget, er
 		return nil, err
 	}
 	t := &routeTarget{ID: id, Running: info.State.Status == "running"}
-	_, _ = fmt.Sscan(list[0].Labels["mchost.port"], &t.Port)
+	// Dial the container directly rather than its published port: Docker's
+	// port proxy accepts connections even before Minecraft is listening,
+	// which would hide the "starting" state from players.
+	if ip := info.IP(); ip != "" {
+		t.Addr = net.JoinHostPort(ip, "25565")
+	} else {
+		t.Addr = net.JoinHostPort("127.0.0.1", list[0].Labels["mchost.port"])
+	}
 	if !t.Running {
 		t.Reason = a.stopReason(id, info)
 	}
 	return t, nil
 }
 
-func dialLocal(port int) (net.Conn, error) {
-	return net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 3*time.Second)
+func dialTCP(addr string) (net.Conn, error) {
+	return net.DialTimeout("tcp", addr, 3*time.Second)
 }

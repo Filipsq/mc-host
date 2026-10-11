@@ -152,7 +152,22 @@ type ContainerInfo struct {
 		Tty    bool              `json:"Tty"`
 		Labels map[string]string `json:"Labels"`
 	} `json:"Config"`
-	RestartCount int `json:"RestartCount"`
+	RestartCount    int `json:"RestartCount"`
+	NetworkSettings struct {
+		Networks map[string]struct {
+			IPAddress string `json:"IPAddress"`
+		} `json:"Networks"`
+	} `json:"NetworkSettings"`
+}
+
+// IP returns the container's address on its Docker network, if it has one.
+func (c *ContainerInfo) IP() string {
+	for _, n := range c.NetworkSettings.Networks {
+		if n.IPAddress != "" {
+			return n.IPAddress
+		}
+	}
+	return ""
 }
 
 func (d *Docker) InspectContainer(ctx context.Context, name string) (*ContainerInfo, error) {
