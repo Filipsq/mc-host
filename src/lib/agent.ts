@@ -50,6 +50,8 @@ export type CreateServerSpec = {
   port: number;
   maxPlayers: number;
   version: string;
+  hostname: string; // Java only
+  autostop: boolean;
 };
 
 export async function createServer(spec: CreateServerSpec) {
@@ -63,7 +65,13 @@ export type AgentState = {
   restartCount: number;
   startedAt: string;
   health?: "starting" | "healthy" | "unhealthy";
+  stopReason?: "sleeping" | "stopped" | "crashed";
 };
+
+/** Replaces the container with a new spec (e.g. a new plan), keeping the world. Creates it if missing. */
+export async function recreateServer(spec: CreateServerSpec) {
+  await agentFetch(`/servers/${spec.id}`, { method: "PUT", body: JSON.stringify(spec), timeoutMs: 5 * 60_000 });
+}
 
 export async function getServerState(id: string): Promise<AgentState> {
   const res = await agentFetch(`/servers/${id}`, { timeoutMs: 5_000 });

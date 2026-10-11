@@ -1,5 +1,6 @@
 // Command agent runs on each game host. It creates and controls one Docker
-// container per Minecraft server on behalf of the web panel.
+// container per Minecraft server on behalf of the web panel, and routes Java
+// players to the right server by the address they typed.
 package main
 
 import (
@@ -9,9 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -25,8 +29,10 @@ var images = map[string]string{
 var validID = regexp.MustCompile(`^[a-z0-9]{8,40}$`)
 
 type agent struct {
-	docker *Docker
-	token  string
+	docker   *Docker
+	token    string
+	stateDir string        // marker files recording why a server was stopped
+	idle     time.Duration // free servers sleep after this long with no players
 }
 
 func main() {
@@ -34,8 +40,19 @@ func main() {
 	if token == "" {
 		log.Fatal("AGENT_TOKEN is required")
 	}
-	addr := envOr("AGENT_ADDR", ":8081")
-	a := &agent{docker: NewDocker(envOr("DOCKER_SOCKET", "/var/run/docker.sock")), token: token}
+	idleMin, err := strconv.Atoi(envOr("IDLE_MINUTES", "5"))
+	if err != nil || idleMin < 1 {
+		log.Fatal("IDLE_MINUTES must be a positive number")
+	}
+	a := &agent{
+		docker:   NewDocker(envOr("DOCKER_SOCKET", "/var/run/docker.sock")),
+		token:    token,
+		stateDir: envOr("STATE_DIR", "./state"),
+		idle:     time.Duration(idleMin) * time.Minute,
+	}
+	if err := os.MkdirAll(a.stateDir, 0o755); err != nil {
+		log.Fatal(err)
+	}
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
@@ -45,8 +62,19 @@ func main() {
 			}
 		}
 	}()
+	go a.watchIdleBedrock(context.Background())
 
-	log.Printf("agent listening on %s", addr)
+	gameAddr := envOr("GAME_ADDR", ":25565")
+	ln, err := net.Listen("tcp", gameAddr)
+	if err != nil {
+		log.Fatalf("game listener: %v", err)
+	}
+	rt := &router{lookup: a.lookupByHost, wake: a.wake, dial: dialLocal}
+	go func() { log.Fatal(rt.serve(ln)) }()
+	log.Printf("routing Java players on %s", gameAddr)
+
+	addr := envOr("AGENT_ADDR", ":8081")
+	log.Printf("agent API listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, a.routes()))
 }
 
@@ -54,6 +82,7 @@ func (a *agent) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	mux.HandleFunc("POST /servers", a.create)
+	mux.HandleFunc("PUT /servers/{id}", a.recreate)
 	mux.HandleFunc("GET /servers/{id}", a.status)
 	mux.HandleFunc("POST /servers/{id}/start", a.start)
 	mux.HandleFunc("POST /servers/{id}/stop", a.stop)
@@ -83,6 +112,26 @@ type createRequest struct {
 	Port       int     `json:"port"`
 	MaxPlayers int     `json:"maxPlayers"`
 	Version    string  `json:"version"`
+	Hostname   string  `json:"hostname"` // Java only: the address players type, e.g. ekipa.mchost.pl
+	Autostop   bool    `json:"autostop"` // sleep when nobody is playing (free plan)
+}
+
+func (req *createRequest) validate() error {
+	if _, ok := images[req.Edition]; !ok {
+		return errors.New("edition must be JAVA or BEDROCK")
+	}
+	switch {
+	case !validID.MatchString(req.ID):
+		return errors.New("invalid id")
+	case req.MemoryMb < 512 || req.Port < 1024 || req.Port > 65535 || req.CPUs <= 0:
+		return errors.New("invalid memoryMb, cpus or port")
+	case req.Edition == "JAVA" && !validHost.MatchString(req.Hostname):
+		return errors.New("java servers need a valid hostname")
+	}
+	if req.Version == "" {
+		req.Version = "LATEST"
+	}
+	return nil
 }
 
 func (a *agent) create(w http.ResponseWriter, r *http.Request) {
@@ -91,53 +140,87 @@ func (a *agent) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "invalid JSON")
 		return
 	}
-	image, ok := images[req.Edition]
-	switch {
-	case !validID.MatchString(req.ID):
-		writeError(w, http.StatusBadRequest, "invalid id")
-		return
-	case !ok:
-		writeError(w, http.StatusBadRequest, "edition must be JAVA or BEDROCK")
-		return
-	case req.MemoryMb < 512 || req.Port < 1024 || req.Port > 65535 || req.CPUs <= 0:
-		writeError(w, http.StatusBadRequest, "invalid memoryMb, cpus or port")
+	if err := req.validate(); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if req.Version == "" {
-		req.Version = "LATEST"
+	if err := a.run(r.Context(), req); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
 	}
+	log.Printf("created %s (%s, %d MB, port %d, autostop %v)", containerName(req.ID), req.Edition, req.MemoryMb, req.Port, req.Autostop)
+	writeJSON(w, http.StatusCreated, map[string]string{"container": containerName(req.ID)})
+}
 
-	ctx := r.Context()
-	if err := a.ensureImage(ctx, image); err != nil {
-		writeError(w, http.StatusBadGateway, err.Error())
+// recreate replaces the container with a new spec (e.g. after a plan change),
+// keeping the world volume, and starts it.
+func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
+	var req createRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	req.ID = r.PathValue("id")
+	if err := req.validate(); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	name := containerName(req.ID)
-	if err := a.docker.CreateContainer(ctx, name, containerSpec(req, image)); err != nil {
+	if err := a.docker.StopContainer(r.Context(), name, 60); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := a.docker.StartContainer(ctx, name); err != nil {
+	if err := a.docker.RemoveContainer(r.Context(), name); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	log.Printf("created %s (%s, %d MB, port %d)", name, req.Edition, req.MemoryMb, req.Port)
-	writeJSON(w, http.StatusCreated, map[string]string{"container": name})
+	if err := a.run(r.Context(), req); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	log.Printf("recreated %s (%d MB, autostop %v)", name, req.MemoryMb, req.Autostop)
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-func containerSpec(req createRequest, image string) map[string]any {
+func (a *agent) run(ctx context.Context, req createRequest) error {
+	image := images[req.Edition]
+	if err := a.ensureImage(ctx, image); err != nil {
+		return err
+	}
+	name := containerName(req.ID)
+	if err := a.docker.CreateContainer(ctx, name, a.containerSpec(req, image)); err != nil {
+		return err
+	}
+	a.clearMarkers(req.ID)
+	return a.docker.StartContainer(ctx, name)
+}
+
+func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 	maxPlayers := fmt.Sprint(req.MaxPlayers)
 	if req.MaxPlayers <= 0 {
 		maxPlayers = "1000"
 	}
 	env := []string{"EULA=TRUE", "VERSION=" + req.Version, "MAX_PLAYERS=" + maxPlayers}
-	var containerPort string
+	labels := map[string]string{
+		"mchost.server":   req.ID,
+		"mchost.edition":  req.Edition,
+		"mchost.port":     fmt.Sprint(req.Port),
+		"mchost.autostop": fmt.Sprint(req.Autostop),
+	}
+	var containerPort, hostIP string
 	tty := false
 	// Leave headroom above the JVM heap for the JVM itself, or the kernel OOM-kills it.
 	limitMb := req.MemoryMb
 	if req.Edition == "JAVA" {
 		env = append(env, "TYPE=PAPER", fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "MOTD="+req.Name, "ENABLE_RCON=true")
+		if req.Autostop {
+			// The image stops the server by itself once nobody has played for this long.
+			secs := fmt.Sprint(int(a.idle.Seconds()))
+			env = append(env, "ENABLE_AUTOSTOP=TRUE", "AUTOSTOP_TIMEOUT_EST="+secs, "AUTOSTOP_TIMEOUT_INIT="+secs)
+		}
+		labels["mchost.host"] = req.Hostname
 		containerPort = "25565/tcp"
+		hostIP = "127.0.0.1" // players come in through the router, not directly
 		limitMb = req.MemoryMb + 512
 	} else {
 		env = append(env, "SERVER_NAME="+req.Name)
@@ -150,15 +233,16 @@ func containerSpec(req createRequest, image string) map[string]any {
 		"Tty":          tty,
 		"OpenStdin":    tty,
 		"ExposedPorts": map[string]any{containerPort: map[string]any{}},
-		"Labels":       map[string]string{"mchost.server": req.ID, "mchost.edition": req.Edition},
+		"Labels":       labels,
 		"HostConfig": map[string]any{
-			"Memory":        int64(limitMb) * 1024 * 1024,
-			"MemorySwap":    int64(limitMb) * 1024 * 1024, // no swap
-			"NanoCpus":      int64(req.CPUs * 1e9),
-			"PidsLimit":     512,
+			"Memory":     int64(limitMb) * 1024 * 1024,
+			"MemorySwap": int64(limitMb) * 1024 * 1024, // no swap
+			"NanoCpus":   int64(req.CPUs * 1e9),
+			"PidsLimit":  512,
+			// Restarts after a crash only; a clean exit (e.g. going to sleep) stays down.
 			"RestartPolicy": map[string]any{"Name": "on-failure", "MaximumRetryCount": 3},
 			"PortBindings": map[string]any{
-				containerPort: []map[string]string{{"HostPort": fmt.Sprint(req.Port)}},
+				containerPort: []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}},
 			},
 			"Mounts": []map[string]any{{"Type": "volume", "Source": containerName(req.ID), "Target": "/data"}},
 		},
@@ -166,11 +250,11 @@ func containerSpec(req createRequest, image string) map[string]any {
 }
 
 func (a *agent) status(w http.ResponseWriter, r *http.Request) {
-	name, ok := a.containerFor(w, r)
+	id, ok := a.idFrom(w, r)
 	if !ok {
 		return
 	}
-	info, err := a.docker.InspectContainer(r.Context(), name)
+	info, err := a.docker.InspectContainer(r.Context(), containerName(id))
 	if a.handleDockerErr(w, err) {
 		return
 	}
@@ -180,40 +264,68 @@ func (a *agent) status(w http.ResponseWriter, r *http.Request) {
 		"exitCode":     info.State.ExitCode,
 		"restartCount": info.RestartCount,
 	}
+	if info.State.Status != "running" && info.State.Status != "restarting" {
+		resp["stopReason"] = a.stopReason(id, info)
+	}
 	if info.State.Health != nil {
 		resp["health"] = info.State.Health.Status // starting, healthy, unhealthy
 	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// stopReason explains a stopped container: the owner stopped it, it fell
+// asleep for lack of players, or it crashed.
+func (a *agent) stopReason(id string, info *ContainerInfo) string {
+	switch {
+	case a.hasMarker(id, "stopped"):
+		return "stopped"
+	case a.hasMarker(id, "sleeping"):
+		return "sleeping"
+	case info.Config.Labels["mchost.autostop"] == "true" && info.State.ExitCode == 0:
+		return "sleeping" // Java's built-in autostop exits cleanly
+	case info.State.ExitCode != 0:
+		return "crashed"
+	default:
+		return "stopped"
+	}
+}
+
 func (a *agent) start(w http.ResponseWriter, r *http.Request) {
-	name, ok := a.containerFor(w, r)
+	id, ok := a.idFrom(w, r)
 	if !ok {
 		return
 	}
-	if a.handleDockerErr(w, a.docker.StartContainer(r.Context(), name)) {
+	a.clearMarkers(id)
+	if a.handleDockerErr(w, a.docker.StartContainer(r.Context(), containerName(id))) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+func (a *agent) wake(ctx context.Context, id string) error {
+	a.clearMarkers(id)
+	return a.docker.StartContainer(ctx, containerName(id))
+}
+
 func (a *agent) stop(w http.ResponseWriter, r *http.Request) {
-	name, ok := a.containerFor(w, r)
+	id, ok := a.idFrom(w, r)
 	if !ok {
 		return
 	}
-	if a.handleDockerErr(w, a.docker.StopContainer(r.Context(), name, 60)) {
+	// Mark first so the router won't wake a server its owner turned off.
+	a.setMarker(id, "stopped")
+	if a.handleDockerErr(w, a.docker.StopContainer(r.Context(), containerName(id), 60)) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
-	name, ok := a.containerFor(w, r)
+	id, ok := a.idFrom(w, r)
 	if !ok {
 		return
 	}
-	ctx := r.Context()
+	ctx, name := r.Context(), containerName(id)
 	if err := a.docker.RemoveContainer(ctx, name); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -223,13 +335,14 @@ func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	a.clearMarkers(id)
 	log.Printf("removed %s", name)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // logs streams the console as Server-Sent Events: recent lines first, then live output.
 func (a *agent) logs(w http.ResponseWriter, r *http.Request) {
-	name, ok := a.containerFor(w, r)
+	id, ok := a.idFrom(w, r)
 	if !ok {
 		return
 	}
@@ -241,7 +354,8 @@ func (a *agent) logs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	started := false
-	err := a.docker.Logs(r.Context(), name, 200, r.URL.Query().Get("follow") != "0", func(line string) error {
+	opts := LogOptions{Tail: 200, Follow: r.URL.Query().Get("follow") != "0"}
+	err := a.docker.Logs(r.Context(), containerName(id), opts, func(line string) error {
 		started = true
 		data, _ := json.Marshal(line)
 		if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
@@ -256,7 +370,7 @@ func (a *agent) logs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *agent) command(w http.ResponseWriter, r *http.Request) {
-	name, ok := a.containerFor(w, r)
+	id, ok := a.idFrom(w, r)
 	if !ok {
 		return
 	}
@@ -269,6 +383,7 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
+	name := containerName(id)
 	info, err := a.docker.InspectContainer(ctx, name)
 	if a.handleDockerErr(w, err) {
 		return
@@ -300,13 +415,34 @@ func (a *agent) ensureImage(ctx context.Context, image string) error {
 	return a.docker.PullImage(ctx, image)
 }
 
-func (a *agent) containerFor(w http.ResponseWriter, r *http.Request) (string, bool) {
+func (a *agent) markerPath(id, kind string) string {
+	return filepath.Join(a.stateDir, id+"."+kind)
+}
+
+func (a *agent) setMarker(id, kind string) {
+	if err := os.WriteFile(a.markerPath(id, kind), nil, 0o644); err != nil {
+		log.Printf("marker %s %s: %v", id, kind, err)
+	}
+}
+
+func (a *agent) hasMarker(id, kind string) bool {
+	_, err := os.Stat(a.markerPath(id, kind))
+	return err == nil
+}
+
+func (a *agent) clearMarkers(id string) {
+	for _, kind := range []string{"stopped", "sleeping"} {
+		_ = os.Remove(a.markerPath(id, kind))
+	}
+}
+
+func (a *agent) idFrom(w http.ResponseWriter, r *http.Request) (string, bool) {
 	id := r.PathValue("id")
 	if !validID.MatchString(id) {
 		writeError(w, http.StatusBadRequest, "invalid id")
 		return "", false
 	}
-	return containerName(id), true
+	return id, true
 }
 
 // handleDockerErr writes an error response and reports whether there was one.

@@ -117,3 +117,18 @@ button.small { padding: 4px 10px; font-size: 0.85rem; }
 .command { flex-wrap: nowrap; }
 .command input { flex: 1; min-width: 0; font-family: ui-monospace, monospace; }
 .stack > p, .stack > header h1 { margin: 0; }
+
+.small { font-size: 0.85rem; }
+.stack-tight { display: flex; flex-direction: column; gap: 2px; }
+main.wide-form { max-width: 560px; }
+.plan-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+label.plan-choice { align-items: flex-start; }
+label.choice.disabled { opacity: 0.55; cursor: not-allowed; }
+.total { margin: 0; font-size: 1.1rem; }
+.address-input { display: flex; align-items: center; gap: 6px; }
+.address-input input { flex: 1; min-width: 0; }
+.notice { margin: 0; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); }
+.notice.success { border-color: var(--accent); }
+.notice.warn { border-color: #b7791f; }
+.badge.sleeping { color: #3b82c4; border-color: #3b82c4; }
+.badge.suspended, .badge.awaitingPayment { color: #b7791f; border-color: #b7791f; }

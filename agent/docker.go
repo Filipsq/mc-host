@@ -163,15 +163,31 @@ func (d *Docker) InspectContainer(ctx context.Context, name string) (*ContainerI
 	return &info, nil
 }
 
-// Logs streams container output line by line to fn until ctx ends or (without follow) the log is read.
-func (d *Docker) Logs(ctx context.Context, name string, tail int, follow bool, fn func(line string) error) error {
+type LogOptions struct {
+	Tail       int   // last N lines; 0 = all
+	Follow     bool  // keep streaming new lines
+	Since      int64 // unix seconds; 0 = from the start
+	Timestamps bool  // prefix each line with an RFC 3339 timestamp
+}
+
+// Logs streams container output line by line to fn until ctx ends or (without Follow) the log is read.
+func (d *Docker) Logs(ctx context.Context, name string, opts LogOptions, fn func(line string) error) error {
 	info, err := d.InspectContainer(ctx, name)
 	if err != nil {
 		return err
 	}
-	q := url.Values{"stdout": {"1"}, "stderr": {"1"}, "tail": {fmt.Sprint(tail)}}
-	if follow {
+	q := url.Values{"stdout": {"1"}, "stderr": {"1"}, "tail": {"all"}}
+	if opts.Tail > 0 {
+		q.Set("tail", fmt.Sprint(opts.Tail))
+	}
+	if opts.Follow {
 		q.Set("follow", "1")
+	}
+	if opts.Since > 0 {
+		q.Set("since", fmt.Sprint(opts.Since))
+	}
+	if opts.Timestamps {
+		q.Set("timestamps", "1")
 	}
 	resp, err := d.do(ctx, http.MethodGet, "/containers/"+name+"/logs", q, nil)
 	if err != nil {

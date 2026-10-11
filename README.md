@@ -2,9 +2,25 @@
 
 Web panel for free and paid Minecraft server hosting (Java and Bedrock).
 
-Users can sign up, create a free Java or Bedrock server, start and stop it, and use a live console.
+Users can sign up, create a Java or Bedrock server on the free plan or a paid plan, start and stop
+it, and use a live console. Java servers get an address like `ekipa.mchost.pl`. Free servers sleep
+when nobody is playing; Java ones wake up when a player joins.
+
 The web panel (Next.js, this folder) asks the node agent (`agent/`, Go) on each game host to run
-one Docker container per server. Billing, sleep-when-empty and hostname routing come next.
+one Docker container per server. The agent also routes Java players by the address they typed.
+
+## Payments
+
+Paid plans are prepaid for 1 or 3 months through Stripe Checkout (card, BLIK, Przelewy24), not
+auto-renewing subscriptions, since BLIK and Przelewy24 can't charge automatically. The flow:
+
+1. The panel creates a `Payment` and a Checkout Session (`src/lib/billing.ts`).
+2. Stripe calls `/api/stripe/webhook`; on success the plan and `paidUntil` are updated and the
+   agent creates or rebuilds the container. Changing plans converts leftover days by price.
+3. `/api/cron/billing` (run every few minutes with `CRON_SECRET`) suspends servers whose paid
+   period ended, removes unpaid servers after a day, and retries failed provisioning.
+
+For local testing use Stripe test keys and `stripe listen --forward-to localhost:3000/api/stripe/webhook`.
 
 ## Run locally
 
@@ -25,7 +41,8 @@ npm run dev                   # http://localhost:3000
 - `src/auth.ts` — Auth.js with email + password (bcrypt)
 - `src/app/actions.ts` — sign-up, log-in, log-out server actions
 - `src/app/dashboard` — server list, create-server page, and each server's page with controls and console
-- `src/lib/agent.ts` — client for the node agent; `src/lib/servers.ts` — ports, ownership, live status
+- `src/lib/agent.ts` — client for the node agent; `src/lib/servers.ts` — ports, addresses, ownership, live status
+- `src/lib/billing.ts`, `src/app/api/stripe`, `src/app/api/cron` — payments and the billing job
 - `agent/` — the node agent (see its README)
 - `src/middleware.ts` — redirects signed-out users away from `/dashboard`
 - `src/i18n` — languages (Polish default, English) and currencies (PLN default, EUR, USD, GBP), stored in cookies and switched from the top-right picker

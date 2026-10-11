@@ -13,6 +13,7 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now())
   servers      Server[]
+  payments     Payment[]
 }
 
 enum Edition {
@@ -28,6 +29,7 @@ enum Plan {
 }
 
 enum ServerStatus {
+  AWAITING_PAYMENT
   PROVISIONING
   RUNNING
   SLEEPING
@@ -43,12 +45,44 @@ model Server {
   status    ServerStatus @default(PROVISIONING)
   memoryMb  Int
   version   String       @default("LATEST")
-  // Host port players connect to (TCP for Java, UDP for Bedrock).
+  // Host port of the server: behind the router for Java, public (UDP) for Bedrock.
   port      Int?         @unique
+  // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
+  subdomain String?      @unique
+  // Paid plans are prepaid; the server is suspended once this passes.
+  paidUntil DateTime?
+  payments  Payment[]
   owner     User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId   String
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
   @@index([ownerId])
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
+// One Stripe Checkout payment buying `months` of `plan` for a server.
+model Payment {
+  id              String        @id @default(cuid())
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  server          Server?       @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  serverId        String?
+  plan            Plan
+  months          Int
+  amount          Int // in the currency's minor unit (grosze, cents)
+  currency        String
+  status          PaymentStatus @default(PENDING)
+  stripeSessionId String?       @unique
+  createdAt       DateTime      @default(now())
+  paidAt          DateTime?
+
+  @@index([userId])
+  @@index([serverId])
 }

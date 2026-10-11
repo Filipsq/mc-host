@@ -5,7 +5,9 @@ import (
 	"encoding/binary"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 )
 
 func frame(stream byte, payload string) []byte {
@@ -27,14 +29,22 @@ func TestDemux(t *testing.T) {
 }
 
 func TestContainerSpecJava(t *testing.T) {
-	spec := containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 25570, MaxPlayers: 10}, images["JAVA"])
+	a := &agent{idle: 5 * time.Minute}
+	spec := a.containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 25570, MaxPlayers: 10, Hostname: "ekipa.mchost.pl", Autostop: true}, images["JAVA"])
 	host := spec["HostConfig"].(map[string]any)
 	if got := host["Memory"].(int64); got != (2048+512)*1024*1024 {
 		t.Fatalf("memory limit = %d", got)
 	}
 	bindings := host["PortBindings"].(map[string]any)["25565/tcp"].([]map[string]string)
-	if bindings[0]["HostPort"] != "25570" {
-		t.Fatalf("port binding = %v", bindings)
+	if bindings[0]["HostPort"] != "25570" || bindings[0]["HostIp"] != "127.0.0.1" {
+		t.Fatalf("java should bind only to localhost (behind the router): %v", bindings)
+	}
+	if spec["Labels"].(map[string]string)["mchost.host"] != "ekipa.mchost.pl" {
+		t.Fatal("missing hostname label")
+	}
+	env := strings.Join(spec["Env"].([]string), " ")
+	if !strings.Contains(env, "ENABLE_AUTOSTOP=TRUE") || !strings.Contains(env, "AUTOSTOP_TIMEOUT_EST=300") {
+		t.Fatalf("autostop env missing: %s", env)
 	}
 	if spec["Tty"].(bool) {
 		t.Fatal("java containers should not use a TTY")
@@ -42,7 +52,7 @@ func TestContainerSpecJava(t *testing.T) {
 }
 
 func TestContainerSpecBedrock(t *testing.T) {
-	spec := containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570}, images["BEDROCK"])
+	spec := (&agent{idle: 5 * time.Minute}).containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570}, images["BEDROCK"])
 	host := spec["HostConfig"].(map[string]any)
 	if _, ok := host["PortBindings"].(map[string]any)["19132/udp"]; !ok {
 		t.Fatal("bedrock should bind 19132/udp")
@@ -72,5 +82,51 @@ func TestAuth(t *testing.T) {
 		if rec.Code != tc.want {
 			t.Errorf("%s with token %q: got %d, want %d", tc.path, tc.token, rec.Code, tc.want)
 		}
+	}
+}
+
+func TestCountBedrockPlayers(t *testing.T) {
+	start := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
+	lines := []string{
+		"2026-10-11T12:00:05.000000000Z [INFO] Server started.",
+		"2026-10-11T12:01:00.000000000Z [INFO] Player connected: Steve, xuid: 1",
+		"2026-10-11T12:02:00.000000000Z [INFO] Player connected: Alex, xuid: 2",
+		"2026-10-11T12:03:00.000000000Z [INFO] Player disconnected: Steve, xuid: 1",
+	}
+	online, last := countBedrockPlayers(lines, start)
+	if online != 1 || !last.Equal(start.Add(3*time.Minute)) {
+		t.Fatalf("online=%d last=%v", online, last)
+	}
+	lines = append(lines, "2026-10-11T12:04:00.000000000Z [INFO] Player disconnected: Alex, xuid: 2")
+	if online, _ := countBedrockPlayers(lines, start); online != 0 {
+		t.Fatalf("online=%d after everyone left", online)
+	}
+}
+
+func TestStopReason(t *testing.T) {
+	a := &agent{stateDir: t.TempDir()}
+	info := func(autostop string, code int) *ContainerInfo {
+		var i ContainerInfo
+		i.Config.Labels = map[string]string{"mchost.autostop": autostop}
+		i.State.ExitCode = code
+		return &i
+	}
+	if got := a.stopReason("s1", info("true", 0)); got != "sleeping" {
+		t.Errorf("free server that exited cleanly: %s", got)
+	}
+	if got := a.stopReason("s1", info("true", 1)); got != "crashed" {
+		t.Errorf("non-zero exit: %s", got)
+	}
+	if got := a.stopReason("s1", info("false", 0)); got != "stopped" {
+		t.Errorf("paid server exited cleanly: %s", got)
+	}
+	a.setMarker("s1", "stopped")
+	if got := a.stopReason("s1", info("true", 143)); got != "stopped" {
+		t.Errorf("owner stop should win: %s", got)
+	}
+	a.clearMarkers("s1")
+	a.setMarker("s1", "sleeping")
+	if got := a.stopReason("s1", info("true", 143)); got != "sleeping" {
+		t.Errorf("bedrock idle stop: %s", got)
 	}
 }

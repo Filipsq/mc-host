@@ -18,7 +18,9 @@ export default function ServerControls({ id, live, t }: Props) {
           {t.stop}
         </button>
       ) : (
-        <button disabled={pending || live === "unknown"} onClick={() => startTransition(() => startServerAction(id))}>
+        <button
+          disabled={pending || live === "unknown" || live === "suspended" || live === "awaitingPayment"}
+          onClick={() => startTransition(() => startServerAction(id))}>
           {t.start}
         </button>
       )}

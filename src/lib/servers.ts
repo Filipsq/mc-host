@@ -1,23 +1,38 @@
 import "server-only";
 import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
-import { AgentError, getServerState } from "./agent";
+import { AgentError, getServerState, type CreateServerSpec } from "./agent";
+import { planById } from "./plans";
 
-export type LiveState = "starting" | "online" | "offline" | "crashed" | "restarting" | "unknown";
+export type LiveState =
+  | "starting"
+  | "online"
+  | "offline"
+  | "sleeping"
+  | "crashed"
+  | "restarting"
+  | "suspended"
+  | "awaitingPayment"
+  | "unknown";
 
-/** Combines what Docker reports with the health check into one state for the UI. */
+/** Combines our records with what the agent reports into one state for the UI. */
 export async function getLiveState(server: Pick<Server, "id" | "status">): Promise<LiveState> {
+  if (server.status === "AWAITING_PAYMENT") return "awaitingPayment";
+  if (server.status === "SUSPENDED") return "suspended";
   try {
     const s = await getServerState(server.id);
     if (s.state === "restarting") return "restarting";
     if (s.state === "running") return s.health === "healthy" ? "online" : "starting";
-    if (s.state === "exited" || s.state === "dead") {
-      // A server the owner stopped is offline whatever its exit code; otherwise it died on its own.
-      return server.status === "STOPPED" || s.exitCode === 0 ? "offline" : "crashed";
-    }
+    if (server.status === "STOPPED") return "offline";
+    if (s.stopReason === "sleeping") return "sleeping";
+    if (s.stopReason === "crashed") return "crashed";
     return "offline";
   } catch (err) {
-    if (err instanceof AgentError) return "unknown";
+    if (err instanceof AgentError) {
+      // Paid but not yet created on the game host (the billing job retries).
+      if (err.status === 404 && server.status === "PROVISIONING") return "starting";
+      return "unknown";
+    }
     throw err;
   }
 }
@@ -27,12 +42,15 @@ export function getOwnedServer(id: string, userId: string) {
   return db.server.findFirst({ where: { id, ownerId: userId } });
 }
 
-const PORT_START = Number(process.env.PORT_RANGE_START ?? 25565);
-const PORT_END = Number(process.env.PORT_RANGE_END ?? 25664);
+// Java servers' own ports sit behind the router (which owns 25565), so the
+// pool must not include 25565. Bedrock players connect to these ports directly.
+const PORT_START = Number(process.env.PORT_RANGE_START ?? 30000);
+const PORT_END = Number(process.env.PORT_RANGE_END ?? 30999);
 
 /**
  * Creates the server row with the lowest free port. The unique index on port
  * settles races between two simultaneous creations; the loser retries.
+ * Returns "subdomainTaken" if the address is already in use, or null if no port is free.
  */
 export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreateInput, "port">) {
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -47,15 +65,42 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
     try {
       return await db.server.create({ data: { ...data, port } });
     } catch (err) {
-      const portClash =
-        err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
-      if (!portClash) throw err;
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+      const fields = (err.meta?.target as string[] | undefined) ?? [];
+      if (fields.includes("subdomain")) return "subdomainTaken" as const;
     }
   }
   return null;
 }
 
-export function gameAddress(port: number | null) {
-  const host = process.env.GAME_HOST ?? "localhost";
-  return { host, port };
+const GAME_DOMAIN = process.env.GAME_DOMAIN ?? "localhost";
+const GAME_HOST = process.env.GAME_HOST ?? "localhost";
+
+/** What players type in Minecraft to join. */
+export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port">) {
+  if (server.edition === "JAVA") return { host: `${server.subdomain}.${GAME_DOMAIN}`, port: null };
+  return { host: GAME_HOST, port: server.port };
+}
+
+/** The container spec the agent needs, derived from the server's plan. */
+export function agentSpec(server: Server): CreateServerSpec {
+  const plan = planById(server.plan);
+  return {
+    id: server.id,
+    name: server.name,
+    edition: server.edition,
+    memoryMb: plan.ramGb * 1024,
+    cpus: plan.cpus,
+    port: server.port!,
+    maxPlayers: plan.maxPlayers ?? 0,
+    version: server.version,
+    hostname: server.edition === "JAVA" ? joinAddress(server).host : "",
+    autostop: !plan.alwaysOn,
+  };
+}
+
+const RESERVED = new Set(["www", "api", "app", "panel", "admin", "mail", "status", "help", "support", "play"]);
+
+export function isValidSubdomain(s: string) {
+  return /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/.test(s) && !s.includes("--") && !RESERVED.has(s);
 }
