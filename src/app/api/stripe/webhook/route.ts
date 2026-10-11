@@ -1,6 +1,6 @@
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-import { fulfillPayment, markPayment } from "@/lib/billing";
+import { fulfillPayment, markPayment, markProcessing } from "@/lib/billing";
 
 // Stripe calls this after Checkout. BLIK and Przelewy24 can confirm later than
 // the redirect, so the server is only provisioned from here, never from the
@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     case "checkout.session.completed":
       // "unpaid" here means a delayed method is still processing; wait for async_payment_succeeded.
       if (session.payment_status === "paid" && paymentId) await fulfillPayment(paymentId);
+      else if (paymentId) await markProcessing(paymentId);
       break;
     case "checkout.session.async_payment_succeeded":
       if (paymentId) await fulfillPayment(paymentId);

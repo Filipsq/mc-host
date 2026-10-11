@@ -62,6 +62,8 @@ model Server {
 
 enum PaymentStatus {
   PENDING
+  // Checkout finished but BLIK or Przelewy24 hasn't confirmed yet.
+  PROCESSING
   PAID
   FAILED
   EXPIRED

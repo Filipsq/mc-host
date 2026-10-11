@@ -55,6 +55,8 @@ export async function startCheckout(opts: {
     client_reference_id: payment.id,
     metadata: { paymentId: payment.id, serverId: server.id },
     locale,
+    // Groups these sessions in the Dashboard; the suffix keeps the label unique to this flow.
+    integration_identifier: "server-plan-qkzmwrbt",
     success_url: `${back}?payment=success`,
     cancel_url: `${back}?payment=cancelled`,
   });
@@ -72,7 +74,7 @@ export async function fulfillPayment(paymentId: string) {
   const server = await db.$transaction(async (tx) => {
     // Claim the payment first so a retried webhook can't apply it twice.
     const claimed = await tx.payment.updateMany({
-      where: { id: paymentId, status: "PENDING" },
+      where: { id: paymentId, status: { in: ["PENDING", "PROCESSING"] } },
       data: { status: "PAID", paidAt: now },
     });
     if (claimed.count === 0) return null;
@@ -123,7 +125,15 @@ export async function provision(server: Server) {
 }
 
 export async function markPayment(sessionId: string, status: "FAILED" | "EXPIRED") {
-  await db.payment.updateMany({ where: { stripeSessionId: sessionId, status: "PENDING" }, data: { status } });
+  await db.payment.updateMany({
+    where: { stripeSessionId: sessionId, status: { in: ["PENDING", "PROCESSING"] } },
+    data: { status },
+  });
+}
+
+/** The customer paid with a delayed method; keep the payment (and its server) until Stripe settles it. */
+export async function markProcessing(paymentId: string) {
+  await db.payment.updateMany({ where: { id: paymentId, status: "PENDING" }, data: { status: "PROCESSING" } });
 }
 
 /** Periodic housekeeping, run by /api/cron/billing. */
@@ -143,8 +153,13 @@ export async function runBillingJob(now = new Date()) {
   }
 
   // Servers created for a payment that never happened free their port and address.
+  // One whose BLIK or Przelewy24 payment is still settling is kept.
   const abandoned = await db.server.findMany({
-    where: { status: "AWAITING_PAYMENT", createdAt: { lt: new Date(now.getTime() - DAY) } },
+    where: {
+      status: "AWAITING_PAYMENT",
+      createdAt: { lt: new Date(now.getTime() - DAY) },
+      payments: { none: { status: "PROCESSING" } },
+    },
   });
   for (const s of abandoned) {
     await db.server.delete({ where: { id: s.id } });
