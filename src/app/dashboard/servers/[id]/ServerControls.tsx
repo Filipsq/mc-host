@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { Play, Square, Trash2 } from "lucide-react";
 import { deleteServerAction, startServerAction, stopServerAction } from "../actions";
 import type { LiveState } from "@/lib/servers";
 import type { Messages } from "@/i18n/messages";
@@ -15,13 +16,13 @@ export default function ServerControls({ id, live, t }: Props) {
     <div className="row controls">
       {running ? (
         <button className="secondary" disabled={pending} onClick={() => startTransition(() => stopServerAction(id))}>
-          {t.stop}
+          <Square size={16} aria-hidden /> {t.stop}
         </button>
       ) : (
         <button
           disabled={pending || live === "unknown" || live === "suspended" || live === "awaitingPayment"}
           onClick={() => startTransition(() => startServerAction(id))}>
-          {t.start}
+          <Play size={16} aria-hidden /> {t.start}
         </button>
       )}
       <button
@@ -31,7 +32,7 @@ export default function ServerControls({ id, live, t }: Props) {
           if (confirm(t.deleteConfirm)) startTransition(() => deleteServerAction(id));
         }}
       >
-        {t.delete}
+        <Trash2 size={16} aria-hidden /> {t.delete}
       </button>
     </div>
   );

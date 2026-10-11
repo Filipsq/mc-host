@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import type { Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
+import EditionIcon from "@/components/EditionIcon";
 import type { Messages } from "@/i18n/messages";
 
 type Props = {
@@ -58,6 +59,7 @@ export default function CreateServerForm({ t, billing, plans, defaultPlan, domai
         {(["JAVA", "BEDROCK"] as const).map((ed) => (
           <label key={ed} className="choice">
             <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => setEdition(ed)} />
+            <EditionIcon edition={ed} size={30} />
             <span>
               <strong>{ed === "JAVA" ? "Java" : "Bedrock"}</strong>{" "}
               <span className="muted">{ed === "JAVA" ? t.javaHint : t.bedrockHint}</span>

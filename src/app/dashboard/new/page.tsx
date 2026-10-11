@@ -20,8 +20,8 @@ export default async function NewServerPage() {
   );
 
   return (
-    <main className="narrow wide-form">
-      <p><Link href="/dashboard">{t.server.back}</Link></p>
+    <main className="wide-form stack">
+      <Link className="back" href="/dashboard">{t.server.back}</Link>
       <h1>{t.server.newTitle}</h1>
       <CreateServerForm
         t={t.server}

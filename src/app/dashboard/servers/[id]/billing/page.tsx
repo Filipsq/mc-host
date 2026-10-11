@@ -18,8 +18,8 @@ export default async function BillingPage({ params }: { params: Promise<{ id: st
   const activePaid = server.plan !== "FREE" && server.paidUntil && server.paidUntil > new Date();
 
   return (
-    <main className="narrow wide-form stack">
-      <p><Link href={`/dashboard/servers/${server.id}`}>← {server.name}</Link></p>
+    <main className="wide-form stack">
+      <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
       <h1>{t.billing.title}</h1>
       <p className="muted">
         {t.plans[server.plan]} ·{" "}

@@ -8,6 +8,7 @@ import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
 import CopyButton from "./CopyButton";
+import EditionIcon from "@/components/EditionIcon";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -32,14 +33,21 @@ export default async function ServerPage({ params, searchParams }: Props) {
 
   return (
     <main className="stack">
-      <p><Link href="/dashboard">{t.back}</Link></p>
-      <header className="row">
-        <h1>{server.name}</h1>
+      <Link className="back" href="/dashboard">{t.back}</Link>
+      <header className="page-head">
+        <div className="page-title">
+          <EditionIcon edition={server.edition} size={52} />
+          <div>
+            <h1>{server.name}</h1>
+            <div className="meta">
+              <span className="chip">{server.edition === "JAVA" ? "Java" : "Bedrock"}</span>
+              <span className="chip">{all.plans[server.plan]}</span>
+              <span className="chip">{server.memoryMb / 1024} GB RAM</span>
+            </div>
+          </div>
+        </div>
         <span className={`badge ${live}`}>{t.live[live]}</span>
       </header>
-      <p className="muted">
-        {server.edition === "JAVA" ? "Java" : "Bedrock"} · {all.plans[server.plan]} · {server.memoryMb / 1024} GB RAM
-      </p>
 
       {payment === "success" && <p className="notice success">{b.success}</p>}
       {payment === "cancelled" && unpaid && <p className="notice">{b.cancelled}</p>}
@@ -50,35 +58,38 @@ export default async function ServerPage({ params, searchParams }: Props) {
       )}
 
       <div className="card stack">
-        {server.edition === "JAVA" ? (
-          <div className="row">
-            <span>{t.address}: <code>{host}</code></span>
-            <CopyButton text={host} label={t.copy} copiedLabel={t.copied} />
+        <div className="address-card">
+          <div>
+            <p className="address-label">{t.address}</p>
+            {server.edition === "JAVA" ? (
+              <span className="address-value">{breakable(host)}</span>
+            ) : (
+              <span className="address-value">
+                {breakable(host)} <span className="muted">· {t.port}</span> {port}
+              </span>
+            )}
           </div>
-        ) : (
-          <>
-            <div className="row">
-              <span>{t.address}: <code>{host}</code> · {t.port}: <code>{port}</code></span>
-              <CopyButton text={host} label={t.copy} copiedLabel={t.copied} />
-            </div>
-            <p className="muted">{t.bedrockJoin}</p>
-          </>
-        )}
+          <CopyButton text={host} label={t.copy} copiedLabel={t.copied} />
+        </div>
+        {server.edition === "BEDROCK" && <p className="muted small">{t.bedrockJoin}</p>}
         <ServerControls id={server.id} live={live} t={t} />
       </div>
 
       <div className="card row">
         <span>
-          {all.plans[server.plan]} ·{" "}
-          {server.plan === "FREE"
-            ? b.freeForever
-            : server.paidUntil
-              ? format(server.paidUntil > new Date() ? b.paidUntil : b.expiredOn, {
-                  date: new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(server.paidUntil),
-                })
-              : t.live.awaitingPayment}
+          <strong>{all.plans[server.plan]}</strong>{" "}
+          <span className="muted">
+            ·{" "}
+            {server.plan === "FREE"
+              ? b.freeForever
+              : server.paidUntil
+                ? format(server.paidUntil > new Date() ? b.paidUntil : b.expiredOn, {
+                    date: new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(server.paidUntil),
+                  })
+                : t.live.awaitingPayment}
+          </span>
         </span>
-        <Link className="button" href={`/dashboard/servers/${server.id}/billing`}>
+        <Link className={`button${unpaid ? "" : " secondary"}`} href={`/dashboard/servers/${server.id}/billing`}>
           {unpaid ? b.pay : b.manage}
         </Link>
       </div>
@@ -87,4 +98,9 @@ export default async function ServerPage({ params, searchParams }: Props) {
       {waiting && <AutoRefresh />}
     </main>
   );
+}
+
+// Lets a long address wrap before a dot on narrow screens instead of mid-word.
+function breakable(host: string) {
+  return host.split(".").map((part, i) => (i === 0 ? part : <span key={i}><wbr />.{part}</span>));
 }

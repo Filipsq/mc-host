@@ -6,10 +6,15 @@ import { getMessages } from "@/i18n/server";
 export default async function SignUpPage() {
   const t = (await getMessages()).auth;
   return (
-    <main className="narrow">
-      <h1>{t.signUpTitle}</h1>
+    <main className="narrow stack">
+      <header className="auth-head">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/art/block-grass.svg" alt="" width={56} height={56} />
+        <h1>{t.signUpTitle}</h1>
+        <p className="muted">{t.signUpSubtitle}</p>
+      </header>
       <AuthForm action={signUp} submitLabel={t.signUpSubmit} t={t} />
-      <p>
+      <p className="auth-switch muted">
         {t.haveAccount} <Link href="/login">{t.logInSubmit}</Link>
       </p>
     </main>

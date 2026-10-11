@@ -1,4 +1,4 @@
-# MC Host
+# MCHosting
 
 Web panel for free and paid Minecraft server hosting (Java and Bedrock).
 
@@ -51,6 +51,8 @@ npm run dev                   # http://localhost:3000
 - `src/middleware.ts` — redirects signed-out users away from `/dashboard`
 - `src/i18n` — languages (Polish default, English) and currencies (PLN default, EUR, USD, GBP), stored in cookies and switched from the top-right picker
 - `src/lib/plans.ts` — plan limits and monthly prices per currency
+- `src/lib/brand.ts` — the site name (MCHosting); `src/app/globals.css` — the dark theme and all styles
+- `public/art/` — the block artwork, drawn by `scripts/gen-art.mjs` (run `node scripts/gen-art.mjs` after editing it)
 
 ## Adding a language
 

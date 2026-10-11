@@ -6,15 +6,100 @@ const pl = {
     language: "Język",
     currency: "Waluta",
     logIn: "Zaloguj się",
+    signUp: "Załóż konto",
     dashboard: "Moje serwery",
+    pricing: "Cennik",
+    howItWorks: "Jak to działa",
+    faq: "FAQ",
   },
   home: {
+    eyebrow: "Java i Bedrock · darmowy plan bez limitu czasu",
     title: "Serwer Minecraft w jedno kliknięcie",
     subtitle:
       "Postaw serwer na Javę lub Bedrock za darmo albo przejdź na plan płatny, by mieć więcej graczy i serwer działający 24/7.",
-    cta: "Zacznij za darmo",
+    cta: "Utwórz serwer za darmo",
+    ctaSecondary: "Zobacz cennik",
+    perkNoCard: "Bez karty płatniczej",
+    perkBlik: "Płatność BLIK-iem",
+    perkAddress: "Krótki adres serwera",
+    heroAddress: "ekipa.{domain}",
+    featuresTitle: "Wszystko, czego potrzebujesz do gry ze znajomymi",
+    featuresSubtitle: "Prosty panel, który robi za Ciebie to, co nudne.",
+    features: {
+      free: {
+        title: "Darmowy serwer bez limitu czasu",
+        text: "Nie potrzebujesz karty. Darmowy serwer nie wygasa, a gdy nikt nie gra, po prostu usypia.",
+      },
+      sleep: {
+        title: "Budzi się, gdy wchodzisz",
+        text: "Uśpiony serwer na Javę uruchamia się sam, gdy ktoś spróbuje dołączyć. Bez klikania w panelu.",
+      },
+      address: {
+        title: "Krótki adres",
+        text: "Gracze na Javie wpisują po prostu twojserwer.{domain}. Bez numerów portów.",
+      },
+      editions: {
+        title: "Java i Bedrock",
+        text: "Graj na komputerze, telefonie lub konsoli. Edycję wybierasz przy tworzeniu serwera.",
+      },
+      console: {
+        title: "Konsola w przeglądarce",
+        text: "Podglądaj logi na żywo i wysyłaj komendy prosto z panelu.",
+      },
+      payments: {
+        title: "BLIK i Przelewy24",
+        text: "Płacisz z góry za miesiąc lub trzy. Nic nie odnawia się samo, więc nie ma niespodzianek.",
+      },
+    },
+    stepsTitle: "Jak to działa",
+    steps: [
+      { title: "Załóż konto", text: "Wystarczy e-mail i hasło." },
+      { title: "Wybierz edycję i plan", text: "Java lub Bedrock, za darmo albo z planem płatnym." },
+      { title: "Wpisz adres i graj", text: "Skopiuj adres serwera do Minecrafta i zaproś znajomych." },
+    ],
     pricingTitle: "Cennik",
+    pricingSubtitle: "Płacisz z góry za 1 lub 3 miesiące. Bez subskrypcji i automatycznych odnowień.",
     perMonth: "/ mies.",
+    recommended: "Polecany",
+    startFree: "Zacznij za darmo",
+    choosePlan: "Wybierz plan",
+    paymentMethods: "Karta · BLIK · Przelewy24",
+    faqTitle: "Najczęściej zadawane pytania",
+    faq: [
+      {
+        q: "Czy darmowy serwer jest naprawdę darmowy?",
+        a: "Tak. Nie podajesz karty, a serwer nie wygasa. Ma {gb} GB RAM i miejsce dla {n} graczy. Gdy przez kilka minut nikt nie gra, serwer usypia, żeby nie zajmować zasobów.",
+      },
+      {
+        q: "Jak dołączyć do serwera?",
+        a: "Na Javie wpisz adres serwera, np. ekipa.{domain}, w menu Tryb wieloosobowy → Dodaj serwer. Na Bedrock wpisz adres i port osobno w zakładce Serwery → Dodaj serwer.",
+      },
+      {
+        q: "Czym mogę zapłacić?",
+        a: "Kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Płacisz z góry za 1 lub 3 miesiące, a plan nie odnawia się sam.",
+      },
+      {
+        q: "Co się stanie, gdy skończy się opłacony okres?",
+        a: "Serwer zostanie zawieszony, ale świat zostaje zachowany. Wystarczy opłacić kolejny okres, aby wrócić do gry.",
+      },
+      {
+        q: "Czy mogę zmienić plan?",
+        a: "Tak, w każdej chwili w panelu serwera. Niewykorzystane dni obecnego planu przeliczymy na nowy plan.",
+      },
+      {
+        q: "Java czy Bedrock?",
+        a: "Wybierz Javę, jeśli gracie na komputerach, albo Bedrock, jeśli gracie na telefonach, konsolach lub Windows 10/11. Serwer działa w jednej edycji.",
+      },
+    ],
+    ctaTitle: "Gotowy do gry?",
+    ctaText: "Postaw darmowy serwer i wyślij znajomym adres.",
+  },
+  footer: {
+    tagline: "Darmowe i płatne serwery Minecraft na Javę i Bedrock.",
+    site: "Serwis",
+    account: "Konto",
+    disclaimer:
+      "Nie jest to oficjalny produkt Minecraft. Nie jest zatwierdzony przez Mojang ani Microsoft ani z nimi powiązany.",
   },
   plans: {
     FREE: "Darmowy",
@@ -34,6 +119,8 @@ const pl = {
     password: "Hasło",
     wait: "Chwileczkę...",
     signUpTitle: "Załóż konto",
+    signUpSubtitle: "Darmowy serwer czeka. Nie potrzebujesz karty.",
+    logInSubtitle: "Witaj z powrotem! Twoje serwery czekają.",
     signUpSubmit: "Zarejestruj się",
     haveAccount: "Masz już konto?",
     logInTitle: "Zaloguj się",
@@ -52,6 +139,7 @@ const pl = {
     logOut: "Wyloguj się",
     signedInAs: "Zalogowano jako {email}",
     empty: "Nie masz jeszcze żadnych serwerów.",
+    emptyHint: "Postaw pierwszy serwer. Darmowy plan nie wymaga karty.",
     createServer: "Utwórz serwer",
   },
   billing: {

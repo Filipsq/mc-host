@@ -8,15 +8,99 @@ const en: Messages = {
     language: "Language",
     currency: "Currency",
     logIn: "Log in",
+    signUp: "Sign up",
     dashboard: "My servers",
+    pricing: "Pricing",
+    howItWorks: "How it works",
+    faq: "FAQ",
   },
   home: {
+    eyebrow: "Java and Bedrock · free plan with no time limit",
     title: "Minecraft servers in one click",
     subtitle:
       "Host a Java or Bedrock server for free, or upgrade for more players and always-on uptime.",
-    cta: "Get started free",
+    cta: "Create a free server",
+    ctaSecondary: "See pricing",
+    perkNoCard: "No card needed",
+    perkBlik: "Pay with BLIK",
+    perkAddress: "Short server address",
+    heroAddress: "crew.{domain}",
+    featuresTitle: "Everything you need to play with friends",
+    featuresSubtitle: "A simple panel that handles the boring parts for you.",
+    features: {
+      free: {
+        title: "A free server with no time limit",
+        text: "No card needed. Your free server never expires; it just sleeps while nobody is playing.",
+      },
+      sleep: {
+        title: "Wakes up when you join",
+        text: "A sleeping Java server starts by itself when someone tries to join. No need to open the panel.",
+      },
+      address: {
+        title: "A short address",
+        text: "Java players just type yourserver.{domain}. No port numbers.",
+      },
+      editions: {
+        title: "Java and Bedrock",
+        text: "Play on a computer, phone or console. You pick the edition when you create the server.",
+      },
+      console: {
+        title: "Console in your browser",
+        text: "Watch the logs live and send commands straight from the panel.",
+      },
+      payments: {
+        title: "BLIK and Przelewy24",
+        text: "Pay up front for one or three months. Nothing renews by itself, so there are no surprises.",
+      },
+    },
+    stepsTitle: "How it works",
+    steps: [
+      { title: "Create an account", text: "All you need is an email and a password." },
+      { title: "Pick an edition and plan", text: "Java or Bedrock, free or on a paid plan." },
+      { title: "Enter the address and play", text: "Copy the server address into Minecraft and invite your friends." },
+    ],
     pricingTitle: "Pricing",
+    pricingSubtitle: "Pay up front for 1 or 3 months. No subscriptions and no automatic renewals.",
     perMonth: "/ month",
+    recommended: "Recommended",
+    startFree: "Start for free",
+    choosePlan: "Choose plan",
+    paymentMethods: "Card · BLIK · Przelewy24",
+    faqTitle: "Frequently asked questions",
+    faq: [
+      {
+        q: "Is the free server really free?",
+        a: "Yes. You don't enter a card and the server never expires. It has {gb} GB of RAM and room for {n} players. When nobody has played for a few minutes, it goes to sleep to save resources.",
+      },
+      {
+        q: "How do I join the server?",
+        a: "On Java, enter the server address, for example crew.{domain}, under Multiplayer → Add Server. On Bedrock, enter the address and port separately under Servers → Add Server.",
+      },
+      {
+        q: "How can I pay?",
+        a: "By card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). You pay up front for 1 or 3 months, and plans don't renew automatically.",
+      },
+      {
+        q: "What happens when my paid period ends?",
+        a: "The server is suspended, but the world is kept. Pay for another period to get back in.",
+      },
+      {
+        q: "Can I change my plan?",
+        a: "Yes, any time from the server panel. Unused days on your current plan are converted to the new plan.",
+      },
+      {
+        q: "Java or Bedrock?",
+        a: "Pick Java if you play on computers, or Bedrock if you play on phones, consoles or Windows 10/11. A server runs one edition.",
+      },
+    ],
+    ctaTitle: "Ready to play?",
+    ctaText: "Start a free server and send your friends the address.",
+  },
+  footer: {
+    tagline: "Free and paid Minecraft servers for Java and Bedrock.",
+    site: "Site",
+    account: "Account",
+    disclaimer: "Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.",
   },
   plans: {
     FREE: "Free",
@@ -36,6 +120,8 @@ const en: Messages = {
     password: "Password",
     wait: "Please wait...",
     signUpTitle: "Create your account",
+    signUpSubtitle: "Your free server is waiting. No card needed.",
+    logInSubtitle: "Welcome back! Your servers are waiting.",
     signUpSubmit: "Sign up",
     haveAccount: "Already have an account?",
     logInTitle: "Log in",
@@ -54,6 +140,7 @@ const en: Messages = {
     logOut: "Log out",
     signedInAs: "Signed in as {email}",
     empty: "You don't have any servers yet.",
+    emptyHint: "Start your first server. The free plan doesn't need a card.",
     createServer: "Create server",
   },
   billing: {

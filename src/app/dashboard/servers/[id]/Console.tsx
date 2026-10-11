@@ -46,9 +46,14 @@ export default function Console({ id, t }: { id: string; t: Messages["server"] }
   return (
     <section className="stack">
       <h2>{t.console}</h2>
-      <pre ref={logRef} className="console" aria-live="polite">
-        {lines.length ? lines.join("\n") : t.consoleEmpty}
-      </pre>
+      <div className="console-frame">
+        <div className="console-bar" aria-hidden>
+          <i /><i /><i /><span>latest.log</span>
+        </div>
+        <pre ref={logRef} className="console" aria-live="polite">
+          {lines.length ? lines.join("\n") : t.consoleEmpty}
+        </pre>
+      </div>
       <form onSubmit={submit} className="row command">
         <input
           value={command}

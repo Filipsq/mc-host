@@ -32,7 +32,7 @@ export default function PreferencesPicker({ locale, currency, labels }: Props) {
   return (
     <details ref={ref} className="picker">
       <summary aria-label={`${labels.language} / ${labels.currency}`}>
-        {locale.toUpperCase()} · {currencySymbols[currency]} {currency}
+        {locale.toUpperCase()} · {currencySymbols[currency]}<span className="hide-phone"> {currency}</span>
       </summary>
       <form
         action={setPreferences}
