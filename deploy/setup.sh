@@ -21,7 +21,7 @@ ufw allow 30000:30999/udp >/dev/null # Bedrock players, one port per server
 ufw --force enable >/dev/null
 
 if [ ! -f .env ]; then
-  read -rp "Domain for the site (e.g. kilofhost.pl): " DOMAIN
+  read -rp "Domain for the site (e.g. mchosting.pl): " DOMAIN
   secret() { openssl rand -hex 32; }
   cat > .env <<ENV
 DOMAIN=$DOMAIN
