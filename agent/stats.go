@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"net/http"
 	"net/url"
@@ -55,7 +54,7 @@ func (a *agent) stats(w http.ResponseWriter, r *http.Request) {
 	}
 	wg.Wait()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"memoryLimitMb": a.memoryLimit,
+		"memoryLimitMb": a.memoryCap(),
 		"memoryHeldMb":  a.memoryInUse(list, ""),
 		"host":          a.hostStats(),
 		"servers":       servers,
@@ -111,23 +110,7 @@ func memoryUsed(usage int64, stats map[string]int64) int64 {
 func (a *agent) hostStats() hostStats {
 	h := hostStats{CPUs: runtime.NumCPU()}
 	// /proc isn't namespaced for these: inside the agent's container they describe the machine.
-	if f, err := os.Open("/proc/meminfo"); err == nil {
-		sc := bufio.NewScanner(f)
-		for sc.Scan() {
-			fields := strings.Fields(sc.Text())
-			if len(fields) < 2 {
-				continue
-			}
-			kb, _ := strconv.ParseInt(fields[1], 10, 64)
-			switch fields[0] {
-			case "MemTotal:":
-				h.MemoryTotalMb = kb >> 10
-			case "MemAvailable:":
-				h.MemoryAvailableMb = kb >> 10
-			}
-		}
-		f.Close()
-	}
+	h.MemoryTotalMb, h.MemoryAvailableMb, _ = readMeminfo()
 	if b, err := os.ReadFile("/proc/loadavg"); err == nil {
 		for i, v := range strings.Fields(string(b)) {
 			if i < 3 {

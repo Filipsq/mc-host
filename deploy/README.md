@@ -109,18 +109,28 @@ before taking real payments.
 ## Server memory
 
 `setup.sh` works out how much memory the Minecraft servers may share and writes it to `deploy/.env`
-as `MEMORY_LIMIT_MB` (on an 8 GB server that's about 5 GB). Paid servers keep their memory even when
-switched off, so their owners can always start them; once it's all sold, the site shows paid plans
-as sold out. Free servers only use memory while someone plays, and when there's no room a free
-server waits ("all free slots are taken, try again in a few minutes") until another falls asleep.
+as `MEMORY_LIMIT_MB` (on an 8 GB server that's about 5 GB). It also writes `MEMORY_OVERBOOK=1.5`:
+paid plans are sold up to 1.5 times that memory (about 7.5 GB on an 8 GB server), as most hosts do.
+That works because a stopped server uses no memory, and a running Java server starts small and only
+grows as far as its players need, up to its plan. Once it's all sold, the site shows paid plans as
+sold out.
 
-On an 8 GB server that means, for example, one Starter plus one free server at a time, or two free
-servers. Standard (6 GB) and Pro (10 GB) need more than those 5 GB, so they show as sold out
-until you move to a bigger machine.
+On an 8 GB server that means, for example, two Starters or one Standard. Pro (10 GB) needs more, so
+it shows as sold out until you move to a bigger machine.
 
-To change the limit, edit `MEMORY_LIMIT_MB` in `deploy/.env` and run `docker compose up -d` in
-`deploy/`. Setting it above what the machine has means betting that not every server uses all of
-its memory at once.
+Free servers only use memory while someone plays. One starts only when the running servers' plans
+still fit in the overbooked limit and the machine really has its memory free with 1 GB to spare;
+otherwise it waits ("all free slots are taken, try again in a few minutes") until another falls
+asleep. Paid servers always start.
+
+The bet is that not every server uses all of its memory at the same moment. If they ever do, the
+system stops the biggest one and Docker starts it again. The admin panel shows the machine's real
+RAM use; when it stays high, lower `MEMORY_OVERBOOK` or move to a bigger machine. `MEMORY_OVERBOOK=1`
+turns overbooking off: paid servers then keep their memory even when switched off, so their owners
+can always start them.
+
+To change either, edit `deploy/.env` and run `docker compose up -d` in `deploy/`. Servers made
+before an update pick up the smaller starting memory the next time their settings are saved.
 
 ## Backups
 

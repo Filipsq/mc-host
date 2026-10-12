@@ -52,7 +52,7 @@ func TestContainerSpecJava(t *testing.T) {
 	if !strings.Contains(env, "ENABLE_AUTOSTOP=TRUE") || !strings.Contains(env, "AUTOSTOP_TIMEOUT_EST=300") {
 		t.Fatalf("autostop env missing: %s", env)
 	}
-	for _, want := range []string{"USE_AIKAR_FLAGS=true", "VIEW_DISTANCE=8", "SIMULATION_DISTANCE=6"} {
+	for _, want := range []string{"USE_AIKAR_FLAGS=true", "VIEW_DISTANCE=8", "SIMULATION_DISTANCE=6", "INIT_MEMORY=1024M", "MAX_MEMORY=2048M", "G1PeriodicGCInterval"} {
 		if !strings.Contains(env, want) {
 			t.Fatalf("missing %s: %s", want, env)
 		}
@@ -169,6 +169,11 @@ func TestMemoryInUse(t *testing.T) {
 	}
 	if got := a.memoryInUse(list, "freeup"); got != 3072+6144 {
 		t.Fatalf("a server must not count against itself: %d", got)
+	}
+	// Overbooked, a stopped server's memory has been sold again: only running ones count.
+	a.overbook = 1.5
+	if got := a.memoryInUse(list, ""); got != 3072+2048 {
+		t.Fatalf("overbooked in use = %d", got)
 	}
 }
 
@@ -291,7 +296,7 @@ func TestKindEnv(t *testing.T) {
 	pack := base
 	pack.Kind, pack.Modpack, pack.ModpackVersion, pack.Version = "modpack", "cobblemon-fabric", "BpTjgzL8", "1.21.1"
 	env = envOf(pack)
-	for _, want := range []string{"TYPE=MODRINTH\n", "MODRINTH_MODPACK=cobblemon-fabric\n", "MODRINTH_VERSION=BpTjgzL8\n", "VERSION=1.21.1\n", "MEMORY=3072M\n"} {
+	for _, want := range []string{"TYPE=MODRINTH\n", "MODRINTH_MODPACK=cobblemon-fabric\n", "MODRINTH_VERSION=BpTjgzL8\n", "VERSION=1.21.1\n", "INIT_MEMORY=1024M\n", "MAX_MEMORY=3072M\n"} {
 		if !strings.Contains(env, want) {
 			t.Errorf("modpack env missing %q:\n%s", want, env)
 		}

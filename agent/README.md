@@ -30,6 +30,7 @@ go test ./...
 | `UPLOAD_MAX_MB` | `1024` | The biggest file the file manager takes; a zip may unpack to 4 times this |
 | `MIN_FREE_DISK_MB` | `4096` | Uploads and unzipping stop short of leaving less disk free than this |
 | `MEMORY_LIMIT_MB` | `0` (no limit) | Plan memory all servers may hold together. Paid servers hold theirs even when stopped (unless suspended); a free server only while awake, and it isn't started when it doesn't fit |
+| `MEMORY_OVERBOOK` | `1` | Overbooking: running servers may hold this many times `MEMORY_LIMIT_MB` (1 to 4). Above 1, stopped paid servers don't count, and a free server also needs the machine's `MemAvailable` to have its memory plus 1 GB |
 
 ## API
 
@@ -77,5 +78,5 @@ their last backup. A running server's saving is paused while its world is copied
 
 Each server gets the `itzg/minecraft-server` (Paper, with the Java its version needs: 17 for
 1.17–1.19, 21 for 1.20–1.21.11, 25 for 26.1 onwards) or `itzg/minecraft-bedrock-server` image,
-a memory limit and a CPU share from its plan (it may borrow one more idle core), its world in a `mc-<id>` volume, and up to 3 automatic
+a memory limit and a CPU share from its plan (Java's heap starts at 1 GB and grows to the plan; idle, it gives memory back) (it may borrow one more idle core), its world in a `mc-<id>` volume, and up to 3 automatic
 restarts after a crash.

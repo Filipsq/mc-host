@@ -59,7 +59,13 @@ if ! grep -q '^MEMORY_LIMIT_MB=' .env; then
   total_mb=$(awk '/^MemTotal/ {print int($2 / 1024)}' /proc/meminfo)
   echo "MEMORY_LIMIT_MB=$(( (total_mb - 1536) * 85 / 100 / 512 * 512 ))" >> .env
 fi
-echo "Minecraft servers may use up to $(grep '^MEMORY_LIMIT_MB=' .env | cut -d= -f2) MB of memory in total."
+# Paid plans are sold up to this many times that memory, since stopped servers
+# use none and Java servers only what their players need (see README.md).
+if ! grep -q '^MEMORY_OVERBOOK=' .env; then
+  echo "MEMORY_OVERBOOK=1.5" >> .env
+fi
+echo "Minecraft servers may use up to $(grep '^MEMORY_LIMIT_MB=' .env | cut -d= -f2) MB of memory in total;"
+echo "paid plans are sold up to $(grep '^MEMORY_OVERBOOK=' .env | cut -d= -f2) times that."
 
 # Emails (password reset links) go out through Brevo; see deploy/README.md.
 if ! grep -q '^BREVO_API_KEY=' .env; then

@@ -88,6 +88,7 @@ type agent struct {
 	stateDir    string        // marker files recording why a server was stopped
 	idle        time.Duration // free servers sleep after this long with no players
 	memoryLimit int           // MB of plan memory servers may hold in total; 0 means no limit
+	overbook    float64       // how many times memoryLimit the panel sells to paid plans (see capacity.go)
 	startMu     sync.Mutex
 	backupDir   string   // where the agent keeps backups
 	backupMount string   // the same place as helper containers mount it: a volume name or host path
@@ -116,6 +117,10 @@ func main() {
 	if err != nil || memoryLimit < 0 {
 		log.Fatal("MEMORY_LIMIT_MB must be a number of megabytes (0 for no limit)")
 	}
+	overbook, err := strconv.ParseFloat(envOr("MEMORY_OVERBOOK", "1"), 64)
+	if err != nil || overbook < 1 || overbook > 4 {
+		log.Fatal("MEMORY_OVERBOOK must be a number from 1 (no overbooking) to 4")
+	}
 	backupDir, err := filepath.Abs(envOr("BACKUP_DIR", "./backups"))
 	if err != nil {
 		log.Fatal(err)
@@ -134,6 +139,7 @@ func main() {
 		stateDir:    envOr("STATE_DIR", "./state"),
 		idle:        time.Duration(idleMin) * time.Minute,
 		memoryLimit: memoryLimit,
+		overbook:    overbook,
 		backupDir:   backupDir,
 		backupMount: envOr("BACKUP_MOUNT", backupDir),
 		volumesDir:  filepath.Clean(envOr("VOLUMES_DIR", "/var/lib/docker/volumes")),
@@ -430,8 +436,11 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		if req.Kind != "modpack" {
 			env = append(env, pluginEnv(req.Kind, req.Plugins)...)
 		}
+		// Java starts with a small heap and grows it only as far as the players
+		// need, up to the plan; an idle one gives memory back to the machine.
 		// Aikar's garbage collector flags avoid the pauses that stall chunk loading.
-		env = append(env, fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
+		env = append(env, fmt.Sprintf("INIT_MEMORY=%dM", min(req.MemoryMb, initialHeapMb)), fmt.Sprintf("MAX_MEMORY=%dM", req.MemoryMb),
+			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
 			// The panel's list replaces whatever the server had, so removing a player works.

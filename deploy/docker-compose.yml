@@ -43,6 +43,7 @@ services:
       STATE_DIR: /state
       IDLE_MINUTES: ${IDLE_MINUTES:-5}
       MEMORY_LIMIT_MB: ${MEMORY_LIMIT_MB:-0}
+      MEMORY_OVERBOOK: ${MEMORY_OVERBOOK:-1}
       BACKUP_DIR: /backups
       # The helper containers that pack and unpack worlds mount the same volume by name.
       BACKUP_MOUNT: mchost-backups

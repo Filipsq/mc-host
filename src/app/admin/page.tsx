@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Server, ServerStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { heldMemoryMb } from "@/lib/capacity";
+import { heldMemoryMb, memoryLimitMb, overbook, salesLimitMb } from "@/lib/capacity";
 import { diskLimitMb } from "@/lib/disk";
 import { deletionDate } from "@/lib/billing";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -79,16 +79,26 @@ export default async function AdminOverview() {
           <p className="notice warn">{t.agentDown}</p>
         ) : (
           <div className="admin-grid">
-            <Tile
-              label={t.held}
-              value={
-                stats.memoryLimitMb > 0
-                  ? format(t.heldValue, { used: f.gb(stats.memoryHeldMb), limit: f.gb(stats.memoryLimitMb) })
-                  : format(t.heldNoLimit, { used: f.gb(stats.memoryHeldMb) })
-              }
-              share={stats.memoryLimitMb > 0 ? stats.memoryHeldMb / stats.memoryLimitMb : undefined}
-              hint={`${t.heldHint} ${t.sold}: ${f.gb(sold)}.`}
-            />
+            {overbook() > 1 ? (
+              // Overbooked, what matters is how much is sold; real use is in the machine's RAM.
+              <Tile
+                label={t.soldLabel}
+                value={format(t.soldValue, { used: f.gb(sold), limit: f.gb(salesLimitMb()) })}
+                share={sold / salesLimitMb()}
+                hint={format(t.overbookHint, { factor: f.number(overbook()), limit: f.gb(memoryLimitMb()) })}
+              />
+            ) : (
+              <Tile
+                label={t.held}
+                value={
+                  stats.memoryLimitMb > 0
+                    ? format(t.heldValue, { used: f.gb(stats.memoryHeldMb), limit: f.gb(stats.memoryLimitMb) })
+                    : format(t.heldNoLimit, { used: f.gb(stats.memoryHeldMb) })
+                }
+                share={stats.memoryLimitMb > 0 ? stats.memoryHeldMb / stats.memoryLimitMb : undefined}
+                hint={`${t.heldHint} ${t.sold}: ${f.gb(sold)}.`}
+              />
+            )}
             <Tile
               label={t.hostMemory}
               value={format(t.hostMemoryValue, {
