@@ -72,6 +72,12 @@ export default async function RootLayout({
               <Link href="/#faq">{t.nav.faq}</Link>
             </div>
             <div className="footer-col">
+              <p className="footer-title">{t.legal.footerTitle}</p>
+              <Link href="/regulamin">{t.legal.terms}</Link>
+              <Link href="/polityka-prywatnosci">{t.legal.privacy}</Link>
+              <Link href="/kontakt">{t.legal.contact}</Link>
+            </div>
+            <div className="footer-col">
               <p className="footer-title">{t.footer.account}</p>
               {signedIn ? (
                 <Link href="/dashboard">{t.nav.dashboard}</Link>

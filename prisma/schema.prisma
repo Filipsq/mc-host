@@ -8,12 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
-  servers      Server[]
-  payments     Payment[]
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  createdAt       DateTime  @default(now())
+  // When the user accepted the terms (at sign-up); null for accounts made before there were any.
+  termsAcceptedAt DateTime?
+  servers         Server[]
+  payments        Payment[]
 }
 
 enum Edition {
@@ -80,6 +82,8 @@ model Payment {
   currency        String
   status          PaymentStatus @default(PENDING)
   stripeSessionId String?       @unique
+  // The buyer asked for the server to start before the 14-day withdrawal period ends.
+  startConsent    Boolean       @default(false)
   createdAt       DateTime      @default(now())
   paidAt          DateTime?
 

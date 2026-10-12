@@ -39,6 +39,7 @@ export default async function BillingPage({ params }: { params: Promise<{ id: st
         t={t.billing}
         labels={{ plan: t.billing.choosePlan, period: t.server.period }}
         errors={t.server.errors}
+        legal={t.legal}
         money={{ locale, currency }}
       />
     </main>

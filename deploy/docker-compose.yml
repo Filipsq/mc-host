@@ -6,10 +6,18 @@
 # setup.sh allows only those plus SSH and the Bedrock UDP ports.
 name: mchost
 
+# Keep only the newest logs: they can hold IP addresses and would otherwise fill the disk.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
 services:
   db:
     image: postgres:16
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
     environment:
@@ -26,6 +34,7 @@ services:
   agent:
     build: ../agent
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     environment:
       AGENT_TOKEN: ${AGENT_TOKEN}
@@ -45,6 +54,7 @@ services:
   web:
     build: ..
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     env_file: .env
     environment:
@@ -63,6 +73,7 @@ services:
   caddy:
     image: caddy:2.10
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     environment:
       DOMAIN: ${DOMAIN}
@@ -75,6 +86,7 @@ services:
   billing-cron:
     image: curlimages/curl:8.16.0
     restart: unless-stopped
+    logging: *logging
     network_mode: host
     environment:
       CRON_SECRET: ${CRON_SECRET}

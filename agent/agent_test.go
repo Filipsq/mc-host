@@ -41,6 +41,9 @@ func TestContainerSpecJava(t *testing.T) {
 	if bindings[0]["HostPort"] != "25570" || bindings[0]["HostIp"] != "127.0.0.1" {
 		t.Fatalf("java should bind only to localhost (behind the router): %v", bindings)
 	}
+	if logs := host["LogConfig"].(map[string]any)["Config"].(map[string]string); logs["max-size"] == "" {
+		t.Fatal("container logs should be capped")
+	}
 	if spec["Labels"].(map[string]string)["mchost.host"] != "ekipa.mchost.pl" {
 		t.Fatal("missing hostname label")
 	}

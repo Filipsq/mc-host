@@ -5,11 +5,13 @@ import type { Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import EditionIcon from "@/components/EditionIcon";
+import PaymentConsent from "@/components/PaymentConsent";
 import type { Messages } from "@/i18n/messages";
 
 type Props = {
   t: Messages["server"];
   billing: Messages["billing"];
+  legal: Messages["legal"];
   plans: PlanOption[];
   defaultPlan: Plan;
   domain: string;
@@ -29,7 +31,7 @@ function slugify(name: string) {
     .slice(0, 32);
 }
 
-export default function CreateServerForm({ t, billing, plans, defaultPlan, domain, money }: Props) {
+export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const v = state.values ?? {};
   const [edition, setEdition] = useState(v.edition ?? "JAVA");
@@ -96,7 +98,12 @@ export default function CreateServerForm({ t, billing, plans, defaultPlan, domai
         formatMoney={money}
         onPlanChange={setPlan}
       />
-      {plan !== "FREE" && <p className="muted small">{billing.methods}</p>}
+      {plan !== "FREE" && (
+        <>
+          <p className="muted small">{billing.methods}</p>
+          <PaymentConsent legal={legal} />
+        </>
+      )}
       {state.error && <p className="error">{t.errors[state.error]}</p>}
       <button type="submit" disabled={pending}>
         {pending ? (plan === "FREE" ? t.creating : billing.redirecting) : plan === "FREE" ? t.create : t.createAndPay}

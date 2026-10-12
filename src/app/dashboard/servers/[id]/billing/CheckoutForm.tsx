@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { Plan } from "@prisma/client";
 import { checkoutAction } from "../../actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
+import PaymentConsent from "@/components/PaymentConsent";
 import type { Messages } from "@/i18n/messages";
 
 type Props = {
@@ -14,10 +15,11 @@ type Props = {
   t: Messages["billing"];
   labels: { plan: string; period: string };
   errors: Messages["server"]["errors"];
+  legal: Messages["legal"];
   money: { locale: string; currency: string };
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, money }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -30,6 +32,7 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
       />
       {note && <p className="muted small">{note}</p>}
       <p className="muted small">{t.methods}</p>
+      <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <button type="submit" disabled={pending}>{pending ? t.redirecting : t.checkout}</button>
     </form>

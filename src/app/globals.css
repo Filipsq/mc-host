@@ -81,6 +81,8 @@ input {
 }
 input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
+input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; margin: 2px 0 0; flex-shrink: 0; }
+label.check { flex-direction: row; align-items: flex-start; gap: 10px; font-weight: 400; font-size: 0.92rem; }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 legend { font-weight: 500; margin-bottom: 8px; padding: 0; }
 
@@ -154,7 +156,7 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 
 /* Footer */
 .footer { border-top: 1px solid var(--border); background: var(--bg-alt); padding: 40px 0 24px; margin-top: auto; }
-.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 32px; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
 .footer-grid p { margin: 0; max-width: 320px; }
 .footer-col { display: flex; flex-direction: column; gap: 8px; }
 .footer-col a { color: var(--muted); text-decoration: none; }
@@ -343,6 +345,24 @@ code {
 .backup-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--border); }
 .backup-list li:first-child { border-top: 0; padding-top: 0; }
 .backup-actions { display: flex; gap: 8px; }
+/* Terms, privacy */
+main.legal { max-width: 760px; }
+.legal h2 { margin-top: 28px; font-size: 1.15rem; }
+.legal ol, .legal ul { padding-left: 24px; margin: 0 0 12px; }
+.legal ol { list-style: decimal; }
+.legal ul { list-style: disc; }
+.legal li + li { margin-top: 8px; }
+.legal ol ul { margin: 8px 0 0; }
+.legal ol ul li + li { margin-top: 4px; }
+.legal li::marker { color: var(--muted); }
+.legal p, .legal li { color: #c9d4e0; }
+.legal code { font-family: var(--font-mono); font-size: 0.85em; }
+.table-scroll { overflow-x: auto; }
+.legal table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 0.92rem; }
+.legal th, .legal td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.legal th { color: var(--muted); font-weight: 600; }
+mark.blank { background: rgb(240 163 58 / 0.18); color: var(--amber); border-radius: 4px; padding: 0 4px; }
+.contact-email { display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; font-weight: 600; }
 .address-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .address-label { margin: 0 0 4px; color: var(--muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
 .address-value { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 600; overflow-wrap: anywhere; }

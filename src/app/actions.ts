@@ -26,10 +26,13 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   }
 
   const { email, password } = parsed.data;
+  if (form.get("terms") !== "on") return { error: "termsRequired", email };
   if (await db.user.findUnique({ where: { email } })) {
     return { error: "emailTaken", email };
   }
-  await db.user.create({ data: { email, passwordHash: await bcrypt.hash(password, 12) } });
+  await db.user.create({
+    data: { email, passwordHash: await bcrypt.hash(password, 12), termsAcceptedAt: new Date() },
+  });
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
   return {};

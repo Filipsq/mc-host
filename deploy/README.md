@@ -70,6 +70,17 @@ added below.
 
 Use test keys (`sk_test_…`) first and pay with Stripe's test cards and test BLIK codes.
 
+Also turn on **Successful payments** under Settings → Customer emails, so every buyer gets a receipt by
+email. Polish consumer law expects a confirmation of the purchase on a "durable medium", and the receipt
+covers that until the site sends its own emails.
+
+## Terms and privacy
+
+The terms (`/regulamin`), privacy policy (`/polityka-prywatnosci`) and contact page (`/kontakt`) show
+highlighted blanks until the owner's details are filled in `src/lib/company.ts`: name or company,
+address, NIP (if any), contact email and the date the terms take effect. Have them checked by a lawyer
+before taking real payments.
+
 ## Server memory
 
 `setup.sh` works out how much memory the Minecraft servers may share and writes it to `deploy/.env`

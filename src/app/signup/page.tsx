@@ -4,7 +4,8 @@ import { signUp } from "../actions";
 import { getMessages } from "@/i18n/server";
 
 export default async function SignUpPage() {
-  const t = (await getMessages()).auth;
+  const all = await getMessages();
+  const t = all.auth;
   return (
     <main className="narrow stack">
       <header className="auth-head">
@@ -13,7 +14,7 @@ export default async function SignUpPage() {
         <h1>{t.signUpTitle}</h1>
         <p className="muted">{t.signUpSubtitle}</p>
       </header>
-      <AuthForm action={signUp} submitLabel={t.signUpSubmit} t={t} />
+      <AuthForm action={signUp} submitLabel={t.signUpSubmit} t={t} legal={all.legal} />
       <p className="auth-switch muted">
         {t.haveAccount} <Link href="/login">{t.logInSubmit}</Link>
       </p>

@@ -47,6 +47,8 @@ async function checkoutUrl(user: { id: string; email: string }, server: { id: st
     currency,
     locale,
     productName: format(t.billing.productName, { plan: t.plans[plan], server: server.name, months }),
+    // Both checkout forms require the start-now consent before getting here.
+    startConsent: true,
   });
 }
 
@@ -66,6 +68,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE" } }))) {
     return { error: "freeLimit", values };
   }
+  if (plan !== "FREE" && form.get("startNow") !== "on") return { error: "consentRequired", values };
   const memoryMb = planById(plan).ramGb * 1024;
   if (plan !== "FREE" && !(await canSellMemory(memoryMb))) return { error: "soldOut", values };
 
@@ -119,6 +122,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   if (!server) redirect("/dashboard");
   const parsed = checkoutSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "invalidPlan" };
+  if (form.get("startNow") !== "on") return { error: "consentRequired" };
   // Renewing the same plan needs nothing new; an upgrade only needs the difference.
   if (!(await canSellMemory(planById(parsed.data.plan).ramGb * 1024 - heldMemoryMb(server)))) {
     return { error: "soldOut" };

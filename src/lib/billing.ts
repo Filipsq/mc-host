@@ -28,11 +28,12 @@ export async function startCheckout(opts: {
   currency: Currency;
   locale: Locale;
   productName: string;
+  startConsent: boolean; // asked for the server to start before the withdrawal period ends
 }) {
-  const { user, server, plan, months, currency, locale } = opts;
+  const { user, server, plan, months, currency, locale, startConsent } = opts;
   const amount = Math.round(priceFor(plan, months, currency) * 100);
   const payment = await db.payment.create({
-    data: { userId: user.id, serverId: server.id, plan, months, amount, currency },
+    data: { userId: user.id, serverId: server.id, plan, months, amount, currency, startConsent },
   });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";

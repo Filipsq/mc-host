@@ -3,14 +3,16 @@
 import { useActionState } from "react";
 import type { FormState } from "./actions";
 import type { Messages } from "@/i18n/messages";
+import LinkedText from "@/components/legal/LinkedText";
 
 type Props = {
   action: (state: FormState, form: FormData) => Promise<FormState>;
   submitLabel: string;
   t: Messages["auth"];
+  legal?: Messages["legal"]; // sign-up only: accept the terms
 };
 
-export default function AuthForm({ action, submitLabel, t }: Props) {
+export default function AuthForm({ action, submitLabel, t, legal }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   return (
     <form action={formAction} className="card stack">
@@ -22,6 +24,19 @@ export default function AuthForm({ action, submitLabel, t }: Props) {
         {t.password}
         <input name="password" type="password" required minLength={8} autoComplete="current-password" />
       </label>
+      {legal && (
+        <>
+          <label className="check">
+            <input name="terms" type="checkbox" required />
+            <span>
+              <LinkedText text={legal.acceptTerms} href="/regulamin" label={legal.termsLink} newTab />
+            </span>
+          </label>
+          <p className="muted small">
+            <LinkedText text={legal.privacyNote} href="/polityka-prywatnosci" label={legal.privacyLink} newTab />
+          </p>
+        </>
+      )}
       {state.error && <p className="error">{t.errors[state.error]}</p>}
       <button type="submit" disabled={pending}>
         {pending ? t.wait : submitLabel}

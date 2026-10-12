@@ -132,6 +132,7 @@ const pl = {
       passwordTooShort: "Hasło musi mieć co najmniej 8 znaków",
       emailTaken: "Konto z tym adresem e-mail już istnieje",
       wrongCredentials: "Nieprawidłowy e-mail lub hasło",
+      termsRequired: "Zaakceptuj Regulamin, aby założyć konto",
     },
   },
   dashboard: {
@@ -240,7 +241,32 @@ const pl = {
       tooSoon: "Ostatnia kopia jest sprzed kilku minut. Spróbuj ponownie później.",
       backupFailed: "Nie udało się zrobić kopii. Spróbuj ponownie za chwilę.",
       restoreFailed: "Nie udało się przywrócić kopii. Spróbuj ponownie za chwilę.",
+      consentRequired: "Zaznacz zgodę na rozpoczęcie usługi przed upływem terminu na odstąpienie od umowy",
     },
+  },
+  legal: {
+    footerTitle: "Informacje",
+    terms: "Regulamin",
+    privacy: "Polityka prywatności",
+    contact: "Kontakt",
+    contactIntro: "Masz pytanie, problem z serwerem albo chcesz złożyć reklamację? Napisz do nas.",
+    email: "E-mail",
+    contactTip: "Jeśli piszesz w sprawie serwera, podaj adres e-mail konta i nazwę serwera.",
+    complaintsTitle: "Reklamacje i odstąpienie od umowy",
+    complaintsText:
+      "Reklamację albo oświadczenie o odstąpieniu od umowy wyślij na powyższy adres e-mail. Zasady opisują §8 i §9 {link}.",
+    operatorTitle: "Serwis prowadzi",
+    blankName: "imię i nazwisko lub nazwa firmy",
+    blankAddress: "adres",
+    blankEmail: "adres e-mail",
+    acceptTerms: "Akceptuję {link}",
+    termsLink: "Regulamin",
+    termsLinkGenitive: "Regulaminu",
+    privacyNote: "Jak przetwarzamy dane, opisuje {link}.",
+    privacyLink: "Polityka prywatności",
+    startNow:
+      "Żądam rozpoczęcia usługi przed upływem 14 dni na odstąpienie od umowy. Wiem, że jeśli odstąpię od umowy, zapłacę za czas działania serwera do chwili odstąpienia.",
+    payTerms: "Płacąc, zawierasz umowę na zasadach {link}.",
   },
 };
 

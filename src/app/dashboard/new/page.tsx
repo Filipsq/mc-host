@@ -26,6 +26,7 @@ export default async function NewServerPage() {
       <CreateServerForm
         t={t.server}
         billing={t.billing}
+        legal={t.legal}
         plans={plans}
         defaultPlan={hasFree ? "STARTER" : "FREE"}
         domain={process.env.GAME_DOMAIN ?? "localhost"}
