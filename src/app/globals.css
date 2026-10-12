@@ -390,6 +390,7 @@ mark.blank { background: rgb(240 163 58 / 0.18); color: var(--amber); border-rad
 .auth-head h1 { margin: 10px 0 0; }
 .auth-head p { margin: 0; }
 .auth-switch { text-align: center; margin: 0; }
+.forgot-link { align-self: flex-end; margin-top: -6px; }
 
 /* Plan and edition choices */
 label.choice {

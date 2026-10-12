@@ -1,11 +1,11 @@
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { openLogStream } from "@/lib/agent";
 import { getOwnedServer } from "@/lib/servers";
 
 // Proxies the agent's console stream to the browser, after checking ownership.
 // The agent token never leaves the server.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
 
   const { id } = await params;

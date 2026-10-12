@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import type { FormState } from "./actions";
 import type { Messages } from "@/i18n/messages";
@@ -10,9 +11,10 @@ type Props = {
   submitLabel: string;
   t: Messages["auth"];
   legal?: Messages["legal"]; // sign-up only: accept the terms
+  forgot?: boolean; // log-in only: link to resetting the password
 };
 
-export default function AuthForm({ action, submitLabel, t, legal }: Props) {
+export default function AuthForm({ action, submitLabel, t, legal, forgot }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   return (
     <form action={formAction} className="card stack">
@@ -24,6 +26,11 @@ export default function AuthForm({ action, submitLabel, t, legal }: Props) {
         {t.password}
         <input name="password" type="password" required minLength={8} autoComplete="current-password" />
       </label>
+      {forgot && (
+        <Link className="small forgot-link" href="/reset-hasla">
+          {t.forgotPassword}
+        </Link>
+      )}
       {legal && (
         <>
           <label className="check">

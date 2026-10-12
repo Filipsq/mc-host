@@ -22,11 +22,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     jwt({ token, user }) {
-      if (user?.id) token.sub = user.id;
+      // user is only set when signing in.
+      if (user?.id) {
+        token.sub = user.id;
+        token.signedInAt = Date.now();
+      }
       return token;
     },
     session({ session, token }) {
       if (token.sub) session.user.id = token.sub;
+      session.signedInAt = token.signedInAt;
       return session;
     },
   },

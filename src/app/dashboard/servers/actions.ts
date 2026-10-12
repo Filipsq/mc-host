@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { Plan, ServerStatus } from "@prisma/client";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec, createServerRecord, getOwnedServer, isValidSubdomain } from "@/lib/servers";
@@ -41,7 +41,7 @@ const createSchema = z.object({
 });
 
 async function requireUser() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   return { id: session.user.id, email: session.user.email ?? "" };
 }

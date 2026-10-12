@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getLiveState, getOwnedServer, joinAddress } from "@/lib/servers";
@@ -20,7 +20,7 @@ type Props = {
 };
 
 export default async function ServerPage({ params, searchParams }: Props) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
   const [{ id }, { payment, settings }] = await Promise.all([params, searchParams]);

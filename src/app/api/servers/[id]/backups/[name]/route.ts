@@ -1,10 +1,10 @@
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { AgentError, openBackupDownload } from "@/lib/agent";
 import { getOwnedServer } from "@/lib/servers";
 
 // Streams a backup from the agent to the browser, after checking ownership.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string; name: string }> }) {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
 
   const { id, name } = await params;

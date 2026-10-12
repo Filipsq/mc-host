@@ -8,12 +8,16 @@ import { db } from "@/lib/db";
 import { credentialsSchema } from "@/lib/credentials";
 import { signIn, signOut } from "@/auth";
 import { CURRENCY_COOKIE, LOCALE_COOKIE, isCurrency, isLocale } from "@/i18n/config";
-import type { Messages } from "@/i18n/messages";
+import { format, type Messages } from "@/i18n/messages";
+import { getMessages } from "@/i18n/server";
+import { BRAND_NAME } from "@/lib/brand";
+import { buttonMail, sendMail } from "@/lib/mail";
+import { RESET_LINK_MINUTES, createResetToken, resetPassword } from "@/lib/passwordReset";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
 
 // email is echoed back so the form keeps it after React resets inputs on submit.
-export type FormState = { error?: AuthErrorCode; email?: string };
+export type FormState = { error?: AuthErrorCode; email?: string; sent?: boolean };
 
 export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(form));
@@ -52,6 +56,44 @@ export async function logIn(_: FormState, form: FormData): Promise<FormState> {
     }
     throw err;
   }
+  return {};
+}
+
+// Always answers "sent", whether or not the account exists, so the form can't
+// be used to find out who has one. The email goes out in the background for
+// the same reason: waiting for it would make known addresses answer slower.
+export async function requestPasswordReset(_: FormState, form: FormData): Promise<FormState> {
+  const raw = String(form.get("email") ?? "");
+  const parsed = credentialsSchema.shape.email.safeParse(raw.trim());
+  if (!parsed.success) return { error: "invalidEmail", email: raw };
+  const email = parsed.data;
+
+  const token = await createResetToken(email);
+  if (token) {
+    const t = (await getMessages()).auth.resetMail;
+    const url = `${process.env.APP_URL ?? "http://localhost:3000"}/nowe-haslo?token=${token}`;
+    const vars = { brand: BRAND_NAME, email, minutes: RESET_LINK_MINUTES };
+    const mail = buttonMail({
+      to: email,
+      subject: format(t.subject, vars),
+      paragraphs: [format(t.intro, vars), format(t.action, vars)],
+      button: t.button,
+      url,
+      footer: t.ignore,
+    });
+    sendMail(mail).catch((err) => console.error(`[mail] password reset email to ${email} failed:`, err));
+  }
+  return { sent: true, email };
+}
+
+export async function setNewPassword(_: FormState, form: FormData): Promise<FormState> {
+  const password = String(form.get("password") ?? "");
+  if (!credentialsSchema.shape.password.safeParse(password).success) return { error: "passwordTooShort" };
+  if (password !== form.get("confirm")) return { error: "passwordsDiffer" };
+
+  const email = await resetPassword(String(form.get("token") ?? ""), password);
+  if (!email) return { error: "linkInvalid" };
+  await signIn("credentials", { email, password, redirectTo: "/dashboard?haslo=zmienione" });
   return {};
 }
 

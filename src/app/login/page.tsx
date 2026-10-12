@@ -13,7 +13,7 @@ export default async function LoginPage() {
         <h1>{t.logInTitle}</h1>
         <p className="muted">{t.logInSubtitle}</p>
       </header>
-      <AuthForm action={logIn} submitLabel={t.logInSubmit} t={t} />
+      <AuthForm action={logIn} submitLabel={t.logInSubmit} t={t} forgot />
       <p className="auth-switch muted">
         {t.newHere} <Link href="/signup">{t.createAccount}</Link>
       </p>

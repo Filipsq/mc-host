@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { planOptions } from "@/lib/planOptions";
 import CreateServerForm from "./CreateServerForm";
 
 export default async function NewServerPage() {
-  const session = await auth();
+  const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const [t, { locale, currency }, freeCount] = await Promise.all([
     getMessages(),

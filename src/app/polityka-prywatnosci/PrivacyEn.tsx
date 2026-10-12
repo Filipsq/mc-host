@@ -34,7 +34,7 @@ export default function PrivacyEn({ site }: { site: string }) {
           <tbody>
             <tr>
               <td>Email address, password (stored as a hash, never in plain text), date you accepted the Terms</td>
-              <td>Creating and running your Account</td>
+              <td>Creating and running your Account, including sending password reset links</td>
               <td>art. 6(1)(b): performing the contract</td>
             </tr>
             <tr>
@@ -86,6 +86,10 @@ export default function PrivacyEn({ site }: { site: string }) {
           <strong>Stripe Payments Europe, Ltd.</strong> (Ireland): payment processing. Stripe may transfer data to
           Stripe, Inc. in the USA under the European Commission’s EU-US Data Privacy Framework decision or standard
           contractual clauses.
+        </li>
+        <li>
+          <strong>Brevo</strong> (France): sending the Service’s emails, such as password reset links; data is
+          stored in the European Union.
         </li>
         <li>The email provider we use to answer messages.</li>
         <li>Public authorities, when the law requires it.</li>

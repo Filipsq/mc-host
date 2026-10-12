@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -9,16 +9,19 @@ import { getLiveState, joinAddress } from "@/lib/servers";
 import EditionIcon from "@/components/EditionIcon";
 import { logOut } from "../actions";
 
-export default async function DashboardPage() {
-  const session = await auth();
+type Props = { searchParams: Promise<{ haslo?: string }> };
+
+export default async function DashboardPage({ searchParams }: Props) {
+  const session = await getSession();
   if (!session?.user) redirect("/login");
 
-  const [all, servers] = await Promise.all([
+  const [all, servers, { haslo }] = await Promise.all([
     getMessages(),
     db.server.findMany({
       where: { ownerId: session.user.id },
       orderBy: { createdAt: "desc" },
     }),
+    searchParams,
   ]);
   const states = await Promise.all(servers.map((s) => getLiveState(s)));
   const t = all.dashboard;
@@ -37,6 +40,7 @@ export default async function DashboardPage() {
           </form>
         </div>
       </header>
+      {haslo === "zmienione" && <p className="notice success">{t.passwordChanged}</p>}
       {servers.length === 0 ? (
         <div className="card stack empty">
           {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -61,6 +61,20 @@ if ! grep -q '^MEMORY_LIMIT_MB=' .env; then
 fi
 echo "Minecraft servers may use up to $(grep '^MEMORY_LIMIT_MB=' .env | cut -d= -f2) MB of memory in total."
 
+# Emails (password reset links) go out through Brevo; see deploy/README.md.
+if ! grep -q '^BREVO_API_KEY=' .env; then
+  cat >> .env <<'ENV'
+# From Brevo → SMTP & API → API keys. Without it no emails are sent and
+# password reset links only show up in: docker compose logs web
+BREVO_API_KEY=
+# Sender address; empty means no-reply@ your domain.
+MAIL_FROM=
+ENV
+fi
+if ! grep -qE '^BREVO_API_KEY=.+' .env; then
+  echo "Emails are off: set BREVO_API_KEY in deploy/.env (see deploy/README.md)."
+fi
+
 echo "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
 docker compose ps

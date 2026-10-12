@@ -74,6 +74,22 @@ Also turn on **Successful payments** under Settings → Customer emails, so ever
 email. Polish consumer law expects a confirmation of the purchase on a "durable medium", and the receipt
 covers that until the site sends its own emails.
 
+## Emails
+
+The site sends password reset links by email through [Brevo](https://www.brevo.com) (free for up to
+300 emails a day, data kept in the EU). Until it's set up, no emails go out and reset links only
+appear in `docker compose logs web`.
+
+1. Create a Brevo account and wait for it to be approved for sending.
+2. Under Senders, Domains & Dedicated IPs → Domains, add `mchosting.pl`. Brevo shows a few DNS records
+   (a `brevo-code` TXT, DKIM and DMARC). Add them in the domain's DNS zone at OVH, then click
+   Authenticate in Brevo. Without this, emails land in spam or bounce.
+3. Under SMTP & API → API keys, generate a key and put it in `deploy/.env` as `BREVO_API_KEY=…`.
+4. Run `./setup.sh` again.
+
+Emails come from `no-reply@mchosting.pl`; set `MAIL_FROM` in `deploy/.env` to use another address on
+the same domain. The API goes over HTTPS, so Hetzner's block on outgoing mail ports doesn't matter.
+
 ## Terms and privacy
 
 The terms (`/regulamin`), privacy policy (`/polityka-prywatnosci`) and contact page (`/kontakt`) show
