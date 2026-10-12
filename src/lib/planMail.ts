@@ -6,19 +6,22 @@ import { BRAND_NAME } from "./brand";
 import { buttonMail, sendMail } from "./mail";
 
 // Emails about a server's paid plan: when a payment arrives, a few days
-// before the paid period ends (plans don't renew by themselves), and when
-// the server is suspended for it.
+// before the paid period ends (plans don't renew by themselves), when the
+// server is suspended for it, and a few days before a suspended server is
+// deleted.
 
-export type PlanMailKind = "paid" | "reminder" | "suspended";
+export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion";
 export type ServerWithOwner = Server & { owner: Pick<User, "email" | "locale"> };
 
 /** How long before the end of a paid period its owner is reminded. */
 export const REMIND_BEFORE_DAYS = 3;
 /** How long the terms promise to keep a suspended server's world. */
-const KEEP_DAYS = 14;
+export const KEEP_DAYS = 14;
+/** How long before deleting a suspended server its owner is told. */
+export const WARN_BEFORE_DELETE_DAYS = 3;
 
 /** Emails the server's owner, in their language. Reports whether it went out; never throws. */
-export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner): Promise<boolean> {
+export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, deleteOn?: Date): Promise<boolean> {
   const locale = isLocale(server.owner.locale) ? server.owner.locale : defaultLocale;
   const all = messages[locale];
   const t = all.planMail[kind];
@@ -31,6 +34,7 @@ export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner):
     plan: all.plans[server.plan],
     date: server.paidUntil ? when(server.paidUntil) : "",
     days: KEEP_DAYS,
+    deleteOn: deleteOn ? when(deleteOn) : "",
   };
   const page = `${app}/dashboard/servers/${server.id}${kind === "paid" ? "" : "/billing"}`;
   const mail = buttonMail({

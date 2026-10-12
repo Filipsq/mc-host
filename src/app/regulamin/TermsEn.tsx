@@ -104,8 +104,9 @@ export default function TermsEn({ site }: { site: string }) {
         </li>
         <li>
           When a Period ends, the Server is suspended: it stops, but its world and backups are kept. The Provider
-          keeps a suspended Server’s data for at least 14 days after the Period ends and may delete it after that.
-          Paying for a new Period restores the Server.
+          keeps a suspended Server’s data for at least 14 days after the Period ends and may delete it after that,
+          telling the User by email at least 3 days before. Paying for a new Period before then restores the
+          Server.
         </li>
         <li>
           When resources run short, a Plan may be temporarily unavailable to buy. This does not apply to extending a

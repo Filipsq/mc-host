@@ -5,6 +5,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getLiveDetails, getOwnedServer, joinAddress } from "@/lib/servers";
 import { diskLimitMb, formatMb, hardDiskLimitMb } from "@/lib/disk";
+import { deletionDate } from "@/lib/billing";
 import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
@@ -77,7 +78,13 @@ export default async function ServerPage({ params, searchParams }: Props) {
       {settings === "saved" && <p className="notice success">{all.settings.saved}</p>}
       {payment === "cancelled" && unpaid && <p className="notice">{b.cancelled}</p>}
       {live === "awaitingPayment" && payment !== "success" && <p className="notice">{b.awaiting}</p>}
-      {live === "suspended" && <p className="notice warn">{b.suspended}</p>}
+      {live === "suspended" && (
+        <p className="notice warn">
+          {format(b.suspended, {
+            date: deletionDate(server).toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Warsaw" }),
+          })}
+        </p>
+      )}
       {live === "diskFull" && diskVars && <p className="notice warn">{format(t.diskStopped, diskVars)}</p>}
       {live !== "diskFull" && diskVars && (diskUsed ?? 0) > diskLimit && <p className="notice warn">{format(t.diskOver, diskVars)}</p>}
       {live === "sleeping" && (

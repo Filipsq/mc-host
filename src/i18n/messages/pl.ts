@@ -192,7 +192,7 @@ const pl = {
     success: "Dziękujemy! Płatność przyjęta. Serwer uruchomi się za chwilę.",
     cancelled: "Płatność anulowana. Możesz spróbować ponownie.",
     awaiting: "Ten serwer czeka na płatność. Uruchomimy go zaraz po jej potwierdzeniu.",
-    suspended: "Serwer jest zawieszony, bo skończył się opłacony okres. Świat jest zachowany. Opłać serwer, aby go przywrócić.",
+    suspended: "Serwer jest zawieszony, bo skończył się opłacony okres. Świat zachowamy do {date}, potem serwer zostanie usunięty. Opłać serwer, aby go przywrócić.",
     productName: "{plan}: {server}, {months} mies.",
   },
   server: {
@@ -472,6 +472,14 @@ const pl = {
       ],
       button: "Opłać serwer",
     },
+    deletion: {
+      subject: "Serwer {server} zostanie usunięty {deleteOn}",
+      paragraphs: [
+        "Serwer {server} jest zawieszony od {date}, bo skończył się jego opłacony okres.",
+        "{deleteOn} usuniemy go razem ze światem i kopiami zapasowymi. Jeśli chcesz go zachować, opłać kolejny okres. Pliki serwera możesz też pobrać w panelu.",
+      ],
+      button: "Opłać serwer",
+    },
   },
   admin: {
     title: "Panel admina",
@@ -510,6 +518,7 @@ const pl = {
     ending: "Opłacone jeszcze najwyżej 3 dni",
     suspendedList: "Zawieszone",
     suspendedSince: "od {date}",
+    deletesOn: "usunięcie {date}",
     endsOn: "do {date}",
     search: "Szukaj",
     searchServers: "Nazwa, adres albo e-mail właściciela",

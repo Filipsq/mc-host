@@ -115,7 +115,8 @@ export default function TermsPl({ site }: { site: string }) {
         <li>
           Po upływie Okresu Serwer zostaje zawieszony: przestaje działać, ale jego świat i kopie zapasowe są
           zachowane. Usługodawca przechowuje dane zawieszonego Serwera przez co najmniej 14 dni od końca Okresu, a
-          po tym czasie może je usunąć. Opłacenie kolejnego Okresu przywraca Serwer.
+          po tym czasie może je usunąć, uprzedzając o tym Użytkownika e-mailem co najmniej 3 dni wcześniej.
+          Opłacenie kolejnego Okresu przed usunięciem przywraca Serwer.
         </li>
         <li>
           Gdy w danej chwili brakuje zasobów, wybrany Plan może być chwilowo niedostępny do zakupu. Nie dotyczy to

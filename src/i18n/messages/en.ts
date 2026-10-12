@@ -193,7 +193,7 @@ const en: Messages = {
     success: "Thank you! Payment received. Your server will start in a moment.",
     cancelled: "Payment cancelled. You can try again.",
     awaiting: "This server is waiting for payment. We'll start it as soon as the payment is confirmed.",
-    suspended: "This server is suspended because its paid period ended. The world is kept. Pay to bring it back.",
+    suspended: "This server is suspended because its paid period ended. We keep the world until {date}; then the server is deleted. Pay to bring it back.",
     productName: "{plan}: {server}, {months} mo.",
   },
   server: {
@@ -473,6 +473,14 @@ const en: Messages = {
       ],
       button: "Pay for your server",
     },
+    deletion: {
+      subject: "{server} will be deleted on {deleteOn}",
+      paragraphs: [
+        "{server} has been suspended since {date} because its paid period ended.",
+        "On {deleteOn} we'll delete it, with its world and backups. To keep it, pay for another period. You can also download the server's files in the panel.",
+      ],
+      button: "Pay for your server",
+    },
   },
   admin: {
     title: "Admin panel",
@@ -511,6 +519,7 @@ const en: Messages = {
     ending: "Paid for 3 more days at most",
     suspendedList: "Suspended",
     suspendedSince: "since {date}",
+    deletesOn: "deleted {date}",
     endsOn: "until {date}",
     search: "Search",
     searchServers: "Name, address or owner's email",

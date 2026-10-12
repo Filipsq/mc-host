@@ -90,6 +90,15 @@ appear in `docker compose logs web`.
 Emails come from `no-reply@mchosting.pl`; set `MAIL_FROM` in `deploy/.env` to use another address on
 the same domain. The API goes over HTTPS, so Hetzner's block on outgoing mail ports doesn't matter.
 
+## When a plan runs out
+
+Paid plans don't renew by themselves. Three days before the end, the owner gets a reminder by email.
+When the period ends, the server is stopped and suspended (its memory is free for others) and the
+owner is told. The world is kept for 14 days; three days before it goes the owner gets one last
+email, and then the billing job deletes the server with its world and backups. Its payments stay in
+the admin panel. A server isn't deleted while its owner is in the middle of paying, and paying (or
+adding free days in the admin panel) before then brings it back as it was.
+
 ## Terms and privacy
 
 The terms (`/regulamin`), privacy policy (`/polityka-prywatnosci`) and contact page (`/kontakt`) show

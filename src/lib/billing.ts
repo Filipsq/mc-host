@@ -3,11 +3,11 @@ import type { Plan, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe } from "./stripe";
 import * as agent from "./agent";
-import { agentSpec } from "./servers";
+import { agentSpec, destroyServer } from "./servers";
 import { planById } from "./plans";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
-import { REMIND_BEFORE_DAYS, sendPlanMail } from "./planMail";
+import { KEEP_DAYS, REMIND_BEFORE_DAYS, WARN_BEFORE_DELETE_DAYS, sendPlanMail } from "./planMail";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid in 30-day blocks rather than auto-renewing
@@ -95,6 +95,7 @@ export async function fulfillPayment(paymentId: string) {
         plan: payment.plan,
         memoryMb: planById(payment.plan).ramGb * 1024,
         paidUntil,
+        deletionWarnedAt: null,
         ...(needsHost && { status: "PROVISIONING" }),
       },
       include: OWNER,
@@ -123,11 +124,26 @@ export async function giftDays(serverId: string, days: number): Promise<GiftResu
   const from = s.paidUntil && s.paidUntil > now ? s.paidUntil : now;
   const server = await db.server.update({
     where: { id: s.id },
-    data: { paidUntil: new Date(from.getTime() + days * DAY), ...(needsHost && { status: "PROVISIONING" }) },
+    data: {
+      paidUntil: new Date(from.getTime() + days * DAY),
+      deletionWarnedAt: null,
+      ...(needsHost && { status: "PROVISIONING" }),
+    },
   });
   console.info("admin gift", server.id, days, "days, paid until", server.paidUntil?.toISOString());
   if (server.status === "PROVISIONING" && !(await provision(server))) return { error: "failed", server };
   return { server };
+}
+
+/**
+ * When a suspended server is deleted: KEEP_DAYS after its paid period ended,
+ * and never sooner than WARN_BEFORE_DELETE_DAYS after its owner was told
+ * (or, not told yet, after now).
+ */
+export function deletionDate(server: Pick<Server, "paidUntil" | "deletionWarnedAt">, now = new Date()) {
+  const kept = (server.paidUntil?.getTime() ?? now.getTime()) + KEEP_DAYS * DAY;
+  const toldAt = server.deletionWarnedAt?.getTime() ?? now.getTime();
+  return new Date(Math.max(kept, toldAt + WARN_BEFORE_DELETE_DAYS * DAY));
 }
 
 /**
@@ -161,7 +177,7 @@ export async function markPayment(sessionId: string, status: "FAILED" | "EXPIRED
 
 /** Periodic housekeeping, run by /api/cron/billing. */
 export async function runBillingJob(now = new Date()) {
-  const result = { suspended: 0, reminded: 0, abandoned: 0, provisioned: 0 };
+  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, abandoned: 0, provisioned: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Paid period over: stop the server but keep its world.
@@ -202,6 +218,40 @@ export async function runBillingJob(now = new Date()) {
     if (claim.count === 0) continue;
     if (await sendPlanMail("reminder", s)) result.reminded++;
     else await db.server.updateMany({ where: { id: s.id, reminderSentFor: s.paidUntil }, data: { reminderSentFor: s.reminderSentFor } });
+  }
+
+  // Suspended for long: the owner is warned, and a few days later the server is
+  // deleted with its world and backups (the terms keep them KEEP_DAYS).
+  const stale = await db.server.findMany({
+    where: {
+      status: "SUSPENDED",
+      paidUntil: { lt: new Date(now.getTime() - (KEEP_DAYS - WARN_BEFORE_DELETE_DAYS) * DAY) },
+    },
+    include: OWNER,
+  });
+  for (const s of stale) {
+    if (!s.deletionWarnedAt) {
+      const claim = await db.server.updateMany({
+        where: { id: s.id, status: "SUSPENDED", deletionWarnedAt: null },
+        data: { deletionWarnedAt: now },
+      });
+      if (claim.count === 0) continue;
+      if (await sendPlanMail("deletion", s, deletionDate({ ...s, deletionWarnedAt: now }, now))) result.warned++;
+      else await db.server.updateMany({ where: { id: s.id, deletionWarnedAt: now }, data: { deletionWarnedAt: null } });
+      continue;
+    }
+    if (deletionDate(s, now) > now) continue;
+    // Someone may be paying for it right now: wait for that checkout to end.
+    const paying = await db.payment.count({ where: { serverId: s.id, status: "PENDING" } });
+    const still = await db.server.count({ where: { id: s.id, status: "SUSPENDED" } });
+    if (paying > 0 || still === 0) continue;
+    try {
+      await destroyServer(s);
+      console.info("deleted suspended server", s.id, "paid until", s.paidUntil?.toISOString());
+      result.deleted++;
+    } catch (err) {
+      console.error("deleting suspended server failed", s.id, err);
+    }
   }
 
   // Servers created for a payment that never happened free their port and address.

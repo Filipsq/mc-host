@@ -94,6 +94,8 @@ model Server {
   paidUntil        DateTime?
   // The paidUntil its owner was last reminded of, so each period gets one reminder.
   reminderSentFor  DateTime?
+  // When its owner was told a suspended server will be deleted; cleared by a payment.
+  deletionWarnedAt DateTime?
   payments         Payment[]
   owner            User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId          String

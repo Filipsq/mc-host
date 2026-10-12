@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { heldMemoryMb } from "@/lib/capacity";
 import { diskLimitMb } from "@/lib/disk";
+import { deletionDate } from "@/lib/billing";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { liveStates, machineStats } from "./data";
@@ -59,7 +60,14 @@ export default async function AdminOverview() {
     },
     { title: t.stuck, rows: stuck, hint: t.stuckHint },
     { title: t.ending, rows: ending, note: (s) => format(t.endsOn, { date: f.dateTime(s.paidUntil!) }) },
-    { title: t.suspendedList, rows: suspended, note: (s) => (s.paidUntil ? format(t.suspendedSince, { date: f.date(s.paidUntil) }) : "") },
+    {
+      title: t.suspendedList,
+      rows: suspended,
+      note: (s) =>
+        [s.paidUntil && format(t.suspendedSince, { date: f.date(s.paidUntil) }), format(t.deletesOn, { date: f.date(deletionDate(s, now)) })]
+          .filter(Boolean)
+          .join(" · "),
+    },
   ];
   const attention = groups.filter((group) => group.rows.length > 0);
 
