@@ -3,6 +3,7 @@ import type { Server } from "@prisma/client";
 import type { Messages } from "@/i18n/messages";
 import { isServerKind } from "@/lib/modpacks";
 import { addressLabel } from "@/lib/servers";
+import { diskLimitMb } from "@/lib/disk";
 import type { Live } from "./data";
 import type { Formats } from "./format";
 
@@ -24,6 +25,7 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
             <th>{t.columns.plan}</th>
             <th>{t.columns.state}</th>
             <th>{t.columns.ramNow}</th>
+            <th>{t.columns.disk}</th>
             <th>{t.columns.paidUntil}</th>
             <th>{t.columns.created}</th>
           </tr>
@@ -55,6 +57,9 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
                   <span className={`badge ${l.state}`}>{all.server.live[l.state]}</span>
                 </td>
                 <td className="nowrap">{l.memoryUsedMb !== undefined ? f.gb(l.memoryUsedMb) : "–"}</td>
+                <td className={`nowrap${l.diskMb !== undefined && l.diskMb > diskLimitMb(s.plan) ? " over" : ""}`}>
+                  {l.diskMb !== undefined ? `${f.size(l.diskMb)} / ${f.size(diskLimitMb(s.plan))}` : "–"}
+                </td>
                 <td className="nowrap">{s.plan !== "FREE" && s.paidUntil ? f.dateTime(s.paidUntil) : "–"}</td>
                 <td className="nowrap">{f.date(s.createdAt)}</td>
               </tr>

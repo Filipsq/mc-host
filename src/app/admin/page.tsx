@@ -1,8 +1,9 @@
 import Link from "next/link";
-import type { ServerStatus } from "@prisma/client";
+import type { Server, ServerStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { heldMemoryMb } from "@/lib/capacity";
+import { diskLimitMb } from "@/lib/disk";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { liveStates, machineStats } from "./data";
@@ -40,6 +41,7 @@ export default async function AdminOverview() {
   const thisMonth = paid.filter((p) => p.paidAt! >= monthStart(now));
 
   const crashed = servers.filter((s) => live[s.id].state === "crashed");
+  const overDisk = servers.filter((s) => (live[s.id].diskMb ?? 0) > diskLimitMb(s.plan));
   const stuck = servers.filter((s) => s.status === "PROVISIONING" && s.updatedAt.getTime() < now.getTime() - 10 * 60_000);
   const ending = servers
     .filter((s) => s.plan !== "FREE" && ON_HOST.includes(s.status) && s.paidUntil && s.paidUntil.getTime() < now.getTime() + 3 * DAY)
@@ -47,12 +49,19 @@ export default async function AdminOverview() {
   const suspended = servers
     .filter((s) => s.status === "SUSPENDED")
     .sort((a, b) => (a.paidUntil?.getTime() ?? 0) - (b.paidUntil?.getTime() ?? 0));
-  const attention = [
-    { title: t.crashed, rows: crashed, note: () => "" },
-    { title: t.stuck, rows: stuck, note: () => "", hint: t.stuckHint },
-    { title: t.ending, rows: ending, note: (d: Date | null) => (d ? format(t.endsOn, { date: f.dateTime(d) }) : "") },
-    { title: t.suspendedList, rows: suspended, note: (d: Date | null) => (d ? format(t.suspendedSince, { date: f.date(d) }) : "") },
-  ].filter((group) => group.rows.length > 0);
+  const groups: { title: string; rows: Server[]; note?: (s: Server) => string; hint?: string }[] = [
+    { title: t.crashed, rows: crashed },
+    {
+      title: t.overDisk,
+      rows: overDisk,
+      note: (s) => `${f.size(live[s.id].diskMb ?? 0)} / ${f.size(diskLimitMb(s.plan))}`,
+      hint: t.overDiskHint,
+    },
+    { title: t.stuck, rows: stuck, hint: t.stuckHint },
+    { title: t.ending, rows: ending, note: (s) => format(t.endsOn, { date: f.dateTime(s.paidUntil!) }) },
+    { title: t.suspendedList, rows: suspended, note: (s) => (s.paidUntil ? format(t.suspendedSince, { date: f.date(s.paidUntil) }) : "") },
+  ];
+  const attention = groups.filter((group) => group.rows.length > 0);
 
   return (
     <>
@@ -136,7 +145,7 @@ export default async function AdminOverview() {
                   <li key={s.id}>
                     <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
                     <span className="muted small">
-                      {all.plans[s.plan]} {group.note(s.paidUntil) && `· ${group.note(s.paidUntil)}`}
+                      {[all.plans[s.plan], group.note?.(s)].filter(Boolean).join(" · ")}
                     </span>
                   </li>
                 ))}

@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { getLiveState, getOwnedServer, joinAddress } from "@/lib/servers";
+import { getLiveDetails, getOwnedServer, joinAddress } from "@/lib/servers";
+import { diskLimitMb, formatMb, hardDiskLimitMb } from "@/lib/disk";
 import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
@@ -31,10 +32,10 @@ export default async function ServerPage({ params, searchParams }: Props) {
   if (!server) notFound();
 
   const keep = planById(server.plan).backupsKept;
-  const [all, { locale }, live, backups] = await Promise.all([
+  const [all, { locale }, { live, agent }, backups] = await Promise.all([
     getMessages(),
     getPreferences(),
-    getLiveState(server),
+    getLiveDetails(server),
     // Paid servers only exist on the game host once paid for.
     keep > 0 && server.status !== "AWAITING_PAYMENT" ? listBackups(server.id).catch(() => null) : null,
   ]);
@@ -44,6 +45,13 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const kind = server.edition === "JAVA" && isServerKind(server.kind) ? server.kind : "vanilla";
   const islandCommand = ISLAND_COMMAND[kind];
   const unpaid = live === "awaitingPayment" || live === "suspended";
+  // What the server's files take, as the agent last measured, against what the plan gives.
+  const diskUsed = agent?.diskMb;
+  const diskLimit = diskLimitMb(server.plan);
+  const diskVars =
+    diskUsed === undefined
+      ? null
+      : { used: formatMb(diskUsed, locale), limit: formatMb(diskLimit, locale), hard: formatMb(hardDiskLimitMb(diskLimit), locale) };
   // Keep refreshing while starting, or while a just-made payment is being confirmed.
   const waiting = live === "starting" || live === "restarting" || (payment === "success" && unpaid);
 
@@ -70,6 +78,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
       {payment === "cancelled" && unpaid && <p className="notice">{b.cancelled}</p>}
       {live === "awaitingPayment" && payment !== "success" && <p className="notice">{b.awaiting}</p>}
       {live === "suspended" && <p className="notice warn">{b.suspended}</p>}
+      {live === "diskFull" && diskVars && <p className="notice warn">{format(t.diskStopped, diskVars)}</p>}
+      {live !== "diskFull" && diskVars && (diskUsed ?? 0) > diskLimit && <p className="notice warn">{format(t.diskOver, diskVars)}</p>}
       {live === "sleeping" && (
         <p className="notice">{server.edition === "JAVA" ? t.sleepingJava : t.sleepingBedrock}</p>
       )}
@@ -157,6 +167,11 @@ export default async function ServerPage({ params, searchParams }: Props) {
         <div className="card row">
           <span>
             <strong>{all.files.title}</strong> <span className="muted">· {all.files.cardText}</span>
+            {diskVars && (
+              <span className="disk-line muted small">
+                {t.disk}: {format(t.diskUsage, diskVars)}
+              </span>
+            )}
           </span>
           <Link className="button secondary" href={`/dashboard/servers/${server.id}/files`}>
             <FolderOpen size={16} aria-hidden /> {all.files.open}

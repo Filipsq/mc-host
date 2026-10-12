@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { getLiveState, getOwnedServer } from "@/lib/servers";
+import { getLiveDetails, getOwnedServer } from "@/lib/servers";
+import { diskLimitMb, formatMb } from "@/lib/disk";
+import { format } from "@/i18n/messages";
 import { listFiles, type FileEntry } from "@/lib/agent";
 import { canChangeFiles, EDIT_MAX_BYTES } from "@/lib/files";
 import FileBrowser, { type FileRow } from "./FileBrowser";
@@ -16,7 +18,7 @@ export default async function FilesPage({ params, searchParams }: Props) {
   const server = await getOwnedServer(id, session.user.id);
   if (!server) notFound();
 
-  const [all, { locale }, live] = await Promise.all([getMessages(), getPreferences(), getLiveState(server)]);
+  const [all, { locale }, { live, agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetails(server)]);
   const t = all.files;
   const listing = server.status === "AWAITING_PAYMENT" ? null : await listFiles(server.id, path).catch((err) => err as Error);
   const dir = listing && !(listing instanceof Error) ? listing.path : "";
@@ -63,6 +65,11 @@ export default async function FilesPage({ params, searchParams }: Props) {
           <p className="muted small">
             {t.restartNote} {server.edition === "JAVA" && dir === "." && t.settingsNote}
           </p>
+          {agent?.diskMb !== undefined && (
+            <p className="muted small">
+              {format(t.usage, { used: formatMb(agent.diskMb, locale), limit: formatMb(diskLimitMb(server.plan), locale) })}
+            </p>
+          )}
         </>
       )}
     </main>

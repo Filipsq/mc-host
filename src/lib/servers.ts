@@ -12,6 +12,7 @@ export type LiveState =
   | "offline"
   | "sleeping"
   | "crashed"
+  | "diskFull"
   | "restarting"
   | "suspended"
   | "awaitingPayment"
@@ -19,12 +20,18 @@ export type LiveState =
 
 /** Combines our records with what the agent reports into one state for the UI. */
 export async function getLiveState(server: Pick<Server, "id" | "status">): Promise<LiveState> {
+  return (await getLiveDetails(server)).live;
+}
+
+/** The same, with what the agent said (when it was asked and answered). */
+export async function getLiveDetails(server: Pick<Server, "id" | "status">): Promise<{ live: LiveState; agent?: AgentState }> {
   // Not on the game host while unpaid: no need to ask.
-  if (server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED") return liveStateFrom(server, "unknown");
+  if (server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED") return { live: liveStateFrom(server, "unknown") };
   try {
-    return liveStateFrom(server, await getServerState(server.id));
+    const agent = await getServerState(server.id);
+    return { live: liveStateFrom(server, agent), agent };
   } catch (err) {
-    if (err instanceof AgentError) return liveStateFrom(server, err.status === 404 ? "missing" : "unknown");
+    if (err instanceof AgentError) return { live: liveStateFrom(server, err.status === 404 ? "missing" : "unknown") };
     throw err;
   }
 }
@@ -43,6 +50,7 @@ export function liveStateFrom(server: Pick<Server, "status">, s: KnownState | "m
   if (s === "unknown") return "unknown";
   if (s.state === "restarting") return "restarting";
   if (s.state === "running") return s.health === "healthy" ? "online" : "starting";
+  if (s.stopReason === "disk") return "diskFull";
   if (server.status === "STOPPED") return "offline";
   if (s.stopReason === "sleeping") return "sleeping";
   if (s.stopReason === "crashed") return "crashed";
@@ -129,6 +137,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     hostname: server.edition === "JAVA" ? joinAddress(server).host : "",
     autostop: !plan.alwaysOn,
     backupsKept: plan.backupsKept,
+    diskMb: plan.diskGb * 1024,
     gameMode: server.gameMode,
     difficulty: server.difficulty,
     motd: server.motd,

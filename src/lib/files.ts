@@ -23,7 +23,7 @@ export function fileError(err: unknown): FileError {
       case 413:
         return "tooBig";
       case 507:
-        return "noSpace";
+        return err.message === "quota" ? "quota" : "noSpace";
       case 400:
         return /zip|archive/.test(err.message) ? "badArchive" : "badName";
     }

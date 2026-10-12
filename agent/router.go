@@ -25,7 +25,7 @@ type routeTarget struct {
 	ID      string
 	Addr    string // where Minecraft listens, e.g. 172.17.0.5:25565
 	Running bool
-	Reason  string // why it isn't running: sleeping, stopped, crashed
+	Reason  string // why it isn't running: sleeping, stopped, crashed, disk
 }
 
 type router struct {
@@ -44,6 +44,7 @@ const (
 	msgOffline     = "§cSerwer jest wyłączony\n§7Server is offline"
 	msgOfflineKick = "Serwer jest wyłączony przez właściciela.\nThe server has been turned off by its owner."
 	msgCrashedKick = "Serwer nie działa. Właściciel może go uruchomić w panelu.\nThe server is down. Its owner can start it from the panel."
+	msgDiskKick    = "Serwer zajmuje za dużo miejsca. Właściciel musi usunąć pliki w panelu.\nThe server uses too much disk space. Its owner has to delete files in the panel."
 	msgUnknown     = "§cNie ma takiego serwera\n§7No server at this address"
 )
 
@@ -115,6 +116,8 @@ func (rt *router) handle(conn net.Conn) {
 		rt.answer(conn, r, hs, "Sleeping", msgSleeping, "")
 	case target.Reason == "crashed":
 		rt.answer(conn, r, hs, "Offline", msgOffline, msgCrashedKick)
+	case target.Reason == "disk":
+		rt.answer(conn, r, hs, "Offline", msgOffline, msgDiskKick)
 	default:
 		rt.answer(conn, r, hs, "Offline", msgOffline, msgOfflineKick)
 	}

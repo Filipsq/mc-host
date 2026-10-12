@@ -15,6 +15,7 @@ export function planOptions(t: Messages, currency: Currency, include: (id: Plan)
       monthly: p.price[currency],
       summary: [
         format(t.plans.ram, { gb: p.ramGb }),
+        format(t.plans.disk, { gb: p.diskGb }),
         p.maxPlayers === null ? t.plans.unlimitedPlayers : format(t.plans.players, { n: p.maxPlayers }),
         p.alwaysOn ? t.plans.alwaysOn : t.plans.sleeps,
       ].join(" · "),

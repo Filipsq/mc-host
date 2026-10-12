@@ -35,7 +35,7 @@ export default function TermsPl({ site }: { site: string }) {
             <li><strong>Konto</strong> – konto Użytkownika w Serwisie, chronione adresem e-mail i hasłem;</li>
             <li><strong>Serwer</strong> – serwer gry Minecraft (Java lub Bedrock) uruchomiony przez Użytkownika w Serwisie;</li>
             <li>
-              <strong>Plan</strong> – pakiet zasobów Serwera (pamięć, procesor, liczba graczy, kopie zapasowe)
+              <strong>Plan</strong> – pakiet zasobów Serwera (pamięć, procesor, miejsce na dysku, liczba graczy, kopie zapasowe)
               opisany w <Link href="/#cennik">Cenniku</Link>: darmowy albo płatny;
             </li>
             <li><strong>Okres</strong> – opłacony z góry czas korzystania z płatnego Planu: 30 dni (1 miesiąc) lub 90 dni (3 miesiące).</li>
@@ -128,6 +128,12 @@ export default function TermsPl({ site }: { site: string }) {
         <li>
           Usługodawca udostępnia Serwer z zasobami wybranego Planu, adres do połączenia, panel do uruchamiania i
           zatrzymywania Serwera oraz konsolę.
+        </li>
+        <li>
+          Pliki Serwera mogą zajmować tyle miejsca na dysku, ile podaje opis Planu (kopie zapasowe się nie
+          wliczają). Pliku, który przekroczyłby ten limit, nie da się wgrać. Gdy pliki Serwera przekroczą limit o
+          więcej niż 10%, Serwer zostaje zatrzymany i można go uruchomić ponownie po usunięciu zbędnych plików albo
+          po przejściu na większy Plan.
         </li>
         <li>
           W płatnych Planach Usługodawca raz dziennie wykonuje kopię zapasową świata i przechowuje liczbę

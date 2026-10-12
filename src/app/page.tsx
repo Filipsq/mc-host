@@ -107,6 +107,7 @@ export default async function Home() {
                   </p>
                   <ul className="features">
                     <li><Check size={16} aria-hidden /> {format(t.plans.ram, { gb: p.ramGb })}</li>
+                    <li><Check size={16} aria-hidden /> {format(t.plans.disk, { gb: p.diskGb })}</li>
                     <li>
                       <Check size={16} aria-hidden />{" "}
                       {p.maxPlayers === null ? t.plans.unlimitedPlayers : format(t.plans.players, { n: p.maxPlayers })}

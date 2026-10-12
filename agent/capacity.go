@@ -43,6 +43,10 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 			}
 		}
 	}
+	if a.overDisk(ctx, id) {
+		a.setMarker(id, "disk")
+		return errDiskFull
+	}
 	a.clearMarkers(id)
 	return a.docker.StartContainer(ctx, containerName(id))
 }

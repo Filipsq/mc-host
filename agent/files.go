@@ -56,6 +56,7 @@ type fileEntry struct {
 
 // serverFiles is one server's files, opened for a single request.
 type serverFiles struct {
+	id       string
 	root     *os.Root
 	dir      string // the volume's folder on the host
 	uid, gid int    // who owns the server's files
@@ -82,7 +83,7 @@ func (a *agent) openFiles(ctx context.Context, id string) (*serverFiles, error) 
 	} else if err != nil {
 		return nil, err
 	}
-	s := &serverFiles{root: root, dir: dir}
+	s := &serverFiles{id: id, root: root, dir: dir}
 	if fi, err := root.Stat("."); err == nil {
 		if st, ok := fi.Sys().(*syscall.Stat_t); ok {
 			s.uid, s.gid = int(st.Uid), int(st.Gid)
@@ -215,6 +216,7 @@ func (a *agent) filesChange(w http.ResponseWriter, r *http.Request, change func(
 		writeFileError(w, err)
 		return
 	}
+	a.remeasureDisk(id)
 	if resp == nil {
 		resp = map[string]bool{"ok": true}
 	}
@@ -234,6 +236,8 @@ func writeFileError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusConflict, "exists")
 	case errors.Is(err, fs.ErrNotExist):
 		writeError(w, http.StatusNotFound, "no such file or folder")
+	case errors.Is(err, errQuota):
+		writeError(w, http.StatusInsufficientStorage, "quota")
 	case errors.Is(err, errNoSpace), errors.Is(err, syscall.ENOSPC):
 		writeError(w, http.StatusInsufficientStorage, errNoSpace.Error())
 	case errors.As(err, &tooBig), errors.Is(err, errTooBig):
@@ -351,13 +355,19 @@ func (a *agent) filesWrite(w http.ResponseWriter, r *http.Request) {
 			return nil, errIsServerTop
 		}
 		free := a.freeSpace(s)
+		room, err := a.quotaRoom(r.Context(), s, name)
+		if err != nil {
+			return nil, err
+		}
 		switch {
 		case r.ContentLength > a.uploadMax:
 			return nil, errTooBig
 		case r.ContentLength > free || free <= 0:
 			return nil, errNoSpace
+		case r.ContentLength > room:
+			return nil, errQuota
 		}
-		n, err := s.writeFile(name, http.MaxBytesReader(w, r.Body, min(a.uploadMax, free)))
+		n, err := s.writeFile(name, http.MaxBytesReader(w, r.Body, min(a.uploadMax, free, room)))
 		if err != nil {
 			return nil, err
 		}
@@ -460,6 +470,11 @@ func (a *agent) filesUnzip(w http.ResponseWriter, r *http.Request) {
 		}
 		if free := a.freeSpace(s); free <= 0 || total > uint64(free) {
 			return nil, errNoSpace
+		}
+		if room, err := a.quotaRoom(r.Context(), s, ""); err != nil {
+			return nil, err
+		} else if total > uint64(room) {
+			return nil, errQuota
 		}
 		if total > uint64(a.unzipMax) {
 			return nil, errTooBig

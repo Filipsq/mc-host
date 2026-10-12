@@ -200,6 +200,10 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
     else await agent.startServer(server.id);
   } catch (err) {
     if (agent.isFull(err)) return { error: "full" };
+    if (agent.isDiskFull(err)) {
+      revalidatePath(`/dashboard/servers/${id}`);
+      return { error: "diskFull" };
+    }
     throw err;
   }
   await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });

@@ -96,6 +96,11 @@ type agent struct {
 	diskReserve int64    // bytes of disk the file manager leaves free
 	uploadMax   int64    // the biggest file the file manager takes
 	unzipMax    int64    // the most an archive may unpack to
+
+	diskMu        sync.Mutex
+	diskLimits    map[string]int64 // server id -> MB its files may take (see disk.go)
+	diskUsage     sync.Map         // server id -> diskUse, the last measurement
+	diskMeasuring sync.Map         // server id -> true while a measurement runs in the background
 }
 
 func main() {
@@ -141,6 +146,7 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+	a.loadDiskLimits()
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
@@ -152,6 +158,7 @@ func main() {
 	}()
 	go a.watchIdleBedrock(context.Background())
 	go a.watchBackups(context.Background())
+	go a.watchDisk(context.Background())
 
 	gameAddr := envOr("GAME_ADDR", ":25565")
 	ln, err := net.Listen("tcp", gameAddr)
@@ -171,6 +178,7 @@ func (a *agent) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	mux.HandleFunc("GET /stats", a.stats)
+	mux.HandleFunc("PUT /disk-limits", a.putDiskLimits)
 	mux.HandleFunc("POST /servers", a.create)
 	mux.HandleFunc("PUT /servers/{id}", a.recreate)
 	mux.HandleFunc("GET /servers/{id}", a.status)
@@ -216,6 +224,7 @@ type createRequest struct {
 	Hostname   string  `json:"hostname"`    // Java only: the address players type, e.g. ekipa.mchost.pl
 	Autostop   bool    `json:"autostop"`    // sleep when nobody is playing (free plan)
 	Backups    int     `json:"backupsKept"` // daily backups to keep; 0 for none
+	DiskMb     int64   `json:"diskMb"`      // disk space the server's files may take; 0 for no limit
 
 	// Game settings the owner picks in the panel.
 	GameMode   string   `json:"gameMode"`         // survival, creative or adventure
@@ -248,8 +257,8 @@ func (req *createRequest) validate() error {
 	switch {
 	case !validID.MatchString(req.ID):
 		return errors.New("invalid id")
-	case req.MemoryMb < 512 || req.Port < 1024 || req.Port > 65535 || req.CPUs <= 0:
-		return errors.New("invalid memoryMb, cpus or port")
+	case req.MemoryMb < 512 || req.Port < 1024 || req.Port > 65535 || req.CPUs <= 0 || req.DiskMb < 0:
+		return errors.New("invalid memoryMb, cpus, port or diskMb")
 	case req.Edition == "JAVA" && !validHost.MatchString(req.Hostname):
 		return errors.New("java servers need a valid hostname")
 	}
@@ -308,6 +317,9 @@ func (a *agent) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	if err := a.setDiskLimits(map[string]int64{req.ID: req.DiskMb}, false); err != nil {
+		log.Printf("disk limit %s: %v", req.ID, err)
+	}
 	if a.handleDockerErr(w, a.run(r.Context(), req, true)) {
 		return
 	}
@@ -349,6 +361,9 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if err := a.setDiskLimits(map[string]int64{req.ID: req.DiskMb}, false); err != nil {
+		log.Printf("disk limit %s: %v", req.ID, err)
+	}
 	if a.handleDockerErr(w, a.run(r.Context(), req, start)) {
 		return
 	}
@@ -370,7 +385,12 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	if !start {
 		return nil
 	}
-	return a.startServer(ctx, req.ID)
+	if err := a.startServer(ctx, req.ID); !errors.Is(err, errDiskFull) {
+		return err
+	}
+	// Made, but too full to start: its status says so, and its owner can make room.
+	log.Printf("%s not started: over its disk limit", name)
+	return nil
 }
 
 func (a *agent) containerSpec(req createRequest, image string) map[string]any {
@@ -494,6 +514,9 @@ func (a *agent) status(w http.ResponseWriter, r *http.Request) {
 	if info.State.Health != nil {
 		resp["health"] = info.State.Health.Status // starting, healthy, unhealthy
 	}
+	for k, v := range a.diskInfo(id) {
+		resp[k] = v
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 
@@ -501,6 +524,8 @@ func (a *agent) status(w http.ResponseWriter, r *http.Request) {
 // asleep for lack of players, or it crashed.
 func (a *agent) stopReason(id string, info *ContainerInfo) string {
 	switch {
+	case a.hasMarker(id, "disk"):
+		return "disk"
 	case a.hasMarker(id, "stopped"):
 		return "stopped"
 	case a.hasMarker(id, "sleeping"):
@@ -566,6 +591,10 @@ func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.clearMarkers(id)
+	a.diskUsage.Delete(id)
+	if err := a.setDiskLimits(map[string]int64{id: 0}, false); err != nil {
+		log.Printf("disk limit %s: %v", id, err)
+	}
 	log.Printf("removed %s", name)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
@@ -661,7 +690,7 @@ func (a *agent) hasMarker(id, kind string) bool {
 }
 
 func (a *agent) clearMarkers(id string) {
-	for _, kind := range []string{"stopped", "sleeping", "suspended"} {
+	for _, kind := range []string{"stopped", "sleeping", "suspended", "disk"} {
 		_ = os.Remove(a.markerPath(id, kind))
 	}
 }
@@ -684,6 +713,8 @@ func (a *agent) handleDockerErr(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusNotFound, "server not found")
 	case errors.Is(err, errFull):
 		writeError(w, http.StatusServiceUnavailable, "full")
+	case errors.Is(err, errDiskFull):
+		writeError(w, http.StatusInsufficientStorage, "diskFull")
 	case errors.Is(err, errNoBackups):
 		writeError(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, errBackupNotFound):

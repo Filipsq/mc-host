@@ -18,6 +18,11 @@ export function isFull(err: unknown) {
   return err instanceof AgentError && err.status === 503 && err.message === "full";
 }
 
+/** The agent refused to start a server whose files take too much more than its plan's disk space. */
+export function isDiskFull(err: unknown) {
+  return err instanceof AgentError && err.status === 507 && err.message === "diskFull";
+}
+
 function config() {
   const url = process.env.AGENT_URL;
   const token = process.env.AGENT_TOKEN;
@@ -58,6 +63,7 @@ export type CreateServerSpec = {
   hostname: string; // Java only
   autostop: boolean;
   backupsKept: number; // daily backups the agent keeps; 0 for none
+  diskMb: number; // what the server's files may take
   gameMode: string;
   difficulty: string;
   motd: string; // empty: the name
@@ -81,7 +87,9 @@ export type AgentState = {
   restartCount: number;
   startedAt: string;
   health?: "starting" | "healthy" | "unhealthy";
-  stopReason?: "sleeping" | "stopped" | "crashed";
+  stopReason?: "sleeping" | "stopped" | "crashed" | "disk";
+  diskMb?: number; // what its files take, as last measured
+  diskLimitMb?: number;
 };
 
 /**
@@ -93,7 +101,7 @@ export async function recreateServer(spec: CreateServerSpec, opts: { keepStopped
   await agentFetch(`/servers/${spec.id}${query}`, { method: "PUT", body: JSON.stringify(spec), timeoutMs: 5 * 60_000 });
 }
 
-export type ServerStats = Pick<AgentState, "state" | "health" | "stopReason"> & {
+export type ServerStats = Pick<AgentState, "state" | "health" | "stopReason" | "diskMb" | "diskLimitMb"> & {
   id: string;
   memoryMb: number; // the plan's memory
   memoryUsedMb?: number; // what it uses right now, while running
@@ -112,6 +120,11 @@ export type HostStats = {
   };
   servers: ServerStats[];
 };
+
+/** Tells the agent every server's disk limit (MB), replacing what it had. */
+export async function setDiskLimits(limits: Record<string, number>) {
+  await agentFetch("/disk-limits", { method: "PUT", body: JSON.stringify({ limits }) });
+}
 
 /** The machine and every server on it, for the admin panel. */
 export async function getStats(): Promise<HostStats> {

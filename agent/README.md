@@ -35,9 +35,9 @@ go test ./...
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackVersion}` |
+| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, diskMb, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackVersion}` |
 | PUT | `/servers/{id}` | Rebuild the container with a new spec (plan or settings change), keeping the world. With `?start=if-running` a stopped or sleeping server stays off |
-| GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped` or `crashed` |
+| GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped`, `crashed` or `disk`; `diskMb` (last measured) and `diskLimitMb` |
 | POST | `/servers/{id}/start`, `/stop` | Stop waits up to 60 s so the world is saved; `/stop?reason=suspended` also gives back the server's memory until it's renewed. Starting a free server that doesn't fit returns 503 `{"error":"full"}` |
 | DELETE | `/servers/{id}` | Removes the container, its world volume and its backups |
 | GET | `/servers/{id}/logs` | Console as Server-Sent Events (last 200 lines, then live) |
@@ -51,7 +51,8 @@ go test ./...
 | PUT | `/servers/{id}/files/content?path=` | Save the body as the file (upload or edit), making missing folders |
 | POST | `/servers/{id}/files/mkdir?path=`, `/files/rename?path=&to=`, `/files/unzip?path=&to=` | Make a folder; rename or move (never over an existing name); unpack a zip into `to` (by default its own folder) |
 | DELETE | `/servers/{id}/files?path=` | Delete a file or a folder with everything in it |
-| GET | `/stats` | For the admin panel: `{memoryLimitMb, memoryHeldMb, host: {cpus, load, memoryTotalMb, memoryAvailableMb, diskTotalMb, diskFreeMb}, servers: [{id, state, health, stopReason, memoryMb, memoryUsedMb}]}` |
+| PUT | `/disk-limits` | `{limits: {<id>: MB}}`: every server's disk limit, replacing the previous list (the panel sends it every few minutes) |
+| GET | `/stats` | For the admin panel: `{memoryLimitMb, memoryHeldMb, host: {cpus, load, memoryTotalMb, memoryAvailableMb, diskTotalMb, diskFreeMb}, servers: [{id, state, health, stopReason, memoryMb, memoryUsedMb, diskMb, diskLimitMb}]}` |
 
 Java servers run what `kind` says: `vanilla` (Paper, the default), `skyblock` or `oneblock`
 (Paper with the BentoBox plugins from Modrinth, on the newest Minecraft version they all support),
@@ -62,7 +63,13 @@ off the list is deleted the next time the server starts.
 
 Paths in the file endpoints are relative to the server's `/data` (its volume). The agent opens the
 volume with `os.Root`, so neither `..` nor a symlink reaches outside it. Changes answer 409
-`busy` during a backup or restore of the same server, and 507 when the disk is nearly full.
+`busy` during a backup or restore of the same server, and 507 when the disk is nearly full
+(`not enough free disk space`) or the change would take the server over its `diskMb` (`quota`).
+
+The agent measures each server's files every 10 minutes (and after file changes). A server whose
+game grows it more than 10% past its `diskMb` is stopped; until its owner deletes enough, starting
+it answers 507 `{"error":"diskFull"}`, players can't wake it, and its stop reason is `disk`.
+Backups don't count towards the limit.
 
 Servers whose plan keeps backups (`backupsKept`) are backed up once a day, if they have run since
 their last backup. A running server's saving is paused while its world is copied. Only the newest

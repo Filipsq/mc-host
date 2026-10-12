@@ -1,6 +1,7 @@
 import "server-only";
 import type { Currency } from "@/i18n/config";
 import { formatPrice } from "@/lib/plans";
+import { formatMb } from "@/lib/disk";
 
 export type Formats = ReturnType<typeof formats>;
 
@@ -15,6 +16,7 @@ export function formats(locale: string) {
     dateTime: (d: Date) => dateTime.format(d),
     number: (n: number) => decimal.format(n),
     gb: (mb: number) => `${decimal.format(mb / 1024)} GB`,
+    size: (mb: number) => formatMb(mb, locale),
     money,
     /** Amounts in several currencies, each added up on its own, e.g. "120 zł + 8 €". */
     totals(rows: { amount: number; currency: string }[]) {

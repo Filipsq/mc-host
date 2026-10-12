@@ -297,7 +297,7 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
   color: var(--amber); background: rgb(240 163 58 / 0.1); border-color: rgb(240 163 58 / 0.35);
 }
 .badge.sleeping { color: var(--sky); background: rgb(96 165 250 / 0.1); border-color: rgb(96 165 250 / 0.35); }
-.badge.crashed { color: var(--error); background: rgb(248 113 113 / 0.1); border-color: rgb(248 113 113 / 0.35); }
+.badge.crashed, .badge.diskFull { color: var(--error); background: rgb(248 113 113 / 0.1); border-color: rgb(248 113 113 / 0.35); }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 .dot.online { background: var(--accent-strong); box-shadow: 0 0 0 4px rgb(114 217 75 / 0.2); }
 
@@ -486,6 +486,8 @@ main.admin { max-width: 1160px; }
 .details dt { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
 .details dd { margin: 2px 0 0; word-break: break-word; }
 .pay-status { font-weight: 600; white-space: nowrap; }
+.admin-table td.over { color: var(--error); font-weight: 600; }
+.disk-line { display: block; margin-top: 2px; }
 .pay-status.paid { color: var(--accent-strong); }
 .pay-status.pending { color: var(--amber); }
 .pay-status.failed, .pay-status.expired { color: var(--muted); }

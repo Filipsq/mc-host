@@ -35,7 +35,7 @@ export default function TermsEn({ site }: { site: string }) {
             <li><strong>Account</strong>: a User’s account in the Service, protected by an email address and password;</li>
             <li><strong>Server</strong>: a Minecraft game server (Java or Bedrock) a User runs in the Service;</li>
             <li>
-              <strong>Plan</strong>: the Server’s resources (memory, CPU, player slots, backups) described in the{" "}
+              <strong>Plan</strong>: the Server’s resources (memory, CPU, disk space, player slots, backups) described in the{" "}
               <Link href="/#cennik">Pricing</Link>, either free or paid;
             </li>
             <li><strong>Period</strong>: prepaid time on a paid Plan: 30 days (1 month) or 90 days (3 months).</li>
@@ -118,6 +118,12 @@ export default function TermsEn({ site }: { site: string }) {
         <li>
           The Provider gives you a Server with your Plan’s resources, an address to connect to, a panel to start
           and stop it, and a console.
+        </li>
+        <li>
+          The Server’s files may take as much disk space as the Plan lists (backups don’t count). A file that
+          would go over that limit can’t be uploaded. If the Server’s files grow more than 10% over the limit, the
+          Server is stopped, and it can be started again once unneeded files are deleted or after moving to a
+          bigger Plan.
         </li>
         <li>
           On paid Plans the Provider backs up the world once a day and keeps the number of most recent backups

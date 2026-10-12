@@ -6,6 +6,7 @@ import * as agent from "./agent";
 import { agentSpec } from "./servers";
 import { planById } from "./plans";
 import { canSellMemory } from "./capacity";
+import { diskLimitMb } from "./disk";
 import { REMIND_BEFORE_DAYS, sendPlanMail } from "./planMail";
 import type { Currency, Locale } from "@/i18n/config";
 
@@ -222,5 +223,15 @@ export async function runBillingJob(now = new Date()) {
     where: { status: "PENDING", createdAt: { lt: new Date(now.getTime() - DAY) } },
     data: { status: "EXPIRED" },
   });
+
+  // Every server's disk limit, so the agent has them all (also servers made before
+  // there were limits, and after its state was lost).
+  const onAgent = await db.server.findMany({
+    where: { status: { not: "AWAITING_PAYMENT" } },
+    select: { id: true, plan: true },
+  });
+  await agent
+    .setDiskLimits(Object.fromEntries(onAgent.map((s) => [s.id, diskLimitMb(s.plan)])))
+    .catch((err) => console.error("disk limits not sent", err));
   return result;
 }

@@ -22,6 +22,8 @@ type serverStats struct {
 	StopReason   string `json:"stopReason,omitempty"`
 	MemoryMb     int    `json:"memoryMb"`               // the plan's memory
 	MemoryUsedMb *int   `json:"memoryUsedMb,omitempty"` // what it uses right now, while running
+	DiskMb       *int64 `json:"diskMb,omitempty"`       // what its files take, as last measured
+	DiskLimitMb  int64  `json:"diskLimitMb,omitempty"`  // what its plan allows; 0 for no limit
 }
 
 type hostStats struct {
@@ -62,8 +64,12 @@ func (a *agent) stats(w http.ResponseWriter, r *http.Request) {
 
 func (a *agent) serverStats(ctx context.Context, c containerSummary) serverStats {
 	id := c.Labels["mchost.server"]
-	s := serverStats{ID: id, State: c.State}
+	s := serverStats{ID: id, State: c.State, DiskLimitMb: a.diskLimit(id) >> 20}
 	s.MemoryMb, _ = strconv.Atoi(c.Labels["mchost.memory"])
+	if u, ok := a.cachedDiskUse(id); ok {
+		mb := u.bytes >> 20
+		s.DiskMb = &mb
+	}
 	info, err := a.docker.InspectContainer(ctx, containerName(id))
 	if err != nil {
 		return s
