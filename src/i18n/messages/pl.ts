@@ -1,6 +1,8 @@
 const pl = {
   meta: {
-    description: "Darmowy i płatny hosting serwerów Minecraft na Javę i Bedrock",
+    title: "Hosting serwerów Minecraft za darmo i od 15 zł",
+    description:
+      "Darmowy i płatny hosting serwerów Minecraft na Javę i Bedrock. Załóż serwer w minutę, z konsolą, pluginami, modami i kopiami zapasowymi. Płatność BLIK, Przelewy24 i kartą.",
   },
   nav: {
     language: "Język",

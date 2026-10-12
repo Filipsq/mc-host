@@ -9,11 +9,24 @@ import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getMessages();
-  return { title: { default: BRAND_NAME, template: `%s · ${BRAND_NAME}` }, description: t.meta.description };
+  const [t, { locale }] = await Promise.all([getMessages(), getPreferences()]);
+  const title = `${BRAND_NAME} · ${t.meta.title}`;
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: { default: title, template: `%s · ${BRAND_NAME}` },
+    description: t.meta.description,
+    openGraph: {
+      type: "website",
+      siteName: BRAND_NAME,
+      title,
+      description: t.meta.description,
+      locale: locale === "pl" ? "pl_PL" : "en_US",
+    },
+  };
 }
 
 export default async function RootLayout({
