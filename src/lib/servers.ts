@@ -99,7 +99,11 @@ export function agentSpec(server: Server): CreateServerSpec {
   };
 }
 
-const RESERVED = new Set(["www", "api", "app", "panel", "admin", "mail", "status", "help", "support", "play"]);
+// Also the mail names OVH's default DNS zone defines: they have records of
+// their own, so the wildcard that sends players to the router doesn't cover them.
+const RESERVED = new Set(
+  "www api app panel admin mail status help support play ftp imap pop3 smtp webmail autoconfig autodiscover".split(" "),
+);
 
 export function isValidSubdomain(s: string) {
   return /^[a-z0-9](?:[a-z0-9-]{1,30}[a-z0-9])$/.test(s) && !s.includes("--") && !RESERVED.has(s);
