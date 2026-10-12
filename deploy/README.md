@@ -7,15 +7,18 @@ Minecraft server in Docker. See the "Hosting setup" section of the plan for why.
 
 1. **Domain:** buy `mchosting.pl` from any registrar (OVH sells .pl domains too, so everything can sit
    in one account).
-2. **Server:** start small with an OVH **VPS-2** (4 cores, 8 GB RAM, 75 GB disk) from
-   <https://www.ovhcloud.com/pl/vps/>. The price shown there (about 38 zł a month with VAT) assumes
-   paying for 12 months up front; the order page also offers paying monthly. Pick **Ubuntu 24.04**
-   as the system and the location closest to Poland. When it's ready, OVH emails you its
-   **IP address**, a **username** (usually `ubuntu`) and a password or login link.
+2. **Server:** start small with a **Hetzner CAX21** (4 Arm cores, 8 GB RAM, 80 GB disk, about
+   €11 a month plus VAT, billed by the hour, cancel any time). OVH's VPS-2 would also do, but it was
+   sold out everywhere in October 2026.
+   1. Sign up at <https://console.hetzner.com> (Hetzner may ask for ID or a card check first).
+   2. Make a project, then **Add server** with: location **Nuremberg** or **Falkenstein**, image
+      **Ubuntu 24.04**, type **Shared vCPU → Arm64 (Ampere) → CAX21**, networking **Public IPv4**
+      and **IPv6** both on. Skip the SSH key, volumes, firewalls and backups.
+   3. When it's ready, Hetzner emails you its **IP address** and a **root password**.
 
-   Once players fill it, the next step is an OVH **Rise-GAME-1** dedicated server, taking worlds,
-   accounts and addresses along. Until then the site never sells more than the VPS can hold (see
-   "Server memory" below).
+   Any other machine with Ubuntu 24.04 and at least 8 GB works the same way. Once players fill it,
+   move to a bigger one, taking worlds, accounts and addresses along. Until then the site never
+   sells more than the server can hold (see "Server memory" below).
 3. **DNS:** in the registrar's DNS settings for the domain (OVH: Web Cloud → Domain names →
    mchosting.pl → DNS zone), add two records pointing at the server's IP:
 
@@ -34,8 +37,9 @@ Minecraft server in Docker. See the "Hosting setup" section of the plan for why.
    Generate new token. Under "Repository access" pick only `Filipsq/mc-host`, and under
    "Permissions" set **Contents** to **Read-only**. Copy the token.
 2. **Log in to the server:** on Windows open PowerShell, on a Mac open Terminal, and type
-   `ssh ubuntu@SERVER_IP` (use the username and password from OVH's email). Then type `sudo -i`
-   to become the admin user.
+   `ssh root@SERVER_IP` with the password from Hetzner's email (it asks you to choose a new one
+   the first time). On a server that gives you a user like `ubuntu` instead, log in as that user
+   and type `sudo -i` to become root.
 3. **Run:**
 
    ```bash
@@ -69,12 +73,12 @@ Use test keys (`sk_test_…`) first and pay with Stripe's test cards and test BL
 ## Server memory
 
 `setup.sh` works out how much memory the Minecraft servers may share and writes it to `deploy/.env`
-as `MEMORY_LIMIT_MB` (on a VPS-2 that's about 5 GB). Paid servers keep their memory even when
+as `MEMORY_LIMIT_MB` (on an 8 GB server that's about 5 GB). Paid servers keep their memory even when
 switched off, so their owners can always start them; once it's all sold, the site shows paid plans
 as sold out. Free servers only use memory while someone plays, and when there's no room a free
 server waits ("all free slots are taken, try again in a few minutes") until another falls asleep.
 
-On a VPS-2 that means, for example, one Starter plus one free server at a time, or two free
+On an 8 GB server that means, for example, one Starter plus one free server at a time, or two free
 servers. Standard (6 GB) and Pro (10 GB) need more than those 5 GB, so they show as sold out
 until you move to a bigger machine.
 
