@@ -65,6 +65,9 @@ func TestContainerSpecBedrock(t *testing.T) {
 	if !spec["Tty"].(bool) || !spec["OpenStdin"].(bool) {
 		t.Fatal("bedrock needs TTY and stdin for send-command")
 	}
+	if !strings.Contains(strings.Join(spec["Env"].([]string), " "), "ALLOW_LIST=false") {
+		t.Fatal("bedrock must turn its allow list off, or nobody can join")
+	}
 }
 
 func TestAuth(t *testing.T) {
@@ -202,5 +205,24 @@ func TestBackupNames(t *testing.T) {
 		if backupFile.MatchString(name) != ok {
 			t.Errorf("%q: want %v", name, ok)
 		}
+	}
+}
+
+func TestImageFor(t *testing.T) {
+	for version, want := range map[string]string{
+		"LATEST":  "itzg/minecraft-server:java25",
+		"26.1":    "itzg/minecraft-server:java25",
+		"26.3.1":  "itzg/minecraft-server:java25",
+		"1.21.11": "itzg/minecraft-server:java21",
+		"1.20.1":  "itzg/minecraft-server:java21",
+		"1.19.4":  "itzg/minecraft-server:java17",
+		"1.17.1":  "itzg/minecraft-server:java17",
+	} {
+		if got := imageFor("JAVA", version); got != want {
+			t.Errorf("%s: got %s, want %s", version, got, want)
+		}
+	}
+	if imageFor("BEDROCK", "LATEST") != images["BEDROCK"] {
+		t.Error("bedrock always uses its own image")
 	}
 }

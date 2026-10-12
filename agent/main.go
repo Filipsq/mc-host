@@ -21,9 +21,27 @@ import (
 	"time"
 )
 
+// Images for the newest version of each edition; see imageFor for older Java versions.
 var images = map[string]string{
-	"JAVA":    "itzg/minecraft-server:java21",
+	"JAVA":    "itzg/minecraft-server:java25",
 	"BEDROCK": "itzg/minecraft-bedrock-server:latest",
+}
+
+var javaRelease = regexp.MustCompile(`^1\.(\d+)(\.\d+)?$`)
+
+// imageFor picks the image with the Java that Paper needs for the version:
+// 1.17–1.19 need Java 17, 1.20–1.21.11 Java 21, and 26.1 onwards (and LATEST) Java 25.
+func imageFor(edition, version string) string {
+	if edition != "JAVA" {
+		return images[edition]
+	}
+	if m := javaRelease.FindStringSubmatch(version); m != nil {
+		if minor, _ := strconv.Atoi(m[1]); minor < 20 {
+			return "itzg/minecraft-server:java17"
+		}
+		return "itzg/minecraft-server:java21"
+	}
+	return images["JAVA"]
 }
 
 // Server IDs come from the panel (cuid); restrict them so they're safe in container names.
@@ -208,7 +226,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *agent) run(ctx context.Context, req createRequest) error {
-	image := images[req.Edition]
+	image := imageFor(req.Edition, req.Version)
 	if err := a.ensureImage(ctx, image); err != nil {
 		return err
 	}
@@ -249,7 +267,8 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		hostIP = "127.0.0.1" // players come in through the router, not directly
 		limitMb = req.MemoryMb + 512
 	} else {
-		env = append(env, "SERVER_NAME="+req.Name)
+		// Recent Bedrock servers turn the allow list on by default, which keeps everyone out.
+		env = append(env, "SERVER_NAME="+req.Name, "ALLOW_LIST=false")
 		containerPort = "19132/udp"
 		tty = true // send-command writes to the server's stdin
 	}
