@@ -1,10 +1,11 @@
 import "server-only";
-import type { Plan, Server, User } from "@prisma/client";
+import type { Plan, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe } from "./stripe";
 import * as agent from "./agent";
 import { agentSpec } from "./servers";
 import { planById } from "./plans";
+import { REMIND_BEFORE_DAYS, sendPlanMail } from "./planMail";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid in 30-day blocks rather than auto-renewing
@@ -12,6 +13,8 @@ import type { Currency, Locale } from "@/i18n/config";
 // prepaid "extend your server" is what Polish players are used to.
 
 const DAY = 24 * 60 * 60 * 1000;
+// What the plan emails need to know about the server's owner.
+const OWNER = { owner: { select: { email: true, locale: true } } } as const;
 export const PERIOD_MONTHS = [1, 3] as const;
 export type PeriodMonths = (typeof PERIOD_MONTHS)[number];
 
@@ -92,10 +95,14 @@ export async function fulfillPayment(paymentId: string) {
         paidUntil,
         ...(needsHost && { status: "PROVISIONING" }),
       },
+      include: OWNER,
     });
   });
+  if (!server) return;
 
-  if (server?.status === "PROVISIONING") await provision(server);
+  // Before provisioning, which may wait for an image download.
+  await sendPlanMail("paid", server);
+  if (server.status === "PROVISIONING") await provision(server);
 }
 
 /**
@@ -129,18 +136,47 @@ export async function markPayment(sessionId: string, status: "FAILED" | "EXPIRED
 
 /** Periodic housekeeping, run by /api/cron/billing. */
 export async function runBillingJob(now = new Date()) {
-  const result = { suspended: 0, abandoned: 0, provisioned: 0 };
+  const result = { suspended: 0, reminded: 0, abandoned: 0, provisioned: 0 };
+  const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Paid period over: stop the server but keep its world.
   const expired = await db.server.findMany({
-    where: { plan: { not: "FREE" }, paidUntil: { lt: now }, status: { in: ["RUNNING", "STOPPED", "PROVISIONING"] } },
+    where: { plan: { not: "FREE" }, paidUntil: { lt: now }, status: { in: onHost } },
+    include: OWNER,
   });
   for (const s of expired) {
     await agent.stopServer(s.id, "suspended").catch((err) => {
       if (!(err instanceof agent.AgentError && err.status === 404)) throw err;
     });
-    await db.server.update({ where: { id: s.id }, data: { status: "SUSPENDED" } });
+    // Unless it was renewed meanwhile, or another run got here first.
+    const { count } = await db.server.updateMany({
+      where: { id: s.id, paidUntil: { lt: now }, status: { in: onHost } },
+      data: { status: "SUSPENDED" },
+    });
+    if (count === 0) continue;
     result.suspended++;
+    await sendPlanMail("suspended", s);
+  }
+
+  // A paid period ends in a few days: remind the owner, once per period.
+  const ending = await db.server.findMany({
+    where: {
+      plan: { not: "FREE" },
+      status: { in: onHost },
+      paidUntil: { gt: now, lte: new Date(now.getTime() + REMIND_BEFORE_DAYS * DAY) },
+    },
+    include: OWNER,
+  });
+  for (const s of ending) {
+    if (s.reminderSentFor?.getTime() === s.paidUntil!.getTime()) continue;
+    // Claim it first, so overlapping runs don't both send; give it back if sending fails.
+    const claim = await db.server.updateMany({
+      where: { id: s.id, paidUntil: s.paidUntil, OR: [{ reminderSentFor: null }, { reminderSentFor: { not: s.paidUntil } }] },
+      data: { reminderSentFor: s.paidUntil },
+    });
+    if (claim.count === 0) continue;
+    if (await sendPlanMail("reminder", s)) result.reminded++;
+    else await db.server.updateMany({ where: { id: s.id, reminderSentFor: s.paidUntil }, data: { reminderSentFor: s.reminderSentFor } });
   }
 
   // Servers created for a payment that never happened free their port and address.

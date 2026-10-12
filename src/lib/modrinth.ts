@@ -6,7 +6,7 @@ import "server-only";
 
 const API = () => process.env.MODRINTH_API_URL ?? "https://api.modrinth.com";
 // Modrinth asks API users to identify themselves.
-const USER_AGENT = "Filipsq/mc-host (mchosting.pl)";
+export const USER_AGENT = "Filipsq/mc-host (mchosting.pl)";
 
 export type ResolvedPack = {
   slug: string;

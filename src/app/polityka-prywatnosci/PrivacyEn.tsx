@@ -33,8 +33,8 @@ export default function PrivacyEn({ site }: { site: string }) {
           </thead>
           <tbody>
             <tr>
-              <td>Email address, password (stored as a hash, never in plain text), date you accepted the Terms</td>
-              <td>Creating and running your Account, including sending password reset links</td>
+              <td>Email address, password (stored as a hash, never in plain text), chosen language, date you accepted the Terms</td>
+              <td>Creating and running your Account, including sending password reset links and emails about payments and the end of a paid Period</td>
               <td>art. 6(1)(b): performing the contract</td>
             </tr>
             <tr>
@@ -88,7 +88,7 @@ export default function PrivacyEn({ site }: { site: string }) {
           contractual clauses.
         </li>
         <li>
-          <strong>Brevo</strong> (France): sending the Service’s emails, such as password reset links; data is
+          <strong>Brevo</strong> (France): sending the Service’s emails, such as password reset links and reminders before a Period ends; data is
           stored in the European Union.
         </li>
         <li>The email provider we use to answer messages.</li>

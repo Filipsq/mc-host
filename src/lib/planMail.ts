@@ -1,0 +1,51 @@
+import "server-only";
+import type { Server, User } from "@prisma/client";
+import { messages, format } from "@/i18n/messages";
+import { defaultLocale, isLocale } from "@/i18n/config";
+import { BRAND_NAME } from "./brand";
+import { buttonMail, sendMail } from "./mail";
+
+// Emails about a server's paid plan: when a payment arrives, a few days
+// before the paid period ends (plans don't renew by themselves), and when
+// the server is suspended for it.
+
+export type PlanMailKind = "paid" | "reminder" | "suspended";
+export type ServerWithOwner = Server & { owner: Pick<User, "email" | "locale"> };
+
+/** How long before the end of a paid period its owner is reminded. */
+export const REMIND_BEFORE_DAYS = 3;
+/** How long the terms promise to keep a suspended server's world. */
+const KEEP_DAYS = 14;
+
+/** Emails the server's owner, in their language. Reports whether it went out; never throws. */
+export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner): Promise<boolean> {
+  const locale = isLocale(server.owner.locale) ? server.owner.locale : defaultLocale;
+  const all = messages[locale];
+  const t = all.planMail[kind];
+  const app = process.env.APP_URL ?? "http://localhost:3000";
+  // Polish time: that's where the servers and players are.
+  const when = (d: Date) =>
+    `${d.toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Warsaw" })}, ${d.toLocaleTimeString(locale, { timeStyle: "short", timeZone: "Europe/Warsaw" })}`;
+  const vars = {
+    server: server.name,
+    plan: all.plans[server.plan],
+    date: server.paidUntil ? when(server.paidUntil) : "",
+    days: KEEP_DAYS,
+  };
+  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" ? "" : "/billing"}`;
+  const mail = buttonMail({
+    to: server.owner.email,
+    subject: format(t.subject, vars),
+    paragraphs: t.paragraphs.map((p) => format(p, vars)),
+    button: t.button,
+    url: page,
+    footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
+  });
+  try {
+    await sendMail(mail);
+    return true;
+  } catch (err) {
+    console.error(`[mail] ${kind} email for server ${server.id} failed:`, err);
+    return false;
+  }
+}

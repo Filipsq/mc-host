@@ -78,7 +78,7 @@ const en: Messages = {
       },
       {
         q: "How can I pay?",
-        a: "By card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). You pay up front for 1 or 3 months, and plans don't renew automatically.",
+        a: "By card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). You pay up front for 1 or 3 months, and plans don't renew automatically. We email you a few days before yours ends.",
       },
       {
         q: "What happens when my paid period ends?",
@@ -186,7 +186,7 @@ const en: Messages = {
     total: "Total",
     checkout: "Go to payment",
     redirecting: "Redirecting to payment...",
-    methods: "Pay by card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). Plans don't renew automatically.",
+    methods: "Pay by card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). Plans don't renew automatically, but we email you before yours ends.",
     credit: "Unused days on your current plan are converted to the new plan.",
     extendNote: "The time you pay for is added to your current period.",
     success: "Thank you! Payment received. Your server will start in a moment.",
@@ -434,6 +434,33 @@ const en: Messages = {
       tooMany: "A server can have up to 50 plugins from the panel.",
       applyFailed: "We saved the list but couldn't restart the server. Please try again in a moment.",
       failed: "That didn't work. Please try again in a moment.",
+    },
+  },
+  planMail: {
+    footer: "This email is about your server at {brand}. Questions? Write to us: {contact}",
+    paid: {
+      subject: "{server} is paid for",
+      paragraphs: [
+        "Thank you! Your payment for {server} has arrived.",
+        "The {plan} plan is paid until {date}. Plans don't renew by themselves: we'll email you a few days before it ends.",
+      ],
+      button: "Go to your server",
+    },
+    reminder: {
+      subject: "{server} is paid until {date}",
+      paragraphs: [
+        "The {plan} plan of {server} ends on {date}.",
+        "After that the server stops. We keep its world and backups for at least {days} days, but nobody can play on it. You can extend it in the panel by card, BLIK or Przelewy24.",
+      ],
+      button: "Extend your server",
+    },
+    suspended: {
+      subject: "{server} is suspended",
+      paragraphs: [
+        "The paid period of {server} ended on {date}, so the server has stopped.",
+        "We keep its world and backups for at least {days} days. Pay for another period and it comes back just as it was.",
+      ],
+      button: "Pay for your server",
     },
   },
   legal: {

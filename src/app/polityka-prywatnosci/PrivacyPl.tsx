@@ -32,8 +32,8 @@ export default function PrivacyPl({ site }: { site: string }) {
           </thead>
           <tbody>
             <tr>
-              <td>Adres e-mail, hasło (zapisane jako skrót, nie jawnym tekstem), data akceptacji Regulaminu</td>
-              <td>Założenie i prowadzenie Konta, w tym wysyłka linku do zmiany hasła</td>
+              <td>Adres e-mail, hasło (zapisane jako skrót, nie jawnym tekstem), wybrany język, data akceptacji Regulaminu</td>
+              <td>Założenie i prowadzenie Konta, w tym wysyłka linku do zmiany hasła oraz wiadomości o płatnościach i końcu opłaconego Okresu</td>
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
             </tr>
             <tr>
@@ -87,7 +87,7 @@ export default function PrivacyPl({ site }: { site: string }) {
           standardowych klauzul umownych.
         </li>
         <li>
-          <strong>Brevo</strong> (Francja) – wysyłka wiadomości e-mail z Serwisu, np. linku do zmiany hasła; dane
+          <strong>Brevo</strong> (Francja) – wysyłka wiadomości e-mail z Serwisu, np. linku do zmiany hasła i przypomnienia o końcu Okresu; dane
           są przechowywane w Unii Europejskiej.
         </li>
         <li>Dostawca poczty e-mail, przez którą odpowiadamy na wiadomości.</li>

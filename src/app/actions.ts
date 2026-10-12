@@ -6,10 +6,10 @@ import { revalidatePath } from "next/cache";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
 import { credentialsSchema } from "@/lib/credentials";
-import { signIn, signOut } from "@/auth";
+import { auth, signIn, signOut } from "@/auth";
 import { CURRENCY_COOKIE, LOCALE_COOKIE, isCurrency, isLocale } from "@/i18n/config";
 import { format, type Messages } from "@/i18n/messages";
-import { getMessages } from "@/i18n/server";
+import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { buttonMail, sendMail } from "@/lib/mail";
 import { RESET_LINK_MINUTES, createResetToken, resetPassword } from "@/lib/passwordReset";
@@ -34,8 +34,9 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   if (await db.user.findUnique({ where: { email } })) {
     return { error: "emailTaken", email };
   }
+  const { locale } = await getPreferences();
   await db.user.create({
-    data: { email, passwordHash: await bcrypt.hash(password, 12), termsAcceptedAt: new Date() },
+    data: { email, passwordHash: await bcrypt.hash(password, 12), termsAcceptedAt: new Date(), locale },
   });
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
@@ -107,7 +108,12 @@ export async function setPreferences(form: FormData) {
   const jar = await cookies();
   const locale = form.get("locale");
   const currency = form.get("currency");
-  if (isLocale(locale)) jar.set(LOCALE_COOKIE, locale, { maxAge: YEAR, sameSite: "lax", path: "/" });
+  if (isLocale(locale)) {
+    jar.set(LOCALE_COOKIE, locale, { maxAge: YEAR, sameSite: "lax", path: "/" });
+    // Emails follow the language the user reads the site in.
+    const userId = (await auth())?.user?.id;
+    if (userId) await db.user.updateMany({ where: { id: userId }, data: { locale } });
+  }
   if (isCurrency(currency)) jar.set(CURRENCY_COOKIE, currency, { maxAge: YEAR, sameSite: "lax", path: "/" });
   revalidatePath("/", "layout");
 }

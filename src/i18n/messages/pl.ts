@@ -76,7 +76,7 @@ const pl = {
       },
       {
         q: "Czym mogę zapłacić?",
-        a: "Kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Płacisz z góry za 1 lub 3 miesiące, a plan nie odnawia się sam.",
+        a: "Kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Płacisz z góry za 1 lub 3 miesiące, a plan nie odnawia się sam. Kilka dni przed końcem przypomnimy Ci mailem.",
       },
       {
         q: "Co się stanie, gdy skończy się opłacony okres?",
@@ -185,7 +185,7 @@ const pl = {
     total: "Razem",
     checkout: "Przejdź do płatności",
     redirecting: "Przekierowanie do płatności...",
-    methods: "Zapłacisz kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Plan nie odnawia się sam.",
+    methods: "Zapłacisz kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Plan nie odnawia się sam, ale przed końcem okresu przypomnimy Ci mailem.",
     credit: "Niewykorzystane dni obecnego planu przeliczymy na nowy plan.",
     extendNote: "Opłacony czas doliczymy do obecnego okresu.",
     success: "Dziękujemy! Płatność przyjęta. Serwer uruchomi się za chwilę.",
@@ -433,6 +433,33 @@ const pl = {
       tooMany: "Serwer może mieć najwyżej 50 pluginów z panelu.",
       applyFailed: "Zapisaliśmy listę, ale nie udało się uruchomić serwera ponownie. Spróbuj za chwilę.",
       failed: "Nie udało się. Spróbuj ponownie za chwilę.",
+    },
+  },
+  planMail: {
+    footer: "Ten mail dotyczy Twojego serwera w {brand}. Masz pytania? Napisz do nas: {contact}",
+    paid: {
+      subject: "Opłacono serwer {server}",
+      paragraphs: [
+        "Dziękujemy! Płatność za serwer {server} dotarła.",
+        "Plan {plan} jest opłacony do {date}. Plan nie odnawia się sam: kilka dni przed końcem przypomnimy Ci o tym mailem.",
+      ],
+      button: "Przejdź do serwera",
+    },
+    reminder: {
+      subject: "Serwer {server} jest opłacony do {date}",
+      paragraphs: [
+        "Plan {plan} serwera {server} kończy się {date}.",
+        "Potem serwer się zatrzyma. Świat i kopie zapasowe zachowamy przez co najmniej {days} dni, ale nikt nie będzie mógł na nim grać. Przedłużysz go w panelu kartą, BLIK-iem albo przez Przelewy24.",
+      ],
+      button: "Przedłuż serwer",
+    },
+    suspended: {
+      subject: "Serwer {server} jest zawieszony",
+      paragraphs: [
+        "Opłacony okres serwera {server} minął {date}, więc serwer jest zatrzymany.",
+        "Świat i kopie zapasowe zachowamy przez co najmniej {days} dni. Gdy opłacisz kolejny okres, serwer wróci taki, jaki był.",
+      ],
+      button: "Opłać serwer",
     },
   },
   legal: {

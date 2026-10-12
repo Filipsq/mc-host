@@ -1,4 +1,4 @@
-import { iconPath } from "@/lib/modrinth";
+import { iconPath, USER_AGENT } from "@/lib/modrinth";
 
 // Plugin icons from Modrinth's CDN, passed through our server so that
 // visitors' browsers don't contact a third party just by opening the page.
@@ -10,7 +10,11 @@ export async function GET(req: Request) {
   const path = iconPath(new URL(req.url).searchParams.get("src") ?? "");
   if (!path) return new Response("Not found", { status: 404 });
   try {
-    const res = await fetch(CDN() + path, { signal: AbortSignal.timeout(10_000), cache: "no-store" });
+    const res = await fetch(CDN() + path, {
+      headers: { "User-Agent": USER_AGENT },
+      signal: AbortSignal.timeout(10_000),
+      cache: "no-store",
+    });
     const type = res.headers.get("content-type")?.split(";")[0] ?? "";
     const body = res.ok && TYPES.includes(type) ? await res.arrayBuffer() : null;
     if (!body || body.byteLength > 512 * 1024) return new Response("Not found", { status: 404 });

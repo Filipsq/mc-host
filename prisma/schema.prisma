@@ -16,6 +16,8 @@ model User {
   termsAcceptedAt   DateTime?
   // Sessions that signed in before this are no longer accepted (see src/lib/session.ts).
   passwordChangedAt DateTime?
+  // The site's language the user last chose; emails are written in it.
+  locale            String          @default("pl")
   servers           Server[]
   payments          Payment[]
   passwordResets    PasswordReset[]
@@ -88,6 +90,8 @@ model Server {
   subdomain        String?      @unique
   // Paid plans are prepaid; the server is suspended once this passes.
   paidUntil        DateTime?
+  // The paidUntil its owner was last reminded of, so each period gets one reminder.
+  reminderSentFor  DateTime?
   payments         Payment[]
   owner            User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId          String

@@ -53,6 +53,8 @@ async function requireUser() {
 
 async function checkoutUrl(user: { id: string; email: string }, server: { id: string; name: string }, plan: z.infer<typeof planField>, months: (typeof PERIOD_MONTHS)[number]) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
+  // Emails about this payment go out in the language it was made in.
+  await db.user.updateMany({ where: { id: user.id }, data: { locale } });
   return startCheckout({
     user,
     server,
