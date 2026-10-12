@@ -9,15 +9,15 @@ type PlanSpec = {
   maxPlayers: number | null; // null = unlimited
   alwaysOn: boolean;
   backupsKept: number;
-  // Monthly price set per currency (not converted), matching what Stripe will charge.
+  // Price for 30 days, set per currency (not converted); other periods follow from it (periods.ts).
   price: Record<Currency, number>;
 };
 
 export const plans: PlanSpec[] = [
   { id: "FREE", cpus: 1, ramGb: 2, diskGb: 2, maxPlayers: 10, alwaysOn: false, backupsKept: 0, price: { PLN: 0, EUR: 0, USD: 0, GBP: 0 } },
-  { id: "STARTER", cpus: 2, ramGb: 3, diskGb: 10, maxPlayers: 20, alwaysOn: true, backupsKept: 1, price: { PLN: 15, EUR: 4, USD: 4, GBP: 3 } },
-  { id: "STANDARD", cpus: 3, ramGb: 6, diskGb: 20, maxPlayers: 40, alwaysOn: true, backupsKept: 7, price: { PLN: 35, EUR: 9, USD: 10, GBP: 8 } },
-  { id: "PRO", cpus: 4, ramGb: 10, diskGb: 40, maxPlayers: null, alwaysOn: true, backupsKept: 14, price: { PLN: 59, EUR: 15, USD: 16, GBP: 13 } },
+  { id: "STARTER", cpus: 2, ramGb: 3, diskGb: 10, maxPlayers: 20, alwaysOn: true, backupsKept: 1, price: { PLN: 12, EUR: 3, USD: 3.5, GBP: 2.5 } },
+  { id: "STANDARD", cpus: 3, ramGb: 6, diskGb: 20, maxPlayers: 40, alwaysOn: true, backupsKept: 7, price: { PLN: 25, EUR: 6, USD: 7, GBP: 5.5 } },
+  { id: "PRO", cpus: 4, ramGb: 10, diskGb: 40, maxPlayers: null, alwaysOn: true, backupsKept: 14, price: { PLN: 39, EUR: 9.5, USD: 11, GBP: 8.5 } },
 ];
 
 export const planById = (id: Plan) => plans.find((p) => p.id === id)!;

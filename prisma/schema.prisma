@@ -112,7 +112,7 @@ enum PaymentStatus {
   EXPIRED
 }
 
-// One Stripe Checkout payment buying `months` of `plan` for a server.
+// One Stripe Checkout payment buying `days` of `plan` for a server.
 model Payment {
   id              String        @id @default(cuid())
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -120,7 +120,7 @@ model Payment {
   server          Server?       @relation(fields: [serverId], references: [id], onDelete: SetNull)
   serverId        String?
   plan            Plan
-  months          Int
+  days            Int
   amount          Int // in the currency's minor unit (grosze, cents)
   currency        String
   status          PaymentStatus @default(PENDING)

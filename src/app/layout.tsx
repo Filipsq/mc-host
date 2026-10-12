@@ -8,13 +8,17 @@ import { auth } from "@/auth";
 import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
 import { getMessages, getPreferences } from "@/i18n/server";
+import { format } from "@/i18n/messages";
 import { BRAND_NAME } from "@/lib/brand";
+import { formatPrice, planById } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [t, { locale }] = await Promise.all([getMessages(), getPreferences()]);
-  const title = `${BRAND_NAME} · ${t.meta.title}`;
+  const [t, { locale, currency }] = await Promise.all([getMessages(), getPreferences()]);
+  // "from" the cheapest paid plan, in the visitor's currency.
+  const from = formatPrice(planById("STARTER").price[currency], currency, locale);
+  const title = `${BRAND_NAME} · ${format(t.meta.title, { price: from })}`;
   return {
     metadataBase: new URL(siteUrl()),
     title: { default: title, template: `%s · ${BRAND_NAME}` },

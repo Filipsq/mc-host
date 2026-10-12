@@ -168,7 +168,7 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
         key={modded ? "modded" : "any"}
         plans={planChoices}
         defaultPlan={plan}
-        periodLabels={{ 1: billing.months1, 3: billing.months3 }}
+        periodLabels={{ days: billing.periodDays, off: billing.periodOff }}
         labels={{ plan: t.plan, period: t.period, total: billing.total }}
         formatMoney={money}
         onPlanChange={setPlan}

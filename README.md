@@ -11,7 +11,7 @@ one Docker container per server. The agent also routes Java players by the addre
 
 ## Payments
 
-Paid plans are prepaid for 1 or 3 months through Stripe Checkout (card, BLIK, Przelewy24), not
+Paid plans are prepaid for 7, 30, 60 or 90 days (60 days 5% off, 90 days 10% off) through Stripe Checkout (card, BLIK, Przelewy24), not
 auto-renewing subscriptions, since BLIK and Przelewy24 can't charge automatically. The flow:
 
 1. The panel creates a `Payment` and a Checkout Session (`src/lib/billing.ts`).

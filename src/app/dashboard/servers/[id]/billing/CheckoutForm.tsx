@@ -26,7 +26,7 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
       <PlanPicker
         plans={plans}
         defaultPlan={defaultPlan}
-        periodLabels={{ 1: t.months1, 3: t.months3 }}
+        periodLabels={{ days: t.periodDays, off: t.periodOff }}
         labels={{ ...labels, total: t.total }}
         formatMoney={money}
       />

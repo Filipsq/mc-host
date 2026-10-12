@@ -38,7 +38,7 @@ export default function TermsEn({ site }: { site: string }) {
               <strong>Plan</strong>: the Server’s resources (memory, CPU, disk space, player slots, backups) described in the{" "}
               <Link href="/#cennik">Pricing</Link>, either free or paid;
             </li>
-            <li><strong>Period</strong>: prepaid time on a paid Plan: 30 days (1 month) or 90 days (3 months).</li>
+            <li><strong>Period</strong>: prepaid time on a paid Plan: 7, 30, 60 or 90 days.</li>
           </ul>
         </li>
         <li>
@@ -90,7 +90,7 @@ export default function TermsEn({ site }: { site: string }) {
           currency you choose: PLN, EUR, USD or GBP.
         </li>
         <li>
-          A paid Plan is paid in advance for a Period of 30 or 90 days, by card, BLIK or Przelewy24 (BLIK and
+          A paid Plan is paid in advance for a Period of 7, 30, 60 or 90 days, by card, BLIK or Przelewy24 (BLIK and
           Przelewy24 for payments in PLN). Payments are handled by Stripe Payments Europe, Ltd.
         </li>
         <li>

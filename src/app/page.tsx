@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { formatPrice, planById, plans } from "@/lib/plans";
+import { periodPrice } from "@/lib/periods";
 
 const featureIcons = {
   free: Gift,
@@ -104,6 +105,11 @@ export default async function Home() {
                   <h3>{t.plans[p.id]}</h3>
                   <p className="price">
                     {formatPrice(p.price[currency], currency, locale)} <span>{h.perMonth}</span>
+                  </p>
+                  <p className="price-note">
+                    {p.price[currency] > 0
+                      ? format(h.longerPeriod, { price: formatPrice(periodPrice(p.price[currency], 90), currency, locale) })
+                      : h.freeForever}
                   </p>
                   <ul className="features">
                     <li><Check size={16} aria-hidden /> {format(t.plans.ram, { gb: p.ramGb })}</li>

@@ -39,7 +39,7 @@ export default function PaymentTable({ rows, all, f, showUser = true, showServer
                   {p.server ? <Link href={`/admin/servers/${p.server.id}`}>{p.server.name}</Link> : <span className="muted">{t.deletedServer}</span>}
                 </td>
               )}
-              <td className="nowrap">{format(t.months, { plan: all.plans[p.plan], n: p.months })}</td>
+              <td className="nowrap">{format(t.paidDays, { plan: all.plans[p.plan], n: p.days })}</td>
               <td className="nowrap">{f.money(p.amount, p.currency)}</td>
               <td>
                 <span className={`pay-status ${p.status.toLowerCase()}`}>{t.paymentStatuses[p.status]}</span>

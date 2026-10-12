@@ -9,7 +9,8 @@ import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain } from "@/lib/servers";
 import { planById } from "@/lib/plans";
-import { PERIOD_MONTHS, startCheckout } from "@/lib/billing";
+import { startCheckout } from "@/lib/billing";
+import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
 import {
   DIFFICULTIES,
@@ -29,7 +30,10 @@ export type ServerErrorCode = keyof Messages["server"]["errors"];
 export type CreateServerState = { error?: ServerErrorCode; values?: Record<string, string> };
 
 const planField = z.enum(["FREE", "STARTER", "STANDARD", "PRO"]);
-const monthsField = z.coerce.number().pipe(z.union(PERIOD_MONTHS.map((m) => z.literal(m))));
+const daysField = z.coerce
+  .number()
+  .refine((d): d is PeriodDays => (PERIOD_DAYS as readonly number[]).includes(d))
+  .transform((d) => d as PeriodDays);
 
 const createSchema = z.object({
   name: z
@@ -38,7 +42,7 @@ const createSchema = z.object({
     .regex(/^[\p{L}\p{N} _-]{3,32}$/u),
   edition: z.enum(["JAVA", "BEDROCK"]),
   plan: planField,
-  months: monthsField,
+  days: daysField,
   subdomain: z.string().trim().toLowerCase().optional(),
   kind: z.enum(SERVER_KINDS).default("vanilla"),
   pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
@@ -51,7 +55,7 @@ async function requireUser() {
   return { id: session.user.id, email: session.user.email ?? "" };
 }
 
-async function checkoutUrl(user: { id: string; email: string }, server: { id: string; name: string }, plan: z.infer<typeof planField>, months: (typeof PERIOD_MONTHS)[number]) {
+async function checkoutUrl(user: { id: string; email: string }, server: { id: string; name: string }, plan: z.infer<typeof planField>, days: PeriodDays) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
   await db.user.updateMany({ where: { id: user.id }, data: { locale } });
@@ -59,10 +63,10 @@ async function checkoutUrl(user: { id: string; email: string }, server: { id: st
     user,
     server,
     plan,
-    months,
+    days,
     currency,
     locale,
-    productName: format(t.billing.productName, { plan: t.plans[plan], server: server.name, months }),
+    productName: format(t.billing.productName, { plan: t.plans[plan], server: server.name, days }),
     // Both checkout forms require the start-now consent before getting here.
     startConsent: true,
   });
@@ -78,7 +82,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
       field === "edition" ? "invalidEdition" : field === "name" ? "invalidName" : field === "kind" ? "invalidKind" : "invalidPlan";
     return { error, values };
   }
-  const { name, edition, plan, months } = parsed.data;
+  const { name, edition, plan, days } = parsed.data;
   const subdomain = edition === "JAVA" ? (parsed.data.subdomain ?? "") : null;
   if (subdomain !== null && !isValidSubdomain(subdomain)) return { error: "invalidSubdomain", values };
 
@@ -134,7 +138,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (plan !== "FREE") {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, months);
+      url = await checkoutUrl(user, server, plan, days);
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -159,7 +163,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
 
 export type CheckoutState = { error?: ServerErrorCode };
 
-const checkoutSchema = z.object({ plan: planField.exclude(["FREE"]), months: monthsField });
+const checkoutSchema = z.object({ plan: planField.exclude(["FREE"]), days: daysField });
 
 /** Pays for a server: first payment, renewal, or plan change. */
 export async function checkoutAction(id: string, _: CheckoutState, form: FormData): Promise<CheckoutState> {
@@ -176,7 +180,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
 
   let url: string;
   try {
-    url = await checkoutUrl(user, server, parsed.data.plan, parsed.data.months);
+    url = await checkoutUrl(user, server, parsed.data.plan, parsed.data.days);
   } catch (err) {
     console.error("checkout failed", server.id, err);
     return { error: "paymentsUnavailable" };

@@ -1,6 +1,6 @@
 const pl = {
   meta: {
-    title: "Hosting serwerów Minecraft za darmo i od 15 zł",
+    title: "Hosting serwerów Minecraft za darmo i od {price}",
     description:
       "Darmowy i płatny hosting serwerów Minecraft na Javę i Bedrock. Załóż serwer w minutę, z konsolą, pluginami, modami i kopiami zapasowymi. Płatność BLIK, Przelewy24 i kartą.",
   },
@@ -50,7 +50,7 @@ const pl = {
       },
       payments: {
         title: "BLIK i Przelewy24",
-        text: "Płacisz z góry za miesiąc lub trzy. Nic nie odnawia się samo, więc nie ma niespodzianek.",
+        text: "Płacisz z góry za 7, 30, 60 lub 90 dni, a im dłużej, tym taniej. Nic nie odnawia się samo, więc nie ma niespodzianek.",
       },
     },
     stepsTitle: "Jak to działa",
@@ -60,8 +60,10 @@ const pl = {
       { title: "Wpisz adres i graj", text: "Skopiuj adres serwera do Minecrafta i zaproś znajomych." },
     ],
     pricingTitle: "Cennik",
-    pricingSubtitle: "Płacisz z góry za 1 lub 3 miesiące. Bez subskrypcji i automatycznych odnowień.",
-    perMonth: "/ mies.",
+    pricingSubtitle: "Płacisz z góry za 7, 30, 60 lub 90 dni: za 60 dni 5% taniej, za 90 dni 10% taniej. Bez subskrypcji i automatycznych odnowień.",
+    perMonth: "/ 30 dni",
+    longerPeriod: "albo {price} za 90 dni (−10%)",
+    freeForever: "Bez karty i bez limitu czasu",
     recommended: "Polecany",
     startFree: "Zacznij za darmo",
     choosePlan: "Wybierz plan",
@@ -78,7 +80,7 @@ const pl = {
       },
       {
         q: "Czym mogę zapłacić?",
-        a: "Kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Płacisz z góry za 1 lub 3 miesiące, a plan nie odnawia się sam. Kilka dni przed końcem przypomnimy Ci mailem.",
+        a: "Kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Płacisz z góry za 7, 30, 60 lub 90 dni (za 60 dni 5% taniej, za 90 dni 10% taniej), a plan nie odnawia się sam. Kilka dni przed końcem przypomnimy Ci mailem.",
       },
       {
         q: "Co się stanie, gdy skończy się opłacony okres?",
@@ -183,8 +185,8 @@ const pl = {
     expiredOn: "Wygasł {date}",
     freeForever: "Plan darmowy, bez opłat",
     choosePlan: "Wybierz plan",
-    months1: "1 miesiąc",
-    months3: "3 miesiące",
+    periodDays: "{days} dni",
+    periodOff: "−{n}%",
     total: "Razem",
     checkout: "Przejdź do płatności",
     redirecting: "Przekierowanie do płatności...",
@@ -195,7 +197,7 @@ const pl = {
     cancelled: "Płatność anulowana. Możesz spróbować ponownie.",
     awaiting: "Ten serwer czeka na płatność. Uruchomimy go zaraz po jej potwierdzeniu.",
     suspended: "Serwer jest zawieszony, bo skończył się opłacony okres. Świat zachowamy do {date}, potem serwer zostanie usunięty. Opłać serwer, aby go przywrócić.",
-    productName: "{plan}: {server}, {months} mies.",
+    productName: "{plan}: {server}, {days} dni",
   },
   server: {
     subdomain: "Adres serwera",
@@ -565,7 +567,7 @@ const pl = {
       amount: "Kwota",
       paidAt: "Opłacona",
     },
-    months: "{plan}, {n} mies.",
+    paidDays: "{plan}, {n} dni",
     deletedServer: "usunięty serwer",
     adminChip: "admin",
     details: "Szczegóły",

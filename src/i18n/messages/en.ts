@@ -2,7 +2,7 @@ import type { Messages } from "../messages";
 
 const en: Messages = {
   meta: {
-    title: "Free and paid Minecraft server hosting",
+    title: "Free and paid Minecraft server hosting from {price}",
     description:
       "Free and paid Minecraft server hosting for Java and Bedrock. Create a server in a minute, with a console, plugins, mods and backups.",
   },
@@ -52,7 +52,7 @@ const en: Messages = {
       },
       payments: {
         title: "BLIK and Przelewy24",
-        text: "Pay up front for one or three months. Nothing renews by itself, so there are no surprises.",
+        text: "Pay up front for 7, 30, 60 or 90 days, and the longer, the cheaper. Nothing renews by itself, so there are no surprises.",
       },
     },
     stepsTitle: "How it works",
@@ -62,8 +62,10 @@ const en: Messages = {
       { title: "Enter the address and play", text: "Copy the server address into Minecraft and invite your friends." },
     ],
     pricingTitle: "Pricing",
-    pricingSubtitle: "Pay up front for 1 or 3 months. No subscriptions and no automatic renewals.",
-    perMonth: "/ month",
+    pricingSubtitle: "Pay up front for 7, 30, 60 or 90 days: 60 days are 5% cheaper, 90 days 10% cheaper. No subscriptions and no automatic renewals.",
+    perMonth: "/ 30 days",
+    longerPeriod: "or {price} for 90 days (−10%)",
+    freeForever: "No card and no time limit",
     recommended: "Recommended",
     startFree: "Start for free",
     choosePlan: "Choose plan",
@@ -80,7 +82,7 @@ const en: Messages = {
       },
       {
         q: "How can I pay?",
-        a: "By card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). You pay up front for 1 or 3 months, and plans don't renew automatically. We email you a few days before yours ends.",
+        a: "By card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). You pay up front for 7, 30, 60 or 90 days (60 days are 5% cheaper, 90 days 10% cheaper), and plans don't renew automatically. We email you a few days before yours ends.",
       },
       {
         q: "What happens when my paid period ends?",
@@ -184,8 +186,8 @@ const en: Messages = {
     expiredOn: "Expired on {date}",
     freeForever: "Free plan, no charges",
     choosePlan: "Choose a plan",
-    months1: "1 month",
-    months3: "3 months",
+    periodDays: "{days} days",
+    periodOff: "−{n}%",
     total: "Total",
     checkout: "Go to payment",
     redirecting: "Redirecting to payment...",
@@ -196,7 +198,7 @@ const en: Messages = {
     cancelled: "Payment cancelled. You can try again.",
     awaiting: "This server is waiting for payment. We'll start it as soon as the payment is confirmed.",
     suspended: "This server is suspended because its paid period ended. We keep the world until {date}; then the server is deleted. Pay to bring it back.",
-    productName: "{plan}: {server}, {months} mo.",
+    productName: "{plan}: {server}, {days} days",
   },
   server: {
     subdomain: "Server address",
@@ -566,7 +568,7 @@ const en: Messages = {
       amount: "Amount",
       paidAt: "Paid at",
     },
-    months: "{plan}, {n} mo.",
+    paidDays: "{plan}, {n} days",
     deletedServer: "deleted server",
     adminChip: "admin",
     details: "Details",

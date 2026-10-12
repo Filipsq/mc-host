@@ -252,6 +252,7 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 }
 .price { margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; }
 .price span { font-size: 0.95rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+.price-note { margin: -0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
 .features { display: flex; flex-direction: column; gap: 9px; margin: 0; font-size: 0.95rem; }
 .features li { display: flex; gap: 8px; align-items: flex-start; }
 .features svg { color: var(--accent); flex-shrink: 0; margin-top: 3px; }
@@ -436,6 +437,7 @@ label.choice {
   background: var(--bg); transition: border-color 0.15s, background 0.15s;
 }
 label.choice:hover { border-color: var(--muted); }
+label.choice .off { margin-left: 0.4rem; padding: 0.05rem 0.4rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.8rem; font-weight: 700; }
 label.choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
 label.choice.disabled { opacity: 0.5; cursor: not-allowed; }
 .option-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }

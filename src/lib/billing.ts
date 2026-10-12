@@ -5,23 +5,21 @@ import { stripe } from "./stripe";
 import * as agent from "./agent";
 import { agentSpec, destroyServer } from "./servers";
 import { planById } from "./plans";
+import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
 import { KEEP_DAYS, REMIND_BEFORE_DAYS, WARN_BEFORE_DELETE_DAYS, sendPlanMail } from "./planMail";
 import type { Currency, Locale } from "@/i18n/config";
 
-// Paid plans are prepaid in 30-day blocks rather than auto-renewing
+// Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
 // subscriptions: BLIK and Przelewy24 can't charge automatically, and
 // prepaid "extend your server" is what Polish players are used to.
 
 const DAY = 24 * 60 * 60 * 1000;
 // What the plan emails need to know about the server's owner.
 const OWNER = { owner: { select: { email: true, locale: true } } } as const;
-export const PERIOD_MONTHS = [1, 3] as const;
-export type PeriodMonths = (typeof PERIOD_MONTHS)[number];
-
-export function priceFor(plan: Plan, months: number, currency: Currency) {
-  return planById(plan).price[currency] * months;
+export function priceFor(plan: Plan, days: PeriodDays, currency: Currency) {
+  return periodPrice(planById(plan).price[currency], days);
 }
 
 /** Creates a pending payment and a Stripe Checkout page for it; returns the page URL. */
@@ -29,16 +27,16 @@ export async function startCheckout(opts: {
   user: Pick<User, "id" | "email">;
   server: Pick<Server, "id" | "name">;
   plan: Plan;
-  months: PeriodMonths;
+  days: PeriodDays;
   currency: Currency;
   locale: Locale;
   productName: string;
   startConsent: boolean; // asked for the server to start before the withdrawal period ends
 }) {
-  const { user, server, plan, months, currency, locale, startConsent } = opts;
-  const amount = Math.round(priceFor(plan, months, currency) * 100);
+  const { user, server, plan, days, currency, locale, startConsent } = opts;
+  const amount = Math.round(priceFor(plan, days, currency) * 100);
   const payment = await db.payment.create({
-    data: { userId: user.id, serverId: server.id, plan, months, amount, currency, startConsent },
+    data: { userId: user.id, serverId: server.id, plan, days, amount, currency, startConsent },
   });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
@@ -86,7 +84,7 @@ export async function fulfillPayment(paymentId: string) {
     const server = payment.server;
     if (!server) return null; // deleted before the payment went through
 
-    const paidUntil = new Date(creditStart(server, payment.plan, now).getTime() + payment.months * 30 * DAY);
+    const paidUntil = new Date(creditStart(server, payment.plan, now).getTime() + payment.days * DAY);
     const planChanged = server.plan !== payment.plan;
     const needsHost = planChanged || server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED";
     return tx.server.update({

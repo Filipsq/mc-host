@@ -2,23 +2,27 @@
 
 import { useState } from "react";
 import type { Plan } from "@prisma/client";
+import { format } from "@/i18n/messages";
+import type { Currency } from "@/i18n/config";
+import { formatPrice } from "@/lib/plans";
+import { DEFAULT_PERIOD, PERIODS, periodPrice, type PeriodDays } from "@/lib/periods";
 
 export type PlanOption = { id: Plan; name: string; summary: string; monthly: number; disabledNote?: string };
 
 type Props = {
   plans: PlanOption[];
   defaultPlan: Plan;
-  periodLabels: { 1: string; 3: string };
+  periodLabels: { days: string; off: string }; // "{days} days", "−{n}%"
   labels: { plan: string; period: string; total: string };
   formatMoney: { locale: string; currency: string };
   onPlanChange?: (plan: Plan) => void;
 };
 
-/** Radio cards for plan + period, with a live total. Submits `plan` and `months`. */
+/** Radio cards for plan + period, with a live total. Submits `plan` and `days`. */
 export default function PlanPicker({ plans, defaultPlan, periodLabels, labels, formatMoney, onPlanChange }: Props) {
   const [plan, setPlan] = useState<Plan>(defaultPlan);
-  const [months, setMonths] = useState<1 | 3>(1);
-  const money = new Intl.NumberFormat(formatMoney.locale, { style: "currency", currency: formatMoney.currency, maximumFractionDigits: 2, minimumFractionDigits: 0 });
+  const [days, setDays] = useState<PeriodDays>(DEFAULT_PERIOD);
+  const money = { format: (n: number) => formatPrice(n, formatMoney.currency as Currency, formatMoney.locale) };
   const selected = plans.find((p) => p.id === plan);
   const paid = plan !== "FREE";
 
@@ -53,20 +57,21 @@ export default function PlanPicker({ plans, defaultPlan, periodLabels, labels, f
         <fieldset className="stack">
           <legend>{labels.period}</legend>
           <div className="row" style={{ justifyContent: "flex-start" }}>
-            {([1, 3] as const).map((m) => (
-              <label key={m} className="choice">
-                <input type="radio" name="months" value={m} checked={months === m} onChange={() => setMonths(m)} />
-                {periodLabels[m]}
+            {PERIODS.map((p) => (
+              <label key={p.days} className="choice">
+                <input type="radio" name="days" value={p.days} checked={days === p.days} onChange={() => setDays(p.days)} />
+                {format(periodLabels.days, { days: p.days })}
+                {p.discount > 0 && <span className="off">{format(periodLabels.off, { n: p.discount })}</span>}
               </label>
             ))}
           </div>
         </fieldset>
       ) : (
-        <input type="hidden" name="months" value="1" />
+        <input type="hidden" name="days" value={DEFAULT_PERIOD} />
       )}
       {paid && selected && (
         <p className="total">
-          {labels.total}: <strong>{money.format(selected.monthly * months)}</strong>
+          {labels.total}: <strong>{money.format(periodPrice(selected.monthly, days))}</strong>
         </p>
       )}
     </div>

@@ -38,7 +38,7 @@ export default function TermsPl({ site }: { site: string }) {
               <strong>Plan</strong> – pakiet zasobów Serwera (pamięć, procesor, miejsce na dysku, liczba graczy, kopie zapasowe)
               opisany w <Link href="/#cennik">Cenniku</Link>: darmowy albo płatny;
             </li>
-            <li><strong>Okres</strong> – opłacony z góry czas korzystania z płatnego Planu: 30 dni (1 miesiąc) lub 90 dni (3 miesiące).</li>
+            <li><strong>Okres</strong> – opłacony z góry czas korzystania z płatnego Planu: 7, 30, 60 lub 90 dni.</li>
           </ul>
         </li>
         <li>
@@ -97,7 +97,7 @@ export default function TermsPl({ site }: { site: string }) {
           wybranej walucie: PLN, EUR, USD lub GBP.
         </li>
         <li>
-          Płatny Plan opłaca się z góry za Okres 30 lub 90 dni, kartą płatniczą, BLIK-iem lub przez Przelewy24 (BLIK
+          Płatny Plan opłaca się z góry za Okres 7, 30, 60 lub 90 dni, kartą płatniczą, BLIK-iem lub przez Przelewy24 (BLIK
           i Przelewy24 przy płatności w PLN). Płatności obsługuje Stripe Payments Europe, Ltd.
         </li>
         <li>
