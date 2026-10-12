@@ -69,5 +69,5 @@ their last backup. A running server's saving is paused while its world is copied
 
 Each server gets the `itzg/minecraft-server` (Paper, with the Java its version needs: 17 for
 1.17–1.19, 21 for 1.20–1.21.11, 25 for 26.1 onwards) or `itzg/minecraft-bedrock-server` image,
-a memory and CPU limit from its plan, its world in a `mc-<id>` volume, and up to 3 automatic
+a memory limit and a CPU share from its plan (it may borrow one more idle core), its world in a `mc-<id>` volume, and up to 3 automatic
 restarts after a crash.

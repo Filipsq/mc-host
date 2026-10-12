@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -408,12 +409,21 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		if req.Kind != "modpack" {
 			env = append(env, pluginEnv(req.Kind, req.Plugins)...)
 		}
-		env = append(env, fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "ENABLE_RCON=true",
+		// Aikar's garbage collector flags avoid the pauses that stall chunk loading.
+		env = append(env, fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
 			// The panel's list replaces whatever the server had, so removing a player works.
 			env = append(env, "WHITELIST="+strings.Join(req.Players, ","), "EXISTING_WHITELIST_FILE=SYNCHRONIZE", "ENFORCE_WHITELIST=TRUE")
 		}
+		// Fewer chunks around each player (Minecraft's default is 10) means new
+		// ground appears faster when someone runs or flies; free servers share
+		// less CPU, so they see a little less far.
+		view := "10"
+		if req.Autostop {
+			view = "8"
+		}
+		env = append(env, "VIEW_DISTANCE="+view, "SIMULATION_DISTANCE=6")
 		if req.Autostop {
 			// The image stops the server by itself once nobody has played for this long.
 			secs := fmt.Sprint(int(a.idle.Seconds()))
@@ -444,8 +454,12 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		"HostConfig": map[string]any{
 			"Memory":     int64(limitMb) * 1024 * 1024,
 			"MemorySwap": int64(limitMb) * 1024 * 1024, // no swap
-			"NanoCpus":   int64(req.CPUs * 1e9),
-			"PidsLimit":  512,
+			// A server may borrow one more core while the machine has one idle
+			// (chunk generation is what needs it); when cores are busy, Docker
+			// shares them in proportion to each plan's cores.
+			"NanoCpus":  int64(burstCPUs(req.CPUs) * 1e9),
+			"CpuShares": int64(req.CPUs * 1024),
+			"PidsLimit": 512,
 			// Keep only the newest console output: it holds players' IP addresses and would otherwise fill the disk.
 			"LogConfig": map[string]any{"Type": "json-file", "Config": map[string]string{"max-size": "10m", "max-file": "3"}},
 			// Restarts after a crash only; a clean exit (e.g. going to sleep) stays down.
@@ -677,6 +691,12 @@ func (a *agent) handleDockerErr(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusInternalServerError, err.Error())
 	}
 	return true
+}
+
+// burstCPUs is the most cores a server may use: its plan's cores plus one,
+// but never more than the machine has.
+func burstCPUs(planCPUs float64) float64 {
+	return min(planCPUs+1, float64(runtime.NumCPU()))
 }
 
 func containerName(id string) string { return "mc-" + id }

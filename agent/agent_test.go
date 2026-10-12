@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +51,17 @@ func TestContainerSpecJava(t *testing.T) {
 	env := strings.Join(spec["Env"].([]string), " ")
 	if !strings.Contains(env, "ENABLE_AUTOSTOP=TRUE") || !strings.Contains(env, "AUTOSTOP_TIMEOUT_EST=300") {
 		t.Fatalf("autostop env missing: %s", env)
+	}
+	for _, want := range []string{"USE_AIKAR_FLAGS=true", "VIEW_DISTANCE=8", "SIMULATION_DISTANCE=6"} {
+		if !strings.Contains(env, want) {
+			t.Fatalf("missing %s: %s", want, env)
+		}
+	}
+	if shares := host["CpuShares"].(int64); shares != 1024 {
+		t.Fatalf("cpu shares = %d", shares)
+	}
+	if cpus := host["NanoCpus"].(int64); cpus != int64(burstCPUs(1)*1e9) || (runtime.NumCPU() > 1 && cpus != 2e9) {
+		t.Fatalf("a 1-core server should be able to borrow a second core: %d", cpus)
 	}
 	if spec["Tty"].(bool) {
 		t.Fatal("java containers should not use a TTY")
