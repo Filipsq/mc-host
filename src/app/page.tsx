@@ -1,10 +1,15 @@
 import Link from "next/link";
-import { Check, CreditCard, Gift, Globe, MoonStar, Smartphone, SquareTerminal } from "lucide-react";
+import type { Plan } from "@prisma/client";
+import { Box, Check, Cloud, CreditCard, Gift, Globe, Heart, MoonStar, Package, Pickaxe, Puzzle, Shield, Smartphone, SquareTerminal } from "lucide-react";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { formatPrice, planById, plans } from "@/lib/plans";
 import { periodPrice } from "@/lib/periods";
+import { GAMES, gamePluginTitles } from "@/lib/games";
+import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
+import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
+import RamCalculator from "@/components/RamCalculator";
 
 const featureIcons = {
   free: Gift,
@@ -13,6 +18,15 @@ const featureIcons = {
   editions: Smartphone,
   console: SquareTerminal,
   payments: CreditCard,
+} as const;
+
+const gameIcons = {
+  survival: Pickaxe,
+  "survival-plus": Shield,
+  lifesteal: Heart,
+  skyblock: Cloud,
+  oneblock: Box,
+  modpack: Puzzle,
 } as const;
 
 export default async function Home() {
@@ -90,7 +104,63 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="section" id="cennik">
+      <section className="section" id="gry">
+        <div className="container stack-large">
+          <header className="section-head">
+            <h2 className="display">{h.gamesTitle}</h2>
+            <p className="muted">{h.gamesSubtitle}</p>
+          </header>
+          <ul className="feature-grid">
+            {GAMES.map((g) => {
+              const Icon = gameIcons[g.id];
+              const extras = gamePluginTitles(g.id);
+              return (
+                <li key={g.id} className="feature game-card">
+                  <span className="feature-icon"><Icon size={22} aria-hidden /></span>
+                  <h3>{t.server.games[g.id]}</h3>
+                  <p className="muted">{t.server.gameHints[g.id]}</p>
+                  {extras.length > 0 && <p className="muted small">{format(t.server.withPlugins, { list: extras.join(", ") })}</p>}
+                  <span className="ram-pill">{format(t.server.ramFrom, { gb: g.ramGb })}</span>
+                </li>
+              );
+            })}
+          </ul>
+
+          <div className="stack">
+            <h3 className="subsection-title"><Package size={20} aria-hidden /> {h.packsTitle}</h3>
+            <p className="muted">{h.packsSubtitle}</p>
+            <ul className="pack-grid">
+              {CURATED_PACKS.map((p) => (
+                <li key={p.slug} className="pack-card">
+                  <strong>{p.title}</strong>
+                  <span className="muted small">{t.server.packs[p.slug]}</span>
+                  <span className="pack-meta">
+                    <span className="ram-pill">{format(t.server.ramFrom, { gb: p.ramGb })}</span>
+                    <span className="muted small">{format(t.server.packPlan, { plan: t.plans[planForRam(p.ramGb)] })}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="muted small">{h.packsMore}</p>
+          </div>
+
+          <div className="stack">
+            <h3 className="subsection-title">{h.setsTitle}</h3>
+            <p className="muted">{h.setsSubtitle}</p>
+            <ul className="pack-grid">
+              {PLUGIN_SETS.map((set) => (
+                <li key={set.id} className="pack-card">
+                  <strong>{t.plugins.setNames[set.id]}</strong>
+                  <span className="muted small">{t.plugins.setHints[set.id]}</span>
+                  <span className="small">{set.plugins.map((p) => KNOWN_PLUGINS[p].title).join(" · ")}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section className="section alt" id="cennik">
         <div className="container">
           <header className="section-head">
             <h2 className="display">{h.pricingTitle}</h2>
@@ -134,10 +204,17 @@ export default async function Home() {
           <p className="pay-methods muted">
             <CreditCard size={16} aria-hidden /> {h.paymentMethods}
           </p>
+          <RamCalculator
+            t={h}
+            planNames={t.plans}
+            prices={Object.fromEntries(plans.map((p) => [p.id, formatPrice(p.price[currency], currency, locale)])) as Record<Plan, string>}
+            locale={locale}
+            start={start}
+          />
         </div>
       </section>
 
-      <section className="section alt" id="faq">
+      <section className="section" id="faq">
         <div className="container narrow-container">
           <header className="section-head">
             <h2 className="display">{h.faqTitle}</h2>

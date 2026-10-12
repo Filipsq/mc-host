@@ -1,13 +1,16 @@
 "use client";
 
 import { startTransition, useActionState, useState } from "react";
+import Link from "next/link";
 import type { Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import EditionIcon from "@/components/EditionIcon";
 import PaymentConsent from "@/components/PaymentConsent";
-import type { Messages } from "@/i18n/messages";
-import { CURATED_PACKS, SERVER_KINDS, isServerKind, type ServerKind } from "@/lib/modpacks";
+import { format, type Messages } from "@/i18n/messages";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, planAtLeast, planForRam } from "@/lib/modpacks";
+import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
+import { planById } from "@/lib/plans";
 
 type Props = {
   t: Messages["server"];
@@ -39,13 +42,19 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
   const [subdomain, setSubdomain] = useState(v.subdomain ?? "");
   const [subdomainEdited, setSubdomainEdited] = useState(!!v.subdomain);
   const [plan, setPlan] = useState<Plan>((v.plan as Plan | undefined) ?? defaultPlan);
-  const [kind, setKind] = useState<ServerKind>(isServerKind(v.kind) ? v.kind : "vanilla");
+  const [game, setGame] = useState<GameId>(isGameId(v.game) ? v.game : "survival");
   const [pack, setPack] = useState(v.pack ?? CURATED_PACKS[0].slug);
-  const modded = edition === "JAVA" && kind === "modpack";
-  // Mod packs need a paid plan, so the free one can't be picked for them.
-  const planChoices = modded
-    ? plans.map((p) => (p.id === "FREE" ? { ...p, disabledNote: p.disabledNote ?? t.modpackNoFree } : p))
-    : plans;
+  const modded = edition === "JAVA" && game === "modpack";
+  const curated = CURATED_PACKS.find((p) => p.slug === pack);
+  // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
+  const minPlan = modded ? (curated ? planForRam(curated.ramGb) : MODPACK_MIN_PLAN) : "FREE";
+  const planChoices = plans.map((p) =>
+    planAtLeast(p.id, minPlan) || p.disabledNote ? p : { ...p, disabledNote: p.id === "FREE" ? t.modpackNoFree : t.packTooSmall },
+  );
+  const planName = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
+  // A ready game that's comfortable with more memory than the chosen plan has.
+  const wanted = edition === "JAVA" && !modded ? gameById(game).ramGb : 0;
+  const ramLow = wanted > planById(plan).ramGb;
 
   return (
     <form
@@ -111,39 +120,75 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
       )}
       {edition === "JAVA" && (
         <fieldset className="stack">
-          <legend>{t.kind}</legend>
-          {SERVER_KINDS.map((k) => (
-            <label key={k} className="choice">
-              <input
-                type="radio"
-                name="kind"
-                value={k}
-                checked={kind === k}
-                onChange={() => {
-                  setKind(k);
-                  if (k === "modpack" && plan === "FREE") setPlan("STARTER");
-                }}
-              />
-              <span>
-                <strong>{t.kinds[k]}</strong> <span className="muted">{t.kindHints[k]}</span>
-              </span>
-            </label>
-          ))}
+          <legend>{t.game}</legend>
+          <div className="plan-options">
+            {GAMES.map((g) => {
+              const extras = gamePluginTitles(g.id);
+              return (
+                <label key={g.id} className="choice plan-choice">
+                  <input
+                    type="radio"
+                    name="game"
+                    value={g.id}
+                    checked={game === g.id}
+                    onChange={() => {
+                      setGame(g.id);
+                      if (g.kind === "modpack") {
+                        const min = curated ? planForRam(curated.ramGb) : MODPACK_MIN_PLAN;
+                        if (!planAtLeast(plan, min)) setPlan(min);
+                      }
+                    }}
+                  />
+                  <span className="stack-tight">
+                    <strong>{t.games[g.id]}</strong>
+                    <span className="muted small">{t.gameHints[g.id]}</span>
+                    {extras.length > 0 && <span className="small">{format(t.withPlugins, { list: extras.join(", ") })}</span>}
+                    <span className="ram-pill">{format(t.ramFrom, { gb: g.ramGb })}</span>
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         </fieldset>
       )}
       {modded && (
         <fieldset className="stack">
           <legend>{t.modpack}</legend>
           {CURATED_PACKS.map((p) => (
-            <label key={p.slug} className="choice">
-              <input type="radio" name="pack" value={p.slug} checked={pack === p.slug} onChange={() => setPack(p.slug)} />
-              <span>
-                <strong>{p.title}</strong> <span className="muted">{t.packs[p.slug]}</span>
+            <label key={p.slug} className="choice plan-choice">
+              <input
+                type="radio"
+                name="pack"
+                value={p.slug}
+                checked={pack === p.slug}
+                onChange={() => {
+                  setPack(p.slug);
+                  const min = planForRam(p.ramGb);
+                  if (!planAtLeast(plan, min)) setPlan(min);
+                }}
+              />
+              <span className="stack-tight">
+                <span>
+                  <strong>{p.title}</strong> <span className="muted">{t.packs[p.slug]}</span>
+                </span>
+                <span className="pack-meta">
+                  <span className="ram-pill">{format(t.ramFrom, { gb: p.ramGb })}</span>
+                  <span className="muted small">{format(t.packPlan, { plan: planName(planForRam(p.ramGb)) })}</span>
+                </span>
               </span>
             </label>
           ))}
           <label className="choice">
-            <input type="radio" name="pack" value="custom" checked={pack === "custom"} onChange={() => setPack("custom")} />
+            <input
+              type="radio"
+              name="pack"
+              value="custom"
+              checked={pack === "custom"}
+              onChange={() => {
+                setPack("custom");
+                if (!planAtLeast(plan, MODPACK_MIN_PLAN)) setPlan(MODPACK_MIN_PLAN);
+              }}
+            />
             <span>
               <strong>{t.packOther}</strong> <span className="muted">{t.packOtherHint}</span>
             </span>
@@ -164,8 +209,8 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
         </fieldset>
       )}
       <PlanPicker
-        // Remounted when mod packs rule out the free plan, so it picks up the new default.
-        key={modded ? "modded" : "any"}
+        // Remounted when a mod pack rules out smaller plans, so it picks up the new default.
+        key={minPlan}
         plans={planChoices}
         defaultPlan={plan}
         periodLabels={{ days: billing.periodDays, off: billing.periodOff }}
@@ -173,6 +218,17 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
         formatMoney={money}
         onPlanChange={setPlan}
       />
+      {ramLow && (
+        <p className="notice warn">
+          {format(t.ramLow, { game: t.games[game], gb: wanted, plan: planById(plan).ramGb })}
+        </p>
+      )}
+      <p className="muted small">
+        {t.ramHelp}{" "}
+        <Link href="/#ram" target="_blank">
+          {t.ramHelpLink}
+        </Link>
+      </p>
       {plan !== "FREE" && (
         <>
           <p className="muted small">{billing.methods}</p>

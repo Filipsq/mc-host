@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Plus, RotateCw, Trash2 } from "lucide-react";
-import { addPluginAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
+import { addPluginAction, addPluginSetAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -31,6 +31,18 @@ export function AddPluginButton({ id, pluginId, added, t }: { id: string; plugin
     <span className="plugin-action">
       <button className="secondary small" disabled={added || pending} onClick={() => save(() => addPluginAction(id, pluginId))}>
         {added ? <Check size={15} aria-hidden /> : <Plus size={15} aria-hidden />} {added ? t.added : t.install}
+      </button>
+      <Message message={message} />
+    </span>
+  );
+}
+
+export function AddSetButton({ id, setId, added, t }: { id: string; setId: string; added: boolean; t: T }) {
+  const { pending, message, save } = useSave(t);
+  return (
+    <span className="plugin-action">
+      <button className="secondary small" disabled={added || pending} onClick={() => save(() => addPluginSetAction(id, setId))}>
+        {added ? <Check size={15} aria-hidden /> : <Plus size={15} aria-hidden />} {added ? t.setAdded : t.addSet}
       </button>
       <Message message={message} />
     </span>

@@ -51,6 +51,7 @@ npm run dev                   # http://localhost:3000
 - `src/middleware.ts` — redirects signed-out users away from `/dashboard`
 - `src/i18n` — languages (Polish default, English) and currencies (PLN default, EUR, USD, GBP), stored in cookies and switched from the top-right picker
 - `src/lib/plans.ts` — plan limits and monthly prices per currency
+- `src/lib/games.ts` — ready games offered when creating a Java server (a server kind plus starting plugins and the RAM it needs); `src/lib/plugins.ts` — well-known plugins by Modrinth ID and the one-click plugin sets; `src/lib/modpacks.ts` — curated mod packs with the RAM each needs; `src/lib/ram.ts` — the home page RAM calculator
 - `src/lib/brand.ts` — the site name (MCHosting); `src/app/globals.css` — the dark theme and all styles
 - `public/art/` — the block artwork, drawn by `scripts/gen-art.mjs` (run `node scripts/gen-art.mjs` after editing it)
 

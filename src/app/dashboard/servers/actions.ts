@@ -21,7 +21,9 @@ import {
   isValidPlayerName,
   parsePlayers,
 } from "@/lib/settings";
-import { CURATED_PACKS, MODPACK_MIN_PLAN, SERVER_KINDS, parseModrinthLink, planAtLeast } from "@/lib/modpacks";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, parseModrinthLink, planAtLeast, planForRam } from "@/lib/modpacks";
+import { GAME_IDS, gameById } from "@/lib/games";
+import { pluginIds } from "@/lib/plugins";
 import { type ResolvedPack, resolveModpack } from "@/lib/modrinth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
@@ -44,10 +46,17 @@ const createSchema = z.object({
   plan: planField,
   days: daysField,
   subdomain: z.string().trim().toLowerCase().optional(),
-  kind: z.enum(SERVER_KINDS).default("vanilla"),
+  game: z.enum(GAME_IDS).default("survival"),
   pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
   packLink: z.string().max(300).optional(),
 });
+
+const MODPACK_PLAN_ERRORS = {
+  FREE: "modpackPaidOnly",
+  STARTER: "modpackPaidOnly",
+  STANDARD: "modpackNeedsStandard",
+  PRO: "modpackNeedsPro",
+} as const satisfies Record<Plan, ServerErrorCode>;
 
 async function requireUser() {
   const session = await getSession();
@@ -79,7 +88,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (!parsed.success) {
     const field = parsed.error.issues[0].path[0];
     const error =
-      field === "edition" ? "invalidEdition" : field === "name" ? "invalidName" : field === "kind" ? "invalidKind" : "invalidPlan";
+      field === "edition" ? "invalidEdition" : field === "name" ? "invalidName" : field === "game" ? "invalidKind" : "invalidPlan";
     return { error, values };
   }
   const { name, edition, plan, days } = parsed.data;
@@ -91,15 +100,16 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   }
   if (plan !== "FREE" && form.get("startNow") !== "on") return { error: "consentRequired", values };
 
-  // Bedrock has no game modes or mod packs here.
-  const kind = edition === "JAVA" ? parsed.data.kind : "vanilla";
+  // Bedrock has no ready games or mod packs here.
+  const game = gameById(edition === "JAVA" ? parsed.data.game : "survival");
+  const kind = game.kind;
   let modpackRef: { slug: string; version?: string } | null = null;
   if (kind === "modpack") {
     const curated = CURATED_PACKS.find((p) => p.slug === parsed.data.pack);
     modpackRef = curated ? { slug: curated.slug } : parseModrinthLink(parsed.data.packLink ?? "");
     if (!modpackRef) return { error: "modpackLink", values };
-    const minPlan = curated?.minPlan ?? MODPACK_MIN_PLAN;
-    if (!planAtLeast(plan, minPlan)) return { error: minPlan === "STARTER" ? "modpackPaidOnly" : "modpackNeedsStandard", values };
+    const minPlan = curated ? planForRam(curated.ramGb) : MODPACK_MIN_PLAN;
+    if (!planAtLeast(plan, minPlan)) return { error: MODPACK_PLAN_ERRORS[minPlan], values };
   }
 
   const memoryMb = planById(plan).ramGb * 1024;
@@ -121,6 +131,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     plan,
     memoryMb,
     kind,
+    plugins: pluginIds(game.plugins),
     ...(pack && {
       version: pack.gameVersion,
       modpack: pack.slug,

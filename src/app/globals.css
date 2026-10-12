@@ -225,6 +225,38 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 .feature-address .feature-icon, .feature-console .feature-icon { color: var(--diamond); background: rgb(77 208 225 / 0.1); border-color: rgb(77 208 225 / 0.3); }
 .feature-payments .feature-icon { color: var(--gold); background: rgb(242 193 78 / 0.1); border-color: rgb(242 193 78 / 0.3); }
 
+/* Home: ready games, packs and plugin sets */
+.stack-large { display: flex; flex-direction: column; gap: 48px; }
+.game-card { display: flex; flex-direction: column; gap: 8px; }
+.game-card h3 { margin: 8px 0 0; }
+.game-card .ram-pill { margin-top: auto; }
+.ram-pill {
+  display: inline-flex; align-self: flex-start; width: fit-content; margin-top: 4px; padding: 2px 10px; border-radius: 999px;
+  font-size: 0.8rem; font-weight: 700; color: var(--diamond); background: rgb(77 208 225 / 0.1); border: 1px solid rgb(77 208 225 / 0.3);
+}
+.subsection-title { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 1.35rem; }
+.subsection-title svg { color: var(--accent); }
+.pack-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; }
+.pack-card {
+  display: flex; flex-direction: column; gap: 6px; padding: 16px 18px;
+  border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border);
+}
+.pack-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; }
+.pack-card .pack-meta { margin-top: auto; padding-top: 4px; }
+.pack-meta .ram-pill { margin-top: 0; }
+
+/* Home: RAM calculator */
+.ram-calculator { max-width: 820px; margin: 36px auto 0; }
+.ram-calculator h3 { margin: 0; font-size: 1.35rem; }
+.ram-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; }
+.ram-options label.choice { align-items: flex-start; }
+.ram-options label.choice input { margin-top: 3px; }
+.ram-result {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px;
+  border-radius: var(--radius-sm); background: var(--bg); border: 1px dashed var(--border-strong);
+}
+.ram-result p { margin: 0; }
+
 .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
 .step { position: relative; padding: 28px 24px 24px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
 .step p { margin: 0; }

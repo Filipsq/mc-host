@@ -52,6 +52,7 @@ export default async function RootLayout({
           <div className="topbar-inner">
             <Logo />
             <nav className="topnav" aria-label={BRAND_NAME}>
+              <Link href="/#gry">{t.nav.games}</Link>
               <Link href="/#cennik">{t.nav.pricing}</Link>
               <Link href="/#jak-to-dziala">{t.nav.howItWorks}</Link>
               <Link href="/#faq">{t.nav.faq}</Link>
@@ -84,6 +85,7 @@ export default async function RootLayout({
             </div>
             <div className="footer-col">
               <p className="footer-title">{t.footer.site}</p>
+              <Link href="/#gry">{t.nav.games}</Link>
               <Link href="/#cennik">{t.nav.pricing}</Link>
               <Link href="/#jak-to-dziala">{t.nav.howItWorks}</Link>
               <Link href="/#faq">{t.nav.faq}</Link>

@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ExternalLink, Puzzle, Search } from "lucide-react";
+import { ExternalLink, Package, Puzzle, Search } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getOwnedServer } from "@/lib/servers";
 import { getPluginInfos, searchPlugins } from "@/lib/modrinth";
-import { GAME_MODE_PLUGINS, pluginPage, supportsPlugins } from "@/lib/plugins";
+import { GAME_MODE_PLUGINS, KNOWN_PLUGINS, PLUGIN_SETS, pluginIds, pluginPage, setFits, supportsPlugins } from "@/lib/plugins";
 import { isServerKind } from "@/lib/modpacks";
-import { AddPluginButton, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
+import { AddPluginButton, AddSetButton, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> };
 
@@ -39,6 +39,9 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
   const included = GAME_MODE_PLUGINS[kind] ?? [];
   const numbers = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
+  const sets = PLUGIN_SETS.filter((set) => setFits(set, kind));
+  // Names for plugins from the sets, in case Modrinth doesn't answer.
+  const knownTitle = (pid: string) => Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title;
 
   return (
     <main className="stack">
@@ -61,18 +64,19 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           ))}
           {server.plugins.map((pid) => {
             const p = infos.get(pid);
+            const title = p?.title ?? knownTitle(pid) ?? pid;
             return (
               <li key={pid}>
                 <PluginIcon src={p?.icon} />
                 <span className="plugin-main">
-                  <strong>{p?.title ?? pid}</strong>
+                  <strong>{title}</strong>
                   {p && (
                     <a className="small" href={pluginPage(p.slug)} target="_blank" rel="noreferrer">
                       {t.onModrinth} <ExternalLink size={12} aria-hidden />
                     </a>
                   )}
                 </span>
-                <RemovePluginButton id={server.id} pluginId={pid} title={p?.title ?? pid} t={t} />
+                <RemovePluginButton id={server.id} pluginId={pid} title={title} t={t} />
               </li>
             );
           })}
@@ -81,6 +85,29 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         <p className="muted small">
           {t.config} <Link href={`/dashboard/servers/${server.id}/files?path=plugins`}>{t.openConfig}</Link>
         </p>
+      </section>
+
+      <section className="stack">
+        <h2>{t.sets}</h2>
+        <p className="muted">{t.setsIntro}</p>
+        <ul className="card plugin-list">
+          {sets.map((set) => (
+            <li key={set.id}>
+              <span className="plugin-icon"><Package size={20} aria-hidden /></span>
+              <span className="plugin-main">
+                <strong>{t.setNames[set.id]}</strong>
+                <span className="muted small">{t.setHints[set.id]}</span>
+                <span className="small">{set.plugins.map((p) => KNOWN_PLUGINS[p].title).join(" · ")}</span>
+              </span>
+              <AddSetButton
+                id={server.id}
+                setId={set.id}
+                added={pluginIds(set.plugins).every((p) => server.plugins.includes(p))}
+                t={t}
+              />
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section className="stack">

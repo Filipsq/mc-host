@@ -1,4 +1,5 @@
 import type { Plan } from "@prisma/client";
+import { plans } from "./plans";
 
 // What a Java server runs. Skyblock and OneBlock are BentoBox game modes on
 // Paper; a mod pack comes from Modrinth. The agent turns these into the
@@ -11,14 +12,19 @@ export const isServerKind = (k: unknown): k is ServerKind => SERVER_KINDS.includ
 /** The command players type to get their island (shown in the panel). */
 export const ISLAND_COMMAND: Partial<Record<ServerKind, string>> = { skyblock: "/island", oneblock: "/ob" };
 
-// Mod packs offered in the panel: popular on Modrinth, made for multiplayer
-// and openly licensed. Any other pack can be pasted as a Modrinth link.
-// minPlan is the smallest plan with enough memory for a few players.
+// Mod packs offered in the panel: popular on Modrinth and made for
+// multiplayer. Any other pack can be pasted as a Modrinth link. ramGb is
+// what the pack needs for a few players (from its authors where they say),
+// so the smallest plan it runs on is the first with that much memory.
 export const CURATED_PACKS = [
-  { slug: "vanilla-perfected", title: "Vanilla Perfected", minPlan: "STARTER" },
-  { slug: "cobblemon-fabric", title: "Cobblemon", minPlan: "STARTER" },
-  { slug: "create_plus", title: "Create+", minPlan: "STANDARD" },
-] as const satisfies readonly { slug: string; title: string; minPlan: Plan }[];
+  { slug: "vanilla-perfected", title: "Vanilla Perfected", ramGb: 3 },
+  { slug: "cobblemon-fabric", title: "Cobblemon", ramGb: 3 },
+  { slug: "cobbleverse", title: "COBBLEVERSE", ramGb: 6 },
+  { slug: "create_plus", title: "Create+", ramGb: 6 },
+  { slug: "homestead", title: "Homestead", ramGb: 6 },
+  { slug: "better-mc-fabric-bmc2", title: "Better MC [Fabric]", ramGb: 8 },
+  { slug: "prominence-2-fabric", title: "Prominence II", ramGb: 8 },
+] as const satisfies readonly { slug: string; title: string; ramGb: number }[];
 
 export type CuratedSlug = (typeof CURATED_PACKS)[number]["slug"];
 
@@ -27,6 +33,11 @@ export const MODPACK_MIN_PLAN: Plan = "STARTER";
 
 const PLAN_ORDER: Plan[] = ["FREE", "STARTER", "STANDARD", "PRO"];
 export const planAtLeast = (plan: Plan, min: Plan) => PLAN_ORDER.indexOf(plan) >= PLAN_ORDER.indexOf(min);
+
+/** The smallest paid plan with at least `gb` of memory (Pro when none has enough). */
+export function planForRam(gb: number): Plan {
+  return plans.find((p) => p.id !== "FREE" && p.ramGb >= gb)?.id ?? "PRO";
+}
 
 /**
  * Reads a pasted Modrinth link or slug, e.g. https://modrinth.com/modpack/cobblemon-fabric

@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec, getOwnedServer } from "@/lib/servers";
 import { getPlugin } from "@/lib/modrinth";
-import { GAME_MODE_PLUGINS, PLUGINS_MAX, isProjectId, supportsPlugins } from "@/lib/plugins";
+import { GAME_MODE_PLUGINS, PLUGINS_MAX, PLUGIN_SETS, isProjectId, pluginIds, setFits, supportsPlugins } from "@/lib/plugins";
 import type { Messages } from "@/i18n/messages";
 
 export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; pending?: boolean };
@@ -31,6 +31,17 @@ export async function addPluginAction(id: string, projectId: string): Promise<Pl
   // The game mode's own plugins are always there.
   if ((GAME_MODE_PLUGINS[server.kind] ?? []).some((p) => p.slug === plugin.slug)) return {};
   return savePlugins(server, [...server.plugins, plugin.id]);
+}
+
+/** Adds the plugins of a ready set that the server doesn't have yet. */
+export async function addPluginSetAction(id: string, setId: string): Promise<PluginResult> {
+  const server = await ownedPaperServer(id);
+  const set = PLUGIN_SETS.find((s) => s.id === setId);
+  if (!server || !set || !setFits(set, server.kind)) return { error: "failed" };
+  const missing = pluginIds(set.plugins).filter((p) => !server.plugins.includes(p));
+  if (missing.length === 0) return {};
+  if (server.plugins.length + missing.length > PLUGINS_MAX) return { error: "tooMany" };
+  return savePlugins(server, [...server.plugins, ...missing]);
 }
 
 export async function removePluginAction(id: string, projectId: string): Promise<PluginResult> {
