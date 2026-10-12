@@ -21,7 +21,13 @@ ufw allow 30000:30999/udp >/dev/null # Bedrock players, one port per server
 ufw --force enable >/dev/null
 
 if [ ! -f .env ]; then
-  read -rp "Domain for the site (e.g. mchosting.pl): " DOMAIN
+  # Ask until it looks like a domain: a stray Enter left over from pasting the
+  # install commands would otherwise save it empty.
+  DOMAIN=""
+  until [[ "$DOMAIN" =~ ^[a-z0-9-]+(\.[a-z0-9-]+)+$ ]]; do
+    read -rp "Domain for the site (e.g. mchosting.pl): " DOMAIN
+    DOMAIN=$(echo "$DOMAIN" | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')
+  done
   secret() { openssl rand -hex 32; }
   cat > .env <<ENV
 DOMAIN=$DOMAIN
@@ -37,6 +43,12 @@ PORT_RANGE_END=30999
 ENV
   chmod 600 .env
   echo "Wrote deploy/.env with fresh secrets."
+fi
+
+if ! grep -qE '^DOMAIN=[a-z0-9]' .env; then
+  echo "DOMAIN in deploy/.env is empty. Set it with:" >&2
+  echo "  sed -i 's/^DOMAIN=.*/DOMAIN=mchosting.pl/' .env" >&2
+  exit 1
 fi
 
 # How much plan memory all Minecraft servers together may use: the machine's
