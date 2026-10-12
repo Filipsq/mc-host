@@ -18,6 +18,8 @@ model User {
   passwordChangedAt DateTime?
   // The site's language the user last chose; emails are written in it.
   locale            String          @default("pl")
+  // Can open the admin panel and every server's panel. Set on the server with deploy/admin.sh.
+  admin             Boolean         @default(false)
   servers           Server[]
   payments          Payment[]
   passwordResets    PasswordReset[]

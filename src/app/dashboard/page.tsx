@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Shield } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
+import { isAdmin } from "@/lib/admin";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { getLiveState, joinAddress } from "@/lib/servers";
+import { addressLabel, getLiveState } from "@/lib/servers";
 import EditionIcon from "@/components/EditionIcon";
 import { logOut } from "../actions";
 
@@ -13,15 +14,16 @@ type Props = { searchParams: Promise<{ haslo?: string }> };
 
 export default async function DashboardPage({ searchParams }: Props) {
   const session = await getSession();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
-  const [all, servers, { haslo }] = await Promise.all([
+  const [all, servers, { haslo }, admin] = await Promise.all([
     getMessages(),
     db.server.findMany({
       where: { ownerId: session.user.id },
       orderBy: { createdAt: "desc" },
     }),
     searchParams,
+    isAdmin(session.user.id),
   ]);
   const states = await Promise.all(servers.map((s) => getLiveState(s)));
   const t = all.dashboard;
@@ -34,6 +36,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <p className="muted">{format(t.signedInAs, { email: session.user.email ?? "" })}</p>
         </div>
         <div className="row">
+          {admin && <Link className="button secondary" href="/admin"><Shield size={18} aria-hidden /> {all.admin.title}</Link>}
           <Link className="button" href="/dashboard/new"><Plus size={18} aria-hidden /> {t.createServer}</Link>
           <form action={logOut}>
             <button type="submit" className="secondary">{t.logOut}</button>
@@ -70,9 +73,4 @@ export default async function DashboardPage({ searchParams }: Props) {
       )}
     </main>
   );
-}
-
-function addressLabel(server: Parameters<typeof joinAddress>[0]) {
-  const { host, port } = joinAddress(server);
-  return server.edition === "JAVA" ? host : `${host}:${port}`;
 }

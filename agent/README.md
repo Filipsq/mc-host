@@ -51,6 +51,7 @@ go test ./...
 | PUT | `/servers/{id}/files/content?path=` | Save the body as the file (upload or edit), making missing folders |
 | POST | `/servers/{id}/files/mkdir?path=`, `/files/rename?path=&to=`, `/files/unzip?path=&to=` | Make a folder; rename or move (never over an existing name); unpack a zip into `to` (by default its own folder) |
 | DELETE | `/servers/{id}/files?path=` | Delete a file or a folder with everything in it |
+| GET | `/stats` | For the admin panel: `{memoryLimitMb, memoryHeldMb, host: {cpus, load, memoryTotalMb, memoryAvailableMb, diskTotalMb, diskFreeMb}, servers: [{id, state, health, stopReason, memoryMb, memoryUsedMb}]}` |
 
 Java servers run what `kind` says: `vanilla` (Paper, the default), `skyblock` or `oneblock`
 (Paper with the BentoBox plugins from Modrinth, on the newest Minecraft version they all support),

@@ -7,7 +7,7 @@ import type { Plan, ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
-import { agentSpec, createServerRecord, getOwnedServer, isValidSubdomain } from "@/lib/servers";
+import { agentSpec, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain } from "@/lib/servers";
 import { planById } from "@/lib/plans";
 import { PERIOD_MONTHS, startCheckout } from "@/lib/billing";
 import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
@@ -215,12 +215,7 @@ export async function stopServerAction(id: string) {
 }
 
 export async function deleteServerAction(id: string) {
-  const server = await ownedOrThrow(id);
-  await agent.deleteServer(server.id).catch((err) => {
-    // Never created on the game host (e.g. unpaid): nothing to remove there.
-    if (!(err instanceof agent.AgentError && err.status === 404)) throw err;
-  });
-  await db.server.delete({ where: { id: server.id } });
+  await destroyServer(await ownedOrThrow(id));
   redirect("/dashboard");
 }
 

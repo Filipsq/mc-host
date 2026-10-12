@@ -5,6 +5,7 @@ import { stripe } from "./stripe";
 import * as agent from "./agent";
 import { agentSpec } from "./servers";
 import { planById } from "./plans";
+import { canSellMemory } from "./capacity";
 import { REMIND_BEFORE_DAYS, sendPlanMail } from "./planMail";
 import type { Currency, Locale } from "@/i18n/config";
 
@@ -103,6 +104,29 @@ export async function fulfillPayment(paymentId: string) {
   // Before provisioning, which may wait for an image download.
   await sendPlanMail("paid", server);
   if (server.status === "PROVISIONING") await provision(server);
+}
+
+export type GiftResult = { error?: "free" | "soldOut" | "failed"; server?: Server };
+
+/**
+ * An admin's gift: extends the paid period by `days` without a payment (e.g.
+ * to make up for downtime), starting the server if it's suspended or unpaid.
+ */
+export async function giftDays(serverId: string, days: number): Promise<GiftResult> {
+  const now = new Date();
+  const s = await db.server.findUnique({ where: { id: serverId } });
+  if (!s) return {};
+  if (s.plan === "FREE") return { error: "free" };
+  const needsHost = s.status === "AWAITING_PAYMENT" || s.status === "SUSPENDED";
+  if (needsHost && !(await canSellMemory(s.memoryMb))) return { error: "soldOut" };
+  const from = s.paidUntil && s.paidUntil > now ? s.paidUntil : now;
+  const server = await db.server.update({
+    where: { id: s.id },
+    data: { paidUntil: new Date(from.getTime() + days * DAY), ...(needsHost && { status: "PROVISIONING" }) },
+  });
+  console.info("admin gift", server.id, days, "days, paid until", server.paidUntil?.toISOString());
+  if (server.status === "PROVISIONING" && !(await provision(server))) return { error: "failed", server };
+  return { server };
 }
 
 /**

@@ -132,6 +132,21 @@ per-server disk limit yet, so keep an eye on `df -h /`.
 
 Plugins are picked from Modrinth in the panel and downloaded by the server itself when it starts.
 
+## Admin panel
+
+Sign up on the site with your own email, then make that account an admin:
+
+```bash
+cd ~/mc-host/deploy && ./admin.sh you@example.com
+```
+
+An **Admin panel** button then appears under My servers (or go to `/admin`). It shows the machine's
+memory, disk and CPU load, every server, user and payment, and what needs attention (crashed servers,
+plans ending soon, suspended servers). From a server's admin page you can open its normal panel
+(console, files, settings, as if you were the owner), add free days to a paid plan, or delete it.
+`./admin.sh --remove you@example.com` takes admin away again. Nobody can become an admin from the
+site itself.
+
 ## Updating
 
 ```bash
@@ -145,5 +160,6 @@ cd mc-host && git pull && cd deploy && ./setup.sh
 | `docker compose logs -f web` | Website logs |
 | `docker compose logs -f agent` | Agent and router logs (who joined, which servers slept or woke) |
 | `docker compose ps` | What's running |
+| `./admin.sh you@example.com` | Make an account an admin (see Admin panel) |
 | `docker ps --filter label=mchost.server` | The Minecraft server containers |
 | `docker stats --no-stream` | How much memory each container uses right now |

@@ -1,0 +1,46 @@
+"use client";
+
+import { useActionState, useState, useTransition } from "react";
+import { Trash2 } from "lucide-react";
+import { deleteServerAdminAction, giftDaysAction, type GiftState } from "../../actions";
+import type { Messages } from "@/i18n/messages";
+import { format } from "@/i18n/messages";
+
+export function GiftForm({ id, t }: { id: string; t: Messages["admin"]["gift"] }) {
+  const [state, action, pending] = useActionState<GiftState, FormData>(giftDaysAction.bind(null, id), {});
+  return (
+    <form action={action} className="stack">
+      <div className="row gift-row">
+        <label>
+          {t.days}
+          <input name="days" type="number" min={1} max={365} defaultValue={7} required />
+        </label>
+        <button disabled={pending}>{t.submit}</button>
+      </div>
+      {state.error && <p className={state.error === "failed" ? "notice warn" : "error"}>{t.errors[state.error]}</p>}
+      {state.days && !state.error && <p className="notice success">{format(t.done, { n: state.days, date: state.date ?? "" })}</p>}
+    </form>
+  );
+}
+
+export function DeleteButton({ id, name, t }: { id: string; name: string; t: Messages["admin"]["remove"] }) {
+  const [pending, startTransition] = useTransition();
+  const [failed, setFailed] = useState(false);
+  return (
+    <div className="stack">
+      <div>
+        <button
+          className="danger"
+          disabled={pending}
+          onClick={() => {
+            if (!confirm(format(t.confirm, { name }))) return;
+            startTransition(async () => setFailed(!!(await deleteServerAdminAction(id))?.error));
+          }}
+        >
+          <Trash2 size={16} aria-hidden /> {t.submit}
+        </button>
+      </div>
+      {failed && <p className="error">{t.failed}</p>}
+    </div>
+  );
+}

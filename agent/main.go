@@ -170,6 +170,7 @@ func main() {
 func (a *agent) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
+	mux.HandleFunc("GET /stats", a.stats)
 	mux.HandleFunc("POST /servers", a.create)
 	mux.HandleFunc("PUT /servers/{id}", a.recreate)
 	mux.HandleFunc("GET /servers/{id}", a.status)

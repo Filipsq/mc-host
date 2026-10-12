@@ -93,6 +93,32 @@ export async function recreateServer(spec: CreateServerSpec, opts: { keepStopped
   await agentFetch(`/servers/${spec.id}${query}`, { method: "PUT", body: JSON.stringify(spec), timeoutMs: 5 * 60_000 });
 }
 
+export type ServerStats = Pick<AgentState, "state" | "health" | "stopReason"> & {
+  id: string;
+  memoryMb: number; // the plan's memory
+  memoryUsedMb?: number; // what it uses right now, while running
+};
+
+export type HostStats = {
+  memoryLimitMb: number; // plan memory the machine is sold up to (0: no limit)
+  memoryHeldMb: number; // held now by paid servers and awake free ones
+  host: {
+    cpus: number;
+    load: [number, number, number];
+    memoryTotalMb: number;
+    memoryAvailableMb: number;
+    diskTotalMb: number;
+    diskFreeMb: number;
+  };
+  servers: ServerStats[];
+};
+
+/** The machine and every server on it, for the admin panel. */
+export async function getStats(): Promise<HostStats> {
+  const res = await agentFetch("/stats", { timeoutMs: 20_000 });
+  return res.json();
+}
+
 export async function getServerState(id: string): Promise<AgentState> {
   const res = await agentFetch(`/servers/${id}`, { timeoutMs: 5_000 });
   return res.json();

@@ -1,0 +1,177 @@
+import Link from "next/link";
+import type { ServerStatus } from "@prisma/client";
+import { requireAdmin } from "@/lib/admin";
+import { db } from "@/lib/db";
+import { heldMemoryMb } from "@/lib/capacity";
+import { getMessages, getPreferences } from "@/i18n/server";
+import { format } from "@/i18n/messages";
+import { liveStates, machineStats } from "./data";
+import { formats } from "./format";
+
+const DAY = 24 * 60 * 60 * 1000;
+const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
+
+export default async function AdminOverview() {
+  await requireAdmin();
+  const now = new Date();
+  const [all, { locale }, stats, users, newUsers, servers, paid] = await Promise.all([
+    getMessages(),
+    getPreferences(),
+    machineStats(),
+    db.user.count(),
+    db.user.count({ where: { createdAt: { gte: new Date(now.getTime() - 7 * DAY) } } }),
+    db.server.findMany({ orderBy: { createdAt: "desc" } }),
+    db.payment.findMany({
+      where: { status: "PAID", paidAt: { gte: new Date(now.getTime() - 31 * DAY) } },
+      select: { amount: true, currency: true, paidAt: true },
+    }),
+  ]);
+  const t = all.admin;
+  const f = formats(locale);
+  const live = liveStates(servers, stats);
+
+  const sold = servers.reduce((sum, s) => sum + heldMemoryMb(s), 0);
+  const online = servers.filter((s) => ["online", "starting", "restarting"].includes(live[s.id].state)).length;
+  const byPlan = (["FREE", "STARTER", "STANDARD", "PRO"] as const).map((plan) => ({
+    plan,
+    n: servers.filter((s) => s.plan === plan).length,
+  }));
+  const last30 = paid.filter((p) => p.paidAt! >= new Date(now.getTime() - 30 * DAY));
+  const thisMonth = paid.filter((p) => p.paidAt! >= monthStart(now));
+
+  const crashed = servers.filter((s) => live[s.id].state === "crashed");
+  const stuck = servers.filter((s) => s.status === "PROVISIONING" && s.updatedAt.getTime() < now.getTime() - 10 * 60_000);
+  const ending = servers
+    .filter((s) => s.plan !== "FREE" && ON_HOST.includes(s.status) && s.paidUntil && s.paidUntil.getTime() < now.getTime() + 3 * DAY)
+    .sort((a, b) => a.paidUntil!.getTime() - b.paidUntil!.getTime());
+  const suspended = servers
+    .filter((s) => s.status === "SUSPENDED")
+    .sort((a, b) => (a.paidUntil?.getTime() ?? 0) - (b.paidUntil?.getTime() ?? 0));
+  const attention = [
+    { title: t.crashed, rows: crashed, note: () => "" },
+    { title: t.stuck, rows: stuck, note: () => "", hint: t.stuckHint },
+    { title: t.ending, rows: ending, note: (d: Date | null) => (d ? format(t.endsOn, { date: f.dateTime(d) }) : "") },
+    { title: t.suspendedList, rows: suspended, note: (d: Date | null) => (d ? format(t.suspendedSince, { date: f.date(d) }) : "") },
+  ].filter((group) => group.rows.length > 0);
+
+  return (
+    <>
+      <section className="stack">
+        <h2>{t.machine}</h2>
+        {!stats ? (
+          <p className="notice warn">{t.agentDown}</p>
+        ) : (
+          <div className="admin-grid">
+            <Tile
+              label={t.held}
+              value={
+                stats.memoryLimitMb > 0
+                  ? format(t.heldValue, { used: f.gb(stats.memoryHeldMb), limit: f.gb(stats.memoryLimitMb) })
+                  : format(t.heldNoLimit, { used: f.gb(stats.memoryHeldMb) })
+              }
+              share={stats.memoryLimitMb > 0 ? stats.memoryHeldMb / stats.memoryLimitMb : undefined}
+              hint={`${t.heldHint} ${t.sold}: ${f.gb(sold)}.`}
+            />
+            <Tile
+              label={t.hostMemory}
+              value={format(t.hostMemoryValue, {
+                used: f.gb(stats.host.memoryTotalMb - stats.host.memoryAvailableMb),
+                total: f.gb(stats.host.memoryTotalMb),
+              })}
+              share={1 - stats.host.memoryAvailableMb / stats.host.memoryTotalMb}
+            />
+            <Tile
+              label={t.disk}
+              value={format(t.diskValue, {
+                used: f.gb(stats.host.diskTotalMb - stats.host.diskFreeMb),
+                total: f.gb(stats.host.diskTotalMb),
+                free: f.gb(stats.host.diskFreeMb),
+              })}
+              share={1 - stats.host.diskFreeMb / stats.host.diskTotalMb}
+            />
+            <Tile
+              label={t.load}
+              value={format(t.loadValue, { load: stats.host.load.map(f.number).join(" · "), cpus: stats.host.cpus })}
+              share={stats.host.load[1] / stats.host.cpus}
+              hint={t.loadHint}
+            />
+          </div>
+        )}
+      </section>
+
+      <section className="stack">
+        <h2>{t.numbers}</h2>
+        <div className="admin-grid">
+          <Tile label={t.users} value={String(users)} hint={format(t.usersNew, { n: newUsers })} href="/admin/users" />
+          <Tile
+            label={t.serversTotal}
+            value={String(servers.length)}
+            hint={[stats ? format(t.serversOnline, { n: online }) : "", ...byPlan.map((p) => `${all.plans[p.plan]}: ${p.n}`)]
+              .filter(Boolean)
+              .join(" · ")}
+            href="/admin/servers"
+          />
+          <Tile
+            label={t.revenue30}
+            value={f.totals(last30) || t.none}
+            hint={format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}
+            href="/admin/payments"
+          />
+        </div>
+      </section>
+
+      <section className="stack">
+        <h2>{t.attention}</h2>
+        {attention.length === 0 ? (
+          <p className="muted">{t.allGood}</p>
+        ) : (
+          attention.map((group) => (
+            <div key={group.title} className="card stack">
+              <h3>
+                {group.title} <span className="muted">({group.rows.length})</span>
+              </h3>
+              {group.hint && <p className="muted small">{group.hint}</p>}
+              <ul className="attention-list">
+                {group.rows.map((s) => (
+                  <li key={s.id}>
+                    <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
+                    <span className="muted small">
+                      {all.plans[s.plan]} {group.note(s.paidUntil) && `· ${group.note(s.paidUntil)}`}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </section>
+    </>
+  );
+}
+
+function Tile({ label, value, hint, share, href }: { label: string; value: string; hint?: string; share?: number; href?: string }) {
+  const level = share === undefined ? "" : share >= 0.9 ? "high" : share >= 0.75 ? "mid" : "";
+  return (
+    <div className="card stat">
+      <p className="stat-label">{href ? <Link href={href}>{label}</Link> : label}</p>
+      <p className="stat-value">{value}</p>
+      {share !== undefined && (
+        <div className={`meter ${level}`} aria-hidden>
+          <span style={{ width: `${Math.min(100, Math.max(0, share * 100))}%` }} />
+        </div>
+      )}
+      {hint && <p className="muted small">{hint}</p>}
+    </div>
+  );
+}
+
+/** Midnight on the 1st of this month, Polish time. */
+function monthStart(now: Date) {
+  const part = (type: string, parts: Intl.DateTimeFormatPart[]) => parts.find((p) => p.type === type)!.value;
+  const ym = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit" }).formatToParts(now);
+  const day = `${part("year", ym)}-${part("month", ym)}-01`;
+  const offset = new Intl.DateTimeFormat("en", { timeZone: "Europe/Warsaw", timeZoneName: "longOffset" }).formatToParts(
+    new Date(`${day}T00:00:00Z`),
+  );
+  return new Date(`${day}T00:00:00${part("timeZoneName", offset).replace("GMT", "") || "Z"}`);
+}
