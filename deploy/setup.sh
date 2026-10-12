@@ -39,6 +39,16 @@ ENV
   echo "Wrote deploy/.env with fresh secrets."
 fi
 
+# How much plan memory all Minecraft servers together may use: the machine's
+# RAM minus room for the system, website and database, less a margin for what
+# Java needs on top of each plan. Change it in .env (e.g. after moving to a
+# bigger machine) and run this script again.
+if ! grep -q '^MEMORY_LIMIT_MB=' .env; then
+  total_mb=$(awk '/^MemTotal/ {print int($2 / 1024)}' /proc/meminfo)
+  echo "MEMORY_LIMIT_MB=$(( (total_mb - 1536) * 85 / 100 / 512 * 512 ))" >> .env
+fi
+echo "Minecraft servers may use up to $(grep '^MEMORY_LIMIT_MB=' .env | cut -d= -f2) MB of memory in total."
+
 echo "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
 docker compose ps

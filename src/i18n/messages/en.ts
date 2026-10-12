@@ -213,6 +213,8 @@ const en: Messages = {
       invalidEdition: "Choose an edition",
       freeLimit: "You can only have one free server",
       noPorts: "No free server slots right now. Try again later.",
+      full: "All free server slots are taken right now. Try again in a few minutes.",
+      soldOut: "This plan is sold out for now. Try again later or pick a smaller one.",
       agentUnavailable: "Couldn't start the server. Try again in a moment.",
       notRunning: "The server isn't running",
       invalidSubdomain: "Address must be 3–32 characters: lowercase letters, numbers and hyphens",

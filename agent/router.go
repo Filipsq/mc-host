@@ -39,6 +39,7 @@ type router struct {
 const (
 	msgSleeping    = "§eSerwer śpi – dołącz, aby go obudzić\n§7Server is asleep – join to wake it up"
 	msgWaking      = "Serwer się uruchamia. Dołącz ponownie za około minutę.\nThe server is starting. Join again in about a minute."
+	msgFull        = "Wszystkie miejsca na darmowe serwery są teraz zajęte. Spróbuj ponownie za kilka minut.\nAll free server slots are taken right now. Try again in a few minutes."
 	msgStarting    = "§eSerwer się uruchamia...\n§7Server is starting..."
 	msgOffline     = "§cSerwer jest wyłączony\n§7Server is offline"
 	msgOfflineKick = "Serwer jest wyłączony przez właściciela.\nThe server has been turned off by its owner."
@@ -98,12 +99,17 @@ func (rt *router) handle(conn net.Conn) {
 		pipe(conn, r, backend)
 	case target.Reason == "sleeping":
 		if hs.NextState != 1 {
-			if err := rt.wake(ctx, target.ID); err != nil {
+			kick := msgWaking
+			switch err := rt.wake(ctx, target.ID); {
+			case errors.Is(err, errFull):
+				log.Printf("router: no room to wake %s", target.ID)
+				kick = msgFull
+			case err != nil:
 				log.Printf("router: wake %s: %v", target.ID, err)
-			} else {
+			default:
 				log.Printf("router: woke %s for %s", target.ID, conn.RemoteAddr())
 			}
-			rt.answer(conn, r, hs, "", "", msgWaking)
+			rt.answer(conn, r, hs, "", "", kick)
 			return
 		}
 		rt.answer(conn, r, hs, "Sleeping", msgSleeping, "")

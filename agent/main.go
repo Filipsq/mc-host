@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -29,10 +30,12 @@ var images = map[string]string{
 var validID = regexp.MustCompile(`^[a-z0-9]{8,40}$`)
 
 type agent struct {
-	docker   *Docker
-	token    string
-	stateDir string        // marker files recording why a server was stopped
-	idle     time.Duration // free servers sleep after this long with no players
+	docker      *Docker
+	token       string
+	stateDir    string        // marker files recording why a server was stopped
+	idle        time.Duration // free servers sleep after this long with no players
+	memoryLimit int           // MB of plan memory servers may hold in total; 0 means no limit
+	startMu     sync.Mutex
 }
 
 func main() {
@@ -44,11 +47,16 @@ func main() {
 	if err != nil || idleMin < 1 {
 		log.Fatal("IDLE_MINUTES must be a positive number")
 	}
+	memoryLimit, err := strconv.Atoi(envOr("MEMORY_LIMIT_MB", "0"))
+	if err != nil || memoryLimit < 0 {
+		log.Fatal("MEMORY_LIMIT_MB must be a number of megabytes (0 for no limit)")
+	}
 	a := &agent{
-		docker:   NewDocker(envOr("DOCKER_SOCKET", "/var/run/docker.sock")),
-		token:    token,
-		stateDir: envOr("STATE_DIR", "./state"),
-		idle:     time.Duration(idleMin) * time.Minute,
+		docker:      NewDocker(envOr("DOCKER_SOCKET", "/var/run/docker.sock")),
+		token:       token,
+		stateDir:    envOr("STATE_DIR", "./state"),
+		idle:        time.Duration(idleMin) * time.Minute,
+		memoryLimit: memoryLimit,
 	}
 	if err := os.MkdirAll(a.stateDir, 0o755); err != nil {
 		log.Fatal(err)
@@ -144,8 +152,7 @@ func (a *agent) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if err := a.run(r.Context(), req); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if a.handleDockerErr(w, a.run(r.Context(), req)) {
 		return
 	}
 	log.Printf("created %s (%s, %d MB, port %d, autostop %v)", containerName(req.ID), req.Edition, req.MemoryMb, req.Port, req.Autostop)
@@ -174,8 +181,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if err := a.run(r.Context(), req); err != nil {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if a.handleDockerErr(w, a.run(r.Context(), req)) {
 		return
 	}
 	log.Printf("recreated %s (%d MB, autostop %v)", name, req.MemoryMb, req.Autostop)
@@ -191,8 +197,7 @@ func (a *agent) run(ctx context.Context, req createRequest) error {
 	if err := a.docker.CreateContainer(ctx, name, a.containerSpec(req, image)); err != nil {
 		return err
 	}
-	a.clearMarkers(req.ID)
-	return a.docker.StartContainer(ctx, name)
+	return a.startServer(ctx, req.ID)
 }
 
 func (a *agent) containerSpec(req createRequest, image string) map[string]any {
@@ -206,6 +211,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		"mchost.edition":  req.Edition,
 		"mchost.port":     fmt.Sprint(req.Port),
 		"mchost.autostop": fmt.Sprint(req.Autostop),
+		"mchost.memory":   fmt.Sprint(req.MemoryMb),
 	}
 	var containerPort, hostIP string
 	tty := false
@@ -295,16 +301,14 @@ func (a *agent) start(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	a.clearMarkers(id)
-	if a.handleDockerErr(w, a.docker.StartContainer(r.Context(), containerName(id))) {
+	if a.handleDockerErr(w, a.startServer(r.Context(), id)) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (a *agent) wake(ctx context.Context, id string) error {
-	a.clearMarkers(id)
-	return a.docker.StartContainer(ctx, containerName(id))
+	return a.startServer(ctx, id)
 }
 
 func (a *agent) stop(w http.ResponseWriter, r *http.Request) {
@@ -314,6 +318,9 @@ func (a *agent) stop(w http.ResponseWriter, r *http.Request) {
 	}
 	// Mark first so the router won't wake a server its owner turned off.
 	a.setMarker(id, "stopped")
+	if r.URL.Query().Get("reason") == "suspended" {
+		a.setMarker(id, "suspended") // unpaid: gives its memory back until renewed
+	}
 	if a.handleDockerErr(w, a.docker.StopContainer(r.Context(), containerName(id), 60)) {
 		return
 	}
@@ -431,7 +438,7 @@ func (a *agent) hasMarker(id, kind string) bool {
 }
 
 func (a *agent) clearMarkers(id string) {
-	for _, kind := range []string{"stopped", "sleeping"} {
+	for _, kind := range []string{"stopped", "sleeping", "suspended"} {
 		_ = os.Remove(a.markerPath(id, kind))
 	}
 }
@@ -452,6 +459,8 @@ func (a *agent) handleDockerErr(w http.ResponseWriter, err error) bool {
 		return false
 	case errors.Is(err, errNotFound):
 		writeError(w, http.StatusNotFound, "server not found")
+	case errors.Is(err, errFull):
+		writeError(w, http.StatusServiceUnavailable, "full")
 	default:
 		writeError(w, http.StatusInternalServerError, err.Error())
 	}

@@ -135,7 +135,7 @@ export async function runBillingJob(now = new Date()) {
     where: { plan: { not: "FREE" }, paidUntil: { lt: now }, status: { in: ["RUNNING", "STOPPED", "PROVISIONING"] } },
   });
   for (const s of expired) {
-    await agent.stopServer(s.id).catch((err) => {
+    await agent.stopServer(s.id, "suspended").catch((err) => {
       if (!(err instanceof agent.AgentError && err.status === 404)) throw err;
     });
     await db.server.update({ where: { id: s.id }, data: { status: "SUSPENDED" } });

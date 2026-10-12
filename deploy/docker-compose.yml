@@ -33,6 +33,7 @@ services:
       GAME_ADDR: ":25565"
       STATE_DIR: /state
       IDLE_MINUTES: ${IDLE_MINUTES:-5}
+      MEMORY_LIMIT_MB: ${MEMORY_LIMIT_MB:-0}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - agent-state:/state

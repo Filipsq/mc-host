@@ -13,6 +13,11 @@ export class AgentError extends Error {
   }
 }
 
+/** The agent refused to start a free server because the machine is full. */
+export function isFull(err: unknown) {
+  return err instanceof AgentError && err.status === 503 && err.message === "full";
+}
+
 function config() {
   const url = process.env.AGENT_URL;
   const token = process.env.AGENT_TOKEN;
@@ -82,9 +87,11 @@ export async function startServer(id: string) {
   await agentFetch(`/servers/${id}/start`, { method: "POST" });
 }
 
-export async function stopServer(id: string) {
+/** Stops a server. A suspended (unpaid) one also gives back the memory it reserved. */
+export async function stopServer(id: string, reason?: "suspended") {
   // The agent gives the server up to 60s to save the world.
-  await agentFetch(`/servers/${id}/stop`, { method: "POST", timeoutMs: 90_000 });
+  const query = reason ? `?reason=${reason}` : "";
+  await agentFetch(`/servers/${id}/stop${query}`, { method: "POST", timeoutMs: 90_000 });
 }
 
 export async function deleteServer(id: string) {

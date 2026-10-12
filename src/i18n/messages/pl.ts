@@ -212,6 +212,8 @@ const pl = {
       invalidEdition: "Wybierz edycję",
       freeLimit: "Możesz mieć tylko jeden darmowy serwer",
       noPorts: "Brak wolnych miejsc na serwery. Spróbuj później.",
+      full: "Wszystkie miejsca na darmowe serwery są teraz zajęte. Spróbuj ponownie za kilka minut.",
+      soldOut: "Ten plan jest chwilowo wyprzedany. Spróbuj później albo wybierz mniejszy.",
       agentUnavailable: "Nie udało się uruchomić serwera. Spróbuj ponownie za chwilę.",
       notRunning: "Serwer nie jest uruchomiony",
       invalidSubdomain: "Adres może mieć 3–32 znaki: małe litery, cyfry i myślniki",

@@ -131,6 +131,25 @@ func TestRouterSleepingServer(t *testing.T) {
 	}
 }
 
+func TestRouterFullMachine(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	rt := &router{
+		lookup: func(context.Context, string) (*routeTarget, error) {
+			return &routeTarget{ID: "s1", Reason: "sleeping"}, nil
+		},
+		wake: func(context.Context, string) error { return errFull },
+		dial: dialTCP,
+	}
+	go rt.serve(ln)
+	if msg := join(t, ln.Addr().String(), "ekipa.mchost.pl"); !strings.Contains(msg, "zajęte") {
+		t.Fatalf("join message = %s", msg)
+	}
+}
+
 func TestRouterStoppedAndUnknown(t *testing.T) {
 	var woke atomic.Int32
 	addr := startRouter(t, map[string]*routeTarget{"off.mchost.pl": {ID: "s2", Reason: "stopped"}}, &woke)

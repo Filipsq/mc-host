@@ -9,6 +9,7 @@ import * as agent from "@/lib/agent";
 import { agentSpec, createServerRecord, getOwnedServer, isValidSubdomain } from "@/lib/servers";
 import { planById } from "@/lib/plans";
 import { PERIOD_MONTHS, startCheckout } from "@/lib/billing";
+import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -64,6 +65,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE" } }))) {
     return { error: "freeLimit", values };
   }
+  const memoryMb = planById(plan).ramGb * 1024;
+  if (plan !== "FREE" && !(await canSellMemory(memoryMb))) return { error: "soldOut", values };
 
   const server = await createServerRecord({
     ownerId: user.id,
@@ -71,7 +74,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     edition,
     subdomain,
     plan,
-    memoryMb: planById(plan).ramGb * 1024,
+    memoryMb,
     // Paid servers are only created on the game host once Stripe confirms payment.
     status: plan === "FREE" ? "PROVISIONING" : "AWAITING_PAYMENT",
   });
@@ -93,11 +96,11 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   try {
     await agent.createServer(agentSpec(server));
   } catch (err) {
-    console.error("create server failed", server.id, err);
+    if (!agent.isFull(err)) console.error("create server failed", server.id, err);
     // Clean up anything half-created so the user can try again.
     await agent.deleteServer(server.id).catch(() => {});
     await db.server.delete({ where: { id: server.id } });
-    return { error: "agentUnavailable", values };
+    return { error: agent.isFull(err) ? "full" : "agentUnavailable", values };
   }
 
   await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" } });
@@ -115,6 +118,10 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   if (!server) redirect("/dashboard");
   const parsed = checkoutSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "invalidPlan" };
+  // Renewing the same plan needs nothing new; an upgrade only needs the difference.
+  if (!(await canSellMemory(planById(parsed.data.plan).ramGb * 1024 - heldMemoryMb(server)))) {
+    return { error: "soldOut" };
+  }
 
   let url: string;
   try {
@@ -132,13 +139,19 @@ async function ownedOrThrow(id: string) {
   return server;
 }
 
-export async function startServerAction(id: string) {
+export async function startServerAction(id: string): Promise<{ error?: ServerErrorCode }> {
   const server = await ownedOrThrow(id);
   // Unpaid servers stay off until someone pays.
-  if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return;
-  await agent.startServer(server.id);
+  if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
+  try {
+    await agent.startServer(server.id);
+  } catch (err) {
+    if (agent.isFull(err)) return { error: "full" };
+    throw err;
+  }
   await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" } });
   revalidatePath(`/dashboard/servers/${id}`);
+  return {};
 }
 
 export async function stopServerAction(id: string) {

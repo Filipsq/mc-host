@@ -130,3 +130,24 @@ func TestStopReason(t *testing.T) {
 		t.Errorf("bedrock idle stop: %s", got)
 	}
 }
+
+func TestMemoryInUse(t *testing.T) {
+	a := &agent{stateDir: t.TempDir()}
+	c := func(id, state, autostop, mb string) containerSummary {
+		return containerSummary{State: state, Labels: map[string]string{"mchost.server": id, "mchost.autostop": autostop, "mchost.memory": mb}}
+	}
+	list := []containerSummary{
+		c("paidup", "running", "false", "3072"),
+		c("paiddown", "exited", "false", "6144"), // stopped by its owner: still reserved
+		c("unpaid", "exited", "false", "10240"),  // suspended below: gives its memory back
+		c("freeup", "running", "true", "2048"),
+		c("freedown", "exited", "true", "2048"), // asleep: free servers only count while awake
+	}
+	a.setMarker("unpaid", "suspended")
+	if got := a.memoryInUse(list, ""); got != 3072+6144+2048 {
+		t.Fatalf("in use = %d", got)
+	}
+	if got := a.memoryInUse(list, "freeup"); got != 3072+6144 {
+		t.Fatalf("a server must not count against itself: %d", got)
+	}
+}
