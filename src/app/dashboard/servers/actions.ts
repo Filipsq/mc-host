@@ -20,6 +20,8 @@ import {
   isValidPlayerName,
   parsePlayers,
 } from "@/lib/settings";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, SERVER_KINDS, parseModrinthLink, planAtLeast } from "@/lib/modpacks";
+import { type ResolvedPack, resolveModpack } from "@/lib/modrinth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -38,6 +40,9 @@ const createSchema = z.object({
   plan: planField,
   months: monthsField,
   subdomain: z.string().trim().toLowerCase().optional(),
+  kind: z.enum(SERVER_KINDS).default("vanilla"),
+  pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
+  packLink: z.string().max(300).optional(),
 });
 
 async function requireUser() {
@@ -67,7 +72,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   const parsed = createSchema.safeParse(values);
   if (!parsed.success) {
     const field = parsed.error.issues[0].path[0];
-    const error = field === "edition" ? "invalidEdition" : field === "name" ? "invalidName" : "invalidPlan";
+    const error =
+      field === "edition" ? "invalidEdition" : field === "name" ? "invalidName" : field === "kind" ? "invalidKind" : "invalidPlan";
     return { error, values };
   }
   const { name, edition, plan, months } = parsed.data;
@@ -78,8 +84,28 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     return { error: "freeLimit", values };
   }
   if (plan !== "FREE" && form.get("startNow") !== "on") return { error: "consentRequired", values };
+
+  // Bedrock has no game modes or mod packs here.
+  const kind = edition === "JAVA" ? parsed.data.kind : "vanilla";
+  let modpackRef: { slug: string; version?: string } | null = null;
+  if (kind === "modpack") {
+    const curated = CURATED_PACKS.find((p) => p.slug === parsed.data.pack);
+    modpackRef = curated ? { slug: curated.slug } : parseModrinthLink(parsed.data.packLink ?? "");
+    if (!modpackRef) return { error: "modpackLink", values };
+    const minPlan = curated?.minPlan ?? MODPACK_MIN_PLAN;
+    if (!planAtLeast(plan, minPlan)) return { error: minPlan === "STARTER" ? "modpackPaidOnly" : "modpackNeedsStandard", values };
+  }
+
   const memoryMb = planById(plan).ramGb * 1024;
   if (plan !== "FREE" && !(await canSellMemory(memoryMb))) return { error: "soldOut", values };
+
+  // Pin the pack's current version, so players know exactly which one to install.
+  let pack: ResolvedPack | null = null;
+  if (modpackRef) {
+    const resolved = await resolveModpack(modpackRef);
+    if (typeof resolved === "string") return { error: resolved, values };
+    pack = resolved;
+  }
 
   const server = await createServerRecord({
     ownerId: user.id,
@@ -88,6 +114,15 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     subdomain,
     plan,
     memoryMb,
+    kind,
+    ...(pack && {
+      version: pack.gameVersion,
+      modpack: pack.slug,
+      modpackTitle: pack.title,
+      modpackVersionId: pack.versionId,
+      modpackVersion: pack.versionNumber,
+      modpackLoader: pack.loader,
+    }),
     // Paid servers are only created on the game host once Stripe confirms payment.
     status: plan === "FREE" ? "PROVISIONING" : "AWAITING_PAYMENT",
   });
@@ -244,8 +279,11 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   const s = parsed.data;
   const java = server.edition === "JAVA";
 
-  // Bedrock always runs the newest version; Java keeps its version unless a listed one is picked.
-  const version = java && s.version && (JAVA_VERSIONS.includes(s.version) || s.version === server.version) ? s.version : server.version;
+  // Bedrock always runs the newest version, game modes follow their plugins and mod packs
+  // their pack; plain Java keeps its version unless a listed one is picked.
+  const pickable = java && server.kind === "vanilla";
+  const version =
+    pickable && s.version && (JAVA_VERSIONS.includes(s.version) || s.version === server.version) ? s.version : server.version;
   if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
   const players = parsePlayers(s.players);
   const bad = players.find((p) => !isValidPlayerName(server.edition, p));

@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import type { Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import EditionIcon from "@/components/EditionIcon";
 import PaymentConsent from "@/components/PaymentConsent";
 import type { Messages } from "@/i18n/messages";
+import { CURATED_PACKS, SERVER_KINDS, isServerKind, type ServerKind } from "@/lib/modpacks";
 
 type Props = {
   t: Messages["server"];
@@ -38,9 +39,25 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
   const [subdomain, setSubdomain] = useState(v.subdomain ?? "");
   const [subdomainEdited, setSubdomainEdited] = useState(!!v.subdomain);
   const [plan, setPlan] = useState<Plan>((v.plan as Plan | undefined) ?? defaultPlan);
+  const [kind, setKind] = useState<ServerKind>(isServerKind(v.kind) ? v.kind : "vanilla");
+  const [pack, setPack] = useState(v.pack ?? CURATED_PACKS[0].slug);
+  const modded = edition === "JAVA" && kind === "modpack";
+  // Mod packs need a paid plan, so the free one can't be picked for them.
+  const planChoices = modded
+    ? plans.map((p) => (p.id === "FREE" ? { ...p, disabledNote: p.disabledNote ?? t.modpackNoFree } : p))
+    : plans;
 
   return (
-    <form action={action} className="card stack">
+    <form
+      className="card stack"
+      onSubmit={(e) => {
+        // Submitted by hand rather than through `action`, which resets the form after an
+        // error and leaves the radio buttons out of step with what's shown.
+        e.preventDefault();
+        const data = new FormData(e.currentTarget);
+        startTransition(() => action(data));
+      }}
+    >
       <label>
         {t.name}
         <input
@@ -90,9 +107,65 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
           <span className="muted small">{t.subdomainHint}</span>
         </label>
       )}
+      {edition === "JAVA" && (
+        <fieldset className="stack">
+          <legend>{t.kind}</legend>
+          {SERVER_KINDS.map((k) => (
+            <label key={k} className="choice">
+              <input
+                type="radio"
+                name="kind"
+                value={k}
+                checked={kind === k}
+                onChange={() => {
+                  setKind(k);
+                  if (k === "modpack" && plan === "FREE") setPlan("STARTER");
+                }}
+              />
+              <span>
+                <strong>{t.kinds[k]}</strong> <span className="muted">{t.kindHints[k]}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {modded && (
+        <fieldset className="stack">
+          <legend>{t.modpack}</legend>
+          {CURATED_PACKS.map((p) => (
+            <label key={p.slug} className="choice">
+              <input type="radio" name="pack" value={p.slug} checked={pack === p.slug} onChange={() => setPack(p.slug)} />
+              <span>
+                <strong>{p.title}</strong> <span className="muted">{t.packs[p.slug]}</span>
+              </span>
+            </label>
+          ))}
+          <label className="choice">
+            <input type="radio" name="pack" value="custom" checked={pack === "custom"} onChange={() => setPack("custom")} />
+            <span>
+              <strong>{t.packOther}</strong> <span className="muted">{t.packOtherHint}</span>
+            </span>
+          </label>
+          {pack === "custom" && (
+            <label>
+              {t.packLink}
+              <input
+                name="packLink"
+                required
+                maxLength={300}
+                placeholder="https://modrinth.com/modpack/..."
+                defaultValue={v.packLink}
+              />
+            </label>
+          )}
+          <p className="muted small">{t.modpackNote}</p>
+        </fieldset>
+      )}
       <PlanPicker
-        plans={plans}
-        defaultPlan={(v.plan as Plan | undefined) ?? defaultPlan}
+        // Remounted when mod packs rule out the free plan, so it picks up the new default.
+        key={modded ? "modded" : "any"}
+        plans={planChoices}
+        defaultPlan={plan}
         periodLabels={{ 1: billing.months1, 3: billing.months3 }}
         labels={{ plan: t.plan, period: t.period, total: billing.total }}
         formatMoney={money}

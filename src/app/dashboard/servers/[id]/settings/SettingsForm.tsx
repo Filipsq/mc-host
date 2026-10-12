@@ -11,6 +11,7 @@ type Props = {
   edition: Edition;
   name: string;
   versions: string[];
+  versionNote?: string; // shown instead of the version picker when the version isn't up to the owner
   initial: {
     version: string;
     gameMode: string;
@@ -23,7 +24,7 @@ type Props = {
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, versionNote, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
@@ -43,7 +44,13 @@ export default function SettingsForm({ serverId, edition, name, versions, initia
         startTransition(() => action(data));
       }}
     >
-      {java && (
+      {java && versionNote && (
+        <div className="stack-tight">
+          <span>{t.version}</span>
+          <span className="muted small">{versionNote}</span>
+        </div>
+      )}
+      {java && !versionNote && (
         <label>
           {t.version}
           <select name="version" value={version} onChange={(e) => setVersion(e.target.value)}>

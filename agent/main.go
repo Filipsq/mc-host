@@ -28,22 +28,38 @@ var images = map[string]string{
 	"BEDROCK": "itzg/minecraft-bedrock-server:latest",
 }
 
-var javaRelease = regexp.MustCompile(`^1\.(\d+)(\.\d+)?$`)
+var javaRelease = regexp.MustCompile(`^1\.(\d+)(?:\.(\d+))?$`)
 
 // imageFor picks the image with the Java that Paper needs for the version:
 // 1.17–1.19 need Java 17, 1.20–1.21.11 Java 21, and 26.1 onwards (and LATEST) Java 25.
-func imageFor(edition, version string) string {
+// Mod packs for 1.20–1.20.4 get Java 17 too: Forge for those versions expects it.
+// Skyblock and OneBlock follow their plugins' newest version, so they get the newest Java.
+func imageFor(edition, version, kind string) string {
 	if edition != "JAVA" {
 		return images[edition]
 	}
+	if kind == "skyblock" || kind == "oneblock" {
+		return images["JAVA"]
+	}
 	if m := javaRelease.FindStringSubmatch(version); m != nil {
-		if minor, _ := strconv.Atoi(m[1]); minor < 20 {
+		minor, _ := strconv.Atoi(m[1])
+		patch, _ := strconv.Atoi(m[2])
+		if minor < 20 || (kind == "modpack" && minor == 20 && patch < 5) {
 			return "itzg/minecraft-server:java17"
 		}
 		return "itzg/minecraft-server:java21"
 	}
 	return images["JAVA"]
 }
+
+// What a Java server runs: plain Paper, a BentoBox game mode, or a Modrinth mod pack.
+var (
+	kinds = map[string]bool{"vanilla": true, "skyblock": true, "oneblock": true, "modpack": true}
+	// The plugins (from Modrinth) each game mode needs on Paper.
+	gameModePlugins = map[string]string{"skyblock": "bentobox,bskyblock", "oneblock": "bentobox,aoneblock"}
+	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
+	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
+)
 
 // Server IDs come from the panel (cuid); restrict them so they're safe in container names.
 var validID = regexp.MustCompile(`^[a-z0-9]{8,40}$`)
@@ -166,6 +182,12 @@ type createRequest struct {
 	PVP        *bool    `json:"pvp"`              // Java only; on if missing
 	Whitelist  bool     `json:"whitelist"`        // only listed players may join
 	Players    []string `json:"whitelistPlayers"` // Java profile names or Bedrock gamertags
+
+	// Java only: what the server runs (see kinds). For a mod pack, the Modrinth
+	// project and the exact pack version, so players can install the same one.
+	Kind           string `json:"kind"`
+	Modpack        string `json:"modpack"`
+	ModpackVersion string `json:"modpackVersion"`
 }
 
 var (
@@ -195,6 +217,15 @@ func (req *createRequest) validate() error {
 	}
 	if req.Difficulty == "" {
 		req.Difficulty = "easy"
+	}
+	if req.Kind == "" {
+		req.Kind = "vanilla"
+	}
+	switch {
+	case !kinds[req.Kind] || (req.Kind != "vanilla" && req.Edition != "JAVA"):
+		return errors.New("kind must be vanilla, skyblock, oneblock or modpack (Java only)")
+	case req.Kind == "modpack" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
+		return errors.New("a modpack server needs a Modrinth modpack and modpackVersion")
 	}
 	switch {
 	case !validVersion.MatchString(req.Version):
@@ -275,7 +306,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 
 // run creates the server's container and, if start is set, starts it.
 func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
-	image := imageFor(req.Edition, req.Version)
+	image := imageFor(req.Edition, req.Version, req.Kind)
 	if err := a.ensureImage(ctx, image); err != nil {
 		return err
 	}
@@ -298,7 +329,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 	if motd == "" {
 		motd = req.Name
 	}
-	env := []string{"EULA=TRUE", "VERSION=" + req.Version, "MAX_PLAYERS=" + maxPlayers, "DIFFICULTY=" + req.Difficulty}
+	env := []string{"EULA=TRUE", "MAX_PLAYERS=" + maxPlayers, "DIFFICULTY=" + req.Difficulty}
 	labels := map[string]string{
 		"mchost.server":   req.ID,
 		"mchost.edition":  req.Edition,
@@ -313,7 +344,17 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 	limitMb := req.MemoryMb
 	if req.Edition == "JAVA" {
 		pvp := req.PVP == nil || *req.PVP
-		env = append(env, "TYPE=PAPER", fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "ENABLE_RCON=true",
+		switch req.Kind {
+		case "skyblock", "oneblock":
+			// The image picks the newest Minecraft version all the plugins support.
+			env = append(env, "TYPE=PAPER", "MODRINTH_PROJECTS="+gameModePlugins[req.Kind], "VERSION_FROM_MODRINTH_PROJECTS=TRUE")
+		case "modpack":
+			// The image installs the pack's mod loader and server-side mods.
+			env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version)
+		default:
+			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
+		}
+		env = append(env, fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "ENABLE_RCON=true",
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
 			// The panel's list replaces whatever the server had, so removing a player works.
@@ -329,7 +370,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		hostIP = "127.0.0.1" // players come in through the router, not directly
 		limitMb = req.MemoryMb + 512
 	} else {
-		env = append(env, "SERVER_NAME="+motd, "GAMEMODE="+req.GameMode)
+		env = append(env, "VERSION="+req.Version, "SERVER_NAME="+motd, "GAMEMODE="+req.GameMode)
 		if req.Whitelist {
 			env = append(env, "ALLOW_LIST=true", "ALLOW_LIST_USERS="+strings.Join(req.Players, ","))
 		} else {

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 import { getOwnedServer } from "@/lib/servers";
 import { JAVA_VERSIONS } from "@/lib/settings";
+import { format } from "@/i18n/messages";
 import SettingsForm from "./SettingsForm";
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
 
   // Keep a version that's no longer offered selectable, so saving doesn't change it.
   const versions = JAVA_VERSIONS.includes(server.version) ? JAVA_VERSIONS : [server.version, ...JAVA_VERSIONS];
+  // Game modes and mod packs decide the version themselves.
+  const versionNote =
+    server.kind === "modpack"
+      ? format(t.settings.versionModpack, {
+          mc: server.version,
+          title: server.modpackTitle ?? server.modpack ?? "",
+          version: server.modpackVersion ?? "",
+        })
+      : server.kind === "skyblock" || server.kind === "oneblock"
+        ? format(t.settings.versionGameMode, { kind: t.server.kinds[server.kind] })
+        : undefined;
 
   return (
     <main className="wide-form stack">
@@ -26,6 +38,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         edition={server.edition}
         name={server.name}
         versions={versions}
+        versionNote={versionNote}
         initial={{
           version: server.version,
           gameMode: server.gameMode,

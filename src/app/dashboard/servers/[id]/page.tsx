@@ -7,6 +7,7 @@ import { getLiveState, getOwnedServer, joinAddress } from "@/lib/servers";
 import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
+import { ISLAND_COMMAND, LOADER_NAMES, isServerKind, modpackPage } from "@/lib/modpacks";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
@@ -38,6 +39,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const t = all.server;
   const b = all.billing;
   const { host, port } = joinAddress(server);
+  const kind = server.edition === "JAVA" && isServerKind(server.kind) ? server.kind : "vanilla";
+  const islandCommand = ISLAND_COMMAND[kind];
   const unpaid = live === "awaitingPayment" || live === "suspended";
   // Keep refreshing while starting, or while a just-made payment is being confirmed.
   const waiting = live === "starting" || live === "restarting" || (payment === "success" && unpaid);
@@ -84,6 +87,21 @@ export default async function ServerPage({ params, searchParams }: Props) {
           <CopyButton text={host} label={t.copy} copiedLabel={t.copied} />
         </div>
         {server.edition === "BEDROCK" && <p className="muted small">{t.bedrockJoin}</p>}
+        {islandCommand && <p className="muted small">{format(t.islandHint, { command: islandCommand })}</p>}
+        {kind === "modpack" && server.modpack && (
+          <p className="muted small">
+            {format(t.modpackInfo, {
+              title: server.modpackTitle ?? server.modpack,
+              version: server.modpackVersion ?? "",
+              mc: server.version,
+              loader: LOADER_NAMES[server.modpackLoader ?? ""] ?? server.modpackLoader ?? "",
+            })}{" "}
+            {t.modpackInstall}{" "}
+            <a href={modpackPage(server.modpack, server.modpackVersionId)} target="_blank" rel="noreferrer">
+              {t.modpackDownload}
+            </a>
+          </p>
+        )}
         <ServerControls id={server.id} live={live} t={t} />
       </div>
 
@@ -112,7 +130,14 @@ export default async function ServerPage({ params, searchParams }: Props) {
           <span className="muted">
             ·{" "}
             {[
-              server.edition === "JAVA" && (server.version === "LATEST" ? all.settings.latest : server.version),
+              server.edition === "JAVA" &&
+                (kind === "vanilla"
+                  ? server.version === "LATEST"
+                    ? all.settings.latest
+                    : server.version
+                  : kind === "modpack"
+                    ? `${t.kinds.modpack} · ${server.version}`
+                    : t.kinds[kind]),
               all.settings.modes[server.gameMode as GameMode],
               all.settings.difficulties[server.difficulty as Difficulty],
               server.whitelist && all.settings.whitelistOn,

@@ -103,6 +103,9 @@ export function agentSpec(server: Server): CreateServerSpec {
     pvp: server.pvp,
     whitelist: server.whitelist,
     whitelistPlayers: server.whitelistPlayers,
+    kind: server.edition === "JAVA" ? server.kind : "vanilla",
+    modpack: server.modpack ?? undefined,
+    modpackVersion: server.modpackVersionId ?? undefined,
   };
 }
 

@@ -32,7 +32,7 @@ go test ./...
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers}` |
+| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackVersion}` |
 | PUT | `/servers/{id}` | Rebuild the container with a new spec (plan or settings change), keeping the world. With `?start=if-running` a stopped or sleeping server stays off |
 | GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped` or `crashed` |
 | POST | `/servers/{id}/start`, `/stop` | Stop waits up to 60 s so the world is saved; `/stop?reason=suspended` also gives back the server's memory until it's renewed. Starting a free server that doesn't fit returns 503 `{"error":"full"}` |
@@ -43,6 +43,11 @@ go test ./...
 | POST | `/servers/{id}/backups` | Back up now. 403 when the plan has no backups |
 | GET | `/servers/{id}/backups/{name}` | Download a backup (`.tar.gz` of the server's `/data`) |
 | POST | `/servers/{id}/backups/{name}/restore` | Replace the world with a backup; a running server is stopped and started again |
+
+Java servers run what `kind` says: `vanilla` (Paper, the default), `skyblock` or `oneblock`
+(Paper with the BentoBox plugins from Modrinth, on the newest Minecraft version they all support),
+or `modpack` (the Modrinth mod pack `modpack` at version ID `modpackVersion`, on its Minecraft
+`version`).
 
 Servers whose plan keeps backups (`backupsKept`) are backed up once a day, if they have run since
 their last backup. A running server's saving is paused while its world is copied. Only the newest

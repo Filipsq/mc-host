@@ -218,12 +218,91 @@ func TestImageFor(t *testing.T) {
 		"1.19.4":  "itzg/minecraft-server:java17",
 		"1.17.1":  "itzg/minecraft-server:java17",
 	} {
-		if got := imageFor("JAVA", version); got != want {
+		if got := imageFor("JAVA", version, "vanilla"); got != want {
 			t.Errorf("%s: got %s, want %s", version, got, want)
 		}
 	}
-	if imageFor("BEDROCK", "LATEST") != images["BEDROCK"] {
+	for version, want := range map[string]string{
+		"1.20.1": "itzg/minecraft-server:java17", // Forge 1.20.1 packs
+		"1.20.4": "itzg/minecraft-server:java17",
+		"1.20.6": "itzg/minecraft-server:java21",
+		"1.21.1": "itzg/minecraft-server:java21",
+		"26.3":   "itzg/minecraft-server:java25",
+	} {
+		if got := imageFor("JAVA", version, "modpack"); got != want {
+			t.Errorf("modpack %s: got %s, want %s", version, got, want)
+		}
+	}
+	if imageFor("JAVA", "1.20.1", "skyblock") != images["JAVA"] {
+		t.Error("skyblock follows its plugins to the newest version")
+	}
+	if imageFor("BEDROCK", "LATEST", "vanilla") != images["BEDROCK"] {
 		t.Error("bedrock always uses its own image")
+	}
+}
+
+func TestKindEnv(t *testing.T) {
+	a := &agent{idle: 5 * time.Minute}
+	envOf := func(req createRequest) string {
+		t.Helper()
+		if err := req.validate(); err != nil {
+			t.Fatalf("%+v: %v", req, err)
+		}
+		return strings.Join(a.containerSpec(req, imageFor(req.Edition, req.Version, req.Kind))["Env"].([]string), "\n") + "\n"
+	}
+	base := createRequest{ID: "abc12345", Name: "Wyspa", Edition: "JAVA", MemoryMb: 3072, CPUs: 2, Port: 30001, Hostname: "wyspa.mchost.pl"}
+
+	vanilla := envOf(base)
+	for _, want := range []string{"TYPE=PAPER\n", "VERSION=LATEST\n"} {
+		if !strings.Contains(vanilla, want) {
+			t.Errorf("vanilla env missing %q:\n%s", want, vanilla)
+		}
+	}
+
+	sky := base
+	sky.Kind = "skyblock"
+	env := envOf(sky)
+	for _, want := range []string{"TYPE=PAPER\n", "MODRINTH_PROJECTS=bentobox,bskyblock\n", "VERSION_FROM_MODRINTH_PROJECTS=TRUE\n"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("skyblock env missing %q:\n%s", want, env)
+		}
+	}
+	if strings.Contains(env, "VERSION=") && !strings.Contains(env, "VERSION_FROM") {
+		t.Errorf("skyblock must not pin VERSION:\n%s", env)
+	}
+	one := base
+	one.Kind = "oneblock"
+	if env := envOf(one); !strings.Contains(env, "MODRINTH_PROJECTS=bentobox,aoneblock\n") {
+		t.Errorf("oneblock env:\n%s", env)
+	}
+
+	pack := base
+	pack.Kind, pack.Modpack, pack.ModpackVersion, pack.Version = "modpack", "cobblemon-fabric", "BpTjgzL8", "1.21.1"
+	env = envOf(pack)
+	for _, want := range []string{"TYPE=MODRINTH\n", "MODRINTH_MODPACK=cobblemon-fabric\n", "MODRINTH_VERSION=BpTjgzL8\n", "VERSION=1.21.1\n", "MEMORY=3072M\n"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("modpack env missing %q:\n%s", want, env)
+		}
+	}
+	if strings.Contains(env, "TYPE=PAPER") {
+		t.Errorf("modpack must not run Paper:\n%s", env)
+	}
+
+	for _, bad := range []createRequest{
+		{Kind: "hardcore"},
+		{Kind: "modpack"}, // no pack
+		{Kind: "modpack", Modpack: "cobblemon-fabric"},                   // no version
+		{Kind: "modpack", Modpack: "a b", ModpackVersion: "BpTjgzL8"},    // bad slug
+		{Kind: "modpack", Modpack: "pack", ModpackVersion: "x;rm -rf /"}, // bad version
+	} {
+		bad.ID, bad.Name, bad.Edition, bad.MemoryMb, bad.CPUs, bad.Port, bad.Hostname = "abc12345", "X", "JAVA", 2048, 1, 25570, "x.mchost.pl"
+		if bad.validate() == nil {
+			t.Errorf("should be rejected: %+v", bad)
+		}
+	}
+	bedrockSky := createRequest{ID: "abc12345", Name: "X", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570, Kind: "skyblock"}
+	if bedrockSky.validate() == nil {
+		t.Error("bedrock can't be skyblock")
 	}
 }
 
@@ -235,7 +314,7 @@ func TestSettingsEnv(t *testing.T) {
 	if err := java.validate(); err != nil {
 		t.Fatal(err)
 	}
-	env := strings.Join(a.containerSpec(java, imageFor("JAVA", java.Version))["Env"].([]string), "\n")
+	env := strings.Join(a.containerSpec(java, imageFor("JAVA", java.Version, java.Kind))["Env"].([]string), "\n")
 	for _, want := range []string{"VERSION=1.20.1", "MODE=creative", "DIFFICULTY=hard", "MOTD=Witaj!", "PVP=false", "ENABLE_WHITELIST=true", "WHITELIST=Steve,Alex_2", "EXISTING_WHITELIST_FILE=SYNCHRONIZE"} {
 		if !strings.Contains(env, want+"\n") && !strings.HasSuffix(env, want) {
 			t.Errorf("java env missing %s:\n%s", want, env)

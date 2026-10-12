@@ -70,6 +70,14 @@ model Server {
   pvp              Boolean      @default(true) // Java only
   whitelist        Boolean      @default(false)
   whitelistPlayers String[]     @default([])
+  // Java only: what the server runs: vanilla (Paper), skyblock, oneblock or modpack (src/lib/modpacks.ts).
+  kind             String       @default("vanilla")
+  // A mod pack's Modrinth project and the exact pack version players must install too.
+  modpack          String?
+  modpackTitle     String?
+  modpackVersionId String?
+  modpackVersion   String? // the pack version's number, e.g. "1.6.1"
+  modpackLoader    String? // fabric, forge, neoforge or quilt
   // Host port of the server: behind the router for Java, public (UDP) for Bedrock.
   port             Int?         @unique
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
