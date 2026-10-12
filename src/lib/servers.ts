@@ -97,6 +97,12 @@ export function agentSpec(server: Server): CreateServerSpec {
     hostname: server.edition === "JAVA" ? joinAddress(server).host : "",
     autostop: !plan.alwaysOn,
     backupsKept: plan.backupsKept,
+    gameMode: server.gameMode,
+    difficulty: server.difficulty,
+    motd: server.motd,
+    pvp: server.pvp,
+    whitelist: server.whitelist,
+    whitelistPlayers: server.whitelistPlayers,
   };
 }
 

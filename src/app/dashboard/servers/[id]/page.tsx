@@ -6,6 +6,7 @@ import { format } from "@/i18n/messages";
 import { getLiveState, getOwnedServer, joinAddress } from "@/lib/servers";
 import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
+import type { Difficulty, GameMode } from "@/lib/settings";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
@@ -15,14 +16,14 @@ import Backups, { type BackupRow } from "./Backups";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<{ payment?: string; settings?: string }>;
 };
 
 export default async function ServerPage({ params, searchParams }: Props) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [{ id }, { payment }] = await Promise.all([params, searchParams]);
+  const [{ id }, { payment, settings }] = await Promise.all([params, searchParams]);
   const server = await getOwnedServer(id, session.user.id);
   if (!server) notFound();
 
@@ -60,6 +61,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
       </header>
 
       {payment === "success" && <p className="notice success">{b.success}</p>}
+      {settings === "saved" && <p className="notice success">{all.settings.saved}</p>}
       {payment === "cancelled" && unpaid && <p className="notice">{b.cancelled}</p>}
       {live === "awaitingPayment" && payment !== "success" && <p className="notice">{b.awaiting}</p>}
       {live === "suspended" && <p className="notice warn">{b.suspended}</p>}
@@ -101,6 +103,26 @@ export default async function ServerPage({ params, searchParams }: Props) {
         </span>
         <Link className={`button${unpaid ? "" : " secondary"}`} href={`/dashboard/servers/${server.id}/billing`}>
           {unpaid ? b.pay : b.manage}
+        </Link>
+      </div>
+
+      <div className="card row">
+        <span>
+          <strong>{all.settings.title}</strong>{" "}
+          <span className="muted">
+            ·{" "}
+            {[
+              server.edition === "JAVA" && (server.version === "LATEST" ? all.settings.latest : server.version),
+              all.settings.modes[server.gameMode as GameMode],
+              all.settings.difficulties[server.difficulty as Difficulty],
+              server.whitelist && all.settings.whitelistOn,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
+        </span>
+        <Link className="button secondary" href={`/dashboard/servers/${server.id}/settings`}>
+          {all.settings.edit}
         </Link>
       </div>
 

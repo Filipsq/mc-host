@@ -19,6 +19,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 // Images for the newest version of each edition; see imageFor for older Java versions.
@@ -157,7 +158,22 @@ type createRequest struct {
 	Hostname   string  `json:"hostname"`    // Java only: the address players type, e.g. ekipa.mchost.pl
 	Autostop   bool    `json:"autostop"`    // sleep when nobody is playing (free plan)
 	Backups    int     `json:"backupsKept"` // daily backups to keep; 0 for none
+
+	// Game settings the owner picks in the panel.
+	GameMode   string   `json:"gameMode"`         // survival, creative or adventure
+	Difficulty string   `json:"difficulty"`       // peaceful, easy, normal or hard
+	Motd       string   `json:"motd"`             // shown in the server list; the name if empty
+	PVP        *bool    `json:"pvp"`              // Java only; on if missing
+	Whitelist  bool     `json:"whitelist"`        // only listed players may join
+	Players    []string `json:"whitelistPlayers"` // Java profile names or Bedrock gamertags
 }
+
+var (
+	validVersion = regexp.MustCompile(`^(LATEST|\d+\.\d+(\.\d+)?)$`)
+	validPlayer  = regexp.MustCompile(`^[\p{L}\p{N} _-]{1,32}$`)
+	gameModes    = map[string]bool{"survival": true, "creative": true, "adventure": true}
+	difficulties = map[string]bool{"peaceful": true, "easy": true, "normal": true, "hard": true}
+)
 
 func (req *createRequest) validate() error {
 	if _, ok := images[req.Edition]; !ok {
@@ -174,6 +190,27 @@ func (req *createRequest) validate() error {
 	if req.Version == "" {
 		req.Version = "LATEST"
 	}
+	if req.GameMode == "" {
+		req.GameMode = "survival"
+	}
+	if req.Difficulty == "" {
+		req.Difficulty = "easy"
+	}
+	switch {
+	case !validVersion.MatchString(req.Version):
+		return errors.New("invalid version")
+	case !gameModes[req.GameMode] || !difficulties[req.Difficulty]:
+		return errors.New("invalid gameMode or difficulty")
+	case len([]rune(req.Motd)) > 100 || strings.ContainsFunc(req.Motd, unicode.IsControl):
+		return errors.New("motd must be one line of up to 100 characters")
+	case len(req.Players) > 200:
+		return errors.New("at most 200 whitelisted players")
+	}
+	for _, p := range req.Players {
+		if !validPlayer.MatchString(p) {
+			return fmt.Errorf("invalid player name %q", p)
+		}
+	}
 	return nil
 }
 
@@ -187,7 +224,7 @@ func (a *agent) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if a.handleDockerErr(w, a.run(r.Context(), req)) {
+	if a.handleDockerErr(w, a.run(r.Context(), req, true)) {
 		return
 	}
 	log.Printf("created %s (%s, %d MB, port %d, autostop %v)", containerName(req.ID), req.Edition, req.MemoryMb, req.Port, req.Autostop)
@@ -209,6 +246,17 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer a.lockServer(req.ID)() // not mid-backup or mid-restore
 	name := containerName(req.ID)
+	// ?start=if-running keeps a stopped or sleeping server off (new settings);
+	// otherwise the server starts (a plan was just paid for).
+	start := true
+	if r.URL.Query().Get("start") == "if-running" {
+		info, err := a.docker.InspectContainer(r.Context(), name)
+		if err != nil && !errors.Is(err, errNotFound) {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		start = err == nil && (info.State.Status == "running" || info.State.Status == "restarting")
+	}
 	if err := a.docker.StopContainer(r.Context(), name, 60); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -217,7 +265,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if a.handleDockerErr(w, a.run(r.Context(), req)) {
+	if a.handleDockerErr(w, a.run(r.Context(), req, start)) {
 		return
 	}
 	a.pruneBackups(req.ID, req.Backups) // a smaller plan keeps fewer
@@ -225,7 +273,8 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
-func (a *agent) run(ctx context.Context, req createRequest) error {
+// run creates the server's container and, if start is set, starts it.
+func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	image := imageFor(req.Edition, req.Version)
 	if err := a.ensureImage(ctx, image); err != nil {
 		return err
@@ -233,6 +282,9 @@ func (a *agent) run(ctx context.Context, req createRequest) error {
 	name := containerName(req.ID)
 	if err := a.docker.CreateContainer(ctx, name, a.containerSpec(req, image)); err != nil {
 		return err
+	}
+	if !start {
+		return nil
 	}
 	return a.startServer(ctx, req.ID)
 }
@@ -242,7 +294,11 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 	if req.MaxPlayers <= 0 {
 		maxPlayers = "1000"
 	}
-	env := []string{"EULA=TRUE", "VERSION=" + req.Version, "MAX_PLAYERS=" + maxPlayers}
+	motd := req.Motd
+	if motd == "" {
+		motd = req.Name
+	}
+	env := []string{"EULA=TRUE", "VERSION=" + req.Version, "MAX_PLAYERS=" + maxPlayers, "DIFFICULTY=" + req.Difficulty}
 	labels := map[string]string{
 		"mchost.server":   req.ID,
 		"mchost.edition":  req.Edition,
@@ -256,7 +312,13 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 	// Leave headroom above the JVM heap for the JVM itself, or the kernel OOM-kills it.
 	limitMb := req.MemoryMb
 	if req.Edition == "JAVA" {
-		env = append(env, "TYPE=PAPER", fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "MOTD="+req.Name, "ENABLE_RCON=true")
+		pvp := req.PVP == nil || *req.PVP
+		env = append(env, "TYPE=PAPER", fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "ENABLE_RCON=true",
+			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
+		if req.Whitelist {
+			// The panel's list replaces whatever the server had, so removing a player works.
+			env = append(env, "WHITELIST="+strings.Join(req.Players, ","), "EXISTING_WHITELIST_FILE=SYNCHRONIZE", "ENFORCE_WHITELIST=TRUE")
+		}
 		if req.Autostop {
 			// The image stops the server by itself once nobody has played for this long.
 			secs := fmt.Sprint(int(a.idle.Seconds()))
@@ -267,8 +329,13 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		hostIP = "127.0.0.1" // players come in through the router, not directly
 		limitMb = req.MemoryMb + 512
 	} else {
-		// Recent Bedrock servers turn the allow list on by default, which keeps everyone out.
-		env = append(env, "SERVER_NAME="+req.Name, "ALLOW_LIST=false")
+		env = append(env, "SERVER_NAME="+motd, "GAMEMODE="+req.GameMode)
+		if req.Whitelist {
+			env = append(env, "ALLOW_LIST=true", "ALLOW_LIST_USERS="+strings.Join(req.Players, ","))
+		} else {
+			// Recent Bedrock servers turn the allow list on by default, which keeps everyone out.
+			env = append(env, "ALLOW_LIST=false")
+		}
 		containerPort = "19132/udp"
 		tty = true // send-command writes to the server's stdin
 	}

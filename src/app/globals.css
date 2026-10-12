@@ -75,11 +75,13 @@ h3 { font-size: 1.1rem; }
 
 /* Forms */
 label { display: flex; flex-direction: column; gap: 6px; font-weight: 500; }
-input {
+input, select, textarea {
   padding: 11px 13px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
   background: var(--bg); color: var(--fg); font: inherit; transition: border-color 0.15s, box-shadow 0.15s;
 }
-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+textarea { resize: vertical; min-height: 110px; line-height: 1.45; }
+select { cursor: pointer; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 input[type="radio"] { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; flex-shrink: 0; }
 input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; margin: 2px 0 0; flex-shrink: 0; }
 label.check { flex-direction: row; align-items: flex-start; gap: 10px; font-weight: 400; font-size: 0.92rem; }
@@ -398,6 +400,8 @@ label.choice {
 label.choice:hover { border-color: var(--muted); }
 label.choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
 label.choice.disabled { opacity: 0.5; cursor: not-allowed; }
+.option-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+[hidden] { display: none !important; }
 .plan-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 label.plan-choice { align-items: flex-start; }
 label.plan-choice input { margin-top: 3px; }

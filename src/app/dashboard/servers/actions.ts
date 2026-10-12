@@ -11,6 +11,15 @@ import { agentSpec, createServerRecord, getOwnedServer, isValidSubdomain } from 
 import { planById } from "@/lib/plans";
 import { PERIOD_MONTHS, startCheckout } from "@/lib/billing";
 import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
+import {
+  DIFFICULTIES,
+  GAME_MODES,
+  JAVA_VERSIONS,
+  MOTD_MAX,
+  WHITELIST_MAX,
+  isValidPlayerName,
+  parsePlayers,
+} from "@/lib/settings";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -213,6 +222,65 @@ export async function restoreBackupAction(id: string, name: string): Promise<Bac
   }
   revalidatePath(`/dashboard/servers/${id}`);
   return {};
+}
+
+export type SettingsState = { error?: keyof Messages["settings"]["errors"]; player?: string };
+
+const settingsSchema = z.object({
+  version: z.string().optional(),
+  gameMode: z.enum(GAME_MODES),
+  difficulty: z.enum(DIFFICULTIES),
+  motd: z.string().trim(),
+  pvp: z.literal("on").optional(),
+  whitelist: z.literal("on").optional(),
+  players: z.string().default(""),
+});
+
+/** Saves the game settings and rebuilds the server with them (a running one restarts). */
+export async function saveSettingsAction(id: string, _: SettingsState, form: FormData): Promise<SettingsState> {
+  const server = await ownedOrThrow(id);
+  const parsed = settingsSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "invalidSettings" };
+  const s = parsed.data;
+  const java = server.edition === "JAVA";
+
+  // Bedrock always runs the newest version; Java keeps its version unless a listed one is picked.
+  const version = java && s.version && (JAVA_VERSIONS.includes(s.version) || s.version === server.version) ? s.version : server.version;
+  if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
+  const players = parsePlayers(s.players);
+  const bad = players.find((p) => !isValidPlayerName(server.edition, p));
+  if (bad) return { error: "invalidPlayer", player: bad };
+  if (players.length > WHITELIST_MAX) return { error: "tooManyPlayers" };
+  const whitelist = s.whitelist === "on";
+  if (whitelist && players.length === 0) return { error: "whitelistEmpty" };
+
+  const updated = await db.server.update({
+    where: { id: server.id },
+    data: {
+      version,
+      gameMode: s.gameMode,
+      difficulty: s.difficulty,
+      motd: s.motd,
+      pvp: java ? s.pvp === "on" : server.pvp,
+      whitelist,
+      whitelistPlayers: players,
+    },
+  });
+
+  // Unpaid servers aren't on the game host; they get these settings when they're (re)created.
+  if (["RUNNING", "STOPPED", "SLEEPING"].includes(server.status)) {
+    try {
+      if (version !== server.version && planById(server.plan).backupsKept > 0) {
+        await agent.createBackup(server.id).catch((err) => console.error("pre-update backup failed", server.id, err));
+      }
+      await agent.recreateServer(agentSpec(updated), { keepStopped: true });
+    } catch (err) {
+      console.error("apply settings failed", server.id, err);
+      return { error: "applyFailed" };
+    }
+  }
+  revalidatePath(`/dashboard/servers/${id}`);
+  redirect(`/dashboard/servers/${id}?settings=saved`);
 }
 
 export type CommandResult = { output?: string; error?: ServerErrorCode };

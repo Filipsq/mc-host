@@ -226,3 +226,43 @@ func TestImageFor(t *testing.T) {
 		t.Error("bedrock always uses its own image")
 	}
 }
+
+func TestSettingsEnv(t *testing.T) {
+	a := &agent{idle: 5 * time.Minute}
+	off := false
+	java := createRequest{ID: "abc12345", Name: "Ekipa", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 25570, Hostname: "ekipa.mchost.pl",
+		Version: "1.20.1", GameMode: "creative", Difficulty: "hard", Motd: "Witaj!", PVP: &off, Whitelist: true, Players: []string{"Steve", "Alex_2"}}
+	if err := java.validate(); err != nil {
+		t.Fatal(err)
+	}
+	env := strings.Join(a.containerSpec(java, imageFor("JAVA", java.Version))["Env"].([]string), "\n")
+	for _, want := range []string{"VERSION=1.20.1", "MODE=creative", "DIFFICULTY=hard", "MOTD=Witaj!", "PVP=false", "ENABLE_WHITELIST=true", "WHITELIST=Steve,Alex_2", "EXISTING_WHITELIST_FILE=SYNCHRONIZE"} {
+		if !strings.Contains(env, want+"\n") && !strings.HasSuffix(env, want) {
+			t.Errorf("java env missing %s:\n%s", want, env)
+		}
+	}
+
+	bedrock := createRequest{ID: "abc12345", Name: "Wyspa", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570, Whitelist: true, Players: []string{"Gracz 123"}}
+	if err := bedrock.validate(); err != nil {
+		t.Fatal(err)
+	}
+	env = strings.Join(a.containerSpec(bedrock, images["BEDROCK"])["Env"].([]string), "\n")
+	for _, want := range []string{"SERVER_NAME=Wyspa", "GAMEMODE=survival", "DIFFICULTY=easy", "ALLOW_LIST=true", "ALLOW_LIST_USERS=Gracz 123"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("bedrock env missing %s:\n%s", want, env)
+		}
+	}
+
+	for _, bad := range []createRequest{
+		{GameMode: "hardcore"},
+		{Version: "latest; rm -rf /"},
+		{Motd: "two\nlines"},
+		{Players: []string{"a,b"}},
+		{Players: []string{"name:123"}},
+	} {
+		bad.ID, bad.Name, bad.Edition, bad.MemoryMb, bad.CPUs, bad.Port = "abc12345", "X", "BEDROCK", 2048, 1, 25570
+		if bad.validate() == nil {
+			t.Errorf("should be rejected: %+v", bad)
+		}
+	}
+}

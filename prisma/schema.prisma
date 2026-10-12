@@ -40,24 +40,31 @@ enum ServerStatus {
 }
 
 model Server {
-  id        String       @id @default(cuid())
-  name      String
-  edition   Edition      @default(JAVA)
-  plan      Plan         @default(FREE)
-  status    ServerStatus @default(PROVISIONING)
-  memoryMb  Int
-  version   String       @default("LATEST")
+  id               String       @id @default(cuid())
+  name             String
+  edition          Edition      @default(JAVA)
+  plan             Plan         @default(FREE)
+  status           ServerStatus @default(PROVISIONING)
+  memoryMb         Int
+  version          String       @default("LATEST")
+  // Game settings from the panel's Settings page (see src/lib/settings.ts).
+  gameMode         String       @default("survival")
+  difficulty       String       @default("easy")
+  motd             String       @default("") // empty: the server's name
+  pvp              Boolean      @default(true) // Java only
+  whitelist        Boolean      @default(false)
+  whitelistPlayers String[]     @default([])
   // Host port of the server: behind the router for Java, public (UDP) for Bedrock.
-  port      Int?         @unique
+  port             Int?         @unique
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
-  subdomain String?      @unique
+  subdomain        String?      @unique
   // Paid plans are prepaid; the server is suspended once this passes.
-  paidUntil DateTime?
-  payments  Payment[]
-  owner     User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId   String
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  paidUntil        DateTime?
+  payments         Payment[]
+  owner            User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId          String
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
 
   @@index([ownerId])
 }

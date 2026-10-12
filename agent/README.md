@@ -32,8 +32,8 @@ go test ./...
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept}` |
-| PUT | `/servers/{id}` | Rebuild the container with a new spec (plan change), keeping the world |
+| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers}` |
+| PUT | `/servers/{id}` | Rebuild the container with a new spec (plan or settings change), keeping the world. With `?start=if-running` a stopped or sleeping server stays off |
 | GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped` or `crashed` |
 | POST | `/servers/{id}/start`, `/stop` | Stop waits up to 60 s so the world is saved; `/stop?reason=suspended` also gives back the server's memory until it's renewed. Starting a free server that doesn't fit returns 503 `{"error":"full"}` |
 | DELETE | `/servers/{id}` | Removes the container, its world volume and its backups |

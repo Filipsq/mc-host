@@ -58,6 +58,12 @@ export type CreateServerSpec = {
   hostname: string; // Java only
   autostop: boolean;
   backupsKept: number; // daily backups the agent keeps; 0 for none
+  gameMode: string;
+  difficulty: string;
+  motd: string; // empty: the name
+  pvp: boolean; // Java only
+  whitelist: boolean;
+  whitelistPlayers: string[];
 };
 
 export async function createServer(spec: CreateServerSpec) {
@@ -74,9 +80,13 @@ export type AgentState = {
   stopReason?: "sleeping" | "stopped" | "crashed";
 };
 
-/** Replaces the container with a new spec (e.g. a new plan), keeping the world. Creates it if missing. */
-export async function recreateServer(spec: CreateServerSpec) {
-  await agentFetch(`/servers/${spec.id}`, { method: "PUT", body: JSON.stringify(spec), timeoutMs: 5 * 60_000 });
+/**
+ * Replaces the container with a new spec (e.g. a new plan), keeping the world. Creates it if missing.
+ * The new container starts, unless `keepStopped` is set and the old one wasn't running.
+ */
+export async function recreateServer(spec: CreateServerSpec, opts: { keepStopped?: boolean } = {}) {
+  const query = opts.keepStopped ? "?start=if-running" : "";
+  await agentFetch(`/servers/${spec.id}${query}`, { method: "PUT", body: JSON.stringify(spec), timeoutMs: 5 * 60_000 });
 }
 
 export async function getServerState(id: string): Promise<AgentState> {
