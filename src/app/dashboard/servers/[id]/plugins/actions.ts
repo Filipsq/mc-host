@@ -1,0 +1,79 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import type { Server } from "@prisma/client";
+import { getSession } from "@/lib/session";
+import { db } from "@/lib/db";
+import * as agent from "@/lib/agent";
+import { agentSpec, getOwnedServer } from "@/lib/servers";
+import { getPlugin } from "@/lib/modrinth";
+import { GAME_MODE_PLUGINS, PLUGINS_MAX, isProjectId, supportsPlugins } from "@/lib/plugins";
+import type { Messages } from "@/i18n/messages";
+
+export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; pending?: boolean };
+
+async function ownedPaperServer(id: string) {
+  const session = await getSession();
+  if (!session?.user?.id) redirect("/login");
+  const server = await getOwnedServer(id, session.user.id);
+  return server && supportsPlugins(server) ? server : null;
+}
+
+/** Adds a Modrinth plugin (by project ID, as search results give it) to the server. */
+export async function addPluginAction(id: string, projectId: string): Promise<PluginResult> {
+  const server = await ownedPaperServer(id);
+  if (!server || !isProjectId(projectId)) return { error: "failed" };
+  if (server.plugins.includes(projectId)) return {};
+  if (server.plugins.length >= PLUGINS_MAX) return { error: "tooMany" };
+  const plugin = await getPlugin(projectId);
+  if (typeof plugin === "string") return { error: plugin };
+  // The game mode's own plugins are always there.
+  if ((GAME_MODE_PLUGINS[server.kind] ?? []).some((p) => p.slug === plugin.slug)) return {};
+  return savePlugins(server, [...server.plugins, plugin.id]);
+}
+
+export async function removePluginAction(id: string, projectId: string): Promise<PluginResult> {
+  const server = await ownedPaperServer(id);
+  if (!server) return { error: "failed" };
+  return savePlugins(
+    server,
+    server.plugins.filter((p) => p !== projectId),
+  );
+}
+
+/** Rebuilds the server with its plugin list now; a running server restarts. */
+export async function applyPluginsAction(id: string): Promise<PluginResult> {
+  const server = await ownedPaperServer(id);
+  if (!server) return { error: "failed" };
+  try {
+    await agent.recreateServer(agentSpec(server), { keepStopped: true });
+  } catch (err) {
+    console.error("apply plugins failed", server.id, err);
+    return { error: "applyFailed", pending: true };
+  }
+  await db.server.update({ where: { id: server.id }, data: { pluginsPending: false } });
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+  return {};
+}
+
+/**
+ * Saves the list. A server that's off gets it right away (its next start
+ * installs them); a running one keeps playing until its owner restarts it.
+ */
+async function savePlugins(server: Server, plugins: string[]): Promise<PluginResult> {
+  const updated = await db.server.update({ where: { id: server.id }, data: { plugins } });
+  revalidatePath(`/dashboard/servers/${server.id}`, "layout");
+  // Not on the game host (unpaid): the list is used when it's created again.
+  if (!["RUNNING", "STOPPED", "SLEEPING"].includes(server.status)) return {};
+  let running = true;
+  try {
+    const state = await agent.getServerState(server.id);
+    running = state.state === "running" || state.state === "restarting";
+    if (!running) await agent.recreateServer(agentSpec(updated), { keepStopped: true });
+  } catch (err) {
+    console.error("apply plugins failed", server.id, err);
+  }
+  await db.server.update({ where: { id: server.id }, data: { pluginsPending: running } });
+  return { pending: running };
+}

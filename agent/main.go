@@ -61,6 +61,23 @@ var (
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
 )
 
+// pluginEnv has the image install a Paper server's plugins from Modrinth: the
+// game mode's own, then the owner's. The owner's are optional, so one without a
+// build for the server's version is skipped (with a warning in the console)
+// instead of keeping the server down, and doesn't hold back the version a game
+// mode picks. The list is always set, even empty, because the image removes
+// the plugins it installed that are no longer listed.
+func pluginEnv(kind string, plugins []string) []string {
+	var projects []string
+	if base := gameModePlugins[kind]; base != "" {
+		projects = strings.Split(base, ",")
+	}
+	for _, p := range plugins {
+		projects = append(projects, p+"?")
+	}
+	return []string{"MODRINTH_PROJECTS=" + strings.Join(projects, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
+}
+
 // Server IDs come from the panel (cuid); restrict them so they're safe in container names.
 var validID = regexp.MustCompile(`^[a-z0-9]{8,40}$`)
 
@@ -73,7 +90,11 @@ type agent struct {
 	startMu     sync.Mutex
 	backupDir   string   // where the agent keeps backups
 	backupMount string   // the same place as helper containers mount it: a volume name or host path
-	serverLocks sync.Map // server id -> *sync.Mutex, held during backups and restores
+	serverLocks sync.Map // server id -> *sync.Mutex, held during backups, restores and file changes
+	volumesDir  string   // Docker's volume directory, mounted at the same path; "" turns the file manager off
+	diskReserve int64    // bytes of disk the file manager leaves free
+	uploadMax   int64    // the biggest file the file manager takes
+	unzipMax    int64    // the most an archive may unpack to
 }
 
 func main() {
@@ -93,6 +114,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	reserveMb, err := strconv.ParseInt(envOr("MIN_FREE_DISK_MB", "4096"), 10, 64)
+	if err != nil || reserveMb < 0 {
+		log.Fatal("MIN_FREE_DISK_MB must be a number of megabytes")
+	}
+	uploadMb, err := strconv.ParseInt(envOr("UPLOAD_MAX_MB", "1024"), 10, 64)
+	if err != nil || uploadMb < 1 {
+		log.Fatal("UPLOAD_MAX_MB must be a positive number of megabytes")
+	}
 	a := &agent{
 		docker:      NewDocker(envOr("DOCKER_SOCKET", "/var/run/docker.sock")),
 		token:       token,
@@ -101,6 +130,10 @@ func main() {
 		memoryLimit: memoryLimit,
 		backupDir:   backupDir,
 		backupMount: envOr("BACKUP_MOUNT", backupDir),
+		volumesDir:  filepath.Clean(envOr("VOLUMES_DIR", "/var/lib/docker/volumes")),
+		diskReserve: reserveMb << 20,
+		uploadMax:   uploadMb << 20,
+		unzipMax:    4 * uploadMb << 20,
 	}
 	for _, dir := range []string{a.stateDir, a.backupDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -148,6 +181,13 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("POST /servers/{id}/backups", a.backupsCreate)
 	mux.HandleFunc("GET /servers/{id}/backups/{file}", a.backupDownload)
 	mux.HandleFunc("POST /servers/{id}/backups/{file}/restore", a.backupRestore)
+	mux.HandleFunc("GET /servers/{id}/files", a.filesList)
+	mux.HandleFunc("DELETE /servers/{id}/files", a.filesDelete)
+	mux.HandleFunc("GET /servers/{id}/files/content", a.filesRead)
+	mux.HandleFunc("PUT /servers/{id}/files/content", a.filesWrite)
+	mux.HandleFunc("POST /servers/{id}/files/mkdir", a.filesMkdir)
+	mux.HandleFunc("POST /servers/{id}/files/rename", a.filesRename)
+	mux.HandleFunc("POST /servers/{id}/files/unzip", a.filesUnzip)
 	return a.auth(mux)
 }
 
@@ -188,6 +228,8 @@ type createRequest struct {
 	Kind           string `json:"kind"`
 	Modpack        string `json:"modpack"`
 	ModpackVersion string `json:"modpackVersion"`
+	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
+	Plugins []string `json:"plugins"`
 }
 
 var (
@@ -226,6 +268,15 @@ func (req *createRequest) validate() error {
 		return errors.New("kind must be vanilla, skyblock, oneblock or modpack (Java only)")
 	case req.Kind == "modpack" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
 		return errors.New("a modpack server needs a Modrinth modpack and modpackVersion")
+	case len(req.Plugins) > 0 && (req.Edition != "JAVA" || req.Kind == "modpack"):
+		return errors.New("plugins need a Java server on Paper (not a mod pack)")
+	case len(req.Plugins) > 100:
+		return errors.New("at most 100 plugins")
+	}
+	for _, p := range req.Plugins {
+		if !validModpack.MatchString(p) {
+			return fmt.Errorf("invalid plugin %q", p)
+		}
 	}
 	switch {
 	case !validVersion.MatchString(req.Version):
@@ -346,13 +397,16 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		pvp := req.PVP == nil || *req.PVP
 		switch req.Kind {
 		case "skyblock", "oneblock":
-			// The image picks the newest Minecraft version all the plugins support.
-			env = append(env, "TYPE=PAPER", "MODRINTH_PROJECTS="+gameModePlugins[req.Kind], "VERSION_FROM_MODRINTH_PROJECTS=TRUE")
+			// The image picks the newest Minecraft version all the game mode's plugins support.
+			env = append(env, "TYPE=PAPER", "VERSION_FROM_MODRINTH_PROJECTS=TRUE")
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
 			env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version)
 		default:
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
+		}
+		if req.Kind != "modpack" {
+			env = append(env, pluginEnv(req.Kind, req.Plugins)...)
 		}
 		env = append(env, fmt.Sprintf("MEMORY=%dM", req.MemoryMb), "ENABLE_RCON=true",
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))

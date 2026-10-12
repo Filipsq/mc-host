@@ -193,12 +193,14 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
   // Unpaid servers stay off until someone pays.
   if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
   try {
-    await agent.startServer(server.id);
+    // Plugins changed while it ran: rebuild it with the new list on the way up.
+    if (server.pluginsPending) await agent.recreateServer(agentSpec(server));
+    else await agent.startServer(server.id);
   } catch (err) {
     if (agent.isFull(err)) return { error: "full" };
     throw err;
   }
-  await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" } });
+  await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
   revalidatePath(`/dashboard/servers/${id}`);
   return {};
 }
@@ -316,6 +318,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       console.error("apply settings failed", server.id, err);
       return { error: "applyFailed" };
     }
+    // The rebuild brought the plugin list up to date too.
+    if (updated.pluginsPending) await db.server.update({ where: { id: server.id }, data: { pluginsPending: false } });
   }
   revalidatePath(`/dashboard/servers/${id}`);
   redirect(`/dashboard/servers/${id}?settings=saved`);

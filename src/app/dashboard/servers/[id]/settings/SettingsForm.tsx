@@ -34,6 +34,8 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
   return (
     <form
       className="card stack"
+      // `action` only serves a submit made before the page's script has loaded.
+      action={action}
       onSubmit={(e) => {
         // Submitted by hand rather than through `action`, which would reset every field after an error.
         e.preventDefault();

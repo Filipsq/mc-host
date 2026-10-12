@@ -67,6 +67,7 @@ export type CreateServerSpec = {
   kind: string; // Java only: vanilla, skyblock, oneblock or modpack
   modpack?: string; // Modrinth slug or ID, for a modpack
   modpackVersion?: string; // Modrinth version ID, for a modpack
+  plugins: string[]; // Modrinth project IDs, for Paper servers
 };
 
 export async function createServer(spec: CreateServerSpec) {
@@ -144,4 +145,48 @@ export async function restoreBackup(id: string, name: string) {
 /** Opens a backup file for download. */
 export async function openBackupDownload(id: string, name: string, signal: AbortSignal) {
   return agentFetch(`/servers/${id}/backups/${name}`, { signal });
+}
+
+export type FileEntry = { name: string; type: "dir" | "file" | "link" | "other"; size: number; modified: string };
+
+/** A folder of the server's files ("." is the top). */
+export async function listFiles(id: string, path: string): Promise<{ path: string; entries: FileEntry[]; truncated: boolean }> {
+  const res = await agentFetch(`/servers/${id}/files?path=${encodeURIComponent(path)}`, { timeoutMs: 10_000 });
+  return res.json();
+}
+
+/** Opens a file for download; with max, a bigger file fails with 413. */
+export async function openFile(id: string, path: string, opts: { signal?: AbortSignal; max?: number } = {}) {
+  const max = opts.max ? `&max=${opts.max}` : "";
+  return agentFetch(`/servers/${id}/files/content?path=${encodeURIComponent(path)}${max}`, { signal: opts.signal });
+}
+
+/** Saves a file: an upload streamed through from the browser, or an edit. */
+export async function writeFile(id: string, path: string, body: ReadableStream<Uint8Array> | string, length?: number) {
+  await agentFetch(`/servers/${id}/files/content?path=${encodeURIComponent(path)}`, {
+    method: "PUT",
+    body,
+    headers: { "Content-Type": "application/octet-stream", ...(length !== undefined && { "Content-Length": String(length) }) },
+    // A stream needs half-duplex; uploads of big worlds take a while.
+    ...({ duplex: "half" } as object),
+    timeoutMs: 60 * 60_000,
+  });
+}
+
+/** Makes a folder, renames or moves, deletes, or unzips in the server's files. */
+export async function changeFiles(
+  id: string,
+  op: { mkdir: string } | { rename: string; to: string } | { remove: string } | { unzip: string },
+) {
+  const q = (p: string) => encodeURIComponent(p);
+  const [method, path] =
+    "mkdir" in op
+      ? ["POST", `mkdir?path=${q(op.mkdir)}`]
+      : "rename" in op
+        ? ["POST", `rename?path=${q(op.rename)}&to=${q(op.to)}`]
+        : "remove" in op
+          ? ["DELETE", `?path=${q(op.remove)}`]
+          : ["POST", `unzip?path=${q(op.unzip)}`];
+  const res = await agentFetch(`/servers/${id}/files${path.startsWith("?") ? "" : "/"}${path}`, { method, timeoutMs: 10 * 60_000 });
+  return res.json();
 }

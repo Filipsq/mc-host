@@ -50,6 +50,8 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
   return (
     <form
       className="card stack"
+      // `action` only serves a submit made before the page's script has loaded.
+      action={action}
       onSubmit={(e) => {
         // Submitted by hand rather than through `action`, which resets the form after an
         // error and leaves the radio buttons out of step with what's shown.

@@ -8,6 +8,8 @@ import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isServerKind, modpackPage } from "@/lib/modpacks";
+import { supportsPlugins } from "@/lib/plugins";
+import { FolderOpen, Puzzle } from "lucide-react";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
@@ -150,6 +152,33 @@ export default async function ServerPage({ params, searchParams }: Props) {
           {all.settings.edit}
         </Link>
       </div>
+
+      {live !== "awaitingPayment" && (
+        <div className="card row">
+          <span>
+            <strong>{all.files.title}</strong> <span className="muted">· {all.files.cardText}</span>
+          </span>
+          <Link className="button secondary" href={`/dashboard/servers/${server.id}/files`}>
+            <FolderOpen size={16} aria-hidden /> {all.files.open}
+          </Link>
+        </div>
+      )}
+
+      {supportsPlugins(server) && (
+        <div className="card row">
+          <span>
+            <strong>{all.plugins.title}</strong>{" "}
+            <span className="muted">
+              ·{" "}
+              {server.plugins.length > 0 ? format(all.plugins.cardCount, { n: server.plugins.length }) : all.plugins.cardNone}
+            </span>
+            {server.pluginsPending && <span className="muted"> · {all.plugins.pending}</span>}
+          </span>
+          <Link className="button secondary" href={`/dashboard/servers/${server.id}/plugins`}>
+            <Puzzle size={16} aria-hidden /> {all.plugins.manage}
+          </Link>
+        </div>
+      )}
 
       {!unpaid && <Console id={server.id} t={t} />}
 

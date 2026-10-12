@@ -19,10 +19,10 @@ import (
 )
 
 // Backups are gzipped tarballs of a server's world volume, made by a
-// throwaway helper container so the agent never touches Docker's own volume
-// paths. They live in BACKUP_DIR/<server id>/<UTC time>.tar.gz. The plan sets
-// how many are kept (the mchost.backups label), and a scheduler makes one a
-// day for every server that has run since its last backup.
+// throwaway helper container. They live in BACKUP_DIR/<server id>/<UTC
+// time>.tar.gz. The plan sets how many are kept (the mchost.backups label),
+// and a scheduler makes one a day for every server that has run since its
+// last backup.
 
 const (
 	backupImage      = "alpine:3.22"

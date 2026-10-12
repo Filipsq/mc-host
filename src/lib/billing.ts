@@ -114,7 +114,7 @@ function creditStart(server: Server, newPlan: Plan, now: Date) {
 export async function provision(server: Server) {
   try {
     await agent.recreateServer(agentSpec(server));
-    await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" } });
+    await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
     return true;
   } catch (err) {
     // Left in PROVISIONING; the billing job retries.

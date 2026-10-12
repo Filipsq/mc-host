@@ -78,6 +78,10 @@ model Server {
   modpackVersionId String?
   modpackVersion   String? // the pack version's number, e.g. "1.6.1"
   modpackLoader    String? // fabric, forge, neoforge or quilt
+  // Paper servers only: Modrinth project IDs of the plugins the owner added (src/lib/plugins.ts).
+  plugins          String[]     @default([])
+  // The list changed while the server ran; the container gets it on its next rebuild.
+  pluginsPending   Boolean      @default(false)
   // Host port of the server: behind the router for Java, public (UDP) for Bedrock.
   port             Int?         @unique
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.

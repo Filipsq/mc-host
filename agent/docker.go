@@ -162,6 +162,15 @@ func (d *Docker) RunOnce(ctx context.Context, name string, spec map[string]any) 
 	return res.StatusCode, strings.TrimSpace(out.String()), nil
 }
 
+// VolumeMountpoint returns where the volume's files are on the host.
+func (d *Docker) VolumeMountpoint(ctx context.Context, name string) (string, error) {
+	var v struct {
+		Mountpoint string `json:"Mountpoint"`
+	}
+	err := d.call(ctx, http.MethodGet, "/volumes/"+name, nil, nil, &v)
+	return v.Mountpoint, err
+}
+
 func (d *Docker) RemoveVolume(ctx context.Context, name string) error {
 	return d.call(ctx, http.MethodDelete, "/volumes/"+name, url.Values{"force": {"true"}}, nil, nil)
 }

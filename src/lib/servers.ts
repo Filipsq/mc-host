@@ -3,6 +3,7 @@ import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
 import { AgentError, getServerState, type CreateServerSpec } from "./agent";
 import { planById } from "./plans";
+import { supportsPlugins } from "./plugins";
 
 export type LiveState =
   | "starting"
@@ -106,6 +107,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     kind: server.edition === "JAVA" ? server.kind : "vanilla",
     modpack: server.modpack ?? undefined,
     modpackVersion: server.modpackVersionId ?? undefined,
+    plugins: supportsPlugins(server) ? server.plugins : [],
   };
 }
 

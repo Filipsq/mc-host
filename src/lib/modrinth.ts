@@ -1,7 +1,8 @@
 import "server-only";
 
-// Looks up mod packs on Modrinth (https://docs.modrinth.com/api/), so a server
-// is pinned to one exact pack version that players can install too.
+// Looks up mod packs and plugins on Modrinth (https://docs.modrinth.com/api/).
+// A mod pack server is pinned to one exact pack version that players can
+// install too; plugins are found here and installed by the server's image.
 
 const API = () => process.env.MODRINTH_API_URL ?? "https://api.modrinth.com";
 // Modrinth asks API users to identify themselves.
@@ -83,5 +84,88 @@ export async function resolveModpack(ref: { slug: string; version?: string }): P
   } catch (err) {
     console.error("modrinth lookup failed", ref, err);
     return "modrinthUnavailable";
+  }
+}
+
+export type PluginInfo = { id: string; slug: string; title: string; description: string; icon?: string };
+export type PluginHit = PluginInfo & { downloads: number; newestVersion?: string };
+
+type SearchHit = {
+  project_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  downloads: number;
+  icon_url?: string | null;
+  versions: string[];
+};
+type PluginProject = Project & { description: string; icon_url?: string | null; loaders: string[] };
+
+// What Paper runs: plugins for it and the servers it's built on.
+const PLUGIN_LOADERS = ["paper", "spigot", "bukkit", "purpur", "folia"];
+
+/** The path of a plugin icon on Modrinth's CDN, if the URL is one (raster images only). */
+export function iconPath(url: string) {
+  const m = url.match(/^https:\/\/cdn\.modrinth\.com(\/data\/[A-Za-z0-9]{8}\/[A-Za-z0-9_-]+\.(?:png|webp|jpe?g|gif))$/);
+  return m?.[1] ?? null;
+}
+
+const info = (p: { slug: string; title: string; description: string; icon_url?: string | null }, id: string): PluginInfo => ({
+  id,
+  slug: p.slug,
+  title: p.title.slice(0, 80),
+  description: p.description.slice(0, 200),
+  // Shown through /api/plugin-icon, so browsers don't fetch from Modrinth themselves.
+  icon: p.icon_url && iconPath(p.icon_url) ? `/api/plugin-icon?src=${encodeURIComponent(p.icon_url)}` : undefined,
+});
+
+/** Paper plugins matching the query, or the most downloaded ones; for a Minecraft version if given. */
+export async function searchPlugins(query: string, gameVersion?: string): Promise<PluginHit[] | "modrinthUnavailable"> {
+  const facets = [
+    ["project_type:plugin"],
+    PLUGIN_LOADERS.slice(0, 3).map((l) => `categories:${l}`),
+    ["server_side:required", "server_side:optional"],
+  ];
+  if (gameVersion) facets.push([`versions:${gameVersion}`]);
+  const params = new URLSearchParams({
+    query: query.slice(0, 100),
+    limit: "20",
+    index: query ? "relevance" : "downloads",
+    facets: JSON.stringify(facets),
+  });
+  try {
+    const res = await get<{ hits: SearchHit[] }>(`/v2/search?${params}`);
+    return (res?.hits ?? []).map((h) => ({
+      ...info(h, h.project_id),
+      downloads: h.downloads,
+      newestVersion: h.versions.filter((g) => RELEASE.test(g)).sort(compareVersions).at(-1),
+    }));
+  } catch (err) {
+    console.error("modrinth search failed", query, err);
+    return "modrinthUnavailable";
+  }
+}
+
+/** A plugin that runs on Paper servers, by project ID or slug. */
+export async function getPlugin(ref: string): Promise<PluginInfo | "pluginNotFound" | "modrinthUnavailable"> {
+  try {
+    const p = await get<PluginProject>(`/v2/project/${encodeURIComponent(ref)}`);
+    if (!p || p.server_side === "unsupported" || !p.loaders.some((l) => PLUGIN_LOADERS.includes(l))) return "pluginNotFound";
+    return info(p, p.id);
+  } catch (err) {
+    console.error("modrinth lookup failed", ref, err);
+    return "modrinthUnavailable";
+  }
+}
+
+/** Names and icons of the given projects, by ID. Empty if Modrinth can't be reached. */
+export async function getPluginInfos(ids: string[]): Promise<Map<string, PluginInfo>> {
+  if (ids.length === 0) return new Map();
+  try {
+    const list = (await get<PluginProject[]>(`/v2/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`)) ?? [];
+    return new Map(list.map((p) => [p.id, info(p, p.id)]));
+  } catch (err) {
+    console.error("modrinth lookup failed", ids, err);
+    return new Map();
   }
 }

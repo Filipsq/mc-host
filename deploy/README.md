@@ -123,6 +123,15 @@ the server's price).
 
 `du -sh /var/lib/docker/volumes/mchost-backups` shows how much space they take.
 
+## Files and plugins
+
+Owners can browse, upload (up to 1 GB a file), edit, unzip and delete their server's files in the
+panel. The agent reaches them in `/var/lib/docker/volumes`, which `docker-compose.yml` mounts into
+it. Uploads stop when less than 4 GB of disk would be left (`MIN_FREE_DISK_MB`); there is no
+per-server disk limit yet, so keep an eye on `df -h /`.
+
+Plugins are picked from Modrinth in the panel and downloaded by the server itself when it starts.
+
 ## Updating
 
 ```bash
