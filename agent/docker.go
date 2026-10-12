@@ -134,6 +134,34 @@ func (d *Docker) RemoveContainer(ctx context.Context, name string) error {
 	return d.call(ctx, http.MethodDelete, "/containers/"+name, url.Values{"force": {"true"}}, nil, nil)
 }
 
+// RunOnce runs a short-lived container to completion and removes it,
+// returning its exit code and the last lines of its output.
+func (d *Docker) RunOnce(ctx context.Context, name string, spec map[string]any) (int, string, error) {
+	// A container left over from an interrupted run would block the name.
+	if err := d.RemoveContainer(ctx, name); err != nil && !errors.Is(err, errNotFound) {
+		return 0, "", err
+	}
+	if err := d.CreateContainer(ctx, name, spec); err != nil {
+		return 0, "", err
+	}
+	defer d.RemoveContainer(context.Background(), name)
+	if err := d.StartContainer(ctx, name); err != nil {
+		return 0, "", err
+	}
+	var res struct {
+		StatusCode int `json:"StatusCode"`
+	}
+	if err := d.call(ctx, http.MethodPost, "/containers/"+name+"/wait", nil, nil, &res); err != nil {
+		return 0, "", err
+	}
+	var out strings.Builder
+	_ = d.Logs(ctx, name, LogOptions{Tail: 20}, func(line string) error {
+		out.WriteString(line + "\n")
+		return nil
+	})
+	return res.StatusCode, strings.TrimSpace(out.String()), nil
+}
+
 func (d *Docker) RemoveVolume(ctx context.Context, name string) error {
 	return d.call(ctx, http.MethodDelete, "/volumes/"+name, url.Values{"force": {"true"}}, nil, nil)
 }

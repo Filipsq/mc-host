@@ -96,6 +96,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     version: server.version,
     hostname: server.edition === "JAVA" ? joinAddress(server).host : "",
     autostop: !plan.alwaysOn,
+    backupsKept: plan.backupsKept,
   };
 }
 

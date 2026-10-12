@@ -57,6 +57,7 @@ export type CreateServerSpec = {
   version: string;
   hostname: string; // Java only
   autostop: boolean;
+  backupsKept: number; // daily backups the agent keeps; 0 for none
 };
 
 export async function createServer(spec: CreateServerSpec) {
@@ -106,4 +107,28 @@ export async function sendCommand(id: string, command: string): Promise<string> 
 /** Opens the console log stream (Server-Sent Events) for a server. */
 export async function openLogStream(id: string, signal: AbortSignal) {
   return agentFetch(`/servers/${id}/logs`, { signal });
+}
+
+export type Backup = { name: string; size: number; createdAt: string };
+
+/** The server's backups, newest first, and how many its plan keeps. */
+export async function listBackups(id: string): Promise<{ keep: number; backups: Backup[] }> {
+  const res = await agentFetch(`/servers/${id}/backups`, { timeoutMs: 5_000 });
+  return res.json();
+}
+
+/** Backs up the world now. A big world takes a while to pack. */
+export async function createBackup(id: string): Promise<Backup> {
+  const res = await agentFetch(`/servers/${id}/backups`, { method: "POST", timeoutMs: 30 * 60_000 });
+  return res.json();
+}
+
+/** Replaces the world with a backup; a running server is restarted. */
+export async function restoreBackup(id: string, name: string) {
+  await agentFetch(`/servers/${id}/backups/${name}/restore`, { method: "POST", timeoutMs: 30 * 60_000 });
+}
+
+/** Opens a backup file for download. */
+export async function openBackupDownload(id: string, name: string, signal: AbortSignal) {
+  return agentFetch(`/servers/${id}/backups/${name}`, { signal });
 }

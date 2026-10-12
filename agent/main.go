@@ -36,6 +36,9 @@ type agent struct {
 	idle        time.Duration // free servers sleep after this long with no players
 	memoryLimit int           // MB of plan memory servers may hold in total; 0 means no limit
 	startMu     sync.Mutex
+	backupDir   string   // where the agent keeps backups
+	backupMount string   // the same place as helper containers mount it: a volume name or host path
+	serverLocks sync.Map // server id -> *sync.Mutex, held during backups and restores
 }
 
 func main() {
@@ -51,26 +54,35 @@ func main() {
 	if err != nil || memoryLimit < 0 {
 		log.Fatal("MEMORY_LIMIT_MB must be a number of megabytes (0 for no limit)")
 	}
+	backupDir, err := filepath.Abs(envOr("BACKUP_DIR", "./backups"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	a := &agent{
 		docker:      NewDocker(envOr("DOCKER_SOCKET", "/var/run/docker.sock")),
 		token:       token,
 		stateDir:    envOr("STATE_DIR", "./state"),
 		idle:        time.Duration(idleMin) * time.Minute,
 		memoryLimit: memoryLimit,
+		backupDir:   backupDir,
+		backupMount: envOr("BACKUP_MOUNT", backupDir),
 	}
-	if err := os.MkdirAll(a.stateDir, 0o755); err != nil {
-		log.Fatal(err)
+	for _, dir := range []string{a.stateDir, a.backupDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
-		for _, img := range images {
+		for _, img := range append([]string{backupImage}, images["JAVA"], images["BEDROCK"]) {
 			if err := a.ensureImage(context.Background(), img); err != nil {
 				log.Printf("prefetch %s: %v", img, err)
 			}
 		}
 	}()
 	go a.watchIdleBedrock(context.Background())
+	go a.watchBackups(context.Background())
 
 	gameAddr := envOr("GAME_ADDR", ":25565")
 	ln, err := net.Listen("tcp", gameAddr)
@@ -97,6 +109,10 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("DELETE /servers/{id}", a.remove)
 	mux.HandleFunc("GET /servers/{id}/logs", a.logs)
 	mux.HandleFunc("POST /servers/{id}/command", a.command)
+	mux.HandleFunc("GET /servers/{id}/backups", a.backupsList)
+	mux.HandleFunc("POST /servers/{id}/backups", a.backupsCreate)
+	mux.HandleFunc("GET /servers/{id}/backups/{file}", a.backupDownload)
+	mux.HandleFunc("POST /servers/{id}/backups/{file}/restore", a.backupRestore)
 	return a.auth(mux)
 }
 
@@ -120,8 +136,9 @@ type createRequest struct {
 	Port       int     `json:"port"`
 	MaxPlayers int     `json:"maxPlayers"`
 	Version    string  `json:"version"`
-	Hostname   string  `json:"hostname"` // Java only: the address players type, e.g. ekipa.mchost.pl
-	Autostop   bool    `json:"autostop"` // sleep when nobody is playing (free plan)
+	Hostname   string  `json:"hostname"`    // Java only: the address players type, e.g. ekipa.mchost.pl
+	Autostop   bool    `json:"autostop"`    // sleep when nobody is playing (free plan)
+	Backups    int     `json:"backupsKept"` // daily backups to keep; 0 for none
 }
 
 func (req *createRequest) validate() error {
@@ -172,6 +189,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	defer a.lockServer(req.ID)() // not mid-backup or mid-restore
 	name := containerName(req.ID)
 	if err := a.docker.StopContainer(r.Context(), name, 60); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -184,7 +202,8 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 	if a.handleDockerErr(w, a.run(r.Context(), req)) {
 		return
 	}
-	log.Printf("recreated %s (%d MB, autostop %v)", name, req.MemoryMb, req.Autostop)
+	a.pruneBackups(req.ID, req.Backups) // a smaller plan keeps fewer
+	log.Printf("recreated %s (%d MB, autostop %v, %d backups)", name, req.MemoryMb, req.Autostop, req.Backups)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -212,6 +231,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		"mchost.port":     fmt.Sprint(req.Port),
 		"mchost.autostop": fmt.Sprint(req.Autostop),
 		"mchost.memory":   fmt.Sprint(req.MemoryMb),
+		"mchost.backups":  fmt.Sprint(req.Backups),
 	}
 	var containerPort, hostIP string
 	tty := false
@@ -332,13 +352,18 @@ func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	defer a.lockServer(id)() // a backup in progress holds the volume
 	ctx, name := r.Context(), containerName(id)
 	if err := a.docker.RemoveContainer(ctx, name); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// The world lives in the volume; deleting the server deletes it too.
+	// The world lives in the volume; deleting the server deletes it and its backups too.
 	if err := a.docker.RemoveVolume(ctx, name); err != nil && !errors.Is(err, errNotFound) {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if err := os.RemoveAll(a.backupPath(id)); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -461,6 +486,10 @@ func (a *agent) handleDockerErr(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusNotFound, "server not found")
 	case errors.Is(err, errFull):
 		writeError(w, http.StatusServiceUnavailable, "full")
+	case errors.Is(err, errNoBackups):
+		writeError(w, http.StatusForbidden, err.Error())
+	case errors.Is(err, errBackupNotFound):
+		writeError(w, http.StatusNotFound, err.Error())
 	default:
 		writeError(w, http.StatusInternalServerError, err.Error())
 	}

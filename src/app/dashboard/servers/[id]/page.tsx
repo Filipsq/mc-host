@@ -4,11 +4,14 @@ import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getLiveState, getOwnedServer, joinAddress } from "@/lib/servers";
+import { listBackups } from "@/lib/agent";
+import { planById } from "@/lib/plans";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
 import CopyButton from "./CopyButton";
 import EditionIcon from "@/components/EditionIcon";
+import Backups, { type BackupRow } from "./Backups";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -23,7 +26,14 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const server = await getOwnedServer(id, session.user.id);
   if (!server) notFound();
 
-  const [all, { locale }, live] = await Promise.all([getMessages(), getPreferences(), getLiveState(server)]);
+  const keep = planById(server.plan).backupsKept;
+  const [all, { locale }, live, backups] = await Promise.all([
+    getMessages(),
+    getPreferences(),
+    getLiveState(server),
+    // Paid servers only exist on the game host once paid for.
+    keep > 0 && server.status !== "AWAITING_PAYMENT" ? listBackups(server.id).catch(() => null) : null,
+  ]);
   const t = all.server;
   const b = all.billing;
   const { host, port } = joinAddress(server);
@@ -95,9 +105,56 @@ export default async function ServerPage({ params, searchParams }: Props) {
       </div>
 
       {!unpaid && <Console id={server.id} t={t} />}
+
+      {live !== "awaitingPayment" && (
+        <section className="stack">
+          <h2>{t.backups.title}</h2>
+          <div className="card stack">
+            {keep === 0 ? (
+              <div className="row">
+                <span className="muted">{t.backups.freeNote}</span>
+                <Link className="button secondary small" href={`/dashboard/servers/${server.id}/billing`}>
+                  {t.backups.upgrade}
+                </Link>
+              </div>
+            ) : !backups ? (
+              <p className="muted">{t.backups.unavailable}</p>
+            ) : (
+              <>
+                <p className="muted">
+                  {format(t.backups.intro, { n: keep })}
+                  {live === "suspended" && ` ${t.backups.suspendedNote}`}
+                </p>
+                <Backups
+                  id={server.id}
+                  rows={backupRows(backups.backups, locale, t.backups)}
+                  canChange={live !== "suspended" && live !== "unknown"}
+                  t={t}
+                />
+              </>
+            )}
+          </div>
+        </section>
+      )}
       {waiting && <AutoRefresh />}
     </main>
   );
+}
+
+function backupRows(
+  backups: { name: string; size: number; createdAt: string }[],
+  locale: string,
+  t: { restoreConfirm: string; restored: string },
+): BackupRow[] {
+  // Times are shown in Polish time: that's where the servers and players are.
+  const dates = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Warsaw" });
+  const mb = new Intl.NumberFormat(locale, { style: "unit", unit: "megabyte", maximumFractionDigits: 1 });
+  const gb = new Intl.NumberFormat(locale, { style: "unit", unit: "gigabyte", maximumFractionDigits: 1 });
+  return backups.map((b) => {
+    const date = dates.format(new Date(b.createdAt));
+    const size = b.size >= 1024 ** 3 ? gb.format(b.size / 1024 ** 3) : mb.format(b.size / 1024 ** 2);
+    return { name: b.name, date, size, confirm: format(t.restoreConfirm, { date }), restored: format(t.restored, { date }) };
+  });
 }
 
 // Lets a long address wrap before a dot on narrow screens instead of mid-word.

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { Plan, ServerStatus } from "@prisma/client";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
@@ -169,6 +170,45 @@ export async function deleteServerAction(id: string) {
   });
   await db.server.delete({ where: { id: server.id } });
   redirect("/dashboard");
+}
+
+export type BackupResult = { error?: ServerErrorCode };
+
+const BACKUP_NAME = /^\d{8}-\d{6}\.tar\.gz$/;
+const BACKUP_COOLDOWN_MS = 15 * 60_000;
+
+/** Whether the panel may make or restore backups (a paid plan that's paid up). */
+function backupsAllowed(server: { plan: Plan; status: ServerStatus }) {
+  return planById(server.plan).backupsKept > 0 && server.status !== "SUSPENDED" && server.status !== "AWAITING_PAYMENT";
+}
+
+/** Backs up the world now. One every few minutes is plenty, so closer ones are refused. */
+export async function createBackupAction(id: string): Promise<BackupResult> {
+  const server = await ownedOrThrow(id);
+  if (!backupsAllowed(server)) return { error: "backupFailed" };
+  try {
+    const { backups } = await agent.listBackups(server.id);
+    if (backups[0] && Date.now() - Date.parse(backups[0].createdAt) < BACKUP_COOLDOWN_MS) return { error: "tooSoon" };
+    await agent.createBackup(server.id);
+  } catch (err) {
+    console.error("backup failed", server.id, err);
+    return { error: "backupFailed" };
+  }
+  revalidatePath(`/dashboard/servers/${id}`);
+  return {};
+}
+
+export async function restoreBackupAction(id: string, name: string): Promise<BackupResult> {
+  const server = await ownedOrThrow(id);
+  if (!backupsAllowed(server) || !BACKUP_NAME.test(name)) return { error: "restoreFailed" };
+  try {
+    await agent.restoreBackup(server.id, name);
+  } catch (err) {
+    console.error("restore failed", server.id, name, err);
+    return { error: "restoreFailed" };
+  }
+  revalidatePath(`/dashboard/servers/${id}`);
+  return {};
 }
 
 export type CommandResult = { output?: string; error?: ServerErrorCode };

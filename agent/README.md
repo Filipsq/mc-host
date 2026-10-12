@@ -24,19 +24,29 @@ go test ./...
 | `GAME_ADDR` | `:25565` | Public Java port the router listens on |
 | `IDLE_MINUTES` | `5` | How long a free server may sit empty before sleeping |
 | `STATE_DIR` | `./state` | Remembers which servers were stopped by their owner (so players can't wake them) |
+| `BACKUP_DIR` | `./backups` | Where backups are kept: `<server id>/<UTC time>.tar.gz` |
+| `BACKUP_MOUNT` | `BACKUP_DIR` | The same place as Docker sees it (a host path or a volume name), for the helper containers that pack and unpack worlds |
 | `MEMORY_LIMIT_MB` | `0` (no limit) | Plan memory all servers may hold together. Paid servers hold theirs even when stopped (unless suspended); a free server only while awake, and it isn't started when it doesn't fit |
 
 ## API
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop}` |
+| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept}` |
 | PUT | `/servers/{id}` | Rebuild the container with a new spec (plan change), keeping the world |
 | GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped` or `crashed` |
 | POST | `/servers/{id}/start`, `/stop` | Stop waits up to 60 s so the world is saved; `/stop?reason=suspended` also gives back the server's memory until it's renewed. Starting a free server that doesn't fit returns 503 `{"error":"full"}` |
-| DELETE | `/servers/{id}` | Removes the container and its world volume |
+| DELETE | `/servers/{id}` | Removes the container, its world volume and its backups |
 | GET | `/servers/{id}/logs` | Console as Server-Sent Events (last 200 lines, then live) |
 | POST | `/servers/{id}/command` | `{command}`; Java via RCON, Bedrock via stdin |
+| GET | `/servers/{id}/backups` | `{keep, backups: [{name, size, createdAt}]}`, newest first |
+| POST | `/servers/{id}/backups` | Back up now. 403 when the plan has no backups |
+| GET | `/servers/{id}/backups/{name}` | Download a backup (`.tar.gz` of the server's `/data`) |
+| POST | `/servers/{id}/backups/{name}/restore` | Replace the world with a backup; a running server is stopped and started again |
+
+Servers whose plan keeps backups (`backupsKept`) are backed up once a day, if they have run since
+their last backup. A running server's saving is paused while its world is copied. Only the newest
+`backupsKept` are kept.
 
 Each server gets the `itzg/minecraft-server` (Paper) or `itzg/minecraft-bedrock-server` image,
 a memory and CPU limit from its plan, its world in a `mc-<id>` volume, and up to 3 automatic

@@ -339,6 +339,10 @@ code {
 .empty { text-align: center; padding: 48px 20px; align-items: center; }
 .empty p { margin: 0; }
 
+.backup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.backup-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 10px 0; border-top: 1px solid var(--border); }
+.backup-list li:first-child { border-top: 0; padding-top: 0; }
+.backup-actions { display: flex; gap: 8px; }
 .address-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .address-label { margin: 0 0 4px; color: var(--muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
 .address-value { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 600; overflow-wrap: anywhere; }

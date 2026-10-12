@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -149,5 +151,53 @@ func TestMemoryInUse(t *testing.T) {
 	}
 	if got := a.memoryInUse(list, "freeup"); got != 3072+6144 {
 		t.Fatalf("a server must not count against itself: %d", got)
+	}
+}
+
+func TestBackupsListAndPrune(t *testing.T) {
+	a := &agent{backupDir: t.TempDir()}
+	id := "abc12345"
+	if list, err := a.listBackups(id); err != nil || len(list) != 0 {
+		t.Fatalf("no backups yet: %v %v", list, err)
+	}
+	os.MkdirAll(a.backupPath(id), 0o755)
+	for _, f := range []string{"20261010-030000.tar.gz", "20261012-030000.tar.gz", "20261011-030000.tar.gz", "20261012-040000.tar.gz.partial", "notes.txt"} {
+		os.WriteFile(a.backupPath(id, f), []byte("x"), 0o644)
+	}
+	list, err := a.listBackups(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, b := range list {
+		names = append(names, b.Name)
+	}
+	if strings.Join(names, " ") != "20261012-030000.tar.gz 20261011-030000.tar.gz 20261010-030000.tar.gz" {
+		t.Fatalf("want newest first, finished backups only: %v", names)
+	}
+	if !list[0].CreatedAt.Equal(time.Date(2026, 10, 12, 3, 0, 0, 0, time.UTC)) {
+		t.Fatalf("created at %v", list[0].CreatedAt)
+	}
+
+	a.pruneBackups(id, 2)
+	left, _ := filepath.Glob(a.backupPath(id, "*"))
+	for i := range left {
+		left[i] = filepath.Base(left[i])
+	}
+	if strings.Join(left, " ") != "20261011-030000.tar.gz 20261012-030000.tar.gz notes.txt" {
+		t.Fatalf("prune should keep the 2 newest and drop half-written ones: %v", left)
+	}
+}
+
+func TestBackupNames(t *testing.T) {
+	for name, ok := range map[string]bool{
+		"20261012-030000.tar.gz":         true,
+		"../20261012-030000.tar.gz":      false,
+		"20261012-030000.tar.gz.partial": false,
+		"x.tar.gz":                       false,
+	} {
+		if backupFile.MatchString(name) != ok {
+			t.Errorf("%q: want %v", name, ok)
+		}
 	}
 }

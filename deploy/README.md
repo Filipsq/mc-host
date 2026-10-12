@@ -86,6 +86,16 @@ To change the limit, edit `MEMORY_LIMIT_MB` in `deploy/.env` and run `docker com
 `deploy/`. Setting it above what the machine has means betting that not every server uses all of
 its memory at once.
 
+## Backups
+
+Paid servers are backed up once a day (Starter keeps the last one, Standard 7, Pro 14), and owners
+can download, restore or make one in their server's panel. The backups sit in the `mchost-backups`
+Docker volume on the same disk, so they cover griefing and mistakes, not losing the machine itself.
+For that, turn on Hetzner's own backups for the server (Backups tab in the Hetzner console, 20% of
+the server's price).
+
+`du -sh /var/lib/docker/volumes/mchost-backups` shows how much space they take.
+
 ## Updating
 
 ```bash
