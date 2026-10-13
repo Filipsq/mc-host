@@ -19,6 +19,12 @@ export type AuthErrorCode = keyof Messages["auth"]["errors"];
 // email is echoed back so the form keeps it after React resets inputs on submit.
 export type FormState = { error?: AuthErrorCode; email?: string; sent?: boolean };
 
+/** Where to land after signing in: the create page, asking the AI about a home page description, or the dashboard. */
+function afterSignIn(form: FormData) {
+  const opis = String(form.get("opis") ?? "").trim().slice(0, 500);
+  return opis ? `/dashboard/new?opis=${encodeURIComponent(opis)}` : "/dashboard";
+}
+
 export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   const parsed = credentialsSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) {
@@ -39,7 +45,7 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
     data: { email, passwordHash: await bcrypt.hash(password, 12), termsAcceptedAt: new Date(), locale },
   });
 
-  await signIn("credentials", { email, password, redirectTo: "/dashboard" });
+  await signIn("credentials", { email, password, redirectTo: afterSignIn(form) });
   return {};
 }
 
@@ -48,7 +54,7 @@ export async function logIn(_: FormState, form: FormData): Promise<FormState> {
     await signIn("credentials", {
       email: form.get("email"),
       password: form.get("password"),
-      redirectTo: "/dashboard",
+      redirectTo: afterSignIn(form),
     });
   } catch (err) {
     // signIn throws a redirect on success; only swallow real auth failures.

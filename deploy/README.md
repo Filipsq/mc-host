@@ -90,6 +90,22 @@ appear in `docker compose logs web`.
 Emails come from `no-reply@mchosting.pl`; set `MAIL_FROM` in `deploy/.env` to use another address on
 the same domain. The API goes over HTTPS, so Hetzner's block on outgoing mail ports doesn't matter.
 
+## AI server creator
+
+On the home page and the new server page, players can describe the server they want and Claude (by
+Anthropic) picks the game, mod pack, plan, plugins and game settings; they check the filled-in form and
+create it as usual. Until it's set up, the AI boxes are hidden.
+
+1. Create an account at [console.anthropic.com](https://console.anthropic.com), add credit under
+   Billing (prepaid; $10 goes a long way) and, if you like, a monthly spend limit there too.
+2. Under API keys, create a key and put it in `deploy/.env` as `ANTHROPIC_API_KEY=…`.
+3. Run `./setup.sh` again.
+
+`AI_MODEL` picks the model: `claude-opus-5-5` (the default, best picks, roughly $0.02 a use) or
+`claude-haiku-5-5` (about 40 times cheaper). Each player may use it `AI_DAILY_LIMIT` times a day and
+the whole site `AI_MONTHLY_LIMIT` times a month; the admin overview shows this month's use and an
+estimated cost.
+
 ## When a plan runs out
 
 Paid plans don't renew by themselves. Three days before the end, the owner gets a reminder by email.

@@ -43,6 +43,11 @@ export default function PrivacyEn({ site }: { site: string }) {
               <td>art. 6(1)(b): performing the contract</td>
             </tr>
             <tr>
+              <td>The server description typed into the AI creator</td>
+              <td>Picking server settings at the User’s request</td>
+              <td>art. 6(1)(b): performing the contract</td>
+            </tr>
+            <tr>
               <td>Payments: Plan, amount, currency, status, Stripe payment ID</td>
               <td>Settling payments and tax obligations</td>
               <td>art. 6(1)(b) and (c): contract and legal obligation</td>
@@ -90,6 +95,11 @@ export default function PrivacyEn({ site }: { site: string }) {
         <li>
           <strong>Brevo</strong> (France): sending the Service’s emails, such as password reset links and reminders before a Period ends; data is
           stored in the European Union.
+        </li>
+        <li>
+          <strong>Anthropic</strong> (USA): the Claude AI model that picks server settings in the AI creator. It only
+          receives the description typed into the creator, not the email address or other Account data. Data is
+          transferred to the USA under standard contractual clauses.
         </li>
         <li>The email provider we use to answer messages.</li>
         <li>Public authorities, when the law requires it.</li>

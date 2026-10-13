@@ -81,6 +81,21 @@ if ! grep -qE '^BREVO_API_KEY=.+' .env; then
   echo "Emails are off: set BREVO_API_KEY in deploy/.env (see deploy/README.md)."
 fi
 
+# The AI server creator uses Claude; see deploy/README.md.
+if ! grep -q '^ANTHROPIC_API_KEY=' .env; then
+  cat >> .env <<'ENV'
+# From console.anthropic.com → API keys. Without it the AI creator is hidden.
+ANTHROPIC_API_KEY=
+# Which Claude model picks servers, and how often it may be used.
+AI_MODEL=claude-opus-5-5
+AI_DAILY_LIMIT=10
+AI_MONTHLY_LIMIT=1000
+ENV
+fi
+if ! grep -qE '^ANTHROPIC_API_KEY=.+' .env; then
+  echo "The AI creator is off: set ANTHROPIC_API_KEY in deploy/.env (see deploy/README.md)."
+fi
+
 echo "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
 docker compose ps

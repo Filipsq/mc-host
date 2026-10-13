@@ -9,6 +9,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { liveStates, machineStats } from "./data";
 import { formats } from "./format";
+import { aiEnabled, aiUsageThisMonth } from "@/lib/ai";
 
 const DAY = 24 * 60 * 60 * 1000;
 const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
@@ -16,7 +17,7 @@ const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 export default async function AdminOverview() {
   await requireAdmin();
   const now = new Date();
-  const [all, { locale }, stats, users, newUsers, servers, paid, chats] = await Promise.all([
+  const [all, { locale }, stats, users, newUsers, servers, paid, chats, ai] = await Promise.all([
     getMessages(),
     getPreferences(),
     machineStats(),
@@ -32,6 +33,7 @@ export default async function AdminOverview() {
       orderBy: { lastMessageAt: "asc" },
       select: { userId: true, lastMessageAt: true, user: { select: { email: true } } },
     }),
+    aiUsageThisMonth(),
   ]);
   const t = all.admin;
   const f = formats(locale);
@@ -148,6 +150,12 @@ export default async function AdminOverview() {
             value={f.totals(last30) || t.none}
             hint={format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}
             href="/admin/payments"
+          />
+          <Tile
+            label={t.aiUsage}
+            value={aiEnabled() || ai.calls > 0 ? format(t.aiValue, { n: ai.calls, limit: ai.limit }) : t.aiOff}
+            share={aiEnabled() ? ai.calls / ai.limit : undefined}
+            hint={format(t.aiCost, { usd: new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(ai.usd) })}
           />
         </div>
       </section>

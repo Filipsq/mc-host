@@ -24,6 +24,25 @@ model User {
   payments          Payment[]
   passwordResets    PasswordReset[]
   supportChat       SupportChat?
+  aiUsage           AiUsage[]
+}
+
+// One call to the AI (Claude), for the per-user and monthly limits and the
+// admin panel's usage figures.
+model AiUsage {
+  id           String   @id @default(cuid())
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  kind         String // what it was for, e.g. "create"
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  costUsd      Float    @default(0) // estimated from the token counts and list prices
+  ok           Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 // A user's conversation with the admins (the "Help" chat). One per user,

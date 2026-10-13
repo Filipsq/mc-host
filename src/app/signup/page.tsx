@@ -2,9 +2,14 @@ import Link from "next/link";
 import AuthForm from "../AuthForm";
 import { signUp } from "../actions";
 import { getMessages } from "@/i18n/server";
+import { format } from "@/i18n/messages";
+import { Sparkles } from "lucide-react";
 
-export default async function SignUpPage() {
-  const all = await getMessages();
+type Props = { searchParams: Promise<{ opis?: string }> };
+
+export default async function SignUpPage({ searchParams }: Props) {
+  const [all, { opis: raw }] = await Promise.all([getMessages(), searchParams]);
+  const opis = raw?.trim().slice(0, 500) || undefined;
   const t = all.auth;
   return (
     <main className="narrow stack">
@@ -14,9 +19,14 @@ export default async function SignUpPage() {
         <h1>{t.signUpTitle}</h1>
         <p className="muted">{t.signUpSubtitle}</p>
       </header>
-      <AuthForm action={signUp} submitLabel={t.signUpSubmit} t={t} legal={all.legal} />
+      {opis && (
+        <p className="notice ai-note">
+          <Sparkles size={16} aria-hidden /> {format(all.ai.signupNote, { text: opis })}
+        </p>
+      )}
+      <AuthForm action={signUp} submitLabel={t.signUpSubmit} t={t} legal={all.legal} opis={opis} />
       <p className="auth-switch muted">
-        {t.haveAccount} <Link href="/login">{t.logInSubmit}</Link>
+        {t.haveAccount} <Link href={opis ? `/login?opis=${encodeURIComponent(opis)}` : "/login"}>{t.logInSubmit}</Link>
       </p>
     </main>
   );

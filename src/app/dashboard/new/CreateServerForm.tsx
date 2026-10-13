@@ -11,6 +11,8 @@ import { format, type Messages } from "@/i18n/messages";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
 import { planById } from "@/lib/plans";
+import type { Suggestion } from "@/lib/ai";
+import AiCreator from "./AiCreator";
 
 type Props = {
   t: Messages["server"];
@@ -23,6 +25,13 @@ type Props = {
   initialGame?: GameId; // a game or pack picked on the home page or the empty panel
   initialPack?: string;
   packIcons: Record<string, string | undefined>;
+  /** Set when the AI creator is on. */
+  ai?: {
+    t: Messages["ai"];
+    settings: Messages["settings"];
+    limits: { daily: number; length: number };
+    initialPrompt?: string;
+  };
 };
 
 // "Serwer Ekipy" -> "serwer-ekipy"
@@ -38,7 +47,7 @@ function slugify(name: string) {
     .slice(0, 32);
 }
 
-export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons }: Props) {
+export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const v = state.values ?? {};
   const [edition, setEdition] = useState(v.edition ?? "JAVA");
@@ -47,6 +56,23 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
   const [plan, setPlan] = useState<Plan>((v.plan as Plan | undefined) ?? defaultPlan);
   const [game, setGame] = useState<GameId>(isGameId(v.game) ? v.game : (initialGame ?? "survival"));
   const [pack, setPack] = useState(v.pack ?? initialPack ?? CURATED_PACKS[0].slug);
+  const [name, setName] = useState(v.name ?? "");
+  // What the AI creator picked beyond the form's own fields; sent as hidden fields.
+  const [aiSettings, setAiSettings] = useState<Pick<Suggestion, "gameMode" | "difficulty" | "pvp" | "motd" | "plugins"> | null>(null);
+  // Bumped by each AI suggestion so the plan picker starts from the suggested plan.
+  const [aiRound, setAiRound] = useState(0);
+
+  function applySuggestion(s: Suggestion) {
+    setEdition(s.edition);
+    setName(s.name);
+    setSubdomain(slugify(s.name));
+    setSubdomainEdited(false);
+    setGame(s.game);
+    if (s.pack) setPack(s.pack);
+    setPlan(s.plan);
+    setAiSettings({ gameMode: s.gameMode, difficulty: s.difficulty, pvp: s.pvp, motd: s.motd, plugins: s.plugins });
+    setAiRound((n) => n + 1);
+  }
   const modded = edition === "JAVA" && game === "modpack";
   const curated = CURATED_PACKS.find((p) => p.slug === pack);
   // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
@@ -60,6 +86,19 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
   const ramLow = wanted > planById(plan).ramGb;
 
   return (
+    <>
+    {ai && (
+      <AiCreator
+        t={ai.t}
+        server={t}
+        settings={ai.settings}
+        planNames={Object.fromEntries(plans.map((p) => [p.id, p.name]))}
+        limits={ai.limits}
+        initialPrompt={ai.initialPrompt}
+        onSuggestion={applySuggestion}
+        onDiscardSettings={() => setAiSettings(null)}
+      />
+    )}
     <form
       className="card stack"
       // `action` only serves a submit made before the page's script has loaded.
@@ -80,13 +119,22 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
           minLength={3}
           maxLength={32}
           placeholder={t.namePlaceholder}
-          defaultValue={v.name}
-          key={v.name}
+          value={name}
           onChange={(e) => {
+            setName(e.target.value);
             if (!subdomainEdited) setSubdomain(slugify(e.target.value));
           }}
         />
       </label>
+      {aiSettings && (
+        <>
+          <input type="hidden" name="gameMode" value={aiSettings.gameMode} />
+          <input type="hidden" name="difficulty" value={aiSettings.difficulty} />
+          <input type="hidden" name="pvp" value={aiSettings.pvp ? "on" : "off"} />
+          <input type="hidden" name="motd" value={aiSettings.motd} />
+          <input type="hidden" name="extraPlugins" value={aiSettings.plugins.join(",")} />
+        </>
+      )}
       <fieldset className="stack">
         <legend>{t.edition}</legend>
         {(["JAVA", "BEDROCK"] as const).map((ed) => (
@@ -217,7 +265,7 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
       )}
       <PlanPicker
         // Remounted when a mod pack rules out smaller plans, so it picks up the new default.
-        key={minPlan}
+        key={`${minPlan}-${aiRound}`}
         plans={planChoices}
         defaultPlan={plan}
         periodLabels={{ days: billing.periodDays, off: billing.periodOff }}
@@ -247,5 +295,6 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
         {pending ? (plan === "FREE" ? t.creating : billing.redirecting) : plan === "FREE" ? t.create : t.createAndPay}
       </button>
     </form>
+    </>
   );
 }

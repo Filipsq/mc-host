@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Plan } from "@prisma/client";
-import { Check, CreditCard, Gift, Globe, MoonStar, Package, Smartphone, SquareTerminal } from "lucide-react";
+import { Check, CreditCard, Gift, Globe, MoonStar, Package, Smartphone, Sparkles, SquareTerminal } from "lucide-react";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -15,6 +15,7 @@ import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
 import { GAME_ICONS } from "@/components/gameIcons";
 import { getPackArt } from "@/lib/modrinth";
+import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
 
 const featureIcons = {
   free: Gift,
@@ -47,6 +48,20 @@ export default async function Home() {
             <p className="eyebrow">{h.eyebrow}</p>
             <h1 className="display">{h.title}</h1>
             <p className="lead">{h.subtitle}</p>
+            {aiEnabled() && (
+              // Signed out, this goes through sign-up first; the description comes along.
+              <form className="ai-hero" action={session?.user ? "/dashboard/new" : "/signup"} method="get">
+                <label className="ai-hero-label" htmlFor="ai-hero-input">
+                  <span className="ai-badge">{t.ai.badge}</span> {t.ai.heroTitle}
+                </label>
+                <div className="ai-hero-bar">
+                  <Sparkles className="ai-hero-icon" size={20} aria-hidden />
+                  <input id="ai-hero-input" name="opis" required maxLength={DESCRIPTION_MAX} placeholder={t.ai.heroPlaceholder} autoComplete="off" />
+                  <button type="submit">{t.ai.heroButton}</button>
+                </div>
+                <p className="muted small">{t.ai.heroHint}</p>
+              </form>
+            )}
             <div className="hero-actions">
               <Link className="button large" href={start}>{h.cta}</Link>
               <Link className="button large secondary" href="#cennik">{h.ctaSecondary}</Link>

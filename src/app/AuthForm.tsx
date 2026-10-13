@@ -12,12 +12,14 @@ type Props = {
   t: Messages["auth"];
   legal?: Messages["legal"]; // sign-up only: accept the terms
   forgot?: boolean; // log-in only: link to resetting the password
+  opis?: string; // a server description from the home page's AI box, kept for after signing in
 };
 
-export default function AuthForm({ action, submitLabel, t, legal, forgot }: Props) {
+export default function AuthForm({ action, submitLabel, t, legal, forgot, opis }: Props) {
   const [state, formAction, pending] = useActionState(action, {});
   return (
     <form action={formAction} className="card stack">
+      {opis && <input type="hidden" name="opis" value={opis} />}
       <label>
         {t.email}
         <input name="email" type="email" required autoComplete="email" defaultValue={state.email} key={state.email} />

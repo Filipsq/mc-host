@@ -23,7 +23,7 @@ import {
 } from "@/lib/settings";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, parseModrinthLink, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAME_IDS, gameById } from "@/lib/games";
-import { pluginIds } from "@/lib/plugins";
+import { KNOWN_PLUGINS, PLUGIN_SETS, pluginIds, setFits, type KnownPlugin } from "@/lib/plugins";
 import { type ResolvedPack, resolveModpack } from "@/lib/modrinth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
@@ -49,6 +49,12 @@ const createSchema = z.object({
   game: z.enum(GAME_IDS).default("survival"),
   pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
   packLink: z.string().max(300).optional(),
+  // Settings and extra plugins the AI creator picked; otherwise the defaults.
+  gameMode: z.enum(GAME_MODES).optional(),
+  difficulty: z.enum(DIFFICULTIES).optional(),
+  pvp: z.enum(["on", "off"]).optional(),
+  motd: z.string().trim().max(MOTD_MAX).optional(),
+  extraPlugins: z.string().max(500).optional(), // comma-separated KNOWN_PLUGINS keys
 });
 
 const MODPACK_PLAN_ERRORS = {
@@ -131,7 +137,11 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     plan,
     memoryMb,
     kind,
-    plugins: pluginIds(game.plugins),
+    plugins: pluginIds(startingPlugins(game.plugins, kind, edition === "JAVA" ? parsed.data.extraPlugins : undefined)),
+    ...(parsed.data.gameMode && { gameMode: parsed.data.gameMode }),
+    ...(parsed.data.difficulty && { difficulty: parsed.data.difficulty }),
+    ...(parsed.data.motd && { motd: parsed.data.motd }),
+    ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
     ...(pack && {
       version: pack.gameVersion,
       modpack: pack.slug,
@@ -170,6 +180,17 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
 
   await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" } });
   redirect(`/dashboard/servers/${server.id}`);
+}
+
+/** The game's own plugins plus known extras that fit this kind of server (none for mod packs). */
+function startingPlugins(base: readonly KnownPlugin[], kind: string, extra: string | undefined): KnownPlugin[] {
+  if (kind === "modpack") return [];
+  const islandOnly = new Set<string>(PLUGIN_SETS.filter((s) => !setFits(s, kind)).flatMap((s) => s.plugins));
+  const extras = (extra ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p): p is KnownPlugin => p in KNOWN_PLUGINS && !islandOnly.has(p));
+  return [...new Set([...base, ...extras])];
 }
 
 export type CheckoutState = { error?: ServerErrorCode };

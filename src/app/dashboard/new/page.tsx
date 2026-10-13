@@ -7,14 +7,19 @@ import { planOptions } from "@/lib/planOptions";
 import { getPackArt } from "@/lib/modrinth";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
 import { isGameId } from "@/lib/games";
+import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
 import CreateServerForm from "./CreateServerForm";
 
-type Props = { searchParams: Promise<{ pack?: string; game?: string }> };
+type Props = { searchParams: Promise<{ pack?: string; game?: string; opis?: string }> };
 
 export default async function NewServerPage({ searchParams }: Props) {
   const session = await getSession();
-  if (!session?.user?.id) redirect("/login");
-  const [t, { locale, currency }, freeCount, packArt, { pack, game }] = await Promise.all([
+  if (!session?.user?.id) {
+    // A description from the home page's AI box survives signing in.
+    const { opis } = await searchParams;
+    redirect(opis ? `/login?opis=${encodeURIComponent(opis.slice(0, DESCRIPTION_MAX))}` : "/login");
+  }
+  const [t, { locale, currency }, freeCount, packArt, { pack, game, opis }] = await Promise.all([
     getMessages(),
     getPreferences(),
     db.server.count({ where: { ownerId: session.user.id, plan: "FREE" } }),
@@ -49,6 +54,16 @@ export default async function NewServerPage({ searchParams }: Props) {
         packIcons={packIcons}
         domain={process.env.GAME_DOMAIN ?? "localhost"}
         money={{ locale, currency }}
+        ai={
+          aiEnabled()
+            ? {
+                t: t.ai,
+                settings: t.settings,
+                limits: { daily: aiDailyLimit(), length: DESCRIPTION_MAX },
+                initialPrompt: opis?.trim().slice(0, DESCRIPTION_MAX) || undefined,
+              }
+            : undefined
+        }
       />
     </main>
   );

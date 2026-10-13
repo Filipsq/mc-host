@@ -42,6 +42,11 @@ export default function PrivacyPl({ site }: { site: string }) {
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
             </tr>
             <tr>
+              <td>Opis serwera wpisany do kreatora AI</td>
+              <td>Dobranie ustawień serwera na prośbę Użytkownika</td>
+              <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
+            </tr>
+            <tr>
               <td>Płatności: Plan, kwota, waluta, status, identyfikator płatności Stripe</td>
               <td>Rozliczenie płatności i obowiązki podatkowe</td>
               <td>art. 6 ust. 1 lit. b i c – umowa i obowiązek prawny</td>
@@ -89,6 +94,11 @@ export default function PrivacyPl({ site }: { site: string }) {
         <li>
           <strong>Brevo</strong> (Francja) – wysyłka wiadomości e-mail z Serwisu, np. linku do zmiany hasła i przypomnienia o końcu Okresu; dane
           są przechowywane w Unii Europejskiej.
+        </li>
+        <li>
+          <strong>Anthropic</strong> (USA) – model AI Claude, który w kreatorze AI dobiera ustawienia serwera. Dostaje
+          tylko opis wpisany do kreatora, bez adresu e-mail ani innych danych Konta. Przekazanie danych do USA odbywa
+          się na podstawie standardowych klauzul umownych.
         </li>
         <li>Dostawca poczty e-mail, przez którą odpowiadamy na wiadomości.</li>
         <li>Organy publiczne, gdy wymaga tego prawo.</li>
