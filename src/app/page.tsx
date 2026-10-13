@@ -191,6 +191,7 @@ export default async function Home() {
                       <Check size={16} aria-hidden />{" "}
                       {p.backupsKept === 0 ? t.plans.noBackups : format(t.plans.backups, { n: p.backupsKept })}
                     </li>
+                    <li><Check size={16} aria-hidden /> {t.plans.support}</li>
                   </ul>
                   <Link className={`button${recommended ? "" : " secondary"}`} href={start}>
                     {p.id === "FREE" ? h.startFree : h.choosePlan}

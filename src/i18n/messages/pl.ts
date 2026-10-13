@@ -155,6 +155,7 @@ const pl = {
     alwaysOn: "Działa 24/7",
     noBackups: "Bez kopii zapasowych",
     backups: "Kopie zapasowe: ostatnie {n}",
+    support: "Pomoc administratora 24/7",
   },
   auth: {
     email: "E-mail",

@@ -156,6 +156,7 @@ const en: Messages = {
     alwaysOn: "Always on",
     noBackups: "No backups",
     backups: "Backups: last {n} kept",
+    support: "24/7 admin support",
   },
   auth: {
     email: "Email",
