@@ -8,6 +8,8 @@ import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { addressLabel, getLiveState } from "@/lib/servers";
 import EditionIcon from "@/components/EditionIcon";
+import { GAME_ICONS } from "@/components/gameIcons";
+import { GAMES } from "@/lib/games";
 import { logOut } from "../actions";
 
 type Props = { searchParams: Promise<{ haslo?: string }> };
@@ -46,11 +48,26 @@ export default async function DashboardPage({ searchParams }: Props) {
       {haslo === "zmienione" && <p className="notice success">{t.passwordChanged}</p>}
       {servers.length === 0 ? (
         <div className="card stack empty">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/art/island.svg" alt="" width={220} height={204} />
+          <span className="empty-art">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/art/island.svg" alt="" width={220} height={204} />
+          </span>
           <h2>{t.empty}</h2>
           <p className="muted">{t.emptyHint}</p>
-          <Link className="button" href="/dashboard/new"><Plus size={18} aria-hidden /> {t.createServer}</Link>
+          <Link className="button large" href="/dashboard/new"><Plus size={18} aria-hidden /> {t.createServer}</Link>
+          <p className="muted small">{t.emptyGames}</p>
+          <ul className="empty-games">
+            {GAMES.map((g) => {
+              const Icon = GAME_ICONS[g.id];
+              return (
+                <li key={g.id}>
+                  <Link className="chip" href={`/dashboard/new?game=${g.id}`}>
+                    <Icon size={15} aria-hidden /> {all.server.games[g.id]}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ) : (
         <ul className="server-list">

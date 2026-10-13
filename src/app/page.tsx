@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Plan } from "@prisma/client";
-import { Box, Check, Cloud, CreditCard, Gift, Globe, Heart, MoonStar, Package, Pickaxe, Puzzle, Shield, Smartphone, SquareTerminal } from "lucide-react";
+import { Check, CreditCard, Gift, Globe, MoonStar, Package, Smartphone, SquareTerminal } from "lucide-react";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -11,6 +11,9 @@ import { CURATED_PACKS } from "@/lib/modpacks";
 import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
 import RamCalculator from "@/components/RamCalculator";
 import PackCarousel from "@/components/PackCarousel";
+import HeroAddress from "@/components/HeroAddress";
+import Clouds from "@/components/Clouds";
+import { GAME_ICONS } from "@/components/gameIcons";
 import { getPackArt } from "@/lib/modrinth";
 
 const featureIcons = {
@@ -22,14 +25,6 @@ const featureIcons = {
   payments: CreditCard,
 } as const;
 
-const gameIcons = {
-  survival: Pickaxe,
-  "survival-plus": Shield,
-  lifesteal: Heart,
-  skyblock: Cloud,
-  oneblock: Box,
-  modpack: Puzzle,
-} as const;
 
 export default async function Home() {
   const [{ locale, currency }, t, session, packArt] = await Promise.all([
@@ -46,6 +41,7 @@ export default async function Home() {
   return (
     <main className="home">
       <section className="hero">
+        <Clouds />
         <div className="container hero-grid">
           <div className="hero-copy">
             <p className="eyebrow">{h.eyebrow}</p>
@@ -66,7 +62,7 @@ export default async function Home() {
             <img className="island" src="/art/island.svg" alt="" width={560} height={520} />
             <div className="hero-card">
               <span className="dot online" />
-              <span className="mono">{format(h.heroAddress, { domain })}</span>
+              <HeroAddress names={h.heroNames} domain={domain} />
               <span className="badge online">{t.server.live.online}</span>
             </div>
           </div>
@@ -119,7 +115,7 @@ export default async function Home() {
           </header>
           <ul className="feature-grid">
             {GAMES.map((g) => {
-              const Icon = gameIcons[g.id];
+              const Icon = GAME_ICONS[g.id];
               const extras = gamePluginTitles(g.id);
               return (
                 <li key={g.id} className="feature game-card">

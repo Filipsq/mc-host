@@ -6,14 +6,15 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { planOptions } from "@/lib/planOptions";
 import { getPackArt } from "@/lib/modrinth";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
+import { isGameId } from "@/lib/games";
 import CreateServerForm from "./CreateServerForm";
 
-type Props = { searchParams: Promise<{ pack?: string }> };
+type Props = { searchParams: Promise<{ pack?: string; game?: string }> };
 
 export default async function NewServerPage({ searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const [t, { locale, currency }, freeCount, packArt, { pack }] = await Promise.all([
+  const [t, { locale, currency }, freeCount, packArt, { pack, game }] = await Promise.all([
     getMessages(),
     getPreferences(),
     db.server.count({ where: { ownerId: session.user.id, plan: "FREE" } }),
@@ -25,9 +26,12 @@ export default async function NewServerPage({ searchParams }: Props) {
     p.id === "FREE" && hasFree ? { ...p, disabledNote: t.server.freeTaken } : p,
   );
 
-  // Coming from a pack on the home page: that pack, on the smallest plan it runs on.
+  // Coming from a pack on the home page (or a game in the empty panel): that pack
+  // or game, a pack on the smallest plan it runs on.
   const chosen = CURATED_PACKS.find((p) => p.slug === pack);
-  const defaultPlan = chosen ? planForRam(chosen.ramGb) : hasFree ? "STARTER" : "FREE";
+  const initialGame = chosen ? "modpack" : isGameId(game) ? game : undefined;
+  const defaultPlan =
+    initialGame === "modpack" ? planForRam((chosen ?? CURATED_PACKS[0]).ramGb) : hasFree ? "STARTER" : "FREE";
   const packIcons = Object.fromEntries(CURATED_PACKS.map((p) => [p.slug, packArt.get(p.slug)?.icon]));
 
   return (
@@ -40,6 +44,7 @@ export default async function NewServerPage({ searchParams }: Props) {
         legal={t.legal}
         plans={plans}
         defaultPlan={defaultPlan}
+        initialGame={initialGame}
         initialPack={chosen?.slug}
         packIcons={packIcons}
         domain={process.env.GAME_DOMAIN ?? "localhost"}

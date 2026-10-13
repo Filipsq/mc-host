@@ -20,7 +20,8 @@ type Props = {
   defaultPlan: Plan;
   domain: string;
   money: { locale: string; currency: string };
-  initialPack?: string; // a curated pack picked on the home page
+  initialGame?: GameId; // a game or pack picked on the home page or the empty panel
+  initialPack?: string;
   packIcons: Record<string, string | undefined>;
 };
 
@@ -37,14 +38,14 @@ function slugify(name: string) {
     .slice(0, 32);
 }
 
-export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money, initialPack, packIcons }: Props) {
+export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const v = state.values ?? {};
   const [edition, setEdition] = useState(v.edition ?? "JAVA");
   const [subdomain, setSubdomain] = useState(v.subdomain ?? "");
   const [subdomainEdited, setSubdomainEdited] = useState(!!v.subdomain);
   const [plan, setPlan] = useState<Plan>((v.plan as Plan | undefined) ?? defaultPlan);
-  const [game, setGame] = useState<GameId>(isGameId(v.game) ? v.game : initialPack ? "modpack" : "survival");
+  const [game, setGame] = useState<GameId>(isGameId(v.game) ? v.game : (initialGame ?? "survival"));
   const [pack, setPack] = useState(v.pack ?? initialPack ?? CURATED_PACKS[0].slug);
   const modded = edition === "JAVA" && game === "modpack";
   const curated = CURATED_PACKS.find((p) => p.slug === pack);

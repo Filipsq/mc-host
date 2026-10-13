@@ -5,6 +5,10 @@ import Link from "next/link";
 import type { Plan } from "@prisma/client";
 import { format, type Messages } from "@/i18n/messages";
 import { PLAYER_GROUPS, RAM_USES, planFor, ramNeeded, type PlayerGroup, type RamUse } from "@/lib/ram";
+import { planById } from "@/lib/plans";
+
+// The bar has one block per gigabyte, up to the biggest plan.
+const BAR_GB = 10;
 
 type Props = {
   t: Messages["home"];
@@ -52,6 +56,31 @@ export default function RamCalculator({ t, planNames, prices, locale, start }: P
         </div>
       </fieldset>
       <div className="ram-result" aria-live="polite">
+        {/* Blocks fill up to the memory needed; the dashed outline is what the suggested plan has. */}
+        <div className="ram-bar" aria-hidden>
+          {Array.from({ length: BAR_GB }, (_, i) => {
+            const fill = Math.min(1, Math.max(0, gb - i));
+            const inPlan = plan !== null && i < planById(plan).ramGb;
+            return (
+              <span
+                key={i}
+                className={`ram-block${fill === 1 ? " full" : fill > 0 ? " half" : ""}${inPlan ? " in-plan" : ""}`}
+                style={{ "--i": i } as React.CSSProperties}
+              >
+                <span className="ram-block-gb">{i + 1}</span>
+              </span>
+            );
+          })}
+        </div>
+        <p className="ram-legend muted small">
+          <span className="ram-key ram-key-need" /> {format(t.ramLegendNeed, { gb: number.format(gb) })}
+          {plan !== null && (
+            <>
+              {" "}
+              <span className="ram-key ram-key-plan" /> {format(t.ramLegendPlan, { plan: planNames[plan], gb: planById(plan).ramGb })}
+            </>
+          )}
+        </p>
         <p>
           <strong>{format(t.ramResult, { gb: number.format(gb) })}</strong>{" "}
           {plan === null
