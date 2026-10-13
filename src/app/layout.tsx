@@ -7,6 +7,7 @@ import "@fontsource/jersey-10/latin-ext.css";
 import { auth } from "@/auth";
 import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
+import SupportLink from "@/components/SupportLink";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { BRAND_NAME } from "@/lib/brand";
@@ -59,9 +60,12 @@ export default async function RootLayout({
             </nav>
             <div className="topbar-actions">
               {signedIn ? (
-                <Link className="button small" href="/dashboard" aria-label={t.nav.dashboard}>
-                  <LayoutGrid size={16} aria-hidden /> <span className="hide-phone">{t.nav.dashboard}</span>
-                </Link>
+                <>
+                  <SupportLink label={t.support.nav} unreadLabel={t.support.unread} />
+                  <Link className="button small" href="/dashboard" aria-label={t.nav.dashboard}>
+                    <LayoutGrid size={16} aria-hidden /> <span className="hide-phone">{t.nav.dashboard}</span>
+                  </Link>
+                </>
               ) : (
                 <>
                   <Link className="topbar-login" href="/login">{t.nav.logIn}</Link>

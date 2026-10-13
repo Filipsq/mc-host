@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Mail } from "lucide-react";
+import Link from "next/link";
+import { Mail, MessageCircle } from "lucide-react";
 import { getMessages } from "@/i18n/server";
 import { company } from "@/lib/company";
 import Blank from "@/components/legal/Blank";
@@ -15,6 +16,15 @@ export default async function ContactPage() {
     <main className="wide-form stack">
       <h1>{t.contact}</h1>
       <p className="muted">{t.contactIntro}</p>
+      <div className="card row">
+        <div className="stack-tight">
+          <strong>{t.chatTitle}</strong>
+          <span className="muted small">{t.chatText}</span>
+        </div>
+        <Link className="button" href="/dashboard/support">
+          <MessageCircle size={18} aria-hidden /> {t.chatButton}
+        </Link>
+      </div>
       <div className="card stack">
         <div>
           <p className="address-label">{t.email}</p>

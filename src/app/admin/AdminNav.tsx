@@ -9,9 +9,12 @@ const LINKS = [
   ["/admin/servers", "servers"],
   ["/admin/users", "users"],
   ["/admin/payments", "payments"],
+  ["/admin/support", "support"],
 ] as const;
 
-export default function AdminNav({ labels }: { labels: Messages["admin"]["nav"] }) {
+type Props = { labels: Messages["admin"]["nav"]; counts: Partial<Record<(typeof LINKS)[number][1], number>> };
+
+export default function AdminNav({ labels, counts }: Props) {
   const path = usePathname();
   return (
     <nav className="tabs">
@@ -20,6 +23,7 @@ export default function AdminNav({ labels }: { labels: Messages["admin"]["nav"] 
         return (
           <Link key={href} href={href} className={active ? "active" : undefined} aria-current={active ? "page" : undefined}>
             {labels[key]}
+            {(counts[key] ?? 0) > 0 && <span className="count-badge">{counts[key]}</span>}
           </Link>
         );
       })}

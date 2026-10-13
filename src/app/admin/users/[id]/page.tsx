@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MessageCircle } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
@@ -46,7 +47,12 @@ export default async function AdminUser({ params }: Props) {
       <Link className="back" href="/admin/users">← {t.nav.users}</Link>
       <header className="page-head">
         <h2 className="break">{user.email}</h2>
-        {user.admin && <span className="chip">{t.adminChip}</span>}
+        <div className="row">
+          {user.admin && <span className="chip">{t.adminChip}</span>}
+          <Link className="button secondary small" href={`/admin/support/${user.id}`}>
+            <MessageCircle size={16} aria-hidden /> {all.support.admin.open}
+          </Link>
+        </div>
       </header>
       <section className="card stack">
         <h3>{t.details}</h3>

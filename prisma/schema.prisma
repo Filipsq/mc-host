@@ -23,6 +23,39 @@ model User {
   servers           Server[]
   payments          Payment[]
   passwordResets    PasswordReset[]
+  supportChat       SupportChat?
+}
+
+// A user's conversation with the admins (the "Help" chat). One per user,
+// created by its first message. The unread counters drive the badges and
+// decide when to email: only the first unread message of a run sends one.
+model SupportChat {
+  userId        String           @id
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastMessageAt DateTime         @default(now())
+  lastFromStaff Boolean          @default(false)
+  // Messages the user hasn't seen yet, and when they last had the chat open.
+  userUnread    Int              @default(0)
+  userReadAt    DateTime?
+  // Messages no admin has seen yet, and when an admin last had the chat open.
+  staffUnread   Int              @default(0)
+  staffReadAt   DateTime?
+  messages      SupportMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model SupportMessage {
+  id        String      @id @default(cuid())
+  chatId    String
+  chat      SupportChat @relation(fields: [chatId], references: [userId], onDelete: Cascade)
+  // Written by an admin (authorId) rather than by the chat's user.
+  fromStaff Boolean     @default(false)
+  authorId  String?
+  body      String
+  createdAt DateTime    @default(now())
+
+  @@index([chatId, createdAt])
 }
 
 // A "forgot password" link. Only the hash of the link's token is stored.

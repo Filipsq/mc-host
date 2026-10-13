@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, Shield } from "lucide-react";
+import { MessageCircle, Plus, Shield } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
@@ -39,6 +39,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
         <div className="row">
           {admin && <Link className="button secondary" href="/admin"><Shield size={18} aria-hidden /> {all.admin.title}</Link>}
+          <Link className="button secondary" href="/dashboard/support"><MessageCircle size={18} aria-hidden /> {all.support.dashboardButton}</Link>
           <Link className="button" href="/dashboard/new"><Plus size={18} aria-hidden /> {t.createServer}</Link>
           <form action={logOut}>
             <button type="submit" className="secondary">{t.logOut}</button>
