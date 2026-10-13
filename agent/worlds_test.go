@@ -1,0 +1,309 @@
+package main
+
+import (
+	"archive/zip"
+	"bytes"
+	"context"
+	"encoding/json"
+	"io"
+	"net/url"
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestNonPremiumAndWorldEnv(t *testing.T) {
+	a := &agent{idle: 5 * time.Minute}
+	off := false
+	envOf := func(req createRequest) (string, map[string]string) {
+		t.Helper()
+		if err := req.validate(); err != nil {
+			t.Fatalf("%+v: %v", req, err)
+		}
+		spec := a.containerSpec(req, imageFor(req.Edition, req.Version, req.Kind))
+		return strings.Join(spec["Env"].([]string), "\n") + "\n", spec["Labels"].(map[string]string)
+	}
+	java := createRequest{ID: "abc12345", Name: "Ekipa", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 25570, Hostname: "ekipa.mchost.pl",
+		OnlineMode: &off, Whitelist: true, Players: []string{"Steve", "Alex_2"}, Plugins: []string{"Vebnzrzj"},
+		Level: "Nowy świat", Seed: "-123456789", LevelType: "flat"}
+	env, labels := envOf(java)
+	for _, want := range []string{
+		"ONLINE_MODE=false\n",
+		"MODRINTH_PROJECTS=" + authMe + ",Vebnzrzj?\n", // the login plugin is required, the owner's optional
+		"WHITELIST=Steve:offline,Alex_2:offline\n",
+		"LEVEL=Nowy świat\n", "SEED=-123456789\n", "LEVEL_TYPE=flat\n",
+	} {
+		if !strings.Contains(env, want) {
+			t.Errorf("env missing %q:\n%s", want, env)
+		}
+	}
+	if labels["mchost.level"] != "Nowy świat" {
+		t.Errorf("level label = %q", labels["mchost.level"])
+	}
+
+	sky := java
+	sky.Kind, sky.Plugins, sky.Whitelist, sky.Level, sky.Seed, sky.LevelType = "skyblock", nil, false, "", "", "large_biomes"
+	env, labels = envOf(sky)
+	if !strings.Contains(env, "MODRINTH_PROJECTS=bentobox,bskyblock,"+authMe+"\n") || !strings.Contains(env, "LEVEL_TYPE=largebiomes\n") {
+		t.Errorf("skyblock non-premium env:\n%s", env)
+	}
+	if strings.Contains(env, "LEVEL=") || strings.Contains(env, "SEED=") || labels["mchost.level"] != "world" {
+		t.Errorf("no level set means the image's default world:\n%s %v", env, labels)
+	}
+
+	premium := java
+	premium.OnlineMode = nil
+	env, _ = envOf(premium)
+	if !strings.Contains(env, "ONLINE_MODE=true\n") || strings.Contains(env, authMe) || strings.Contains(env, ":offline") {
+		t.Errorf("premium servers stay online without the login plugin:\n%s", env)
+	}
+
+	bedrock := createRequest{ID: "abc12345", Name: "Wyspa", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570, Level: "Moja wyspa", Seed: "42", LevelType: "flat"}
+	env, labels = envOf(bedrock)
+	for _, want := range []string{"LEVEL_NAME=Moja wyspa\n", "LEVEL_SEED=42\n", "LEVEL_TYPE=FLAT\n"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("bedrock env missing %q:\n%s", want, env)
+		}
+	}
+	if labels["mchost.level"] != "Moja wyspa" {
+		t.Errorf("bedrock level label = %q", labels["mchost.level"])
+	}
+	bedrock.Level = ""
+	if _, labels = envOf(bedrock); labels["mchost.level"] != "Bedrock level" {
+		t.Errorf("bedrock default level label = %q", labels["mchost.level"])
+	}
+
+	for _, bad := range []createRequest{
+		{Kind: "fabric", OnlineMode: &off},  // no login plugin for mods
+		{Kind: "modpack", OnlineMode: &off}, // nor for packs
+		{Level: "../plugins"},
+		{Level: ".hidden"},
+		{Level: "a/b"},
+		{Seed: "1\nonline-mode=false"},
+		{LevelType: "debug"},
+	} {
+		bad.ID, bad.Name, bad.Edition, bad.MemoryMb, bad.CPUs, bad.Port, bad.Hostname = "abc12345", "X", "JAVA", 2048, 1, 25570, "x.mchost.pl"
+		if bad.Kind == "modpack" {
+			bad.Modpack, bad.ModpackVersion = "pack", "BpTjgzL8"
+		}
+		if bad.validate() == nil {
+			t.Errorf("should be rejected: %+v", bad)
+		}
+	}
+	bedrockOffline := createRequest{ID: "abc12345", Name: "X", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570, OnlineMode: &off}
+	if bedrockOffline.validate() == nil {
+		t.Error("bedrock can't be non-premium")
+	}
+	bedrockAmplified := createRequest{ID: "abc12345", Name: "X", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570, LevelType: "amplified"}
+	if bedrockAmplified.validate() == nil {
+		t.Error("bedrock has no amplified worlds")
+	}
+}
+
+// writeFiles makes files (with their folders) under dir.
+func writeFiles(t *testing.T, dir string, files map[string]string) {
+	t.Helper()
+	for name, body := range files {
+		p := filepath.Join(dir, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func zipNames(t *testing.T, body []byte) []string {
+	t.Helper()
+	zr, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, f := range zr.File {
+		names = append(names, f.Name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func TestWorldsJava(t *testing.T) {
+	h, _, data := filesAgent(t)
+	writeFiles(t, data, map[string]string{
+		"world/level.dat":                        "a",
+		"world/region/r.0.0.mca":                 "region",
+		"world/session.lock":                     "lock",
+		"world_nether/level.dat":                 "n",
+		"world_nether/DIM-1/region/r.0.0.mca":    "nether",
+		"world_the_end/level.dat":                "e",
+		"world_the_end/DIM1/region/r.0.0.mca":    "end",
+		"Stary świat/level.dat":                  "old",
+		"Stary świat/DIM-1/region/r.0.0.mca":     "old nether",
+		"plugins/Essentials/config.yml":          "not a world",
+		"logs/latest.log":                        "log",
+		"bskyblock_world/level.dat":              "island",
+		"bskyblock_world_nether/level.dat":       "island nether",
+		"bskyblock_world_nether/DIM-1/r.0.0.mca": "x",
+	})
+
+	rec := call(t, h, "GET", "/servers/abc12345/worlds", nil)
+	if rec.Code != 200 {
+		t.Fatalf("list: %d %s", rec.Code, rec.Body)
+	}
+	var list struct {
+		Worlds []worldInfo `json:"worlds"`
+		Active string      `json:"active"`
+	}
+	json.Unmarshal(rec.Body.Bytes(), &list)
+	var names []string
+	for _, w := range list.Worlds {
+		names = append(names, w.Name)
+	}
+	if got := strings.Join(names, ","); got != "bskyblock_world,Stary świat,world" {
+		t.Fatalf("worlds = %q (Paper's nether and end belong to their world)", got)
+	}
+	if list.Active != "world" {
+		t.Errorf("active = %q", list.Active)
+	}
+	if w := list.Worlds[2]; w.Size != int64(len("a")+len("region")+len("lock")+len("n")+len("nether")+len("e")+len("end")) {
+		t.Errorf("world size = %d", w.Size)
+	}
+
+	// The download is one folder a single-player game opens, nether and end inside.
+	rec = call(t, h, "GET", "/servers/abc12345/worlds/world/download", nil)
+	if rec.Code != 200 || rec.Header().Get("Content-Type") != "application/zip" {
+		t.Fatalf("download: %d %s", rec.Code, rec.Header())
+	}
+	if got := strings.Join(zipNames(t, rec.Body.Bytes()), " "); got != "world/DIM-1/region/r.0.0.mca world/DIM1/region/r.0.0.mca world/level.dat world/region/r.0.0.mca" {
+		t.Fatalf("zip = %q", got)
+	}
+	rec = call(t, h, "GET", "/servers/abc12345/worlds/"+url.PathEscape("Stary świat")+"/download", nil)
+	if got := strings.Join(zipNames(t, rec.Body.Bytes()), " "); got != "Stary świat/DIM-1/region/r.0.0.mca Stary świat/level.dat" {
+		t.Fatalf("vanilla-layout zip = %q", got)
+	}
+	for _, bad := range []string{"plugins", "nothing", url.PathEscape("../world"), ".hidden"} {
+		if rec := call(t, h, "GET", "/servers/abc12345/worlds/"+bad+"/download", nil); rec.Code == 200 {
+			t.Errorf("download %s: %d", bad, rec.Code)
+		}
+	}
+
+	// The server's own world can't be deleted; another one goes with its nether and end.
+	if rec := call(t, h, "DELETE", "/servers/abc12345/worlds/world", nil); rec.Code != 409 || !strings.Contains(rec.Body.String(), "active") {
+		t.Fatalf("delete active: %d %s", rec.Code, rec.Body)
+	}
+	if rec := call(t, h, "DELETE", "/servers/abc12345/worlds/bskyblock_world", nil); rec.Code != 200 {
+		t.Fatalf("delete: %d %s", rec.Code, rec.Body)
+	}
+	for _, gone := range []string{"bskyblock_world", "bskyblock_world_nether"} {
+		if _, err := os.Stat(filepath.Join(data, gone)); !os.IsNotExist(err) {
+			t.Errorf("%s still there", gone)
+		}
+	}
+	if rec := call(t, h, "DELETE", "/servers/abc12345/worlds/plugins", nil); rec.Code != 404 {
+		t.Errorf("plugins isn't a world: %d", rec.Code)
+	}
+	if _, err := os.Stat(filepath.Join(data, "plugins")); err != nil {
+		t.Error("plugins must survive")
+	}
+}
+
+func zipOf(t *testing.T, files map[string]string) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	for name, body := range files {
+		w, err := zw.Create(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		io.WriteString(w, body)
+	}
+	zw.Close()
+	return buf.Bytes()
+}
+
+func TestWorldImport(t *testing.T) {
+	h, _, data := filesAgent(t)
+	writeFiles(t, data, map[string]string{"world/level.dat": "a"})
+	upload := func(body []byte) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(data, "upload.zip"), body, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// A single-player save zipped with its folder, and macOS's extras.
+	upload(zipOf(t, map[string]string{
+		"Moja Mapa/level.dat":              "map",
+		"Moja Mapa/region/r.0.0.mca":       "r",
+		"Moja Mapa/DIM-1/region/r.0.0.mca": "n",
+		"__MACOSX/Moja Mapa/._level.dat":   "junk",
+	}))
+	rec := call(t, h, "POST", "/servers/abc12345/worlds/import?path=upload.zip&name="+q("Moja Mapa"), nil)
+	if rec.Code != 200 {
+		t.Fatalf("import: %d %s", rec.Code, rec.Body)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "Moja Mapa", "DIM-1", "region", "r.0.0.mca")); string(b) != "n" {
+		t.Fatal("world not unpacked in place")
+	}
+	if _, err := os.Stat(filepath.Join(data, "upload.zip")); !os.IsNotExist(err) {
+		t.Error("the upload should be deleted")
+	}
+	if _, err := os.Stat(filepath.Join(data, "__MACOSX")); !os.IsNotExist(err) {
+		t.Error("macOS extras unpacked")
+	}
+
+	// Never over an existing world or its nether.
+	upload(zipOf(t, map[string]string{"level.dat": "x"}))
+	if rec := call(t, h, "POST", "/servers/abc12345/worlds/import?path=upload.zip&name=world", nil); rec.Code != 409 {
+		t.Fatalf("import over world: %d %s", rec.Code, rec.Body)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "world", "level.dat")); string(b) != "a" {
+		t.Fatal("existing world changed")
+	}
+
+	// A zip with no world in it.
+	upload(zipOf(t, map[string]string{"readme.txt": "hi"}))
+	if rec := call(t, h, "POST", "/servers/abc12345/worlds/import?path=upload.zip&name=nowy", nil); rec.Code != 400 || !strings.Contains(rec.Body.String(), "noWorld") {
+		t.Fatalf("import without level.dat: %d %s", rec.Code, rec.Body)
+	}
+	if entries, _ := filepath.Glob(filepath.Join(data, ".import-*")); len(entries) != 0 {
+		t.Errorf("leftovers: %v", entries)
+	}
+
+	// A Bedrock .mcworld: the world at the zip's top, into worlds/.
+	upload(zipOf(t, map[string]string{"level.dat": "bedrock", "db/000001.ldb": "db", "levelname.txt": "Wyspa"}))
+	rec = call(t, h, "POST", "/servers/abc12345/worlds/import?edition=BEDROCK&path=upload.zip&name=Wyspa", nil)
+	if rec.Code != 200 {
+		t.Fatalf("bedrock import: %d %s", rec.Code, rec.Body)
+	}
+	if b, _ := os.ReadFile(filepath.Join(data, "worlds", "Wyspa", "db", "000001.ldb")); string(b) != "db" {
+		t.Fatal("bedrock world not in worlds/")
+	}
+	rec = call(t, h, "GET", "/servers/abc12345/worlds?edition=BEDROCK", nil)
+	if !strings.Contains(rec.Body.String(), `"name":"Wyspa"`) || !strings.Contains(rec.Body.String(), `"active":"Bedrock level"`) {
+		t.Fatalf("bedrock list: %s", rec.Body)
+	}
+	rec = call(t, h, "GET", "/servers/abc12345/worlds/Wyspa/download?edition=BEDROCK", nil)
+	if got := strings.Join(zipNames(t, rec.Body.Bytes()), " "); got != "db/000001.ldb level.dat levelname.txt" {
+		t.Fatalf("mcworld zip = %q", got)
+	}
+}
+
+func TestPrepareLogin(t *testing.T) {
+	_, a, data := filesAgent(t)
+	a.prepareLogin(context.Background(), "abc12345")
+	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != authMeConfig {
+		t.Fatalf("config = %q", b)
+	}
+	// The owner's own settings stay.
+	os.WriteFile(filepath.Join(data, "plugins", "AuthMe", "config.yml"), []byte("mine"), 0o644)
+	a.prepareLogin(context.Background(), "abc12345")
+	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != "mine" {
+		t.Fatalf("config overwritten: %q", b)
+	}
+}

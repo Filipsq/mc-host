@@ -232,6 +232,10 @@ func writeFileError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusServiceUnavailable, err.Error())
 	case errors.Is(err, errBusy):
 		writeError(w, http.StatusConflict, "busy")
+	case errors.Is(err, errWorldActive):
+		writeError(w, http.StatusConflict, "active")
+	case errors.Is(err, errNoWorld):
+		writeError(w, http.StatusBadRequest, "noWorld")
 	case errors.Is(err, errExists), errors.Is(err, fs.ErrExist):
 		writeError(w, http.StatusConflict, "exists")
 	case errors.Is(err, fs.ErrNotExist):
@@ -458,34 +462,17 @@ func (a *agent) filesUnzip(w http.ResponseWriter, r *http.Request) {
 		if !fi.Mode().IsRegular() {
 			return nil, errNotFile
 		}
-		zr, err := zip.NewReader(f, fi.Size())
-		if err != nil || len(zr.File) > unzipMaxFiles {
-			return nil, errBadArchive
-		}
-		// The sizes an archive declares are enforced while unpacking (archive/zip
-		// fails on more data), so they're a safe budget against zip bombs.
-		var total uint64
-		for _, zf := range zr.File {
-			total += zf.UncompressedSize64
-		}
-		if free := a.freeSpace(s); free <= 0 || total > uint64(free) {
-			return nil, errNoSpace
-		}
-		if room, err := a.quotaRoom(r.Context(), s, ""); err != nil {
+		zr, err := a.openArchive(r.Context(), s, f, fi.Size())
+		if err != nil {
 			return nil, err
-		} else if total > uint64(room) {
-			return nil, errQuota
-		}
-		if total > uint64(a.unzipMax) {
-			return nil, errTooBig
 		}
 		if err := s.mkdirAll(to); err != nil {
 			return nil, err
 		}
 		files := 0
 		for _, zf := range zr.File {
-			rel := path.Clean("/" + strings.ReplaceAll(zf.Name, `\`, "/"))[1:]
-			if rel == "" || rel == "__MACOSX" || strings.HasPrefix(rel, "__MACOSX/") {
+			rel := archivePath(zf)
+			if rel == "" {
 				continue
 			}
 			dest := path.Join(to, rel)
@@ -502,6 +489,43 @@ func (a *agent) filesUnzip(w http.ResponseWriter, r *http.Request) {
 		}
 		return map[string]int{"files": files}, nil
 	})
+}
+
+// openArchive reads a zip's contents list and checks that it unpacks within
+// the disk space left, the server's quota and the agent's limit.
+func (a *agent) openArchive(ctx context.Context, s *serverFiles, f io.ReaderAt, size int64) (*zip.Reader, error) {
+	zr, err := zip.NewReader(f, size)
+	if err != nil || len(zr.File) > unzipMaxFiles {
+		return nil, errBadArchive
+	}
+	// The sizes an archive declares are enforced while unpacking (archive/zip
+	// fails on more data), so they're a safe budget against zip bombs.
+	var total uint64
+	for _, zf := range zr.File {
+		total += zf.UncompressedSize64
+	}
+	if free := a.freeSpace(s); free <= 0 || total > uint64(free) {
+		return nil, errNoSpace
+	}
+	if room, err := a.quotaRoom(ctx, s, ""); err != nil {
+		return nil, err
+	} else if total > uint64(room) {
+		return nil, errQuota
+	}
+	if total > uint64(a.unzipMax) {
+		return nil, errTooBig
+	}
+	return zr, nil
+}
+
+// archivePath is where a zip entry unpacks, relative to the folder it unpacks
+// into; "" for entries to skip (the folder itself, macOS's resource forks).
+func archivePath(zf *zip.File) string {
+	rel := path.Clean("/" + strings.ReplaceAll(zf.Name, `\`, "/"))[1:]
+	if rel == "__MACOSX" || strings.HasPrefix(rel, "__MACOSX/") {
+		return ""
+	}
+	return rel
 }
 
 func (s *serverFiles) extract(zf *zip.File, dest string) error {

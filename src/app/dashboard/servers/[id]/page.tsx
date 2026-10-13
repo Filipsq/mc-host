@@ -12,8 +12,10 @@ import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
-import { addonType } from "@/lib/plugins";
-import { FolderOpen, Puzzle, Users } from "lucide-react";
+import { addonType, canRunNonPremium } from "@/lib/plugins";
+import { kindLabel } from "@/lib/serverType";
+import { FolderOpen, Globe, Puzzle, Users } from "lucide-react";
+import { activeLevel } from "@/lib/worlds";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
@@ -23,14 +25,14 @@ import Backups, { type BackupRow } from "./Backups";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment?: string; settings?: string }>;
+  searchParams: Promise<{ payment?: string; settings?: string; type?: string }>;
 };
 
 export default async function ServerPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [{ id }, { payment, settings }] = await Promise.all([params, searchParams]);
+  const [{ id }, { payment, settings, type: typeChanged }] = await Promise.all([params, searchParams]);
   const access = await getServerAccess(id, session.user.id);
   if (!access) notFound();
   const { server } = access;
@@ -84,6 +86,9 @@ export default async function ServerPage({ params, searchParams }: Props) {
 
       {payment === "success" && <p className="notice success">{b.success}</p>}
       {settings === "saved" && <p className="notice success">{all.settings.saved}</p>}
+      {typeChanged === "changed" && server.edition === "JAVA" && (
+        <p className="notice success">{format(all.serverType.done, { type: kindLabel(server, all), world: activeLevel(server) })}</p>
+      )}
       {payment === "cancelled" && unpaid && <p className="notice">{b.cancelled}</p>}
       {live === "awaitingPayment" && payment !== "success" && <p className="notice">{b.awaiting}</p>}
       {live === "suspended" && (
@@ -178,6 +183,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
               all.settings.modes[server.gameMode as GameMode],
               all.settings.difficulties[server.difficulty as Difficulty],
               server.whitelist && all.settings.whitelistOn,
+              !server.onlineMode && canRunNonPremium(server) && all.settings.nonPremiumOn,
             ]
               .filter(Boolean)
               .join(" · ")}
@@ -203,6 +209,20 @@ export default async function ServerPage({ params, searchParams }: Props) {
           </span>
           <Link className="button secondary" href={`/dashboard/servers/${server.id}/files`}>
             <FolderOpen size={16} aria-hidden /> {all.files.open}
+          </Link>
+        </div>
+      )}
+
+      {live !== "awaitingPayment" && can("files") && (
+        <div className="card row">
+          <span>
+            <strong>{all.worlds.title}</strong>{" "}
+            <span className="muted">
+              · {format(all.worlds.cardCurrent, { name: activeLevel(server) })} · {all.worlds.cardText}
+            </span>
+          </span>
+          <Link className="button secondary" href={`/dashboard/servers/${server.id}/worlds`}>
+            <Globe size={16} aria-hidden /> {all.worlds.open}
           </Link>
         </div>
       )}

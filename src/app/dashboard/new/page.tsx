@@ -45,6 +45,7 @@ export default async function NewServerPage({ searchParams }: Props) {
       <h1>{t.server.newTitle}</h1>
       <CreateServerForm
         t={t.server}
+        settings={t.settings}
         billing={t.billing}
         legal={t.legal}
         plans={plans}

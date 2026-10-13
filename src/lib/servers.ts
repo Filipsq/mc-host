@@ -1,10 +1,10 @@
 import "server-only";
 import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
-import { AgentError, deleteServer, getServerState, type AgentState, type CreateServerSpec } from "./agent";
+import { AgentError, deleteServer, getServerState, recreateServer, type AgentState, type CreateServerSpec } from "./agent";
 import { getServerFor } from "./access";
 import { planById } from "./plans";
-import { addonType } from "./plugins";
+import { addonType, canRunNonPremium } from "./plugins";
 
 export type LiveState =
   | "starting"
@@ -141,11 +141,30 @@ export function agentSpec(server: Server): CreateServerSpec {
     pvp: server.pvp,
     whitelist: server.whitelist,
     whitelistPlayers: server.whitelistPlayers,
+    onlineMode: server.onlineMode || !canRunNonPremium(server),
+    level: server.level ?? "",
+    seed: server.levelSeed ?? "",
+    levelType: server.levelType ?? "",
     kind: server.edition === "JAVA" ? server.kind : "vanilla",
     modpack: server.modpack ?? undefined,
     modpackVersion: server.modpackVersionId ?? undefined,
     plugins: addonType(server) ? server.plugins : [],
   };
+}
+
+/** Whether the server is on the game host: paid for (or free) and not suspended. */
+export const onHost = (s: Pick<Server, "status">) => ["RUNNING", "STOPPED", "SLEEPING"].includes(s.status);
+
+/**
+ * Rebuilds the server's container with what the panel has for it now: a running
+ * server restarts with it, a stopped or sleeping one gets it on its next start.
+ * Unpaid servers aren't on the game host; they get it when they're created.
+ */
+export async function applyToHost(server: Server) {
+  if (!onHost(server)) return;
+  await recreateServer(agentSpec(server), { keepStopped: true });
+  // The rebuild brought the plugin list up to date too.
+  if (server.pluginsPending) await db.server.update({ where: { id: server.id }, data: { pluginsPending: false } });
 }
 
 // Also the mail names OVH's default DNS zone defines: they have records of

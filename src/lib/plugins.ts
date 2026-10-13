@@ -26,6 +26,9 @@ export const GAME_MODE_PLUGINS: Record<string, { slug: string; title: string }[]
 export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) =>
   s.edition === "JAVA" && ["vanilla", "skyblock", "oneblock"].includes(s.kind);
 
+/** Non-premium needs the AuthMe login plugin, so only Paper servers can run it. */
+export const canRunNonPremium = supportsPlugins;
+
 /** Mods picked one by one run on a Fabric, Forge or NeoForge server (a mod pack brings its own). */
 export const supportsMods = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && isModLoader(s.kind);
 

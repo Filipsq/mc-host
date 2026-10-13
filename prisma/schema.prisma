@@ -128,7 +128,15 @@ model Server {
   pvp              Boolean      @default(true) // Java only
   whitelist        Boolean      @default(false)
   whitelistPlayers String[]     @default([])
-  // Java only: what the server runs: vanilla (Paper), skyblock, oneblock or modpack (src/lib/modpacks.ts).
+  // Java on Paper only: false lets in players without a bought Minecraft ("non-premium"),
+  // who log in with a password through the AuthMe plugin.
+  onlineMode       Boolean      @default(true)
+  // The world folder the server runs (the image's default if null), and the seed and
+  // type it was made with (src/lib/worlds.ts).
+  level            String?
+  levelSeed        String?
+  levelType        String?
+  // Java only: what the server runs: vanilla (Paper), skyblock, oneblock, modpack, fabric, forge or neoforge (src/lib/modpacks.ts).
   kind             String       @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.
   modpack          String?

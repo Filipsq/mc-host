@@ -7,7 +7,7 @@ import type { Plan, ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
-import { agentSpec, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain } from "@/lib/servers";
+import { agentSpec, applyToHost, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain, onHost } from "@/lib/servers";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
@@ -26,7 +26,7 @@ import {
 } from "@/lib/settings";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, parseModrinthLink, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAME_IDS, gameById } from "@/lib/games";
-import { KNOWN_PLUGINS, PLUGIN_SETS, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
+import { KNOWN_PLUGINS, PLUGIN_SETS, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type ResolvedPack, resolveModpack } from "@/lib/modrinth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
@@ -61,6 +61,7 @@ const createSchema = z.object({
   pvp: z.enum(["on", "off"]).optional(),
   motd: z.string().trim().max(MOTD_MAX).optional(),
   extraPlugins: z.string().max(500).optional(), // comma-separated KNOWN_PLUGINS keys
+  nonPremium: z.literal("on").optional(),
 });
 
 const MODPACK_PLAN_ERRORS = {
@@ -153,6 +154,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(parsed.data.difficulty && { difficulty: parsed.data.difficulty }),
     ...(parsed.data.motd && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
+    onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind })),
     ...(modVersion && { version: modVersion }),
     ...(pack && {
       version: pack.gameVersion,
@@ -321,6 +323,7 @@ const settingsSchema = z.object({
   pvp: z.literal("on").optional(),
   whitelist: z.literal("on").optional(),
   players: z.string().default(""),
+  nonPremium: z.literal("on").optional(),
 });
 
 /** Saves the game settings and rebuilds the server with them (a running one restarts). */
@@ -353,22 +356,18 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       pvp: java ? s.pvp === "on" : server.pvp,
       whitelist,
       whitelistPlayers: players,
+      onlineMode: !(canRunNonPremium(server) && s.nonPremium === "on"),
     },
   });
 
-  // Unpaid servers aren't on the game host; they get these settings when they're (re)created.
-  if (["RUNNING", "STOPPED", "SLEEPING"].includes(server.status)) {
-    try {
-      if (version !== server.version && planById(server.plan).backupsKept > 0) {
-        await agent.createBackup(server.id).catch((err) => console.error("pre-update backup failed", server.id, err));
-      }
-      await agent.recreateServer(agentSpec(updated), { keepStopped: true });
-    } catch (err) {
-      console.error("apply settings failed", server.id, err);
-      return { error: "applyFailed" };
+  try {
+    if (onHost(server) && version !== server.version && planById(server.plan).backupsKept > 0) {
+      await agent.createBackup(server.id).catch((err) => console.error("pre-update backup failed", server.id, err));
     }
-    // The rebuild brought the plugin list up to date too.
-    if (updated.pluginsPending) await db.server.update({ where: { id: server.id }, data: { pluginsPending: false } });
+    await applyToHost(updated);
+  } catch (err) {
+    console.error("apply settings failed", server.id, err);
+    return { error: "applyFailed" };
   }
   revalidatePath(`/dashboard/servers/${id}`);
   redirect(`/dashboard/servers/${id}?settings=saved`);

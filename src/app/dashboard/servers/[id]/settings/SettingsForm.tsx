@@ -13,6 +13,7 @@ type Props = {
   versions: string[];
   versionNote?: string; // shown instead of the version picker when the version isn't up to the owner
   versionHint?: string; // replaces the usual hint under the version picker
+  nonPremium?: { offered: boolean; on: boolean }; // Java only; offered on Paper servers
   initial: {
     version: string;
     gameMode: string;
@@ -25,7 +26,7 @@ type Props = {
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, nonPremium, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
@@ -98,6 +99,16 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
           <span>{t.pvp}</span>
         </label>
       )}
+      {nonPremium?.offered && (
+        <label className="check">
+          <input type="checkbox" name="nonPremium" defaultChecked={nonPremium.on} />
+          <span className="stack-tight">
+            <span>{t.nonPremium}</span>
+            <span className="muted small">{t.nonPremiumHint}</span>
+          </span>
+        </label>
+      )}
+      {nonPremium && !nonPremium.offered && <p className="muted small">{t.nonPremiumPaperOnly}</p>}
       <label className="check">
         <input type="checkbox" name="whitelist" checked={whitelist} onChange={(e) => setWhitelist(e.target.checked)} />
         <span>{t.whitelist}</span>

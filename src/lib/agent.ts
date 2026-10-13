@@ -70,6 +70,10 @@ export type CreateServerSpec = {
   pvp: boolean; // Java only
   whitelist: boolean;
   whitelistPlayers: string[];
+  onlineMode: boolean; // false: non-premium (Java on Paper only)
+  level: string; // the world folder it runs; empty for the image's default
+  seed: string; // for a world it hasn't made yet
+  levelType: string; // normal, flat, large_biomes or amplified (Java); empty if not chosen
   kind: string; // Java only: vanilla, skyblock, oneblock, modpack, fabric, forge or neoforge
   modpack?: string; // Modrinth slug or ID, for a modpack
   modpackVersion?: string; // Modrinth version ID, for a modpack
@@ -228,4 +232,28 @@ export async function changeFiles(
           : ["POST", `unzip?path=${q(op.unzip)}`];
   const res = await agentFetch(`/servers/${id}/files${path.startsWith("?") ? "" : "/"}${path}`, { method, timeoutMs: 10 * 60_000 });
   return res.json();
+}
+
+export type World = { name: string; size: number; modified: string };
+
+/** The server's worlds by name, and the one it runs. */
+export async function listWorlds(id: string, edition: Edition): Promise<{ worlds: World[]; active: string }> {
+  const res = await agentFetch(`/servers/${id}/worlds?edition=${edition}`, { timeoutMs: 30_000 });
+  return res.json();
+}
+
+/** Opens a world as a zip for download. */
+export async function openWorldDownload(id: string, edition: Edition, name: string, signal: AbortSignal) {
+  return agentFetch(`/servers/${id}/worlds/${encodeURIComponent(name)}/download?edition=${edition}`, { signal, timeoutMs: 60 * 60_000 });
+}
+
+/** Makes the world `name` from a zip uploaded to `path`, which is deleted afterwards. */
+export async function importWorld(id: string, edition: Edition, path: string, name: string) {
+  const q = `edition=${edition}&path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`;
+  await agentFetch(`/servers/${id}/worlds/import?${q}`, { method: "POST", timeoutMs: 10 * 60_000 });
+}
+
+/** Deletes a world the server isn't running. */
+export async function deleteWorld(id: string, edition: Edition, name: string) {
+  await agentFetch(`/servers/${id}/worlds/${encodeURIComponent(name)}?edition=${edition}`, { method: "DELETE", timeoutMs: 5 * 60_000 });
 }

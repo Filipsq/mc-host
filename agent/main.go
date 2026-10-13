@@ -62,21 +62,32 @@ var (
 	loaderTypes = map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"}
 	// The plugins (from Modrinth) each game mode needs on Paper.
 	gameModePlugins = map[string]string{"skyblock": "bentobox,bskyblock", "oneblock": "bentobox,aoneblock"}
+	// Kinds that run on Paper, so they take plugins; only these may run non-premium.
+	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "oneblock": true}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
 )
 
+// AuthMeReloaded on Modrinth: on a non-premium server, players register a
+// password with /register and log in with /login, so nobody can play under
+// someone else's name.
+const authMe = "9js4IEHC"
+
 // pluginEnv has the image install a Paper server's plugins, or a mod loader's
-// mods, from Modrinth: the game mode's own, then the owner's. The owner's are
-// optional, so one without a build for the server's version is skipped (with a
-// warning in the console) instead of keeping the server down, and doesn't hold
-// back the version a game mode picks. The list is always set, even empty,
-// because the image removes the plugins and mods it installed that are no
-// longer listed.
-func pluginEnv(kind string, plugins []string) []string {
+// mods, from Modrinth: the game mode's own, the login plugin a non-premium
+// server needs, then the owner's. The owner's are optional, so one without a
+// build for the server's version is skipped (with a warning in the console)
+// instead of keeping the server down, and doesn't hold back the version a game
+// mode picks; the login plugin isn't, so a non-premium server never runs
+// without it. The list is always set, even empty, because the image removes
+// the plugins and mods it installed that are no longer listed.
+func pluginEnv(kind string, plugins []string, offline bool) []string {
 	var projects []string
 	if base := gameModePlugins[kind]; base != "" {
 		projects = strings.Split(base, ",")
+	}
+	if offline {
+		projects = append(projects, authMe)
 	}
 	for _, p := range plugins {
 		projects = append(projects, p+"?")
@@ -209,6 +220,10 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("POST /servers/{id}/files/mkdir", a.filesMkdir)
 	mux.HandleFunc("POST /servers/{id}/files/rename", a.filesRename)
 	mux.HandleFunc("POST /servers/{id}/files/unzip", a.filesUnzip)
+	mux.HandleFunc("GET /servers/{id}/worlds", a.worldsList)
+	mux.HandleFunc("GET /servers/{id}/worlds/{name}/download", a.worldDownload)
+	mux.HandleFunc("POST /servers/{id}/worlds/import", a.worldImport)
+	mux.HandleFunc("DELETE /servers/{id}/worlds/{name}", a.worldDelete)
 	return a.auth(mux)
 }
 
@@ -244,6 +259,16 @@ type createRequest struct {
 	PVP        *bool    `json:"pvp"`              // Java only; on if missing
 	Whitelist  bool     `json:"whitelist"`        // only listed players may join
 	Players    []string `json:"whitelistPlayers"` // Java profile names or Bedrock gamertags
+	// Java on Paper only: false lets in players without a bought Minecraft
+	// ("non-premium"); they log in with a password instead. On if missing.
+	OnlineMode *bool `json:"onlineMode"`
+
+	// The world the server runs (a folder in its files; see worlds.go) and,
+	// for one it hasn't made yet, its seed and type. The image's default
+	// world if empty.
+	Level     string `json:"level"`
+	Seed      string `json:"seed"`
+	LevelType string `json:"levelType"` // normal, flat, large_biomes or amplified (Java only)
 
 	// Java only: what the server runs (see kinds). For a mod pack, the Modrinth
 	// project and the exact pack version, so players can install the same one.
@@ -257,8 +282,12 @@ type createRequest struct {
 var (
 	validVersion = regexp.MustCompile(`^(LATEST|\d+\.\d+(\.\d+)?)$`)
 	validPlayer  = regexp.MustCompile(`^[\p{L}\p{N} _-]{1,32}$`)
-	gameModes    = map[string]bool{"survival": true, "creative": true, "adventure": true}
-	difficulties = map[string]bool{"peaceful": true, "easy": true, "normal": true, "hard": true}
+	validSeed    = regexp.MustCompile(`^[\p{L}\p{N} _-]{0,32}$`)
+	// server.properties names for each world type, which every version since 1.16 understands.
+	javaLevelTypes    = map[string]string{"normal": "default", "flat": "flat", "large_biomes": "largebiomes", "amplified": "amplified"}
+	bedrockLevelTypes = map[string]string{"normal": "DEFAULT", "flat": "FLAT"}
+	gameModes         = map[string]bool{"survival": true, "creative": true, "adventure": true}
+	difficulties      = map[string]bool{"peaceful": true, "easy": true, "normal": true, "hard": true}
 )
 
 func (req *createRequest) validate() error {
@@ -315,7 +344,35 @@ func (req *createRequest) validate() error {
 			return fmt.Errorf("invalid player name %q", p)
 		}
 	}
+	levelTypes := javaLevelTypes
+	if req.Edition == "BEDROCK" {
+		levelTypes = bedrockLevelTypes
+	}
+	switch {
+	case req.OnlineMode != nil && !*req.OnlineMode && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
+		return errors.New("only Java servers on Paper can run non-premium")
+	case req.Level != "" && !validWorldName.MatchString(req.Level):
+		return errors.New("invalid level")
+	case !validSeed.MatchString(req.Seed):
+		return errors.New("invalid seed")
+	case req.LevelType != "" && levelTypes[req.LevelType] == "":
+		return errors.New("invalid levelType")
+	}
 	return nil
+}
+
+// offline reports whether the server lets in players without a bought Minecraft.
+func (req *createRequest) offline() bool { return req.OnlineMode != nil && !*req.OnlineMode }
+
+// level is the world the server runs.
+func (req *createRequest) level() string {
+	switch {
+	case req.Level != "":
+		return req.Level
+	case req.Edition == "BEDROCK":
+		return defaultBedrockLevel
+	}
+	return defaultJavaLevel
 }
 
 func (a *agent) create(w http.ResponseWriter, r *http.Request) {
@@ -393,6 +450,9 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	if err := a.docker.CreateContainer(ctx, name, a.containerSpec(req, image)); err != nil {
 		return err
 	}
+	if req.offline() {
+		a.prepareLogin(ctx, req.ID)
+	}
 	if !start {
 		return nil
 	}
@@ -421,6 +481,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		"mchost.autostop": fmt.Sprint(req.Autostop),
 		"mchost.memory":   fmt.Sprint(req.MemoryMb),
 		"mchost.backups":  fmt.Sprint(req.Backups),
+		"mchost.level":    req.level(),
 	}
 	var containerPort, hostIP string
 	tty := false
@@ -442,7 +503,19 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}
 		if req.Kind != "modpack" {
-			env = append(env, pluginEnv(req.Kind, req.Plugins)...)
+			env = append(env, pluginEnv(req.Kind, req.Plugins, req.offline())...)
+		}
+		// Always set: the image only writes the properties it's given, so going back
+		// from non-premium has to say so.
+		env = append(env, fmt.Sprintf("ONLINE_MODE=%v", !req.offline()))
+		if req.Level != "" {
+			env = append(env, "LEVEL="+req.Level)
+		}
+		if req.Seed != "" {
+			env = append(env, "SEED="+req.Seed)
+		}
+		if req.LevelType != "" {
+			env = append(env, "LEVEL_TYPE="+javaLevelTypes[req.LevelType])
 		}
 		// Java starts with a small heap and grows it only as far as the players
 		// need, up to the plan; an idle one gives memory back to the machine.
@@ -451,8 +524,17 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
+			players := req.Players
+			if req.offline() {
+				// Non-premium players have no Mojang account to look up; the image
+				// gives them the IDs an offline server uses instead.
+				players = make([]string, len(req.Players))
+				for i, p := range req.Players {
+					players[i] = p + ":offline"
+				}
+			}
 			// The panel's list replaces whatever the server had, so removing a player works.
-			env = append(env, "WHITELIST="+strings.Join(req.Players, ","), "EXISTING_WHITELIST_FILE=SYNCHRONIZE", "ENFORCE_WHITELIST=TRUE")
+			env = append(env, "WHITELIST="+strings.Join(players, ","), "EXISTING_WHITELIST_FILE=SYNCHRONIZE", "ENFORCE_WHITELIST=TRUE")
 		}
 		// Fewer chunks around each player (Minecraft's default is 10) means new
 		// ground appears faster when someone runs or flies; free servers share
@@ -473,6 +555,15 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		limitMb = req.MemoryMb + 512
 	} else {
 		env = append(env, "VERSION="+req.Version, "SERVER_NAME="+motd, "GAMEMODE="+req.GameMode)
+		if req.Level != "" {
+			env = append(env, "LEVEL_NAME="+req.Level)
+		}
+		if req.Seed != "" {
+			env = append(env, "LEVEL_SEED="+req.Seed)
+		}
+		if req.LevelType != "" {
+			env = append(env, "LEVEL_TYPE="+bedrockLevelTypes[req.LevelType])
+		}
 		if req.Whitelist {
 			env = append(env, "ALLOW_LIST=true", "ALLOW_LIST_USERS="+strings.Join(req.Players, ","))
 		} else {

@@ -2,9 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
-import { getServerFor } from "@/lib/access";
+import { allows, getServerAccess } from "@/lib/access";
+import { canRunNonPremium } from "@/lib/plugins";
 import { versionsFor } from "@/lib/settings";
 import { isModLoader } from "@/lib/modpacks";
+import { kindLabel } from "@/lib/serverType";
 import { format } from "@/i18n/messages";
 import SettingsForm from "./SettingsForm";
 
@@ -12,8 +14,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const { id } = await params;
-  const server = await getServerFor(id, session.user.id, "settings");
-  if (!server) notFound();
+  const access = await getServerAccess(id, session.user.id);
+  if (!access || !allows(access, "settings")) notFound();
+  const { server } = access;
   const t = await getMessages();
 
   // Keep a version that's no longer offered selectable, so saving doesn't change it.
@@ -35,6 +38,19 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     <main className="wide-form stack">
       <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
       <h1>{t.settings.title}</h1>
+      {server.edition === "JAVA" && allows(access, "owner") && (
+        <div className="card row">
+          <span className="stack-tight">
+            <span>
+              <strong>{t.serverType.title}</strong> <span className="muted">· {kindLabel(server, t)}</span>
+            </span>
+            <span className="muted small">{t.serverType.cardText}</span>
+          </span>
+          <Link className="button secondary" href={`/dashboard/servers/${server.id}/type`}>
+            {t.serverType.change}
+          </Link>
+        </div>
+      )}
       <SettingsForm
         serverId={server.id}
         edition={server.edition}
@@ -42,6 +58,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         versions={versions}
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
+        nonPremium={server.edition === "JAVA" ? { offered: canRunNonPremium(server), on: !server.onlineMode } : undefined}
         initial={{
           version: server.version,
           gameMode: server.gameMode,

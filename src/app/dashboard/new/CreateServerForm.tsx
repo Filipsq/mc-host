@@ -8,16 +8,18 @@ import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import EditionIcon from "@/components/EditionIcon";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
-import { CURATED_PACKS, LOADER_NAMES, MODPACK_MIN_PLAN, MOD_LOADERS, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
-import { LOADER_VERSIONS, MOD_DEFAULT_VERSION } from "@/lib/settings";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
+import { MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
 import { planById } from "@/lib/plans";
+import { canRunNonPremium } from "@/lib/plugins";
 import type { Suggestion } from "@/lib/ai";
 import AiCreator from "./AiCreator";
-import PackSearch from "./PackSearch";
+import { LoaderFields, PackFields } from "./ModFields";
 
 type Props = {
   t: Messages["server"];
+  settings: Messages["settings"];
   billing: Messages["billing"];
   legal: Messages["legal"];
   plans: PlanOption[];
@@ -49,7 +51,7 @@ function slugify(name: string) {
     .slice(0, 32);
 }
 
-export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, ai }: Props) {
+export default function CreateServerForm({ t, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const v = state.values ?? {};
   const [edition, setEdition] = useState(v.edition ?? "JAVA");
@@ -208,88 +210,30 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
         </fieldset>
       )}
       {modded && (
-        <fieldset className="stack">
-          <legend>{t.modpack}</legend>
-          {CURATED_PACKS.map((p) => (
-            <label key={p.slug} className="choice plan-choice">
-              <input
-                type="radio"
-                name="pack"
-                value={p.slug}
-                checked={pack === p.slug}
-                onChange={() => {
-                  setPack(p.slug);
-                  const min = planForRam(p.ramGb);
-                  if (!planAtLeast(plan, min)) setPlan(min);
-                }}
-              />
-              {packIcons[p.slug] && (
-                // eslint-disable-next-line @next/next/no-img-element -- small icons through /api/plugin-icon
-                <img className="pack-option-icon" src={packIcons[p.slug]} alt="" width={40} height={40} loading="lazy" referrerPolicy="no-referrer" />
-              )}
-              <span className="stack-tight">
-                <span>
-                  <strong>{p.title}</strong> <span className="muted">{t.packs[p.slug]}</span>
-                </span>
-                <span className="pack-meta">
-                  <span className="ram-pill">{format(t.ramFrom, { gb: p.ramGb })}</span>
-                  <span className="muted small">{format(t.packPlan, { plan: planName(planForRam(p.ramGb)) })}</span>
-                </span>
-              </span>
-            </label>
-          ))}
-          <label className="choice">
-            <input
-              type="radio"
-              name="pack"
-              value="custom"
-              checked={pack === "custom"}
-              onChange={() => {
-                setPack("custom");
-                if (!planAtLeast(plan, MODPACK_MIN_PLAN)) setPlan(MODPACK_MIN_PLAN);
-              }}
-            />
-            <span>
-              <strong>{t.packOther}</strong> <span className="muted">{t.packOtherHint}</span>
-            </span>
-          </label>
-          {pack === "custom" && <PackSearch t={t} locale={money.locale} initial={v.packLink} />}
-          <p className="muted small">{t.modpackNote}</p>
-        </fieldset>
+        <PackFields
+          t={t}
+          pack={pack}
+          onPack={(slug) => {
+            setPack(slug);
+            const p = CURATED_PACKS.find((c) => c.slug === slug);
+            const min = p ? planForRam(p.ramGb) : MODPACK_MIN_PLAN;
+            if (!planAtLeast(plan, min)) setPlan(min);
+          }}
+          packIcons={packIcons}
+          planName={planName}
+          locale={money.locale}
+          initialLink={v.packLink}
+        />
       )}
-      {mods && (
-        <fieldset className="stack">
-          <legend>{t.loader}</legend>
-          {MOD_LOADERS.map((l) => (
-            <label key={l} className="choice">
-              <input
-                type="radio"
-                name="loader"
-                value={l}
-                checked={loader === l}
-                onChange={() => {
-                  setLoader(l);
-                  if (!LOADER_VERSIONS[l].includes(modVersion)) setModVersion(MOD_DEFAULT_VERSION);
-                }}
-              />
-              <span>
-                <strong>{LOADER_NAMES[l]}</strong> <span className="muted">{t.loaderHints[l]}</span>
-              </span>
-            </label>
-          ))}
-          <label>
-            {t.modVersion}
-            <select name="modVersion" value={modVersion} onChange={(e) => setModVersion(e.target.value)}>
-              {LOADER_VERSIONS[loader].map((ver) => (
-                <option key={ver} value={ver}>
-                  {ver === "LATEST" ? t.latestVersion : ver}
-                </option>
-              ))}
-            </select>
-            <span className="muted small">{t.modVersionHint}</span>
-          </label>
-          <p className="muted small">{t.modsNote}</p>
-        </fieldset>
+      {mods && <LoaderFields t={t} loader={loader} version={modVersion} onLoader={setLoader} onVersion={setModVersion} />}
+      {edition === "JAVA" && canRunNonPremium({ edition, kind: gameById(game).kind }) && (
+        <label className="check">
+          <input type="checkbox" name="nonPremium" defaultChecked={v.nonPremium === "on"} />
+          <span className="stack-tight">
+            <span>{settings.nonPremium}</span>
+            <span className="muted small">{t.nonPremiumHint}</span>
+          </span>
+        </label>
       )}
       <PlanPicker
         // Remounted when a mod pack rules out smaller plans, so it picks up the new default.

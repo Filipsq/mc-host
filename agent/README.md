@@ -36,7 +36,7 @@ go test ./...
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, diskMb, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackVersion}` |
+| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, diskMb, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackVersion, plugins, onlineMode, level, seed, levelType}` |
 | PUT | `/servers/{id}` | Rebuild the container with a new spec (plan or settings change), keeping the world. With `?start=if-running` a stopped or sleeping server stays off |
 | GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped`, `crashed` or `disk`; `diskMb` (last measured) and `diskLimitMb` |
 | POST | `/servers/{id}/start`, `/stop` | Stop waits up to 60 s so the world is saved; `/stop?reason=suspended` also gives back the server's memory until it's renewed. Starting a free server that doesn't fit returns 503 `{"error":"full"}` |
@@ -52,6 +52,10 @@ go test ./...
 | PUT | `/servers/{id}/files/content?path=` | Save the body as the file (upload or edit), making missing folders |
 | POST | `/servers/{id}/files/mkdir?path=`, `/files/rename?path=&to=`, `/files/unzip?path=&to=` | Make a folder; rename or move (never over an existing name); unpack a zip into `to` (by default its own folder) |
 | DELETE | `/servers/{id}/files?path=` | Delete a file or a folder with everything in it |
+| GET | `/servers/{id}/worlds?edition=` | `{active, worlds: [{name, size, modified}]}`: the folders with a `level.dat` (Bedrock: in `worlds/`), Paper's `_nether` and `_the_end` folded into their world |
+| GET | `/servers/{id}/worlds/{name}/download?edition=` | A world as a zip ready for single-player (Java: the nether and end moved into `DIM-1` and `DIM1`; Bedrock: a `.mcworld`). A running server's saving is paused meanwhile |
+| POST | `/servers/{id}/worlds/import?edition=&path=&name=` | Unpack an uploaded zip (`path`, deleted afterwards) as the world `name`. 400 `noWorld` when it has no `level.dat` |
+| DELETE | `/servers/{id}/worlds/{name}?edition=` | Delete a world with its nether and end. 409 `active` for the world the server runs |
 | PUT | `/disk-limits` | `{limits: {<id>: MB}}`: every server's disk limit, replacing the previous list (the panel sends it every few minutes) |
 | GET | `/stats` | For the admin panel: `{memoryLimitMb, memoryHeldMb, host: {cpus, load, memoryTotalMb, memoryAvailableMb, diskTotalMb, diskFreeMb}, servers: [{id, state, health, stopReason, memoryMb, memoryUsedMb, diskMb, diskLimitMb}]}` |
 
@@ -62,6 +66,12 @@ Java servers run what `kind` says: `vanilla` (Paper, the default), `skyblock` or
 the owner's `plugins` (Modrinth slugs or project IDs) and mod loader servers get them as mods,
 each with what it needs; one without a build for the server's version is skipped, and one taken
 off the list is deleted the next time the server starts.
+
+A Java server runs the world `level` (default `world`; Bedrock `Bedrock level`), created with
+`seed` and `levelType` (`normal`, `flat`, `large_biomes`, `amplified`; Bedrock `normal` or
+`flat`) if it doesn't exist yet; the container's `mchost.level` label remembers which. With
+`onlineMode: false` (Paper kinds only) the server takes non-premium players, and the agent adds the
+AuthMe plugin with Polish messages, so players `/register` and `/login` with a password.
 
 Paths in the file endpoints are relative to the server's `/data` (its volume). The agent opens the
 volume with `os.Root`, so neither `..` nor a symlink reaches outside it. Changes answer 409
