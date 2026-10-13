@@ -49,7 +49,7 @@ export default function SupportLink({ label, unreadLabel }: { label: string; unr
       href="/dashboard/support"
       aria-label={count > 0 ? `${label}: ${unreadLabel.replace("{n}", String(count))}` : label}
     >
-      <MessageCircle size={16} aria-hidden /> <span className="hide-phone">{label}</span>
+      <MessageCircle size={16} aria-hidden /> <span className="hide-tablet">{label}</span>
       {count > 0 && <span className="count-badge" aria-hidden>{count > 9 ? "9+" : count}</span>}
     </Link>
   );

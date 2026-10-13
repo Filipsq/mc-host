@@ -10,7 +10,6 @@ import { addressLabel, getLiveState } from "@/lib/servers";
 import EditionIcon from "@/components/EditionIcon";
 import { GAME_ICONS } from "@/components/gameIcons";
 import { GAMES } from "@/lib/games";
-import { logOut } from "../actions";
 
 type Props = { searchParams: Promise<{ haslo?: string }> };
 
@@ -41,9 +40,6 @@ export default async function DashboardPage({ searchParams }: Props) {
           {admin && <Link className="button secondary" href="/admin"><Shield size={18} aria-hidden /> {all.admin.title}</Link>}
           <Link className="button secondary" href="/dashboard/support"><MessageCircle size={18} aria-hidden /> {all.support.dashboardButton}</Link>
           <Link className="button" href="/dashboard/new"><Plus size={18} aria-hidden /> {t.createServer}</Link>
-          <form action={logOut}>
-            <button type="submit" className="secondary">{t.logOut}</button>
-          </form>
         </div>
       </header>
       {haslo === "zmienione" && <p className="notice success">{t.passwordChanged}</p>}

@@ -625,6 +625,14 @@ main.admin { max-width: 1160px; }
 .admin-banner { width: 100%; max-width: 960px; margin: 24px auto -16px; padding: 0 16px; }
 .admin table { min-width: 720px; }
 
+/* Signed in, the top bar holds three buttons, so the page links and some labels go sooner. */
+@media (max-width: 1080px) { .signed-in .topnav { display: none; } }
+@media (max-width: 800px) { .hide-tablet { display: none; } }
+@media (max-width: 400px) {
+  .topbar-actions { gap: 6px; }
+  .topbar-actions .button.small, .topbar-actions button.small { padding: 7px 10px; }
+}
+
 /* Phones and small tablets */
 @media (max-width: 960px) {
   .topnav { display: none; }

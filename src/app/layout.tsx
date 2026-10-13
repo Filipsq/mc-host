@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LayoutGrid } from "lucide-react";
+import { LayoutGrid, LogOut } from "lucide-react";
 import "@fontsource-variable/inter";
 import "@fontsource/jersey-10/latin.css";
 import "@fontsource/jersey-10/latin-ext.css";
@@ -13,6 +13,7 @@ import { format } from "@/i18n/messages";
 import { BRAND_NAME } from "@/lib/brand";
 import { formatPrice, planById } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
+import { logOut } from "./actions";
 import "./globals.css";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -50,7 +51,7 @@ export default async function RootLayout({
     <html lang={locale}>
       <body>
         <header className="topbar">
-          <div className="topbar-inner">
+          <div className={signedIn ? "topbar-inner signed-in" : "topbar-inner"}>
             <Logo />
             <nav className="topnav" aria-label={BRAND_NAME}>
               <Link href="/#gry">{t.nav.games}</Link>
@@ -77,6 +78,13 @@ export default async function RootLayout({
                 currency={currency}
                 labels={{ language: t.nav.language, currency: t.nav.currency }}
               />
+              {signedIn && (
+                <form action={logOut} className="logout">
+                  <button type="submit" className="small secondary" aria-label={t.dashboard.logOut} title={t.dashboard.logOut}>
+                    <LogOut size={16} aria-hidden /> <span className="hide-tablet">{t.dashboard.logOut}</span>
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </header>
