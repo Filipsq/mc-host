@@ -6,7 +6,8 @@ import type { Server } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
-import { agentSpec, getOwnedServer } from "@/lib/servers";
+import { agentSpec } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 import { getPlugin } from "@/lib/modrinth";
 import { GAME_MODE_PLUGINS, PLUGINS_MAX, PLUGIN_SETS, isProjectId, pluginIds, setFits, supportsPlugins } from "@/lib/plugins";
 import type { Messages } from "@/i18n/messages";
@@ -16,7 +17,7 @@ export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; pendin
 async function ownedPaperServer(id: string) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "plugins");
   return server && supportsPlugins(server) ? server : null;
 }
 

@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
-import { getOwnedServer } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 import * as agent from "@/lib/agent";
 import { canChangeFiles, fileError, type FileError } from "@/lib/files";
 
@@ -16,7 +16,7 @@ const okPath = (p: unknown): p is string => typeof p === "string" && p.length > 
 export async function fileAction(id: string, op: FileOp): Promise<FileResult> {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "files");
   if (!server) return { error: "notFound" };
   if (!canChangeFiles(server)) return { error: "readOnly" };
   const shape = Object.keys(op ?? {}).sort().join(",");

@@ -1,17 +1,17 @@
 import { getSession } from "@/lib/session";
 import { openFile, writeFile } from "@/lib/agent";
-import { getOwnedServer } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 import { fileError, canChangeFiles } from "@/lib/files";
 
 // Downloads and uploads for the file manager, streamed between the browser
-// and the agent after checking that the server is the user's.
+// and the agent after checking that the user may use the server's files.
 
 async function ownedServer(req: Request, params: Promise<{ id: string }>) {
   const session = await getSession();
   if (!session?.user?.id) return null;
   const { id } = await params;
   const path = new URL(req.url).searchParams.get("path") ?? "";
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "files");
   return server && path && path.length <= 1024 ? { server, path } : null;
 }
 

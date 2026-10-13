@@ -4,7 +4,7 @@ import { ExternalLink, Package, Puzzle, Search } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { getOwnedServer } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 import { getPluginInfos, searchPlugins } from "@/lib/modrinth";
 import { GAME_MODE_PLUGINS, KNOWN_PLUGINS, PLUGIN_SETS, pluginIds, pluginPage, setFits, supportsPlugins } from "@/lib/plugins";
 import { isServerKind } from "@/lib/modpacks";
@@ -16,7 +16,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const [{ id }, { q = "" }] = await Promise.all([params, searchParams]);
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "plugins");
   if (!server) notFound();
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.plugins;

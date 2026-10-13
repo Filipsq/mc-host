@@ -42,6 +42,11 @@ export default function PrivacyPl({ site }: { site: string }) {
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
             </tr>
             <tr>
+              <td>Adres e-mail osoby, której właściciel Serwera dał dostęp do jego panelu, i zakres tego dostępu</td>
+              <td>Wpuszczenie tej osoby do panelu Serwera i wysłanie jej zaproszenia</td>
+              <td>art. 6 ust. 1 lit. f – prawnie uzasadniony interes (udostępnienie Serwera na prośbę właściciela)</td>
+            </tr>
+            <tr>
               <td>Opis serwera wpisany do kreatora AI</td>
               <td>Dobranie ustawień serwera na prośbę Użytkownika</td>
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
@@ -115,6 +120,7 @@ export default function PrivacyPl({ site }: { site: string }) {
         <li>Logi techniczne – na bieżąco zastępowane nowszymi wpisami; usuwamy je najpóźniej z usunięciem Serwera.</li>
         <li>Korespondencja – przez czas obsługi sprawy, a potem do upływu terminu przedawnienia roszczeń.</li>
         <li>Wiadomości z czatu w panelu – do usunięcia Konta.</li>
+        <li>Dostęp znajomego do Serwera – do odebrania go przez właściciela, opuszczenia Serwera przez znajomego albo usunięcia Serwera.</li>
       </ul>
 
       <h2>6. Twoje prawa</h2>

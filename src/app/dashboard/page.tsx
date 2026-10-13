@@ -7,6 +7,7 @@ import { isAdmin } from "@/lib/admin";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { addressLabel, getLiveState } from "@/lib/servers";
+import { sharedServers } from "@/lib/access";
 import EditionIcon from "@/components/EditionIcon";
 import { GAME_ICONS } from "@/components/gameIcons";
 import { GAMES } from "@/lib/games";
@@ -17,16 +18,20 @@ export default async function DashboardPage({ searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [all, servers, { haslo }, admin] = await Promise.all([
+  const [all, servers, shared, { haslo }, admin] = await Promise.all([
     getMessages(),
     db.server.findMany({
       where: { ownerId: session.user.id },
       orderBy: { createdAt: "desc" },
     }),
+    sharedServers(session.user.id),
     searchParams,
     isAdmin(session.user.id),
   ]);
-  const states = await Promise.all(servers.map((s) => getLiveState(s)));
+  const [states, sharedStates] = await Promise.all([
+    Promise.all(servers.map((s) => getLiveState(s))),
+    Promise.all(shared.map((s) => getLiveState(s))),
+  ]);
   const t = all.dashboard;
 
   return (
@@ -84,6 +89,29 @@ export default async function DashboardPage({ searchParams }: Props) {
             </li>
           ))}
         </ul>
+      )}
+      {shared.length > 0 && (
+        <section className="stack">
+          <h2>{all.access.dashboardTitle}</h2>
+          <ul className="server-list">
+            {shared.map((s, i) => (
+              <li key={s.id}>
+                <Link href={`/dashboard/servers/${s.id}`} className="server-link">
+                  <EditionIcon edition={s.edition} size={40} />
+                  <span className="server-main">
+                    <strong>{s.name}</strong>
+                    <span className="mono">{addressLabel(s)}</span>
+                    <span className="muted small">{format(all.access.ownerLabel, { email: s.owner.email })}</span>
+                  </span>
+                  <span className="server-side">
+                    <span className="chip">{all.plans[s.plan]} · {s.memoryMb / 1024} GB</span>
+                    <span className={`badge ${sharedStates[i]}`}>{all.server.live[sharedStates[i]]}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
     </main>
   );

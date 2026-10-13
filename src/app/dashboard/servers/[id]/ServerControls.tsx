@@ -6,9 +6,9 @@ import { deleteServerAction, startServerAction, stopServerAction } from "../acti
 import type { LiveState } from "@/lib/servers";
 import type { Messages } from "@/i18n/messages";
 
-type Props = { id: string; live: LiveState; t: Messages["server"] };
+type Props = { id: string; live: LiveState; canDelete: boolean; t: Messages["server"] };
 
-export default function ServerControls({ id, live, t }: Props) {
+export default function ServerControls({ id, live, canDelete, t }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const running = live === "online" || live === "starting" || live === "restarting";
@@ -33,15 +33,17 @@ export default function ServerControls({ id, live, t }: Props) {
             <Play size={16} aria-hidden /> {t.start}
           </button>
         )}
-        <button
-          className="danger"
-          disabled={pending}
-          onClick={() => {
-            if (confirm(t.deleteConfirm)) startTransition(() => deleteServerAction(id));
-          }}
-        >
-          <Trash2 size={16} aria-hidden /> {t.delete}
-        </button>
+        {canDelete && (
+          <button
+            className="danger"
+            disabled={pending}
+            onClick={() => {
+              if (confirm(t.deleteConfirm)) startTransition(() => deleteServerAction(id));
+            }}
+          >
+            <Trash2 size={16} aria-hidden /> {t.delete}
+          </button>
+        )}
       </div>
       {error && <p className="error">{error}</p>}
     </div>

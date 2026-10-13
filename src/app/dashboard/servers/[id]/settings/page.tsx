@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
-import { getOwnedServer } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 import { JAVA_VERSIONS } from "@/lib/settings";
 import { format } from "@/i18n/messages";
 import SettingsForm from "./SettingsForm";
@@ -11,7 +11,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const { id } = await params;
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "settings");
   if (!server) notFound();
   const t = await getMessages();
 

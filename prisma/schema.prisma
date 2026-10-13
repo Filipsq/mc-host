@@ -25,6 +25,8 @@ model User {
   passwordResets    PasswordReset[]
   supportChat       SupportChat?
   aiUsage           AiUsage[]
+  // Friends' servers this user was let into (see src/lib/access.ts).
+  memberships       ServerMember[]
 }
 
 // One call to the AI (Claude), for the per-user and monthly limits and the
@@ -151,10 +153,30 @@ model Server {
   payments         Payment[]
   owner            User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId          String
+  // Friends the owner let into the server's panel.
+  members          ServerMember[]
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
   @@index([ownerId])
+}
+
+// A friend the owner let into a server's panel. Invited by email; linked to the
+// account with that email as soon as there is one (src/lib/access.ts).
+model ServerMember {
+  id        String   @id @default(cuid())
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId  String
+  email     String
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  // What they may do besides seeing the server and starting or stopping it.
+  perms     String[] @default([])
+  createdAt DateTime @default(now())
+
+  @@unique([serverId, email])
+  @@index([userId])
+  @@index([email])
 }
 
 enum PaymentStatus {

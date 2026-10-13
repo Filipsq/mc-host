@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
-import { getOwnedServer } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 import { AgentError, openFile } from "@/lib/agent";
 import { canChangeFiles, EDIT_MAX_BYTES } from "@/lib/files";
 import FileEditor from "./FileEditor";
@@ -13,7 +13,7 @@ export default async function EditFilePage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const [{ id }, { path = "" }] = await Promise.all([params, searchParams]);
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "files");
   if (!server || !path) notFound();
   const t = (await getMessages()).files;
 

@@ -20,6 +20,7 @@ export default async function AdminServer({ params }: Props) {
     where: { id },
     include: {
       owner: { select: { id: true, email: true } },
+      members: { orderBy: { createdAt: "asc" }, select: { email: true, userId: true } },
       payments: {
         orderBy: { createdAt: "desc" },
         include: { user: { select: { id: true, email: true } }, server: { select: { id: true, name: true } } },
@@ -42,6 +43,17 @@ export default async function AdminServer({ params }: Props) {
 
   const details: [string, React.ReactNode][] = [
     [t.columns.owner, <Link key="o" href={`/admin/users/${server.owner.id}`}>{server.owner.email}</Link>],
+    [
+      all.access.title,
+      server.members.length === 0
+        ? "–"
+        : server.members.map((m, i) => (
+            <span key={m.email}>
+              {i > 0 && ", "}
+              {m.userId ? <Link href={`/admin/users/${m.userId}`}>{m.email}</Link> : `${m.email} (${all.access.waiting})`}
+            </span>
+          )),
+    ],
     [t.address, <span key="a" className="mono">{addressLabel(server)}</span>],
     [t.columns.type, [server.edition === "JAVA" ? "Java" : "Bedrock", kind && kind !== "vanilla" && (kind === "modpack" ? (server.modpackTitle ?? server.modpack) : all.server.kinds[kind])].filter(Boolean).join(" · ")],
     [t.version, server.modpackVersion ? `${server.version} (${server.modpackVersion})` : server.version],

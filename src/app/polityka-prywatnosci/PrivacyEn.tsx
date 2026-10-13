@@ -43,6 +43,11 @@ export default function PrivacyEn({ site }: { site: string }) {
               <td>art. 6(1)(b): performing the contract</td>
             </tr>
             <tr>
+              <td>The email address of a person a Server’s owner let into its panel, and what they may do there</td>
+              <td>Letting that person into the Server’s panel and sending them an invitation</td>
+              <td>art. 6(1)(f): legitimate interest (sharing the Server at its owner’s request)</td>
+            </tr>
+            <tr>
               <td>The server description typed into the AI creator</td>
               <td>Picking server settings at the User’s request</td>
               <td>art. 6(1)(b): performing the contract</td>
@@ -116,6 +121,7 @@ export default function PrivacyEn({ site }: { site: string }) {
         <li>Technical logs: continuously replaced by newer entries, and deleted at the latest with the Server.</li>
         <li>Correspondence: while the matter is handled, then until any claims would be time-barred.</li>
         <li>Chat messages in the panel: until the Account is deleted.</li>
+        <li>A friend’s access to a Server: until the owner removes it, the friend leaves the Server, or the Server is deleted.</li>
       </ul>
 
       <h2>6. Your rights</h2>

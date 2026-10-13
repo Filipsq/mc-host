@@ -8,6 +8,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain } from "@/lib/servers";
+import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
@@ -220,14 +221,15 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   redirect(url);
 }
 
-async function ownedOrThrow(id: string) {
-  const server = await getOwnedServer(id, (await requireUser()).id);
+/** The server, if the signed-in user may do what's needed with it (see src/lib/access.ts). */
+async function serverOrThrow(id: string, need: ServerNeed) {
+  const server = await getServerFor(id, (await requireUser()).id, need);
   if (!server) throw new Error("Server not found");
   return server;
 }
 
 export async function startServerAction(id: string): Promise<{ error?: ServerErrorCode }> {
-  const server = await ownedOrThrow(id);
+  const server = await serverOrThrow(id, "view");
   // Unpaid servers stay off until someone pays.
   if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
   try {
@@ -248,14 +250,14 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
 }
 
 export async function stopServerAction(id: string) {
-  const server = await ownedOrThrow(id);
+  const server = await serverOrThrow(id, "view");
   await agent.stopServer(server.id);
   await db.server.update({ where: { id: server.id }, data: { status: "STOPPED" } });
   revalidatePath(`/dashboard/servers/${id}`);
 }
 
 export async function deleteServerAction(id: string) {
-  await destroyServer(await ownedOrThrow(id));
+  await destroyServer(await serverOrThrow(id, "owner"));
   redirect("/dashboard");
 }
 
@@ -271,7 +273,7 @@ function backupsAllowed(server: { plan: Plan; status: ServerStatus }) {
 
 /** Backs up the world now. One every few minutes is plenty, so closer ones are refused. */
 export async function createBackupAction(id: string): Promise<BackupResult> {
-  const server = await ownedOrThrow(id);
+  const server = await serverOrThrow(id, "backups");
   if (!backupsAllowed(server)) return { error: "backupFailed" };
   try {
     const { backups } = await agent.listBackups(server.id);
@@ -286,7 +288,7 @@ export async function createBackupAction(id: string): Promise<BackupResult> {
 }
 
 export async function restoreBackupAction(id: string, name: string): Promise<BackupResult> {
-  const server = await ownedOrThrow(id);
+  const server = await serverOrThrow(id, "backups");
   if (!backupsAllowed(server) || !BACKUP_NAME.test(name)) return { error: "restoreFailed" };
   try {
     await agent.restoreBackup(server.id, name);
@@ -312,7 +314,7 @@ const settingsSchema = z.object({
 
 /** Saves the game settings and rebuilds the server with them (a running one restarts). */
 export async function saveSettingsAction(id: string, _: SettingsState, form: FormData): Promise<SettingsState> {
-  const server = await ownedOrThrow(id);
+  const server = await serverOrThrow(id, "settings");
   const parsed = settingsSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "invalidSettings" };
   const s = parsed.data;
@@ -365,7 +367,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
 export type CommandResult = { output?: string; error?: ServerErrorCode };
 
 export async function sendCommandAction(id: string, command: string): Promise<CommandResult> {
-  const server = await ownedOrThrow(id);
+  const server = await serverOrThrow(id, "console");
   const trimmed = command.trim().replace(/^\//, "");
   if (!trimmed || trimmed.length > 500) return { error: "commandFailed" };
   try {

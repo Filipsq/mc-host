@@ -663,6 +663,17 @@ main.admin { max-width: 1160px; }
   .address-value { font-size: 1.05rem; }
 }
 
+/* Friends' access */
+.friend-banner { border-left-color: var(--sky); }
+.friend-banner span { min-width: 0; overflow-wrap: anywhere; }
+.friend-list { list-style: none; margin: 0; padding: 0; }
+.friend-email { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
+.perm-checks { gap: 8px; }
+.perm-checks legend { margin-bottom: 2px; }
+.friend-save { justify-content: flex-start; }
+.friend-remove { margin-left: auto; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 /* Help chat */
 .count-badge {
   display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px;

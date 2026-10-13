@@ -1,14 +1,14 @@
 import { getSession } from "@/lib/session";
 import { AgentError, openBackupDownload } from "@/lib/agent";
-import { getOwnedServer } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 
-// Streams a backup from the agent to the browser, after checking ownership.
+// Streams a backup from the agent to the browser, after checking the user may use backups.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string; name: string }> }) {
   const session = await getSession();
   if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
 
   const { id, name } = await params;
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "backups");
   if (!server || !/^\d{8}-\d{6}\.tar\.gz$/.test(name)) return new Response("Not found", { status: 404 });
 
   try {

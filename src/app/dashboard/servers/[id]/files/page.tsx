@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { getLiveDetails, getOwnedServer } from "@/lib/servers";
+import { getLiveDetails } from "@/lib/servers";
+import { getServerFor } from "@/lib/access";
 import { diskLimitMb, formatMb } from "@/lib/disk";
 import { format } from "@/i18n/messages";
 import { listFiles, type FileEntry } from "@/lib/agent";
@@ -15,7 +16,7 @@ export default async function FilesPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const [{ id }, { path = "" }] = await Promise.all([params, searchParams]);
-  const server = await getOwnedServer(id, session.user.id);
+  const server = await getServerFor(id, session.user.id, "files");
   if (!server) notFound();
 
   const [all, { locale }, { live, agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetails(server)]);

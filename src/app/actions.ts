@@ -13,6 +13,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { buttonMail, sendMail } from "@/lib/mail";
 import { RESET_LINK_MINUTES, createResetToken, resetPassword } from "@/lib/passwordReset";
+import { linkInvites } from "@/lib/access";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
 
@@ -41,9 +42,11 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
     return { error: "emailTaken", email };
   }
   const { locale } = await getPreferences();
-  await db.user.create({
+  const user = await db.user.create({
     data: { email, passwordHash: await bcrypt.hash(password, 12), termsAcceptedAt: new Date(), locale },
   });
+  // Servers friends shared with this address before it had an account.
+  await linkInvites(user.id, email);
 
   await signIn("credentials", { email, password, redirectTo: afterSignIn(form) });
   return {};

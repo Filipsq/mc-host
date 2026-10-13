@@ -3,7 +3,9 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { getLiveDetails, getOwnedServer, joinAddress } from "@/lib/servers";
+import { getLiveDetails, joinAddress } from "@/lib/servers";
+import { allows, getServerAccess, type ServerNeed } from "@/lib/access";
+import { db } from "@/lib/db";
 import { diskLimitMb, formatMb, hardDiskLimitMb } from "@/lib/disk";
 import { deletionDate } from "@/lib/billing";
 import { listBackups } from "@/lib/agent";
@@ -11,7 +13,7 @@ import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isServerKind, modpackPage } from "@/lib/modpacks";
 import { supportsPlugins } from "@/lib/plugins";
-import { FolderOpen, Puzzle } from "lucide-react";
+import { FolderOpen, Puzzle, Users } from "lucide-react";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
@@ -29,16 +31,20 @@ export default async function ServerPage({ params, searchParams }: Props) {
   if (!session?.user?.id) redirect("/login");
 
   const [{ id }, { payment, settings }] = await Promise.all([params, searchParams]);
-  const server = await getOwnedServer(id, session.user.id);
-  if (!server) notFound();
+  const access = await getServerAccess(id, session.user.id);
+  if (!access) notFound();
+  const { server } = access;
+  // Friends see what the owner let them use; the rest of the panel stays hidden.
+  const can = (need: ServerNeed) => allows(access, need);
 
   const keep = planById(server.plan).backupsKept;
-  const [all, { locale }, { live, agent }, backups] = await Promise.all([
+  const [all, { locale }, { live, agent }, backups, friends] = await Promise.all([
     getMessages(),
     getPreferences(),
     getLiveDetails(server),
     // Paid servers only exist on the game host once paid for.
-    keep > 0 && server.status !== "AWAITING_PAYMENT" ? listBackups(server.id).catch(() => null) : null,
+    keep > 0 && server.status !== "AWAITING_PAYMENT" && can("backups") ? listBackups(server.id).catch(() => null) : null,
+    can("owner") ? db.serverMember.count({ where: { serverId: server.id } }) : 0,
   ]);
   const t = all.server;
   const b = all.billing;
@@ -121,7 +127,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
             </a>
           </p>
         )}
-        <ServerControls id={server.id} live={live} t={t} />
+        <ServerControls id={server.id} live={live} canDelete={can("owner")} t={t} />
       </div>
 
       <div className="card row">
@@ -138,9 +144,11 @@ export default async function ServerPage({ params, searchParams }: Props) {
                 : t.live.awaitingPayment}
           </span>
         </span>
-        <Link className={`button${unpaid ? "" : " secondary"}`} href={`/dashboard/servers/${server.id}/billing`}>
-          {unpaid ? b.pay : b.manage}
-        </Link>
+        {can("owner") && (
+          <Link className={`button${unpaid ? "" : " secondary"}`} href={`/dashboard/servers/${server.id}/billing`}>
+            {unpaid ? b.pay : b.manage}
+          </Link>
+        )}
       </div>
 
       <div className="card row">
@@ -165,12 +173,14 @@ export default async function ServerPage({ params, searchParams }: Props) {
               .join(" · ")}
           </span>
         </span>
-        <Link className="button secondary" href={`/dashboard/servers/${server.id}/settings`}>
-          {all.settings.edit}
-        </Link>
+        {can("settings") && (
+          <Link className="button secondary" href={`/dashboard/servers/${server.id}/settings`}>
+            {all.settings.edit}
+          </Link>
+        )}
       </div>
 
-      {live !== "awaitingPayment" && (
+      {live !== "awaitingPayment" && can("files") && (
         <div className="card row">
           <span>
             <strong>{all.files.title}</strong> <span className="muted">· {all.files.cardText}</span>
@@ -186,7 +196,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {supportsPlugins(server) && (
+      {supportsPlugins(server) && can("plugins") && (
         <div className="card row">
           <span>
             <strong>{all.plugins.title}</strong>{" "}
@@ -202,9 +212,21 @@ export default async function ServerPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {!unpaid && <Console id={server.id} t={t} />}
+      {can("owner") && (
+        <div className="card row">
+          <span>
+            <strong>{all.access.title}</strong>{" "}
+            <span className="muted">· {friends > 0 ? format(all.access.cardCount, { n: friends }) : all.access.cardNone}</span>
+          </span>
+          <Link className="button secondary" href={`/dashboard/servers/${server.id}/access`}>
+            <Users size={16} aria-hidden /> {all.access.manage}
+          </Link>
+        </div>
+      )}
 
-      {live !== "awaitingPayment" && (
+      {!unpaid && can("console") && <Console id={server.id} t={t} />}
+
+      {live !== "awaitingPayment" && can("backups") && (
         <section className="stack">
           <h2>{t.backups.title}</h2>
           <div className="card stack">

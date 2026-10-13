@@ -2,7 +2,7 @@ import "server-only";
 import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
 import { AgentError, deleteServer, getServerState, type AgentState, type CreateServerSpec } from "./agent";
-import { isAdmin } from "./admin";
+import { getServerFor } from "./access";
 import { planById } from "./plans";
 import { supportsPlugins } from "./plugins";
 
@@ -59,13 +59,10 @@ export function liveStateFrom(server: Pick<Server, "status">, s: KnownState | "m
 
 /**
  * Returns the server only if it belongs to the user, so IDs in URLs can't reach
- * others' servers. Admins get every server, to help their owners.
+ * others' servers. Admins get every server, to help their owners; friends the
+ * owner let in get it through getServerFor in ./access.
  */
-export async function getOwnedServer(id: string, userId: string) {
-  const server = await db.server.findUnique({ where: { id } });
-  if (!server || server.ownerId === userId) return server;
-  return (await isAdmin(userId)) ? server : null;
-}
+export const getOwnedServer = (id: string, userId: string) => getServerFor(id, userId, "owner");
 
 /** Removes the server from the game host (world and backups too) and from our records. */
 export async function destroyServer(server: Pick<Server, "id">) {
