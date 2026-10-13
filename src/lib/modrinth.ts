@@ -1,4 +1,5 @@
 import "server-only";
+import type { AddonType } from "./plugins";
 
 // Looks up mod packs and plugins on Modrinth (https://docs.modrinth.com/api/).
 // A mod pack server is pinned to one exact pack version that players can
@@ -88,7 +89,8 @@ export async function resolveModpack(ref: { slug: string; version?: string }): P
   }
 }
 
-export type PluginInfo = { id: string; slug: string; title: string; description: string; icon?: string };
+/** A plugin or mod. `forPlayers`: a mod players need in their game too. */
+export type PluginInfo = { id: string; slug: string; title: string; description: string; icon?: string; forPlayers?: boolean };
 export type PluginHit = PluginInfo & { downloads: number; newestVersion?: string };
 
 type SearchHit = {
@@ -99,8 +101,9 @@ type SearchHit = {
   downloads: number;
   icon_url?: string | null;
   versions: string[];
+  client_side?: string;
 };
-type PluginProject = Project & { description: string; icon_url?: string | null; loaders: string[] };
+type PluginProject = Project & { description: string; icon_url?: string | null; loaders: string[]; client_side?: string };
 
 // What Paper runs: plugins for it and the servers it's built on.
 const PLUGIN_LOADERS = ["paper", "spigot", "bukkit", "purpur", "folia"];
@@ -114,22 +117,35 @@ export function iconPath(url: string) {
 /** A Modrinth image as our server passes it on, so browsers don't fetch from Modrinth themselves. */
 const proxied = (url?: string | null) => (url && iconPath(url) ? `/api/plugin-icon?src=${encodeURIComponent(url)}` : undefined);
 
-const info = (p: { slug: string; title: string; description: string; icon_url?: string | null }, id: string): PluginInfo => ({
+const info = (
+  p: { slug: string; title: string; description: string; icon_url?: string | null; client_side?: string },
+  id: string,
+): PluginInfo => ({
   id,
   slug: p.slug,
   title: p.title.slice(0, 80),
   description: p.description.slice(0, 200),
   icon: proxied(p.icon_url),
+  forPlayers: p.client_side === "required",
 });
 
-/** Paper plugins matching the query, or the most downloaded ones; for a Minecraft version if given. */
-export async function searchPlugins(query: string, gameVersion?: string): Promise<PluginHit[] | "modrinthUnavailable"> {
-  const facets = [
-    ["project_type:plugin"],
-    PLUGIN_LOADERS.slice(0, 3).map((l) => `categories:${l}`),
-    ["server_side:required", "server_side:optional"],
-  ];
-  if (gameVersion) facets.push([`versions:${gameVersion}`]);
+const newest = (versions: string[]) => versions.filter((g) => RELEASE.test(g)).sort(compareVersions).at(-1);
+
+/**
+ * Paper plugins, or mods for a loader, matching the query (the most downloaded
+ * ones without one); for a Minecraft version if given. Only what runs on servers.
+ */
+export async function searchAddons(
+  type: AddonType,
+  query: string,
+  o: { gameVersion?: string; loader?: string } = {},
+): Promise<PluginHit[] | "modrinthUnavailable"> {
+  const facets =
+    type === "plugin"
+      ? [["project_type:plugin"], PLUGIN_LOADERS.slice(0, 3).map((l) => `categories:${l}`)]
+      : [["project_type:mod"], [`categories:${o.loader}`]];
+  facets.push(["server_side:required", "server_side:optional"]);
+  if (o.gameVersion) facets.push([`versions:${o.gameVersion}`]);
   const params = new URLSearchParams({
     query: query.slice(0, 100),
     limit: "20",
@@ -138,25 +154,53 @@ export async function searchPlugins(query: string, gameVersion?: string): Promis
   });
   try {
     const res = await get<{ hits: SearchHit[] }>(`/v2/search?${params}`);
-    return (res?.hits ?? []).map((h) => ({
-      ...info(h, h.project_id),
-      downloads: h.downloads,
-      newestVersion: h.versions.filter((g) => RELEASE.test(g)).sort(compareVersions).at(-1),
-    }));
+    return (res?.hits ?? []).map((h) => ({ ...info(h, h.project_id), downloads: h.downloads, newestVersion: newest(h.versions) }));
   } catch (err) {
     console.error("modrinth search failed", query, err);
     return "modrinthUnavailable";
   }
 }
 
-/** A plugin that runs on Paper servers, by project ID or slug. */
-export async function getPlugin(ref: string): Promise<PluginInfo | "pluginNotFound" | "modrinthUnavailable"> {
+/** A plugin that runs on Paper servers, or a mod for the loader, by project ID or slug. */
+export async function getAddon(
+  ref: string,
+  type: AddonType,
+  loader?: string,
+): Promise<PluginInfo | "pluginNotFound" | "modrinthUnavailable"> {
   try {
     const p = await get<PluginProject>(`/v2/project/${encodeURIComponent(ref)}`);
-    if (!p || p.server_side === "unsupported" || !p.loaders.some((l) => PLUGIN_LOADERS.includes(l))) return "pluginNotFound";
+    const fits =
+      type === "plugin"
+        ? p?.loaders.some((l) => PLUGIN_LOADERS.includes(l))
+        : p?.project_type === "mod" && !!loader && p.loaders.includes(loader);
+    if (!p || p.server_side === "unsupported" || !fits) return "pluginNotFound";
     return info(p, p.id);
   } catch (err) {
     console.error("modrinth lookup failed", ref, err);
+    return "modrinthUnavailable";
+  }
+}
+
+export type PackHit = { slug: string; title: string; description: string; icon?: string; downloads: number; newestVersion?: string };
+
+/** Mod packs that run on servers matching the query, or the most downloaded ones. */
+export async function searchModpacks(query: string): Promise<PackHit[] | "modrinthUnavailable"> {
+  const params = new URLSearchParams({
+    query: query.slice(0, 100),
+    limit: "12",
+    index: query ? "relevance" : "downloads",
+    facets: JSON.stringify([["project_type:modpack"], ["server_side:required", "server_side:optional"]]),
+  });
+  try {
+    const res = await get<{ hits: SearchHit[] }>(`/v2/search?${params}`);
+    return (res?.hits ?? [])
+      .filter((h) => /^[A-Za-z0-9_-]{2,64}$/.test(h.slug))
+      .map((h) => {
+        const { slug, title, description, icon } = info(h, h.project_id);
+        return { slug, title, description, icon, downloads: h.downloads, newestVersion: newest(h.versions) };
+      });
+  } catch (err) {
+    console.error("modrinth pack search failed", query, err);
     return "modrinthUnavailable";
   }
 }

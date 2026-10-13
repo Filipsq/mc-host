@@ -1,4 +1,5 @@
 import type { Server } from "@prisma/client";
+import { isModLoader } from "./modpacks";
 
 // Plugins come from Modrinth. The panel only keeps the list; the server's
 // image downloads them when it starts (agent/main.go pluginEnv).
@@ -21,10 +22,20 @@ export const GAME_MODE_PLUGINS: Record<string, { slug: string; title: string }[]
   ],
 };
 
-/** Plugins run on Paper: Java servers that aren't mod packs. */
-export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && s.kind !== "modpack";
+/** Plugins run on Paper: plain Java servers and the island game modes. */
+export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) =>
+  s.edition === "JAVA" && ["vanilla", "skyblock", "oneblock"].includes(s.kind);
 
-export const pluginPage = (slug: string) => `https://modrinth.com/plugin/${slug}`;
+/** Mods picked one by one run on a Fabric, Forge or NeoForge server (a mod pack brings its own). */
+export const supportsMods = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && isModLoader(s.kind);
+
+export type AddonType = "plugin" | "mod";
+
+/** What the owner adds from Modrinth on the Plugins page: plugins, mods, or nothing (Bedrock, mod packs). */
+export const addonType = (s: Pick<Server, "edition" | "kind">): AddonType | null =>
+  supportsPlugins(s) ? "plugin" : supportsMods(s) ? "mod" : null;
+
+export const pluginPage = (slug: string, type: AddonType = "plugin") => `https://modrinth.com/${type}/${slug}`;
 
 // Well-known plugins the panel offers in sets and ready games, by their
 // Modrinth project IDs (which never change) and slugs. All run on Paper.

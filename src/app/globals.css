@@ -288,6 +288,22 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 .pack-icon img { width: 100%; height: 100%; object-fit: cover; }
 .pack-tile .pack-meta { margin-top: auto; padding-top: 6px; }
 .pack-option-icon { width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; object-fit: cover; background: var(--surface-2); }
+/* Searching Modrinth for another mod pack on the new server page. */
+.pack-search-field { position: relative; display: block; }
+.pack-search-field svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.pack-search-field input { width: 100%; padding-left: 36px; }
+.pack-hits { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 420px; overflow-y: auto; }
+button.pack-hit {
+  white-space: normal;
+  display: flex; align-items: center; justify-content: flex-start; gap: 12px; width: 100%; padding: 10px 12px; text-align: left;
+  background: var(--bg); color: var(--fg); border: 1px solid var(--border); box-shadow: none; font-weight: 400;
+}
+button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-color: var(--accent); transform: none; }
+.pack-hit strong, .pack-chosen strong { font-weight: 600; }
+.pack-hit .stack-tight, .pack-chosen .stack-tight { min-width: 0; overflow-wrap: anywhere; }
+.pack-chosen { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: var(--radius-sm); background: var(--bg); }
+.pack-chosen .stack-tight { flex: 1; }
+.small-chip { font-size: 0.75rem; padding: 1px 7px; vertical-align: middle; }
 @media (prefers-reduced-motion: reduce) {
   .pack-track { animation: none; }
   .pack-marquee { overflow-x: auto; -webkit-mask-image: none; mask-image: none; scroll-snap-type: x mandatory; }

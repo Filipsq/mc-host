@@ -12,6 +12,7 @@ type Props = {
   name: string;
   versions: string[];
   versionNote?: string; // shown instead of the version picker when the version isn't up to the owner
+  versionHint?: string; // replaces the usual hint under the version picker
   initial: {
     version: string;
     gameMode: string;
@@ -24,7 +25,7 @@ type Props = {
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, versionNote, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
@@ -62,7 +63,7 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
               </option>
             ))}
           </select>
-          <span className="muted small">{t.versionHint}</span>
+          <span className="muted small">{versionHint ?? t.versionHint}</span>
         </label>
       )}
       <fieldset className="stack">

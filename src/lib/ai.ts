@@ -7,7 +7,7 @@ import { db } from "./db";
 import { messages } from "@/i18n/messages";
 import { GAMES, GAME_IDS, gameById, type GameId } from "./games";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, planAtLeast, planForRam } from "./modpacks";
-import { KNOWN_PLUGINS, type KnownPlugin } from "./plugins";
+import { KNOWN_PLUGINS, supportsPlugins, type KnownPlugin } from "./plugins";
 import { plans } from "./plans";
 import { DIFFICULTIES, GAME_MODES, MOTD_MAX } from "./settings";
 
@@ -198,7 +198,7 @@ function tidy(s: z.infer<typeof SuggestionSchema>, hasFree: boolean): Suggestion
   const kind = gameById(game).kind;
   const included = new Set<string>(gameById(game).plugins);
   const plugins =
-    bedrock || kind === "modpack"
+    bedrock || !supportsPlugins({ edition: "JAVA", kind })
       ? []
       : [...new Set(s.plugins)].filter(
           (p) => !included.has(p) && (kind === "skyblock" || kind === "oneblock" || !["level", "challenges-for-bentobox", "warps-for-bentobox"].includes(p)),

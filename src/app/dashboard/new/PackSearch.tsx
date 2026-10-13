@@ -1,0 +1,108 @@
+"use client";
+
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Package, Search } from "lucide-react";
+import { format, type Messages } from "@/i18n/messages";
+import type { PackHit } from "@/lib/modrinth";
+import { searchModpacksAction } from "./packActions";
+
+type Props = { t: Messages["server"]; locale: string; initial?: string };
+
+/**
+ * "Another pack from Modrinth": search by name, or paste a link. The field is
+ * what the form sends as packLink; picking a result puts the pack's name there.
+ */
+export default function PackSearch({ t, locale, initial }: Props) {
+  const [text, setText] = useState(initial ?? "");
+  const [hits, setHits] = useState<PackHit[] | "modrinthUnavailable" | null>(null);
+  const [chosen, setChosen] = useState<PackHit | null>(null);
+  const [pending, start] = useTransition();
+  const asked = useRef("");
+  const numbers = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
+
+  // Search a moment after typing stops; a pasted link needs no search.
+  useEffect(() => {
+    const q = text.trim();
+    if (chosen || q.length < 2 || /modrinth\.com/.test(q) || q === asked.current) return;
+    const timer = setTimeout(() => {
+      asked.current = q;
+      start(async () => setHits(await searchModpacksAction(q).catch(() => "modrinthUnavailable" as const)));
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [text, chosen]);
+
+  return (
+    <div className="stack-tight pack-search">
+      {chosen ? (
+        <div className="pack-chosen">
+          <PackIcon src={chosen.icon} />
+          <span className="stack-tight">
+            <strong>{format(t.packChosen, { title: chosen.title })}</strong>
+            <span className="muted small">{chosen.description}</span>
+          </span>
+          <button type="button" className="secondary small" onClick={() => setChosen(null)}>
+            {t.packChange}
+          </button>
+          <input type="hidden" name="packLink" value={chosen.slug} />
+        </div>
+      ) : (
+        <>
+          <label>
+            {t.packLink}
+            <span className="pack-search-field">
+              <Search size={16} aria-hidden />
+              <input
+                name="packLink"
+                required
+                maxLength={300}
+                autoComplete="off"
+                placeholder={t.packSearchPlaceholder}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+              />
+            </span>
+          </label>
+          {pending && <p className="muted small" role="status">{t.packSearching}</p>}
+          {!pending && hits === "modrinthUnavailable" && <p className="muted small">{t.errors.modrinthUnavailable}</p>}
+          {!pending && Array.isArray(hits) && hits.length === 0 && <p className="muted small">{t.packNoResults}</p>}
+          {Array.isArray(hits) && hits.length > 0 && !/modrinth\.com/.test(text) && (
+            <ul className="pack-hits">
+              {hits.map((h) => (
+                <li key={h.slug}>
+                  <button
+                    type="button"
+                    className="pack-hit"
+                    onClick={() => {
+                      setChosen(h);
+                      setText(h.slug);
+                    }}
+                  >
+                    <PackIcon src={h.icon} />
+                    <span className="stack-tight">
+                      <strong>{h.title}</strong>
+                      <span className="muted small">{h.description}</span>
+                      <span className="muted small">
+                        {h.newestVersion
+                          ? format(t.packMeta, { n: numbers.format(h.downloads), version: h.newestVersion })
+                          : format(t.packMetaNoVersion, { n: numbers.format(h.downloads) })}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PackIcon({ src }: { src?: string }) {
+  return (
+    <span className="plugin-icon">
+      {/* eslint-disable-next-line @next/next/no-img-element -- small icons through /api/plugin-icon */}
+      {src ? <img src={src} alt="" width={40} height={40} loading="lazy" referrerPolicy="no-referrer" /> : <Package size={20} aria-hidden />}
+    </span>
+  );
+}

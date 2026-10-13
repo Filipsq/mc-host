@@ -70,10 +70,10 @@ export type CreateServerSpec = {
   pvp: boolean; // Java only
   whitelist: boolean;
   whitelistPlayers: string[];
-  kind: string; // Java only: vanilla, skyblock, oneblock or modpack
+  kind: string; // Java only: vanilla, skyblock, oneblock, modpack, fabric, forge or neoforge
   modpack?: string; // Modrinth slug or ID, for a modpack
   modpackVersion?: string; // Modrinth version ID, for a modpack
-  plugins: string[]; // Modrinth project IDs, for Paper servers
+  plugins: string[]; // Modrinth project IDs: plugins for Paper servers, mods for mod loader servers
 };
 
 export async function createServer(spec: CreateServerSpec) {

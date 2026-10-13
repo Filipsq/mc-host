@@ -11,8 +11,8 @@ import { deletionDate } from "@/lib/billing";
 import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
-import { ISLAND_COMMAND, LOADER_NAMES, isServerKind, modpackPage } from "@/lib/modpacks";
-import { supportsPlugins } from "@/lib/plugins";
+import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
+import { addonType } from "@/lib/plugins";
 import { FolderOpen, Puzzle, Users } from "lucide-react";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
@@ -51,6 +51,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const { host, port } = joinAddress(server);
   const kind = server.edition === "JAVA" && isServerKind(server.kind) ? server.kind : "vanilla";
   const islandCommand = ISLAND_COMMAND[kind];
+  // Plugins on Paper, mods on a mod loader; the card reads accordingly.
+  const addons = { plugin: all.plugins, mod: { ...all.plugins, ...all.mods }, none: null }[addonType(server) ?? "none"];
   const unpaid = live === "awaitingPayment" || live === "suspended";
   // What the server's files take, as the agent last measured, against what the plan gives.
   const diskUsed = agent?.diskMb;
@@ -127,6 +129,14 @@ export default async function ServerPage({ params, searchParams }: Props) {
             </a>
           </p>
         )}
+        {isModLoader(kind) && (
+          <p className="muted small">
+            {format(t.modsInfo, {
+              loader: LOADER_NAMES[kind],
+              version: server.version === "LATEST" ? all.settings.latest : server.version,
+            })}
+          </p>
+        )}
         <ServerControls id={server.id} live={live} canDelete={can("owner")} t={t} />
       </div>
 
@@ -162,8 +172,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
                   ? server.version === "LATEST"
                     ? all.settings.latest
                     : server.version
-                  : kind === "modpack"
-                    ? `${t.kinds.modpack} · ${server.version}`
+                  : kind === "modpack" || isModLoader(kind)
+                    ? `${t.kinds[kind]} · ${server.version === "LATEST" ? all.settings.latest : server.version}`
                     : t.kinds[kind]),
               all.settings.modes[server.gameMode as GameMode],
               all.settings.difficulties[server.difficulty as Difficulty],
@@ -183,7 +193,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
       {live !== "awaitingPayment" && can("files") && (
         <div className="card row">
           <span>
-            <strong>{all.files.title}</strong> <span className="muted">· {all.files.cardText}</span>
+            <strong>{all.files.title}</strong>{" "}
+            <span className="muted">· {server.kind === "modpack" || isModLoader(server.kind) ? all.files.cardTextMods : all.files.cardText}</span>
             {diskVars && (
               <span className="disk-line muted small">
                 {t.disk}: {format(t.diskUsage, diskVars)}
@@ -196,18 +207,17 @@ export default async function ServerPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {supportsPlugins(server) && can("plugins") && (
+      {addons && can("plugins") && (
         <div className="card row">
           <span>
-            <strong>{all.plugins.title}</strong>{" "}
+            <strong>{addons.title}</strong>{" "}
             <span className="muted">
-              ·{" "}
-              {server.plugins.length > 0 ? format(all.plugins.cardCount, { n: server.plugins.length }) : all.plugins.cardNone}
+              · {server.plugins.length > 0 ? format(addons.cardCount, { n: server.plugins.length }) : addons.cardNone}
             </span>
-            {server.pluginsPending && <span className="muted"> · {all.plugins.pending}</span>}
+            {server.pluginsPending && <span className="muted"> · {addons.pending}</span>}
           </span>
           <Link className="button secondary" href={`/dashboard/servers/${server.id}/plugins`}>
-            <Puzzle size={16} aria-hidden /> {all.plugins.manage}
+            <Puzzle size={16} aria-hidden /> {addons.manage}
           </Link>
         </div>
       )}

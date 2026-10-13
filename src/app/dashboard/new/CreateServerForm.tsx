@@ -8,11 +8,13 @@ import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import EditionIcon from "@/components/EditionIcon";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
-import { CURATED_PACKS, MODPACK_MIN_PLAN, planAtLeast, planForRam } from "@/lib/modpacks";
+import { CURATED_PACKS, LOADER_NAMES, MODPACK_MIN_PLAN, MOD_LOADERS, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
+import { LOADER_VERSIONS, MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
 import { planById } from "@/lib/plans";
 import type { Suggestion } from "@/lib/ai";
 import AiCreator from "./AiCreator";
+import PackSearch from "./PackSearch";
 
 type Props = {
   t: Messages["server"];
@@ -57,6 +59,8 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
   const [game, setGame] = useState<GameId>(isGameId(v.game) ? v.game : (initialGame ?? "survival"));
   const [pack, setPack] = useState(v.pack ?? initialPack ?? CURATED_PACKS[0].slug);
   const [name, setName] = useState(v.name ?? "");
+  const [loader, setLoader] = useState<ModLoader>(isModLoader(v.loader) ? v.loader : "fabric");
+  const [modVersion, setModVersion] = useState(v.modVersion ?? MOD_DEFAULT_VERSION);
   // What the AI creator picked beyond the form's own fields; sent as hidden fields.
   const [aiSettings, setAiSettings] = useState<Pick<Suggestion, "gameMode" | "difficulty" | "pvp" | "motd" | "plugins"> | null>(null);
   // Bumped by each AI suggestion so the plan picker starts from the suggested plan.
@@ -74,6 +78,7 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
     setAiRound((n) => n + 1);
   }
   const modded = edition === "JAVA" && game === "modpack";
+  const mods = edition === "JAVA" && game === "mods";
   const curated = CURATED_PACKS.find((p) => p.slug === pack);
   // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
   const minPlan = modded ? (curated ? planForRam(curated.ramGb) : MODPACK_MIN_PLAN) : "FREE";
@@ -248,19 +253,42 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
               <strong>{t.packOther}</strong> <span className="muted">{t.packOtherHint}</span>
             </span>
           </label>
-          {pack === "custom" && (
-            <label>
-              {t.packLink}
-              <input
-                name="packLink"
-                required
-                maxLength={300}
-                placeholder="https://modrinth.com/modpack/..."
-                defaultValue={v.packLink}
-              />
-            </label>
-          )}
+          {pack === "custom" && <PackSearch t={t} locale={money.locale} initial={v.packLink} />}
           <p className="muted small">{t.modpackNote}</p>
+        </fieldset>
+      )}
+      {mods && (
+        <fieldset className="stack">
+          <legend>{t.loader}</legend>
+          {MOD_LOADERS.map((l) => (
+            <label key={l} className="choice">
+              <input
+                type="radio"
+                name="loader"
+                value={l}
+                checked={loader === l}
+                onChange={() => {
+                  setLoader(l);
+                  if (!LOADER_VERSIONS[l].includes(modVersion)) setModVersion(MOD_DEFAULT_VERSION);
+                }}
+              />
+              <span>
+                <strong>{LOADER_NAMES[l]}</strong> <span className="muted">{t.loaderHints[l]}</span>
+              </span>
+            </label>
+          ))}
+          <label>
+            {t.modVersion}
+            <select name="modVersion" value={modVersion} onChange={(e) => setModVersion(e.target.value)}>
+              {LOADER_VERSIONS[loader].map((ver) => (
+                <option key={ver} value={ver}>
+                  {ver === "LATEST" ? t.latestVersion : ver}
+                </option>
+              ))}
+            </select>
+            <span className="muted small">{t.modVersionHint}</span>
+          </label>
+          <p className="muted small">{t.modsNote}</p>
         </fieldset>
       )}
       <PlanPicker

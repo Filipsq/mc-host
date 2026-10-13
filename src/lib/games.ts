@@ -11,6 +11,8 @@ export const GAMES = [
   { id: "skyblock", kind: "skyblock", plugins: ["level", "challenges-for-bentobox", "warps-for-bentobox"], ramGb: 2 },
   { id: "oneblock", kind: "oneblock", plugins: ["level", "challenges-for-bentobox", "warps-for-bentobox"], ramGb: 2 },
   { id: "modpack", kind: "modpack", plugins: [], ramGb: 3 },
+  // The owner picks Fabric, Forge or NeoForge when creating it; Fabric unless they do.
+  { id: "mods", kind: "fabric", plugins: [], ramGb: 3 },
 ] as const satisfies readonly { id: string; kind: ServerKind; plugins: readonly KnownPlugin[]; ramGb: number }[];
 
 export type GameId = (typeof GAMES)[number]["id"];

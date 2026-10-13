@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 import { getServerFor } from "@/lib/access";
-import { JAVA_VERSIONS } from "@/lib/settings";
+import { versionsFor } from "@/lib/settings";
+import { isModLoader } from "@/lib/modpacks";
 import { format } from "@/i18n/messages";
 import SettingsForm from "./SettingsForm";
 
@@ -16,7 +17,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   const t = await getMessages();
 
   // Keep a version that's no longer offered selectable, so saving doesn't change it.
-  const versions = JAVA_VERSIONS.includes(server.version) ? JAVA_VERSIONS : [server.version, ...JAVA_VERSIONS];
+  const offered = versionsFor(server.kind);
+  const versions = offered.includes(server.version) ? offered : [server.version, ...offered];
   // Game modes and mod packs decide the version themselves.
   const versionNote =
     server.kind === "modpack"
@@ -39,6 +41,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         name={server.name}
         versions={versions}
         versionNote={versionNote}
+        versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
         initial={{
           version: server.version,
           gameMode: server.gameMode,

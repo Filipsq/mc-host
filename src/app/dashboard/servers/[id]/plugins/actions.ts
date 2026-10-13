@@ -8,26 +8,28 @@ import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec } from "@/lib/servers";
 import { getServerFor } from "@/lib/access";
-import { getPlugin } from "@/lib/modrinth";
-import { GAME_MODE_PLUGINS, PLUGINS_MAX, PLUGIN_SETS, isProjectId, pluginIds, setFits, supportsPlugins } from "@/lib/plugins";
+import { getAddon } from "@/lib/modrinth";
+import { GAME_MODE_PLUGINS, PLUGINS_MAX, PLUGIN_SETS, addonType, isProjectId, pluginIds, setFits } from "@/lib/plugins";
 import type { Messages } from "@/i18n/messages";
 
 export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; pending?: boolean };
 
-async function ownedPaperServer(id: string) {
+/** The server, if the user may change its plugins (Paper) or mods (a mod loader). */
+async function addonServer(id: string) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const server = await getServerFor(id, session.user.id, "plugins");
-  return server && supportsPlugins(server) ? server : null;
+  const type = server && addonType(server);
+  return server && type ? { ...server, type } : null;
 }
 
-/** Adds a Modrinth plugin (by project ID, as search results give it) to the server. */
+/** Adds a Modrinth plugin or mod (by project ID, as search results give it) to the server. */
 export async function addPluginAction(id: string, projectId: string): Promise<PluginResult> {
-  const server = await ownedPaperServer(id);
+  const server = await addonServer(id);
   if (!server || !isProjectId(projectId)) return { error: "failed" };
   if (server.plugins.includes(projectId)) return {};
   if (server.plugins.length >= PLUGINS_MAX) return { error: "tooMany" };
-  const plugin = await getPlugin(projectId);
+  const plugin = await getAddon(projectId, server.type, server.kind);
   if (typeof plugin === "string") return { error: plugin };
   // The game mode's own plugins are always there.
   if ((GAME_MODE_PLUGINS[server.kind] ?? []).some((p) => p.slug === plugin.slug)) return {};
@@ -36,9 +38,9 @@ export async function addPluginAction(id: string, projectId: string): Promise<Pl
 
 /** Adds the plugins of a ready set that the server doesn't have yet. */
 export async function addPluginSetAction(id: string, setId: string): Promise<PluginResult> {
-  const server = await ownedPaperServer(id);
+  const server = await addonServer(id);
   const set = PLUGIN_SETS.find((s) => s.id === setId);
-  if (!server || !set || !setFits(set, server.kind)) return { error: "failed" };
+  if (!server || server.type !== "plugin" || !set || !setFits(set, server.kind)) return { error: "failed" };
   const missing = pluginIds(set.plugins).filter((p) => !server.plugins.includes(p));
   if (missing.length === 0) return {};
   if (server.plugins.length + missing.length > PLUGINS_MAX) return { error: "tooMany" };
@@ -46,7 +48,7 @@ export async function addPluginSetAction(id: string, setId: string): Promise<Plu
 }
 
 export async function removePluginAction(id: string, projectId: string): Promise<PluginResult> {
-  const server = await ownedPaperServer(id);
+  const server = await addonServer(id);
   if (!server) return { error: "failed" };
   return savePlugins(
     server,
@@ -56,7 +58,7 @@ export async function removePluginAction(id: string, projectId: string): Promise
 
 /** Rebuilds the server with its plugin list now; a running server restarts. */
 export async function applyPluginsAction(id: string): Promise<PluginResult> {
-  const server = await ownedPaperServer(id);
+  const server = await addonServer(id);
   if (!server) return { error: "failed" };
   try {
     await agent.recreateServer(agentSpec(server), { keepStopped: true });

@@ -33,7 +33,7 @@ var javaRelease = regexp.MustCompile(`^1\.(\d+)(?:\.(\d+))?$`)
 
 // imageFor picks the image with the Java that Paper needs for the version:
 // 1.17–1.19 need Java 17, 1.20–1.21.11 Java 21, and 26.1 onwards (and LATEST) Java 25.
-// Mod packs for 1.20–1.20.4 get Java 17 too: Forge for those versions expects it.
+// Mod packs, Forge and NeoForge for 1.20–1.20.4 get Java 17 too: Forge for those versions expects it.
 // Skyblock and OneBlock follow their plugins' newest version, so they get the newest Java.
 func imageFor(edition, version, kind string) string {
 	if edition != "JAVA" {
@@ -45,7 +45,8 @@ func imageFor(edition, version, kind string) string {
 	if m := javaRelease.FindStringSubmatch(version); m != nil {
 		minor, _ := strconv.Atoi(m[1])
 		patch, _ := strconv.Atoi(m[2])
-		if minor < 20 || (kind == "modpack" && minor == 20 && patch < 5) {
+		forgeLike := kind == "modpack" || kind == "forge" || kind == "neoforge"
+		if minor < 20 || (forgeLike && minor == 20 && patch < 5) {
 			return "itzg/minecraft-server:java17"
 		}
 		return "itzg/minecraft-server:java21"
@@ -53,21 +54,25 @@ func imageFor(edition, version, kind string) string {
 	return images["JAVA"]
 }
 
-// What a Java server runs: plain Paper, a BentoBox game mode, or a Modrinth mod pack.
+// What a Java server runs: plain Paper, a BentoBox game mode, a Modrinth mod
+// pack, or a mod loader with the mods its owner picked.
 var (
-	kinds = map[string]bool{"vanilla": true, "skyblock": true, "oneblock": true, "modpack": true}
+	kinds = map[string]bool{"vanilla": true, "skyblock": true, "oneblock": true, "modpack": true, "fabric": true, "forge": true, "neoforge": true}
+	// The image's TYPE for each mod loader.
+	loaderTypes = map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"}
 	// The plugins (from Modrinth) each game mode needs on Paper.
 	gameModePlugins = map[string]string{"skyblock": "bentobox,bskyblock", "oneblock": "bentobox,aoneblock"}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
 )
 
-// pluginEnv has the image install a Paper server's plugins from Modrinth: the
-// game mode's own, then the owner's. The owner's are optional, so one without a
-// build for the server's version is skipped (with a warning in the console)
-// instead of keeping the server down, and doesn't hold back the version a game
-// mode picks. The list is always set, even empty, because the image removes
-// the plugins it installed that are no longer listed.
+// pluginEnv has the image install a Paper server's plugins, or a mod loader's
+// mods, from Modrinth: the game mode's own, then the owner's. The owner's are
+// optional, so one without a build for the server's version is skipped (with a
+// warning in the console) instead of keeping the server down, and doesn't hold
+// back the version a game mode picks. The list is always set, even empty,
+// because the image removes the plugins and mods it installed that are no
+// longer listed.
 func pluginEnv(kind string, plugins []string) []string {
 	var projects []string
 	if base := gameModePlugins[kind]; base != "" {
@@ -282,7 +287,7 @@ func (req *createRequest) validate() error {
 	}
 	switch {
 	case !kinds[req.Kind] || (req.Kind != "vanilla" && req.Edition != "JAVA"):
-		return errors.New("kind must be vanilla, skyblock, oneblock or modpack (Java only)")
+		return errors.New("kind must be vanilla, skyblock, oneblock, modpack, fabric, forge or neoforge (Java only)")
 	case req.Kind == "modpack" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
 		return errors.New("a modpack server needs a Modrinth modpack and modpackVersion")
 	case len(req.Plugins) > 0 && (req.Edition != "JAVA" || req.Kind == "modpack"):
@@ -430,6 +435,9 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
 			env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version)
+		case "fabric", "forge", "neoforge":
+			// The image installs the loader for the version; pluginEnv adds the mods.
+			env = append(env, "TYPE="+loaderTypes[req.Kind], "VERSION="+req.Version)
 		default:
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}

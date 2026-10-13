@@ -4,7 +4,7 @@ import { db } from "./db";
 import { AgentError, deleteServer, getServerState, type AgentState, type CreateServerSpec } from "./agent";
 import { getServerFor } from "./access";
 import { planById } from "./plans";
-import { supportsPlugins } from "./plugins";
+import { addonType } from "./plugins";
 
 export type LiveState =
   | "starting"
@@ -144,7 +144,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     kind: server.edition === "JAVA" ? server.kind : "vanilla",
     modpack: server.modpack ?? undefined,
     modpackVersion: server.modpackVersionId ?? undefined,
-    plugins: supportsPlugins(server) ? server.plugins : [],
+    plugins: addonType(server) ? server.plugins : [],
   };
 }
 

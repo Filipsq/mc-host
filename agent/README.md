@@ -57,9 +57,10 @@ go test ./...
 
 Java servers run what `kind` says: `vanilla` (Paper, the default), `skyblock` or `oneblock`
 (Paper with the BentoBox plugins from Modrinth, on the newest Minecraft version they all support),
-or `modpack` (the Modrinth mod pack `modpack` at version ID `modpackVersion`, on its Minecraft
-`version`). Paper servers also get the owner's `plugins` (Modrinth slugs or project IDs) with the
-plugins they need; one without a build for the server's version is skipped, and a plugin taken
+`modpack` (the Modrinth mod pack `modpack` at version ID `modpackVersion`, on its Minecraft
+`version`), or `fabric`, `forge` or `neoforge` (that mod loader on `version`). Paper servers get
+the owner's `plugins` (Modrinth slugs or project IDs) and mod loader servers get them as mods,
+each with what it needs; one without a build for the server's version is skipped, and one taken
 off the list is deleted the next time the server starts.
 
 Paths in the file endpoints are relative to the server's `/data` (its volume). The agent opens the

@@ -16,15 +16,17 @@ import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
 import {
   DIFFICULTIES,
   GAME_MODES,
-  JAVA_VERSIONS,
+  LOADER_VERSIONS,
+  MOD_DEFAULT_VERSION,
   MOTD_MAX,
   WHITELIST_MAX,
   isValidPlayerName,
   parsePlayers,
+  versionsFor,
 } from "@/lib/settings";
-import { CURATED_PACKS, MODPACK_MIN_PLAN, parseModrinthLink, planAtLeast, planForRam } from "@/lib/modpacks";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, parseModrinthLink, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAME_IDS, gameById } from "@/lib/games";
-import { KNOWN_PLUGINS, PLUGIN_SETS, pluginIds, setFits, type KnownPlugin } from "@/lib/plugins";
+import { KNOWN_PLUGINS, PLUGIN_SETS, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type ResolvedPack, resolveModpack } from "@/lib/modrinth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
@@ -50,6 +52,9 @@ const createSchema = z.object({
   game: z.enum(GAME_IDS).default("survival"),
   pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
   packLink: z.string().max(300).optional(),
+  // For the "mods" game: which loader, on which Minecraft version.
+  loader: z.enum(MOD_LOADERS).default("fabric"),
+  modVersion: z.string().max(20).optional(),
   // Settings and extra plugins the AI creator picked; otherwise the defaults.
   gameMode: z.enum(GAME_MODES).optional(),
   difficulty: z.enum(DIFFICULTIES).optional(),
@@ -109,7 +114,12 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
 
   // Bedrock has no ready games or mod packs here.
   const game = gameById(edition === "JAVA" ? parsed.data.game : "survival");
-  const kind = game.kind;
+  // Mods run on the loader the owner picked, on a version it supports.
+  const kind = game.id === "mods" ? parsed.data.loader : game.kind;
+  const modVersion =
+    game.id === "mods"
+      ? LOADER_VERSIONS[parsed.data.loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION
+      : null;
   let modpackRef: { slug: string; version?: string } | null = null;
   if (kind === "modpack") {
     const curated = CURATED_PACKS.find((p) => p.slug === parsed.data.pack);
@@ -143,6 +153,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(parsed.data.difficulty && { difficulty: parsed.data.difficulty }),
     ...(parsed.data.motd && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
+    ...(modVersion && { version: modVersion }),
     ...(pack && {
       version: pack.gameVersion,
       modpack: pack.slug,
@@ -183,9 +194,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   redirect(`/dashboard/servers/${server.id}`);
 }
 
-/** The game's own plugins plus known extras that fit this kind of server (none for mod packs). */
+/** The game's own plugins plus known extras that fit this kind of server (none without Paper). */
 function startingPlugins(base: readonly KnownPlugin[], kind: string, extra: string | undefined): KnownPlugin[] {
-  if (kind === "modpack") return [];
+  if (!supportsPlugins({ edition: "JAVA", kind })) return [];
   const islandOnly = new Set<string>(PLUGIN_SETS.filter((s) => !setFits(s, kind)).flatMap((s) => s.plugins));
   const extras = (extra ?? "")
     .split(",")
@@ -321,10 +332,9 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   const java = server.edition === "JAVA";
 
   // Bedrock always runs the newest version, game modes follow their plugins and mod packs
-  // their pack; plain Java keeps its version unless a listed one is picked.
-  const pickable = java && server.kind === "vanilla";
-  const version =
-    pickable && s.version && (JAVA_VERSIONS.includes(s.version) || s.version === server.version) ? s.version : server.version;
+  // their pack; plain Java and mod loaders keep their version unless a listed one is picked.
+  const offered = java ? versionsFor(server.kind) : [];
+  const version = s.version && (offered.includes(s.version) || s.version === server.version) ? s.version : server.version;
   if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
   const players = parsePlayers(s.players);
   const bad = players.find((p) => !isValidPlayerName(server.edition, p));

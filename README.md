@@ -52,6 +52,7 @@ npm run dev                   # http://localhost:3000
 - `src/i18n` — languages (Polish default, English) and currencies (PLN default, EUR, USD, GBP), stored in cookies and switched from the top-right picker
 - `src/lib/plans.ts` — plan limits and monthly prices per currency
 - `src/lib/games.ts` — ready games offered when creating a Java server (a server kind plus starting plugins and the RAM it needs); `src/lib/plugins.ts` — well-known plugins by Modrinth ID and the one-click plugin sets; `src/lib/modpacks.ts` — curated mod packs with the RAM each needs; `src/lib/ram.ts` — the home page RAM calculator
+- `src/lib/modrinth.ts` — Modrinth search for plugins, mods (filtered by loader and Minecraft version) and mod packs; Fabric, Forge and NeoForge servers ("Własne mody") share the plugins page with mod wording, and the agent installs the chosen projects at start
 - `src/lib/access.ts`, `src/app/dashboard/servers/[id]/access` — friends' access: the owner lets people into a server's panel by email and ticks what they may use (console, files, plugins, settings, backups); every page, action and API route checks it with `getServerFor`
 - `src/lib/support.ts`, `src/app/api/support`, `src/app/dashboard/support`, `src/app/admin/support` — the Help chat: each user has one conversation with the admins; open chats poll for new messages, and whoever isn't looking gets an email about the first unread one
 - `src/lib/brand.ts` — the site name (MCHosting); `src/app/globals.css` — the dark theme and all styles

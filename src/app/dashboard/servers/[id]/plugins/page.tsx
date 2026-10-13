@@ -5,9 +5,9 @@ import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getServerFor } from "@/lib/access";
-import { getPluginInfos, searchPlugins } from "@/lib/modrinth";
-import { GAME_MODE_PLUGINS, KNOWN_PLUGINS, PLUGIN_SETS, pluginIds, pluginPage, setFits, supportsPlugins } from "@/lib/plugins";
-import { isServerKind } from "@/lib/modpacks";
+import { getPluginInfos, searchAddons } from "@/lib/modrinth";
+import { GAME_MODE_PLUGINS, KNOWN_PLUGINS, PLUGIN_SETS, addonType, pluginIds, pluginPage, setFits } from "@/lib/plugins";
+import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
 import { AddPluginButton, AddSetButton, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> };
@@ -19,10 +19,12 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const server = await getServerFor(id, session.user.id, "plugins");
   if (!server) notFound();
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
-  const t = all.plugins;
+  const type = addonType(server);
+  // Mod servers use the same page with mod wording.
+  const t = type === "mod" ? { ...all.plugins, ...all.mods } : all.plugins;
   const back = <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>;
 
-  if (!supportsPlugins(server)) {
+  if (!type) {
     return (
       <main className="wide-form stack">
         {back}
@@ -33,13 +35,18 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   }
 
   const query = q.trim().slice(0, 100);
-  // Plain servers on a chosen version only see plugins for it; the rest run the newest version.
-  const mc = server.kind === "vanilla" && server.version !== "LATEST" ? server.version : undefined;
-  const [infos, results] = await Promise.all([getPluginInfos(server.plugins), searchPlugins(query, mc)]);
+  // Servers on a chosen version only see what's made for it; game modes run the newest version.
+  const mc = (server.kind === "vanilla" || type === "mod") && server.version !== "LATEST" ? server.version : undefined;
+  const [infos, results] = await Promise.all([
+    getPluginInfos(server.plugins),
+    searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
+  ]);
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
   const included = GAME_MODE_PLUGINS[kind] ?? [];
   const numbers = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
-  const sets = PLUGIN_SETS.filter((set) => setFits(set, kind));
+  const sets = type === "plugin" ? PLUGIN_SETS.filter((set) => setFits(set, kind)) : [];
+  const loader = LOADER_NAMES[server.kind] ?? server.kind;
+  const forPlayers = <span className="chip small-chip">{all.mods.forPlayers}</span>;
   // Names for plugins from the sets, in case Modrinth doesn't answer.
   const knownTitle = (pid: string) => Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title;
 
@@ -47,7 +54,9 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     <main className="stack">
       {back}
       <h1>{t.title}</h1>
-      <p className="muted">{t.intro}</p>
+      <p className="muted">
+        {type === "mod" ? format(all.mods.introMods, { loader, version: server.version === "LATEST" ? all.settings.latest : server.version }) : t.intro}
+      </p>
       <ApplyPlugins id={server.id} pending={server.pluginsPending} t={t} />
 
       <section className="stack">
@@ -69,9 +78,11 @@ export default async function PluginsPage({ params, searchParams }: Props) {
               <li key={pid}>
                 <PluginIcon src={p?.icon} />
                 <span className="plugin-main">
-                  <strong>{title}</strong>
+                  <span>
+                    <strong>{title}</strong> {p?.forPlayers && forPlayers}
+                  </span>
                   {p && (
-                    <a className="small" href={pluginPage(p.slug)} target="_blank" rel="noreferrer">
+                    <a className="small" href={pluginPage(p.slug, type)} target="_blank" rel="noreferrer">
                       {t.onModrinth} <ExternalLink size={12} aria-hidden />
                     </a>
                   )}
@@ -83,32 +94,34 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           {included.length === 0 && server.plugins.length === 0 && <li className="muted">{t.none}</li>}
         </ul>
         <p className="muted small">
-          {t.config} <Link href={`/dashboard/servers/${server.id}/files?path=plugins`}>{t.openConfig}</Link>
+          {t.config} <Link href={`/dashboard/servers/${server.id}/files?path=${type === "mod" ? "config" : "plugins"}`}>{t.openConfig}</Link>
         </p>
       </section>
 
-      <section className="stack">
-        <h2>{t.sets}</h2>
-        <p className="muted">{t.setsIntro}</p>
-        <ul className="card plugin-list">
-          {sets.map((set) => (
-            <li key={set.id}>
-              <span className="plugin-icon"><Package size={20} aria-hidden /></span>
-              <span className="plugin-main">
-                <strong>{t.setNames[set.id]}</strong>
-                <span className="muted small">{t.setHints[set.id]}</span>
-                <span className="small">{set.plugins.map((p) => KNOWN_PLUGINS[p].title).join(" · ")}</span>
-              </span>
-              <AddSetButton
-                id={server.id}
-                setId={set.id}
-                added={pluginIds(set.plugins).every((p) => server.plugins.includes(p))}
-                t={t}
-              />
-            </li>
-          ))}
-        </ul>
-      </section>
+      {sets.length > 0 && (
+        <section className="stack">
+          <h2>{t.sets}</h2>
+          <p className="muted">{t.setsIntro}</p>
+          <ul className="card plugin-list">
+            {sets.map((set) => (
+              <li key={set.id}>
+                <span className="plugin-icon"><Package size={20} aria-hidden /></span>
+                <span className="plugin-main">
+                  <strong>{t.setNames[set.id]}</strong>
+                  <span className="muted small">{t.setHints[set.id]}</span>
+                  <span className="small">{set.plugins.map((p) => KNOWN_PLUGINS[p].title).join(" · ")}</span>
+                </span>
+                <AddSetButton
+                  id={server.id}
+                  setId={set.id}
+                  added={pluginIds(set.plugins).every((p) => server.plugins.includes(p))}
+                  t={t}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="stack">
         <h2>{t.search}</h2>
@@ -120,6 +133,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         </form>
         <p className="muted small">
           {query ? format(t.results, { q: query }) : t.popular}
+          {type === "mod" && ` · ${loader}`}
           {mc && ` · ${format(t.forVersion, { mc })}`}
         </p>
         {results === "modrinthUnavailable" ? (
@@ -132,9 +146,12 @@ export default async function PluginsPage({ params, searchParams }: Props) {
               <li key={p.id}>
                 <PluginIcon src={p.icon} />
                 <span className="plugin-main">
-                  <a href={pluginPage(p.slug)} target="_blank" rel="noreferrer">
-                    <strong>{p.title}</strong>
-                  </a>
+                  <span>
+                    <a href={pluginPage(p.slug, type)} target="_blank" rel="noreferrer">
+                      <strong>{p.title}</strong>
+                    </a>{" "}
+                    {p.forPlayers && forPlayers}
+                  </span>
                   <span className="muted small">{p.description}</span>
                   <span className="muted small">
                     {format(t.downloads, { n: numbers.format(p.downloads) })}

@@ -250,6 +250,11 @@ func TestImageFor(t *testing.T) {
 			t.Errorf("modpack %s: got %s, want %s", version, got, want)
 		}
 	}
+	for kind, want := range map[string]string{"forge": "itzg/minecraft-server:java17", "neoforge": "itzg/minecraft-server:java17", "fabric": "itzg/minecraft-server:java21"} {
+		if got := imageFor("JAVA", "1.20.4", kind); got != want {
+			t.Errorf("%s 1.20.4: got %s, want %s", kind, got, want)
+		}
+	}
 	if imageFor("JAVA", "1.20.1", "skyblock") != images["JAVA"] {
 		t.Error("skyblock follows its plugins to the newest version")
 	}
@@ -303,6 +308,20 @@ func TestKindEnv(t *testing.T) {
 	}
 	if strings.Contains(env, "TYPE=PAPER") {
 		t.Errorf("modpack must not run Paper:\n%s", env)
+	}
+
+	for kind, typ := range map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"} {
+		mods := base
+		mods.Kind, mods.Version, mods.Plugins = kind, "1.21.1", []string{"gvQqBUqZ", "uXXizFIs"}
+		env = envOf(mods)
+		for _, want := range []string{"TYPE=" + typ + "\n", "VERSION=1.21.1\n", "MODRINTH_PROJECTS=gvQqBUqZ?,uXXizFIs?\n", "MODRINTH_DOWNLOAD_DEPENDENCIES=required\n"} {
+			if !strings.Contains(env, want) {
+				t.Errorf("%s env missing %q:\n%s", kind, want, env)
+			}
+		}
+		if strings.Contains(env, "TYPE=PAPER") {
+			t.Errorf("%s must not run Paper:\n%s", kind, env)
+		}
 	}
 
 	for _, bad := range []createRequest{

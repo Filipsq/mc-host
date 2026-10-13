@@ -1,4 +1,5 @@
 import type { Edition } from "@prisma/client";
+import { isModLoader, type ModLoader } from "./modpacks";
 
 // Game settings owners pick on the server's Settings page. The agent turns
 // them into the server image's environment, so they apply on the next start.
@@ -23,6 +24,22 @@ export const JAVA_VERSIONS = [
   "1.18.2",
   "1.17.1",
 ];
+
+// Versions a mod loader server can run. Most mods are made for 1.21.1, so new
+// mod servers start there. Forge and NeoForge only get a version once it's out,
+// so they have no LATEST, and NeoForge starts at 1.20.4.
+export const LOADER_VERSIONS: Record<ModLoader, string[]> = {
+  fabric: JAVA_VERSIONS,
+  forge: JAVA_VERSIONS.filter((v) => v !== "LATEST"),
+  neoforge: ["1.21.11", "1.21.8", "1.21.4", "1.21.1", "1.20.6", "1.20.4"],
+};
+export const MOD_DEFAULT_VERSION = "1.21.1";
+
+/** Versions the owner may pick for a server of this kind (none: the game mode or pack decides). */
+export function versionsFor(kind: string): string[] {
+  if (kind === "vanilla") return JAVA_VERSIONS;
+  return isModLoader(kind) ? LOADER_VERSIONS[kind] : [];
+}
 
 export const MOTD_MAX = 60;
 export const WHITELIST_MAX = 100;
