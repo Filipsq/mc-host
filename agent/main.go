@@ -34,6 +34,7 @@ var javaRelease = regexp.MustCompile(`^1\.(\d+)(?:\.(\d+))?$`)
 // imageFor picks the image with the Java that Paper needs for the version:
 // 1.17–1.19 need Java 17, 1.20–1.21.11 Java 21, and 26.1 onwards (and LATEST) Java 25.
 // Mod packs, Forge and NeoForge for 1.20–1.20.4 get Java 17 too: Forge for those versions expects it.
+// Mod packs for 1.16 and older (like RLCraft on 1.12.2) need Java 8.
 // Skyblock and OneBlock follow their plugins' newest version, so they get the newest Java.
 func imageFor(edition, version, kind string) string {
 	if edition != "JAVA" {
@@ -46,6 +47,9 @@ func imageFor(edition, version, kind string) string {
 		minor, _ := strconv.Atoi(m[1])
 		patch, _ := strconv.Atoi(m[2])
 		forgeLike := kind == "modpack" || kind == "forge" || kind == "neoforge"
+		if forgeLike && minor <= 16 {
+			return "itzg/minecraft-server:java8"
+		}
 		if minor < 20 || (forgeLike && minor == 20 && patch < 5) {
 			return "itzg/minecraft-server:java17"
 		}
@@ -66,6 +70,7 @@ var (
 	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "oneblock": true}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
+	validCurseFile  = regexp.MustCompile(`^[0-9]{1,12}$`)         // CurseForge file ID
 )
 
 // AuthMeReloaded on Modrinth: on a non-premium server, players register a
@@ -113,6 +118,7 @@ type agent struct {
 	diskReserve int64    // bytes of disk the file manager leaves free
 	uploadMax   int64    // the biggest file the file manager takes
 	unzipMax    int64    // the most an archive may unpack to
+	cfKey       string   // CurseForge API key, for servers that install a CurseForge mod pack
 
 	diskMu        sync.Mutex
 	diskLimits    map[string]int64 // server id -> MB its files may take (see disk.go)
@@ -162,6 +168,7 @@ func main() {
 		diskReserve: reserveMb << 20,
 		uploadMax:   uploadMb << 20,
 		unzipMax:    4 * uploadMb << 20,
+		cfKey:       os.Getenv("CF_API_KEY"),
 	}
 	for _, dir := range []string{a.stateDir, a.backupDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -270,9 +277,12 @@ type createRequest struct {
 	Seed      string `json:"seed"`
 	LevelType string `json:"levelType"` // normal, flat, large_biomes or amplified (Java only)
 
-	// Java only: what the server runs (see kinds). For a mod pack, the Modrinth
-	// project and the exact pack version, so players can install the same one.
+	// Java only: what the server runs (see kinds). For a mod pack, where it comes
+	// from (modrinth, the default, or curseforge), the project's slug and the exact
+	// pack version (a Modrinth version ID or a CurseForge file ID), so players can
+	// install the same one.
 	Kind           string `json:"kind"`
+	ModpackSource  string `json:"modpackSource"`
 	Modpack        string `json:"modpack"`
 	ModpackVersion string `json:"modpackVersion"`
 	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
@@ -317,8 +327,12 @@ func (req *createRequest) validate() error {
 	switch {
 	case !kinds[req.Kind] || (req.Kind != "vanilla" && req.Edition != "JAVA"):
 		return errors.New("kind must be vanilla, skyblock, oneblock, modpack, fabric, forge or neoforge (Java only)")
-	case req.Kind == "modpack" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
+	case req.Kind == "modpack" && req.ModpackSource == "curseforge" && (!validModpack.MatchString(req.Modpack) || !validCurseFile.MatchString(req.ModpackVersion)):
+		return errors.New("a CurseForge modpack server needs the pack's slug and a file ID as modpackVersion")
+	case req.Kind == "modpack" && req.ModpackSource != "curseforge" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
 		return errors.New("a modpack server needs a Modrinth modpack and modpackVersion")
+	case req.ModpackSource != "" && (req.Kind != "modpack" || (req.ModpackSource != "modrinth" && req.ModpackSource != "curseforge")):
+		return errors.New("modpackSource must be modrinth or curseforge, for a modpack server")
 	case len(req.Plugins) > 0 && (req.Edition != "JAVA" || req.Kind == "modpack"):
 		return errors.New("plugins need a Java server on Paper (not a mod pack)")
 	case len(req.Plugins) > 100:
@@ -495,7 +509,15 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 			env = append(env, "TYPE=PAPER", "VERSION_FROM_MODRINTH_PROJECTS=TRUE")
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
-			env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version)
+			if req.ModpackSource == "curseforge" {
+				// The pack's manifest says which Minecraft and loader it runs on.
+				env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+req.Modpack, "CF_FILE_ID="+req.ModpackVersion)
+				if a.cfKey != "" {
+					env = append(env, "CF_API_KEY="+a.cfKey)
+				}
+			} else {
+				env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version)
+			}
 		case "fabric", "forge", "neoforge":
 			// The image installs the loader for the version; pluginEnv adds the mods.
 			env = append(env, "TYPE="+loaderTypes[req.Kind], "VERSION="+req.Version)

@@ -2,7 +2,7 @@ import type { Plan } from "@prisma/client";
 import { plans } from "./plans";
 
 // What a Java server runs. Skyblock and OneBlock are BentoBox game modes on
-// Paper; a mod pack comes from Modrinth; a mod loader runs the mods its owner
+// Paper; a mod pack comes from Modrinth or CurseForge; a mod loader runs the mods its owner
 // picks one by one. The agent turns these into the image's settings (agent/main.go).
 export const MOD_LOADERS = ["fabric", "forge", "neoforge"] as const;
 export type ModLoader = (typeof MOD_LOADERS)[number];
@@ -55,8 +55,19 @@ export function parseModrinthLink(input: string): { slug: string; version?: stri
   return null;
 }
 
+/**
+ * Reads a pasted CurseForge link, e.g. https://www.curseforge.com/minecraft/modpacks/rlcraft
+ * or a file page under it. Returns null if it isn't one.
+ */
+export function parseCurseforgeLink(input: string): { slug: string; fileId?: number } | null {
+  const m = input.trim().match(/^(?:https?:\/\/)?(?:www\.)?curseforge\.com\/minecraft\/modpacks\/([a-z0-9-]{2,64})(?:\/(?:files|download)\/(\d{1,12}))?\/?(?:[?#].*)?$/i);
+  return m ? { slug: m[1].toLowerCase(), fileId: m[2] ? Number(m[2]) : undefined } : null;
+}
+
 export const LOADER_NAMES: Record<string, string> = { fabric: "Fabric", forge: "Forge", neoforge: "NeoForge", quilt: "Quilt" };
 
 /** Where players download the exact pack version the server runs. */
-export const modpackPage = (slug: string, versionId?: string | null) =>
-  `https://modrinth.com/modpack/${slug}${versionId ? `/version/${versionId}` : ""}`;
+export const modpackPage = (slug: string, versionId?: string | null, source?: string | null) =>
+  source === "curseforge"
+    ? `https://www.curseforge.com/minecraft/modpacks/${slug}${versionId ? `/files/${versionId}` : ""}`
+    : `https://modrinth.com/modpack/${slug}${versionId ? `/version/${versionId}` : ""}`;

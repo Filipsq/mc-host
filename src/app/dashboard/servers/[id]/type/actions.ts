@@ -9,10 +9,10 @@ import * as agent from "@/lib/agent";
 import { getServerFor } from "@/lib/access";
 import { applyToHost, onHost } from "@/lib/servers";
 import { planById } from "@/lib/plans";
-import { CURATED_PACKS, MOD_LOADERS, parseModrinthLink, planAtLeast } from "@/lib/modpacks";
+import { MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { LOADER_VERSIONS, MOD_DEFAULT_VERSION, versionsFor } from "@/lib/settings";
 import { canRunNonPremium, supportsPlugins } from "@/lib/plugins";
-import { resolveModpack, type ResolvedPack } from "@/lib/modrinth";
+import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { SERVER_TYPES, minPlanFor, usesMods } from "@/lib/serverType";
 import { activeLevel, nextWorldName, randomSeed } from "@/lib/worlds";
 import type { Messages } from "@/i18n/messages";
@@ -26,7 +26,7 @@ const typeSchema = z.object({
   loader: z.enum(MOD_LOADERS).default("fabric"),
   modVersion: z.string().max(20).optional(),
   pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
-  packLink: z.string().max(300).optional(),
+  packLink: z.string().max(300).optional(), // a Modrinth or CurseForge link, or a pack from the Modrinth search
 });
 
 /** "mods-fabric", or "mods-fabric-2" if that's taken. */
@@ -56,14 +56,17 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
   const kind = type === "mods" ? loader : type;
 
   let version = "LATEST"; // game modes follow their plugins
-  let pack: ResolvedPack | null = null;
+  let pack: PackChoice | null = null;
   if (type === "modpack") {
-    const curated = CURATED_PACKS.find((p) => p.slug === parsed.data.pack);
-    const ref = curated ? { slug: curated.slug } : parseModrinthLink(parsed.data.packLink ?? "");
-    if (!ref) return { error: "modpackLink", values };
-    if (!planAtLeast(server.plan, minPlanFor("modpack", curated?.slug))) return { error: "needsPlan", values };
-    const resolved = await resolveModpack(ref);
+    if (!packNamed(parsed.data)) return { error: "modpackLink", values };
+    if (!planAtLeast(server.plan, minPlanFor("modpack", parsed.data.pack))) return { error: "needsPlan", values };
+    const resolved = await resolvePackChoice(parsed.data);
     if (typeof resolved === "string") return { error: resolved, values };
+    // A CurseForge pack's size is only known now.
+    const need = resolved.ramGb ? planForRam(resolved.ramGb) : "STARTER";
+    if (!planAtLeast(server.plan, need)) {
+      return { error: need === "PRO" ? "modpackNeedsPro" : need === "STANDARD" ? "modpackNeedsStandard" : "needsPlan", values };
+    }
     pack = resolved;
     version = pack.gameVersion;
   } else if (type === "mods") {
@@ -74,7 +77,7 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
   const same =
     kind === server.kind &&
     (type === "modpack"
-      ? pack?.slug === server.modpack && pack?.versionId === server.modpackVersionId
+      ? pack?.slug === server.modpack && pack?.versionId === server.modpackVersionId && packFields(pack).modpackSource === server.modpackSource
       : type !== "mods" || version === server.version);
   if (same) return { error: "same", values };
 
@@ -95,11 +98,7 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
       data: {
         kind,
         version,
-        modpack: pack?.slug ?? null,
-        modpackTitle: pack?.title ?? null,
-        modpackVersionId: pack?.versionId ?? null,
-        modpackVersion: pack?.versionNumber ?? null,
-        modpackLoader: pack?.loader ?? null,
+        ...packFields(pack),
         plugins: keepPlugins ? server.plugins : [],
         onlineMode: canRunNonPremium({ edition: "JAVA", kind }) ? server.onlineMode : true,
         // A fresh world; the old one stays in the server's files, under Worlds.

@@ -240,6 +240,9 @@ func TestImageFor(t *testing.T) {
 		}
 	}
 	for version, want := range map[string]string{
+		"1.12.2": "itzg/minecraft-server:java8", // RLCraft
+		"1.16.5": "itzg/minecraft-server:java8",
+		"1.18.2": "itzg/minecraft-server:java17",
 		"1.20.1": "itzg/minecraft-server:java17", // Forge 1.20.1 packs
 		"1.20.4": "itzg/minecraft-server:java17",
 		"1.20.6": "itzg/minecraft-server:java21",
@@ -310,6 +313,25 @@ func TestKindEnv(t *testing.T) {
 		t.Errorf("modpack must not run Paper:\n%s", env)
 	}
 
+	cf := base
+	cf.Kind, cf.ModpackSource, cf.Modpack, cf.ModpackVersion, cf.Version = "modpack", "curseforge", "rlcraft", "4612979", "1.12.2"
+	keyed := &agent{idle: 5 * time.Minute, cfKey: "$2a$10$key"}
+	if err := cf.validate(); err != nil {
+		t.Fatal(err)
+	}
+	env = strings.Join(keyed.containerSpec(cf, imageFor(cf.Edition, cf.Version, cf.Kind))["Env"].([]string), "\n") + "\n"
+	for _, want := range []string{"TYPE=AUTO_CURSEFORGE\n", "CF_SLUG=rlcraft\n", "CF_FILE_ID=4612979\n", "CF_API_KEY=$2a$10$key\n"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("curseforge env missing %q:\n%s", want, env)
+		}
+	}
+	if strings.Contains(env, "MODRINTH_") || strings.Contains(env, "\nVERSION=") {
+		t.Errorf("curseforge pack takes its version from the pack:\n%s", env)
+	}
+	if env := envOf(cf); strings.Contains(env, "CF_API_KEY") {
+		t.Errorf("no key, no CF_API_KEY:\n%s", env)
+	}
+
 	for kind, typ := range map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"} {
 		mods := base
 		mods.Kind, mods.Version, mods.Plugins = kind, "1.21.1", []string{"gvQqBUqZ", "uXXizFIs"}
@@ -327,9 +349,13 @@ func TestKindEnv(t *testing.T) {
 	for _, bad := range []createRequest{
 		{Kind: "hardcore"},
 		{Kind: "modpack"}, // no pack
-		{Kind: "modpack", Modpack: "cobblemon-fabric"},                   // no version
-		{Kind: "modpack", Modpack: "a b", ModpackVersion: "BpTjgzL8"},    // bad slug
-		{Kind: "modpack", Modpack: "pack", ModpackVersion: "x;rm -rf /"}, // bad version
+		{Kind: "modpack", Modpack: "cobblemon-fabric"},                                                 // no version
+		{Kind: "modpack", Modpack: "a b", ModpackVersion: "BpTjgzL8"},                                  // bad slug
+		{Kind: "modpack", Modpack: "pack", ModpackVersion: "x;rm -rf /"},                               // bad version
+		{Kind: "modpack", ModpackSource: "curseforge", Modpack: "rlcraft", ModpackVersion: "BpTjgzL8"}, // not a file ID
+		{Kind: "modpack", ModpackSource: "modrinth", Modpack: "rlcraft", ModpackVersion: "4612979"},    // not a version ID
+		{Kind: "modpack", ModpackSource: "ftb", Modpack: "rlcraft", ModpackVersion: "4612979"},
+		{Kind: "vanilla", ModpackSource: "curseforge"},
 	} {
 		bad.ID, bad.Name, bad.Edition, bad.MemoryMb, bad.CPUs, bad.Port, bad.Hostname = "abc12345", "X", "JAVA", 2048, 1, 25570, "x.mchost.pl"
 		if bad.validate() == nil {

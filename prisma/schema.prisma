@@ -140,6 +140,7 @@ model Server {
   kind             String       @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.
   modpack          String?
+  modpackSource    String? // where the pack comes from: null for Modrinth, or "curseforge"
   modpackTitle     String?
   modpackVersionId String?
   modpackVersion   String? // the pack version's number, e.g. "1.6.1"

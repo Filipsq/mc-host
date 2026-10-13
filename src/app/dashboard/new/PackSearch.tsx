@@ -8,6 +8,9 @@ import { searchModpacksAction } from "./packActions";
 
 type Props = { t: Messages["server"]; locale: string; initial?: string };
 
+// A pasted link needs no search.
+const LINK = /(modrinth|curseforge)\.com/;
+
 /**
  * "Another pack from Modrinth": search by name, or paste a link. The field is
  * what the form sends as packLink; picking a result puts the pack's name there.
@@ -20,10 +23,10 @@ export default function PackSearch({ t, locale, initial }: Props) {
   const asked = useRef("");
   const numbers = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
 
-  // Search a moment after typing stops; a pasted link needs no search.
+  // Search a moment after typing stops.
   useEffect(() => {
     const q = text.trim();
-    if (chosen || q.length < 2 || /modrinth\.com/.test(q) || q === asked.current) return;
+    if (chosen || q.length < 2 || LINK.test(q) || q === asked.current) return;
     const timer = setTimeout(() => {
       asked.current = q;
       start(async () => setHits(await searchModpacksAction(q).catch(() => "modrinthUnavailable" as const)));
@@ -65,7 +68,7 @@ export default function PackSearch({ t, locale, initial }: Props) {
           {pending && <p className="muted small" role="status">{t.packSearching}</p>}
           {!pending && hits === "modrinthUnavailable" && <p className="muted small">{t.errors.modrinthUnavailable}</p>}
           {!pending && Array.isArray(hits) && hits.length === 0 && <p className="muted small">{t.packNoResults}</p>}
-          {Array.isArray(hits) && hits.length > 0 && !/modrinth\.com/.test(text) && (
+          {Array.isArray(hits) && hits.length > 0 && !LINK.test(text) && (
             <ul className="pack-hits">
               {hits.map((h) => (
                 <li key={h.slug}>

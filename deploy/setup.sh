@@ -96,6 +96,18 @@ if ! grep -qE '^ANTHROPIC_API_KEY=.+' .env; then
   echo "The AI creator is off: set ANTHROPIC_API_KEY in deploy/.env (see deploy/README.md)."
 fi
 
+# CurseForge mod packs on the home page and in the panel; see deploy/README.md.
+if ! grep -q '^CF_API_KEY=' .env; then
+  cat >> .env <<'ENV'
+# From console.curseforge.com, in single quotes (the key contains $).
+# Without it CurseForge packs are hidden.
+CF_API_KEY=
+ENV
+fi
+if ! grep -qE '^CF_API_KEY=.+' .env; then
+  echo "CurseForge packs are off: set CF_API_KEY in deploy/.env (see deploy/README.md)."
+fi
+
 echo "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
 docker compose ps

@@ -15,7 +15,7 @@ import { planById } from "@/lib/plans";
 import { canRunNonPremium } from "@/lib/plugins";
 import type { Suggestion } from "@/lib/ai";
 import AiCreator from "./AiCreator";
-import { LoaderFields, PackFields } from "./ModFields";
+import { LoaderFields, PackFields, type CurseforgeOption } from "./ModFields";
 
 type Props = {
   t: Messages["server"];
@@ -29,6 +29,8 @@ type Props = {
   initialGame?: GameId; // a game or pack picked on the home page or the empty panel
   initialPack?: string;
   packIcons: Record<string, string | undefined>;
+  cfPack?: CurseforgeOption; // a CurseForge pack picked on the home page
+  curseforge: boolean; // whether CurseForge links work
   /** Set when the AI creator is on. */
   ai?: {
     t: Messages["ai"];
@@ -51,7 +53,7 @@ function slugify(name: string) {
     .slice(0, 32);
 }
 
-export default function CreateServerForm({ t, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, ai }: Props) {
+export default function CreateServerForm({ t, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const v = state.values ?? {};
   const [edition, setEdition] = useState(v.edition ?? "JAVA");
@@ -81,9 +83,12 @@ export default function CreateServerForm({ t, settings, billing, legal, plans, d
   }
   const modded = edition === "JAVA" && game === "modpack";
   const mods = edition === "JAVA" && game === "mods";
-  const curated = CURATED_PACKS.find((p) => p.slug === pack);
   // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
-  const minPlan = modded ? (curated ? planForRam(curated.ramGb) : MODPACK_MIN_PLAN) : "FREE";
+  const packPlan = (slug: string) => {
+    const gb = slug === "curseforge" ? cfPack?.ramGb : CURATED_PACKS.find((p) => p.slug === slug)?.ramGb;
+    return gb ? planForRam(gb) : MODPACK_MIN_PLAN;
+  };
+  const minPlan = modded ? packPlan(pack) : "FREE";
   const planChoices = plans.map((p) =>
     planAtLeast(p.id, minPlan) || p.disabledNote ? p : { ...p, disabledNote: p.id === "FREE" ? t.modpackNoFree : t.packTooSmall },
   );
@@ -191,10 +196,7 @@ export default function CreateServerForm({ t, settings, billing, legal, plans, d
                     checked={game === g.id}
                     onChange={() => {
                       setGame(g.id);
-                      if (g.kind === "modpack") {
-                        const min = curated ? planForRam(curated.ramGb) : MODPACK_MIN_PLAN;
-                        if (!planAtLeast(plan, min)) setPlan(min);
-                      }
+                      if (g.kind === "modpack" && !planAtLeast(plan, packPlan(pack))) setPlan(packPlan(pack));
                     }}
                   />
                   <span className="stack-tight">
@@ -215,11 +217,11 @@ export default function CreateServerForm({ t, settings, billing, legal, plans, d
           pack={pack}
           onPack={(slug) => {
             setPack(slug);
-            const p = CURATED_PACKS.find((c) => c.slug === slug);
-            const min = p ? planForRam(p.ramGb) : MODPACK_MIN_PLAN;
-            if (!planAtLeast(plan, min)) setPlan(min);
+            if (!planAtLeast(plan, packPlan(slug))) setPlan(packPlan(slug));
           }}
           packIcons={packIcons}
+          cfPack={cfPack}
+          curseforge={curseforge}
           planName={planName}
           locale={money.locale}
           initialLink={v.packLink}

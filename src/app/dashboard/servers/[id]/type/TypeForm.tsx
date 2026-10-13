@@ -19,11 +19,12 @@ type Props = {
   packIcons: Record<string, string | undefined>;
   locale: string;
   notes: { backup: boolean; modsMoved: boolean; plugins: boolean };
+  curseforge: boolean; // whether CurseForge links work
   t: Messages["serverType"];
   server: Messages["server"];
 };
 
-export default function TypeForm({ id, current, plan, planNames, planRam, packIcons, locale, notes, t, server }: Props) {
+export default function TypeForm({ id, current, plan, planNames, planRam, packIcons, locale, notes, curseforge, t, server }: Props) {
   const [state, action, pending] = useActionState(changeTypeAction.bind(null, id), {});
   const v = state.values ?? {};
   // Starts on something other than what the server runs, since that's what the page is for.
@@ -86,6 +87,7 @@ export default function TypeForm({ id, current, plan, planNames, planRam, packIc
           planName={(p) => planNames[p]}
           locale={locale}
           initialLink={v.packLink}
+          curseforge={curseforge}
         />
       )}
 

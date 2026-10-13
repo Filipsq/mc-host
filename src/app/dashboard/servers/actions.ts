@@ -24,10 +24,10 @@ import {
   parsePlayers,
   versionsFor,
 } from "@/lib/settings";
-import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, parseModrinthLink, planAtLeast, planForRam } from "@/lib/modpacks";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
-import { type ResolvedPack, resolveModpack } from "@/lib/modrinth";
+import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -50,8 +50,10 @@ const createSchema = z.object({
   days: daysField,
   subdomain: z.string().trim().toLowerCase().optional(),
   game: z.enum(GAME_IDS).default("survival"),
-  pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
+  pack: z.string().optional(), // a curated pack's slug, "custom" for packLink, or "curseforge" for cfPack
   packLink: z.string().max(300).optional(),
+  cfPack: z.string().max(64).optional(), // a CurseForge pack's slug, from the home page
+
   // For the "mods" game: which loader, on which Minecraft version.
   loader: z.enum(MOD_LOADERS).default("fabric"),
   modVersion: z.string().max(20).optional(),
@@ -121,11 +123,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     game.id === "mods"
       ? LOADER_VERSIONS[parsed.data.loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION
       : null;
-  let modpackRef: { slug: string; version?: string } | null = null;
   if (kind === "modpack") {
+    if (!packNamed(parsed.data)) return { error: "modpackLink", values };
     const curated = CURATED_PACKS.find((p) => p.slug === parsed.data.pack);
-    modpackRef = curated ? { slug: curated.slug } : parseModrinthLink(parsed.data.packLink ?? "");
-    if (!modpackRef) return { error: "modpackLink", values };
     const minPlan = curated ? planForRam(curated.ramGb) : MODPACK_MIN_PLAN;
     if (!planAtLeast(plan, minPlan)) return { error: MODPACK_PLAN_ERRORS[minPlan], values };
   }
@@ -134,10 +134,13 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (plan !== "FREE" && !(await canSellMemory(memoryMb))) return { error: "soldOut", values };
 
   // Pin the pack's current version, so players know exactly which one to install.
-  let pack: ResolvedPack | null = null;
-  if (modpackRef) {
-    const resolved = await resolveModpack(modpackRef);
+  let pack: PackChoice | null = null;
+  if (kind === "modpack") {
+    const resolved = await resolvePackChoice(parsed.data);
     if (typeof resolved === "string") return { error: resolved, values };
+    // A CurseForge pack's size is only known now.
+    const minPlan = resolved.ramGb ? planForRam(resolved.ramGb) : MODPACK_MIN_PLAN;
+    if (!planAtLeast(plan, minPlan)) return { error: MODPACK_PLAN_ERRORS[minPlan], values };
     pack = resolved;
   }
 
@@ -156,14 +159,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
     onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind })),
     ...(modVersion && { version: modVersion }),
-    ...(pack && {
-      version: pack.gameVersion,
-      modpack: pack.slug,
-      modpackTitle: pack.title,
-      modpackVersionId: pack.versionId,
-      modpackVersion: pack.versionNumber,
-      modpackLoader: pack.loader,
-    }),
+    ...(pack && { version: pack.gameVersion, ...packFields(pack) }),
     // Paid servers are only created on the game host once Stripe confirms payment.
     status: plan === "FREE" ? "PROVISIONING" : "AWAITING_PAYMENT",
   });

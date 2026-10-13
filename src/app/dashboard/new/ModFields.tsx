@@ -9,20 +9,57 @@ import PackSearch from "./PackSearch";
 // The mod pack and mod loader choices, shared by the new server form and the
 // page that changes a server's type.
 
+/** A CurseForge pack picked on the home page, offered first. */
+export type CurseforgeOption = {
+  slug: string;
+  title: string;
+  summary: string;
+  icon?: string;
+  ramGb: number;
+  mods: number;
+  gameVersion: string;
+  loader: string;
+};
+
 type PackProps = {
   t: Messages["server"];
-  pack: string; // a curated pack's slug, or "custom"
+  pack: string; // a curated pack's slug, "custom", or "curseforge" for cfPack
   onPack: (slug: string) => void;
   packIcons: Record<string, string | undefined>;
   planName: (plan: Plan) => string;
   locale: string;
   initialLink?: string;
+  cfPack?: CurseforgeOption;
+  curseforge?: boolean; // whether CurseForge links work
 };
 
-export function PackFields({ t, pack, onPack, packIcons, planName, locale, initialLink }: PackProps) {
+export function PackFields({ t, pack, onPack, packIcons, planName, locale, initialLink, cfPack, curseforge }: PackProps) {
   return (
     <fieldset className="stack">
       <legend>{t.modpack}</legend>
+      {cfPack && (
+        <label className="choice plan-choice">
+          <input type="radio" name="pack" value="curseforge" checked={pack === "curseforge"} onChange={() => onPack("curseforge")} />
+          <input type="hidden" name="cfPack" value={cfPack.slug} />
+          {cfPack.icon && (
+            // eslint-disable-next-line @next/next/no-img-element -- CurseForge's own image host
+            <img className="pack-option-icon" src={cfPack.icon} alt="" width={40} height={40} loading="lazy" referrerPolicy="no-referrer" />
+          )}
+          <span className="stack-tight">
+            <span>
+              <strong>{cfPack.title}</strong> <span className="chip small-chip">{t.packCurseforge}</span>{" "}
+              <span className="muted">{cfPack.summary}</span>
+            </span>
+            <span className="muted small">
+              {format(t.packCurseforgeMeta, { mods: cfPack.mods, version: cfPack.gameVersion, loader: LOADER_NAMES[cfPack.loader] ?? cfPack.loader })}
+            </span>
+            <span className="pack-meta">
+              <span className="ram-pill">{format(t.ramFrom, { gb: cfPack.ramGb })}</span>
+              <span className="muted small">{format(t.packPlan, { plan: planName(planForRam(cfPack.ramGb)) })}</span>
+            </span>
+          </span>
+        </label>
+      )}
       {CURATED_PACKS.map((p) => (
         <label key={p.slug} className="choice plan-choice">
           <input type="radio" name="pack" value={p.slug} checked={pack === p.slug} onChange={() => onPack(p.slug)} />
@@ -48,7 +85,8 @@ export function PackFields({ t, pack, onPack, packIcons, planName, locale, initi
         </span>
       </label>
       {pack === "custom" && <PackSearch t={t} locale={locale} initial={initialLink} />}
-      <p className="muted small">{t.modpackNote}</p>
+      {pack === "custom" && curseforge && <p className="muted small">{t.packLinkCurseforge}</p>}
+      <p className="muted small">{pack === "curseforge" ? t.modpackNoteCurseforge : t.modpackNote}</p>
     </fieldset>
   );
 }

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { getServerFor } from "@/lib/access";
 import { getPackArt } from "@/lib/modrinth";
+import { curseforgeEnabled } from "@/lib/curseforge";
 import { CURATED_PACKS, isModLoader } from "@/lib/modpacks";
 import { plans } from "@/lib/plans";
 import { supportsPlugins } from "@/lib/plugins";
@@ -44,6 +45,7 @@ export default async function ServerTypePage({ params }: { params: Promise<{ id:
           packIcons={Object.fromEntries(CURATED_PACKS.map((p) => [p.slug, packArt.get(p.slug)?.icon]))}
           locale={locale}
           notes={{ backup: plans.find((p) => p.id === server.plan)!.backupsKept > 0, modsMoved: usesMods(server.kind), plugins: supportsPlugins(server) && server.plugins.length > 0 }}
+          curseforge={curseforgeEnabled()}
           t={t.serverType}
           server={t.server}
         />

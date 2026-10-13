@@ -129,7 +129,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
               loader: LOADER_NAMES[server.modpackLoader ?? ""] ?? server.modpackLoader ?? "",
             })}{" "}
             {t.modpackInstall}{" "}
-            <a href={modpackPage(server.modpack, server.modpackVersionId)} target="_blank" rel="noreferrer">
+            <a href={modpackPage(server.modpack, server.modpackVersionId, server.modpackSource)} target="_blank" rel="noreferrer">
               {t.modpackDownload}
             </a>
           </p>

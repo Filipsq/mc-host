@@ -106,6 +106,21 @@ create it as usual. Until it's set up, the AI boxes are hidden.
 the whole site `AI_MONTHLY_LIMIT` times a month; the admin overview shows this month's use and an
 estimated cost.
 
+## CurseForge mod packs
+
+With a CurseForge API key the home page shows CurseForge's 10 most popular mod packs that run on our
+plans, and players can start a server from one in a click or paste a CurseForge link under "Inna
+paczka". The server's image downloads and installs the pack on its first start. Packs with a mod
+whose author forbids downloads outside CurseForge can't be installed that way, so they aren't
+offered. Until a key is set, all of this is hidden.
+
+1. Apply for a key at [console.curseforge.com](https://console.curseforge.com). Say what it's for:
+   listing popular packs on the site and installing them on customers' servers. The list is kept
+   only in memory and refreshed every hour.
+2. Put it in `deploy/.env` in single quotes, because CurseForge keys contain `$`:
+   `CF_API_KEY='$2a$10$…'`.
+3. Run `./setup.sh` again.
+
 ## When a plan runs out
 
 Paid plans don't renew by themselves. Three days before the end, the owner gets a reminder by email.

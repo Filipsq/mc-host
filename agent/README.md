@@ -30,13 +30,14 @@ go test ./...
 | `UPLOAD_MAX_MB` | `1024` | The biggest file the file manager takes; a zip may unpack to 4 times this |
 | `MIN_FREE_DISK_MB` | `4096` | Uploads and unzipping stop short of leaving less disk free than this |
 | `MEMORY_LIMIT_MB` | `0` (no limit) | Plan memory all servers may hold together. Paid servers hold theirs even when stopped (unless suspended); a free server only while awake, and it isn't started when it doesn't fit |
+| `CF_API_KEY` | | CurseForge API key, given to servers running a CurseForge mod pack so the image can download it |
 | `MEMORY_OVERBOOK` | `1` | Overbooking: running servers may hold this many times `MEMORY_LIMIT_MB` (1 to 4). Above 1, stopped paid servers don't count, and a free server also needs the machine's `MemAvailable` to have its memory plus 1 GB |
 
 ## API
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, diskMb, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackVersion, plugins, onlineMode, level, seed, levelType}` |
+| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, diskMb, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackSource, modpackVersion, plugins, onlineMode, level, seed, levelType}` |
 | PUT | `/servers/{id}` | Rebuild the container with a new spec (plan or settings change), keeping the world. With `?start=if-running` a stopped or sleeping server stays off |
 | GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped`, `crashed` or `disk`; `diskMb` (last measured) and `diskLimitMb` |
 | POST | `/servers/{id}/start`, `/stop` | Stop waits up to 60 s so the world is saved; `/stop?reason=suspended` also gives back the server's memory until it's renewed. Starting a free server that doesn't fit returns 503 `{"error":"full"}` |
@@ -62,7 +63,9 @@ go test ./...
 Java servers run what `kind` says: `vanilla` (Paper, the default), `skyblock` or `oneblock`
 (Paper with the BentoBox plugins from Modrinth, on the newest Minecraft version they all support),
 `modpack` (the Modrinth mod pack `modpack` at version ID `modpackVersion`, on its Minecraft
-`version`), or `fabric`, `forge` or `neoforge` (that mod loader on `version`). Paper servers get
+`version`; with `modpackSource: "curseforge"`, the CurseForge pack with slug `modpack` at file ID
+`modpackVersion`, whose manifest picks the Minecraft version and loader; packs for 1.16 and older
+run on Java 8), or `fabric`, `forge` or `neoforge` (that mod loader on `version`). Paper servers get
 the owner's `plugins` (Modrinth slugs or project IDs) and mod loader servers get them as mods,
 each with what it needs; one without a build for the server's version is skipped, and one taken
 off the list is deleted the next time the server starts.

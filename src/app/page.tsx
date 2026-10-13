@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Plan } from "@prisma/client";
-import { Check, CreditCard, Gift, Globe, MoonStar, Package, Smartphone, Sparkles, SquareTerminal } from "lucide-react";
+import { Check, CreditCard, Flame, Gift, Globe, MoonStar, Package, Smartphone, Sparkles, SquareTerminal } from "lucide-react";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -11,10 +11,12 @@ import { CURATED_PACKS } from "@/lib/modpacks";
 import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
 import RamCalculator from "@/components/RamCalculator";
 import PackCarousel from "@/components/PackCarousel";
+import CurseforgeTop from "@/components/CurseforgeTop";
 import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
 import { GAME_ICONS } from "@/components/gameIcons";
 import { getPackArt } from "@/lib/modrinth";
+import { topCurseforgePacks } from "@/lib/curseforge";
 import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
 
 const featureIcons = {
@@ -28,11 +30,12 @@ const featureIcons = {
 
 
 export default async function Home() {
-  const [{ locale, currency }, t, session, packArt] = await Promise.all([
+  const [{ locale, currency }, t, session, packArt, cfPacks] = await Promise.all([
     getPreferences(),
     getMessages(),
     auth(),
     getPackArt(CURATED_PACKS.map((p) => p.slug)),
+    topCurseforgePacks(),
   ]);
   const domain = process.env.GAME_DOMAIN ?? "localhost";
   const start = session?.user ? "/dashboard/new" : "/signup";
@@ -156,6 +159,26 @@ export default async function Home() {
             />
             <p className="muted small">{h.packsMore}</p>
           </div>
+
+          {cfPacks && cfPacks.length > 0 && (
+            <div className="stack" id="curseforge">
+              <h3 className="subsection-title"><Flame size={20} aria-hidden /> {h.cfTitle}</h3>
+              <p className="muted">{h.cfSubtitle}</p>
+              <CurseforgeTop
+                packs={cfPacks}
+                t={h}
+                server={t.server}
+                planNames={t.plans}
+                locale={locale}
+                link={(slug) => (session?.user ? `/dashboard/new?cf=${slug}` : "/signup")}
+              />
+              <p className="muted small">
+                <a href="https://www.curseforge.com/minecraft/search?class=modpacks" target="_blank" rel="noreferrer">
+                  {h.cfSource}
+                </a>
+              </p>
+            </div>
+          )}
 
           <div className="stack">
             <h3 className="subsection-title">{h.setsTitle}</h3>

@@ -44,6 +44,8 @@ services:
       IDLE_MINUTES: ${IDLE_MINUTES:-5}
       MEMORY_LIMIT_MB: ${MEMORY_LIMIT_MB:-0}
       MEMORY_OVERBOOK: ${MEMORY_OVERBOOK:-1}
+      # Servers running a CurseForge mod pack use it to download the pack.
+      CF_API_KEY: ${CF_API_KEY:-}
       BACKUP_DIR: /backups
       # The helper containers that pack and unpack worlds mount the same volume by name.
       BACKUP_MOUNT: mchost-backups

@@ -147,6 +147,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     levelType: server.levelType ?? "",
     kind: server.edition === "JAVA" ? server.kind : "vanilla",
     modpack: server.modpack ?? undefined,
+    modpackSource: server.kind === "modpack" ? (server.modpackSource ?? undefined) : undefined,
     modpackVersion: server.modpackVersionId ?? undefined,
     plugins: addonType(server) ? server.plugins : [],
   };
