@@ -1,7 +1,8 @@
 import { iconPath, USER_AGENT } from "@/lib/modrinth";
 
-// Plugin icons from Modrinth's CDN, passed through our server so that
-// visitors' browsers don't contact a third party just by opening the page.
+// Plugin and mod pack icons and pictures from Modrinth's CDN, passed through
+// our server so that visitors' browsers don't contact a third party just by
+// opening the page. The server keeps each one for a week.
 
 const CDN = () => process.env.MODRINTH_CDN_URL ?? "https://cdn.modrinth.com";
 const TYPES = ["image/png", "image/webp", "image/jpeg", "image/gif"];
@@ -13,11 +14,11 @@ export async function GET(req: Request) {
     const res = await fetch(CDN() + path, {
       headers: { "User-Agent": USER_AGENT },
       signal: AbortSignal.timeout(10_000),
-      cache: "no-store",
+      next: { revalidate: 604_800 },
     });
     const type = res.headers.get("content-type")?.split(";")[0] ?? "";
     const body = res.ok && TYPES.includes(type) ? await res.arrayBuffer() : null;
-    if (!body || body.byteLength > 512 * 1024) return new Response("Not found", { status: 404 });
+    if (!body || body.byteLength > 1024 * 1024) return new Response("Not found", { status: 404 });
     return new Response(body, {
       headers: {
         "Content-Type": type,

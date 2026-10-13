@@ -20,6 +20,8 @@ type Props = {
   defaultPlan: Plan;
   domain: string;
   money: { locale: string; currency: string };
+  initialPack?: string; // a curated pack picked on the home page
+  packIcons: Record<string, string | undefined>;
 };
 
 // "Serwer Ekipy" -> "serwer-ekipy"
@@ -35,15 +37,15 @@ function slugify(name: string) {
     .slice(0, 32);
 }
 
-export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money }: Props) {
+export default function CreateServerForm({ t, billing, legal, plans, defaultPlan, domain, money, initialPack, packIcons }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const v = state.values ?? {};
   const [edition, setEdition] = useState(v.edition ?? "JAVA");
   const [subdomain, setSubdomain] = useState(v.subdomain ?? "");
   const [subdomainEdited, setSubdomainEdited] = useState(!!v.subdomain);
   const [plan, setPlan] = useState<Plan>((v.plan as Plan | undefined) ?? defaultPlan);
-  const [game, setGame] = useState<GameId>(isGameId(v.game) ? v.game : "survival");
-  const [pack, setPack] = useState(v.pack ?? CURATED_PACKS[0].slug);
+  const [game, setGame] = useState<GameId>(isGameId(v.game) ? v.game : initialPack ? "modpack" : "survival");
+  const [pack, setPack] = useState(v.pack ?? initialPack ?? CURATED_PACKS[0].slug);
   const modded = edition === "JAVA" && game === "modpack";
   const curated = CURATED_PACKS.find((p) => p.slug === pack);
   // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
@@ -167,6 +169,10 @@ export default function CreateServerForm({ t, billing, legal, plans, defaultPlan
                   if (!planAtLeast(plan, min)) setPlan(min);
                 }}
               />
+              {packIcons[p.slug] && (
+                // eslint-disable-next-line @next/next/no-img-element -- small icons through /api/plugin-icon
+                <img className="pack-option-icon" src={packIcons[p.slug]} alt="" width={40} height={40} loading="lazy" referrerPolicy="no-referrer" />
+              )}
               <span className="stack-tight">
                 <span>
                   <strong>{p.title}</strong> <span className="muted">{t.packs[p.slug]}</span>

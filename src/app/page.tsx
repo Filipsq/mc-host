@@ -7,9 +7,11 @@ import { format } from "@/i18n/messages";
 import { formatPrice, planById, plans } from "@/lib/plans";
 import { periodPrice } from "@/lib/periods";
 import { GAMES, gamePluginTitles } from "@/lib/games";
-import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
+import { CURATED_PACKS } from "@/lib/modpacks";
 import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
 import RamCalculator from "@/components/RamCalculator";
+import PackCarousel from "@/components/PackCarousel";
+import { getPackArt } from "@/lib/modrinth";
 
 const featureIcons = {
   free: Gift,
@@ -30,7 +32,12 @@ const gameIcons = {
 } as const;
 
 export default async function Home() {
-  const [{ locale, currency }, t, session] = await Promise.all([getPreferences(), getMessages(), auth()]);
+  const [{ locale, currency }, t, session, packArt] = await Promise.all([
+    getPreferences(),
+    getMessages(),
+    auth(),
+    getPackArt(CURATED_PACKS.map((p) => p.slug)),
+  ]);
   const domain = process.env.GAME_DOMAIN ?? "localhost";
   const start = session?.user ? "/dashboard/new" : "/signup";
   const free = planById("FREE");
@@ -129,18 +136,13 @@ export default async function Home() {
           <div className="stack">
             <h3 className="subsection-title"><Package size={20} aria-hidden /> {h.packsTitle}</h3>
             <p className="muted">{h.packsSubtitle}</p>
-            <ul className="pack-grid">
-              {CURATED_PACKS.map((p) => (
-                <li key={p.slug} className="pack-card">
-                  <strong>{p.title}</strong>
-                  <span className="muted small">{t.server.packs[p.slug]}</span>
-                  <span className="pack-meta">
-                    <span className="ram-pill">{format(t.server.ramFrom, { gb: p.ramGb })}</span>
-                    <span className="muted small">{format(t.server.packPlan, { plan: t.plans[planForRam(p.ramGb)] })}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <PackCarousel
+              t={t.server}
+              planNames={t.plans}
+              art={packArt}
+              label={h.packsTitle}
+              link={(slug) => (session?.user ? `/dashboard/new?pack=${slug}` : "/signup")}
+            />
             <p className="muted small">{h.packsMore}</p>
           </div>
 
