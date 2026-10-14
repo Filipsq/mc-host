@@ -97,7 +97,8 @@ async function readZipEntry(url: string, size: number, name: string): Promise<Bu
   const range = async (from: number, to: number) => {
     if (!whole) {
       const res = await fetch(url, {
-        headers: { Range: `bytes=${from}-${to}`, "User-Agent": USER_AGENT },
+        // CurseForge's file server wants the API key too (since July 2026; without it every file is "not found").
+        headers: { Range: `bytes=${from}-${to}`, "User-Agent": USER_AGENT, "x-api-key": process.env.CF_API_KEY ?? "" },
         signal: AbortSignal.timeout(60_000),
         cache: "no-store",
       });
@@ -152,7 +153,8 @@ async function lookInside(file: File): Promise<Look | null> {
   if (known) return known;
   // No download link means the pack itself may not be downloaded by others.
   if (!file.downloadUrl) return { mods: 0, blocked: true };
-  const raw = await readZipEntry(file.downloadUrl, file.fileLength, "manifest.json");
+  // A "+" in a file name must be escaped, or the file server reads it as a space.
+  const raw = await readZipEntry(file.downloadUrl.replaceAll("+", "%2B"), file.fileLength, "manifest.json");
   if (!raw) {
     console.warn("curseforge pack has no readable manifest.json", file.downloadUrl);
     return null;
