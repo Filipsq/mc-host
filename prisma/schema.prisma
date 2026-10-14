@@ -8,25 +8,36 @@ datasource db {
 }
 
 model User {
-  id                String          @id @default(cuid())
-  email             String          @unique
-  passwordHash      String
-  createdAt         DateTime        @default(now())
+  id                 String          @id @default(cuid())
+  email              String          @unique
+  passwordHash       String
+  createdAt          DateTime        @default(now())
   // When the user accepted the terms (at sign-up); null for accounts made before there were any.
-  termsAcceptedAt   DateTime?
+  termsAcceptedAt    DateTime?
   // Sessions that signed in before this are no longer accepted (see src/lib/session.ts).
-  passwordChangedAt DateTime?
+  passwordChangedAt  DateTime?
   // The site's language the user last chose; emails are written in it.
-  locale            String          @default("pl")
+  locale             String          @default("pl")
   // Can open the admin panel and every server's panel. Set on the server with deploy/admin.sh.
-  admin             Boolean         @default(false)
-  servers           Server[]
-  payments          Payment[]
-  passwordResets    PasswordReset[]
-  supportChat       SupportChat?
-  aiUsage           AiUsage[]
+  admin              Boolean         @default(false)
+  servers            Server[]
+  payments           Payment[]
+  passwordResets     PasswordReset[]
+  supportChat        SupportChat?
+  aiUsage            AiUsage[]
   // Friends' servers this user was let into (see src/lib/access.ts).
-  memberships       ServerMember[]
+  memberships        ServerMember[]
+  // Referrals (src/lib/referrals.ts): the code in the user's invite link, who invited them,
+  // when they first paid enough for both to get free days, and the days waiting to be
+  // added to one of their servers.
+  referralCode       String?         @unique
+  referredBy         User?           @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referredById       String?
+  referrals          User[]          @relation("Referrals")
+  referralRewardedAt DateTime?
+  bonusDays          Int             @default(0)
+
+  @@index([referredById])
 }
 
 // One call to the AI (Claude), for the per-user and monthly limits and the
@@ -114,33 +125,33 @@ enum ServerStatus {
 }
 
 model Server {
-  id               String       @id @default(cuid())
+  id               String         @id @default(cuid())
   name             String
-  edition          Edition      @default(JAVA)
-  plan             Plan         @default(FREE)
-  status           ServerStatus @default(PROVISIONING)
+  edition          Edition        @default(JAVA)
+  plan             Plan           @default(FREE)
+  status           ServerStatus   @default(PROVISIONING)
   memoryMb         Int
-  version          String       @default("LATEST")
+  version          String         @default("LATEST")
   // Game settings from the panel's Settings page (see src/lib/settings.ts).
-  gameMode         String       @default("survival")
-  difficulty       String       @default("easy")
-  motd             String       @default("") // empty: the server's name
-  pvp              Boolean      @default(true) // Java only
-  whitelist        Boolean      @default(false)
-  whitelistPlayers String[]     @default([])
+  gameMode         String         @default("survival")
+  difficulty       String         @default("easy")
+  motd             String         @default("") // empty: the server's name
+  pvp              Boolean        @default(true) // Java only
+  whitelist        Boolean        @default(false)
+  whitelistPlayers String[]       @default([])
   // Java on Paper only: false lets in players without a bought Minecraft ("non-premium"),
   // who log in with a password through the AuthMe plugin.
-  onlineMode       Boolean      @default(true)
+  onlineMode       Boolean        @default(true)
   // Java on Paper only: Bedrock players (phones, consoles, Windows) join too, through the
   // Geyser plugin on the server's port over UDP.
-  crossplay        Boolean      @default(false)
+  crossplay        Boolean        @default(false)
   // The world folder the server runs (the image's default if null), and the seed and
   // type it was made with (src/lib/worlds.ts).
   level            String?
   levelSeed        String?
   levelType        String?
   // Java only: what the server runs: vanilla (Paper), skyblock, oneblock, modpack, fabric, forge or neoforge (src/lib/modpacks.ts).
-  kind             String       @default("vanilla")
+  kind             String         @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.
   modpack          String?
   modpackSource    String? // where the pack comes from: null for Modrinth, or "curseforge"
@@ -149,13 +160,13 @@ model Server {
   modpackVersion   String? // the pack version's number, e.g. "1.6.1"
   modpackLoader    String? // fabric, forge, neoforge or quilt
   // Paper servers only: Modrinth project IDs of the plugins the owner added (src/lib/plugins.ts).
-  plugins          String[]     @default([])
+  plugins          String[]       @default([])
   // The list changed while the server ran; the container gets it on its next rebuild.
-  pluginsPending   Boolean      @default(false)
+  pluginsPending   Boolean        @default(false)
   // Host port of the server: behind the router for Java, public (UDP) for Bedrock.
-  port             Int?         @unique
+  port             Int?           @unique
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
-  subdomain        String?      @unique
+  subdomain        String?        @unique
   // Paid plans are prepaid; the server is suspended once this passes.
   paidUntil        DateTime?
   // The paidUntil its owner was last reminded of, so each period gets one reminder.
@@ -163,12 +174,12 @@ model Server {
   // When its owner was told a suspended server will be deleted; cleared by a payment.
   deletionWarnedAt DateTime?
   payments         Payment[]
-  owner            User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner            User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId          String
   // Friends the owner let into the server's panel.
   members          ServerMember[]
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([ownerId])
 }

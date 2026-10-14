@@ -111,7 +111,10 @@ export default async function RootLayout({
             <div className="footer-col">
               <p className="footer-title">{t.footer.account}</p>
               {signedIn ? (
-                <Link href="/dashboard">{t.nav.dashboard}</Link>
+                <>
+                  <Link href="/dashboard">{t.nav.dashboard}</Link>
+                  <Link href="/dashboard/invite">{t.referrals.title}</Link>
+                </>
               ) : (
                 <>
                   <Link href="/login">{t.nav.logIn}</Link>

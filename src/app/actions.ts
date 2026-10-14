@@ -14,6 +14,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import { buttonMail, sendMail } from "@/lib/mail";
 import { RESET_LINK_MINUTES, createResetToken, resetPassword } from "@/lib/passwordReset";
 import { linkInvites } from "@/lib/access";
+import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
 
@@ -42,9 +43,19 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
     return { error: "emailTaken", email };
   }
   const { locale } = await getPreferences();
+  // Signed up through a friend's invite link (see src/lib/referrals.ts).
+  const jar = await cookies();
+  const inviter = await inviterFor(jar.get(REFERRAL_COOKIE)?.value);
   const user = await db.user.create({
-    data: { email, passwordHash: await bcrypt.hash(password, 12), termsAcceptedAt: new Date(), locale },
+    data: {
+      email,
+      passwordHash: await bcrypt.hash(password, 12),
+      termsAcceptedAt: new Date(),
+      locale,
+      referredById: inviter?.id,
+    },
   });
+  if (inviter) jar.delete(REFERRAL_COOKIE);
   // Servers friends shared with this address before it had an account.
   await linkInvites(user.id, email);
 

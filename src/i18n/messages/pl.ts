@@ -695,6 +695,48 @@ const pl = {
       failed: "Nie udało się. Spróbuj ponownie za chwilę.",
     },
   },
+  referrals: {
+    title: "Polecaj znajomym",
+    nav: "Polecaj",
+    subtitle: "Wyślij znajomemu swój link. Gdy założy konto i opłaci serwer na co najmniej {min} dni, oboje dostaniecie {days} dni gratis.",
+    yourLink: "Twój link",
+    linkHint: "Wyślij go na Discordzie albo Messengerze, albo wrzuć pod swój film. Znajomy ma 30 dni od kliknięcia na założenie konta.",
+    daysLeft: "Dni do wykorzystania: {days}",
+    counts: "Zaproszeni: {invited} · Opłacili serwer: {paid}",
+    pickServer: "Dodaj do serwera",
+    addDays: "Dodaj {days} dni",
+    added: "Dodaliśmy {days} dni do serwera {server}.",
+    noPaidServer: "Dni dodasz do płatnego serwera. Zachowamy je, aż go będziesz mieć.",
+    noDaysYet: "Gdy znajomy opłaci serwer, dni pojawią się tutaj, a my napiszemy do Ciebie maila.",
+    howTitle: "Jak to działa",
+    steps: [
+      "Znajomy wchodzi przez Twój link i zakłada konto.",
+      "Opłaca serwer na co najmniej {min} dni.",
+      "On dostaje {days} dni gratis od razu do swojego serwera, a Ty {days} dni do wybranego płatnego serwera.",
+    ],
+    rules:
+      "Nagroda należy się raz za każdego znajomego, przy jego pierwszej płatności na co najmniej {min} dni. Dni możesz dodać też do zawieszonego serwera, wtedy znowu ruszy. Nie liczą się Twoje własne dodatkowe konta.",
+    errors: {
+      noDays: "Nie masz dni do wykorzystania.",
+      free: "Dni dodasz tylko do płatnego serwera.",
+      soldOut: "Ten serwer jest zawieszony, a na maszynie nie ma teraz wolnego miejsca. Dni zostały u Ciebie: spróbuj później albo wybierz inny serwer.",
+      notFound: "Nie znaleźliśmy tego serwera.",
+    },
+    signupNotice: "Masz zaproszenie od znajomego: gdy opłacisz serwer na co najmniej {min} dni, dostaniesz {days} dni gratis.",
+    homeBanner: "Masz zaproszenie od znajomego! Załóż konto i opłać serwer na co najmniej {min} dni, a dostaniesz {days} dni gratis.",
+    homeBannerButton: "Załóż konto",
+    dashboardCard: "Polecaj znajomym: {days} dni gratis dla Was obojga",
+    dashboardDays: "Masz {days} dni do wykorzystania",
+    mail: {
+      subject: "Masz {days} dni gratis za polecenie",
+      paragraphs: [
+        "Twój znajomy opłacił serwer, więc oboje dostajecie {days} dni gratis.",
+        "Swoje dni dodasz do wybranego płatnego serwera na stronie poleceń.",
+      ],
+      button: "Dodaj dni do serwera",
+      footer: "Ten mail dotyczy Twojego konta w {brand}. Masz pytania? Napisz do nas: {contact}",
+    },
+  },
   planMail: {
     footer: "Ten mail dotyczy Twojego serwera w {brand}. Masz pytania? Napisz do nas: {contact}",
     paid: {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Plan } from "@prisma/client";
 import { Check, CreditCard, Flame, Gift, Globe, MoonStar, Package, Smartphone, Sparkles, SquareTerminal } from "lucide-react";
+import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -18,6 +19,7 @@ import { GAME_ICONS } from "@/components/gameIcons";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
 import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
+import { REFERRAL_COOKIE, REFERRAL_DAYS, REFERRAL_MIN_DAYS } from "@/lib/referrals";
 
 const featureIcons = {
   free: Gift,
@@ -30,13 +32,16 @@ const featureIcons = {
 
 
 export default async function Home() {
-  const [{ locale, currency }, t, session, packArt, cfPacks] = await Promise.all([
+  const [{ locale, currency }, t, session, packArt, cfPacks, jar] = await Promise.all([
     getPreferences(),
     getMessages(),
     auth(),
     getPackArt(CURATED_PACKS.map((p) => p.slug)),
     topCurseforgePacks(),
+    cookies(),
   ]);
+  // Came through a friend's invite link (/r/<code>) and hasn't signed up yet.
+  const invited = !session?.user && jar.has(REFERRAL_COOKIE);
   const domain = process.env.GAME_DOMAIN ?? "localhost";
   const start = session?.user ? "/dashboard/new" : "/signup";
   const free = planById("FREE");
@@ -48,6 +53,13 @@ export default async function Home() {
         <Clouds />
         <div className="container hero-grid">
           <div className="hero-copy">
+            {invited && (
+              <p className="notice success invite-banner">
+                <Gift size={18} aria-hidden />
+                <span>{format(t.referrals.homeBanner, { days: REFERRAL_DAYS, min: REFERRAL_MIN_DAYS })}</span>
+                <Link className="button small" href="/signup">{t.referrals.homeBannerButton}</Link>
+              </p>
+            )}
             <p className="eyebrow">{h.eyebrow}</p>
             <h1 className="display">{h.title}</h1>
             <p className="lead">{h.subtitle}</p>

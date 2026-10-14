@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MessageCircle, Plus, Shield } from "lucide-react";
+import { Gift, MessageCircle, Plus, Shield } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
@@ -11,6 +11,7 @@ import { sharedServers } from "@/lib/access";
 import EditionIcon from "@/components/EditionIcon";
 import { GAME_ICONS } from "@/components/gameIcons";
 import { GAMES } from "@/lib/games";
+import { REFERRAL_DAYS } from "@/lib/referrals";
 
 type Props = { searchParams: Promise<{ haslo?: string }> };
 
@@ -18,7 +19,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [all, servers, shared, { haslo }, admin] = await Promise.all([
+  const [all, servers, shared, { haslo }, admin, me] = await Promise.all([
     getMessages(),
     db.server.findMany({
       where: { ownerId: session.user.id },
@@ -27,6 +28,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     sharedServers(session.user.id),
     searchParams,
     isAdmin(session.user.id),
+    db.user.findUnique({ where: { id: session.user.id }, select: { bonusDays: true } }),
   ]);
   const [states, sharedStates] = await Promise.all([
     Promise.all(servers.map((s) => getLiveState(s))),
@@ -113,6 +115,16 @@ export default async function DashboardPage({ searchParams }: Props) {
           </ul>
         </section>
       )}
+      <div className="card row invite-card">
+        <span className="row invite-days">
+          <Gift size={24} aria-hidden />
+          <span className="stack-tight">
+            <strong>{format(all.referrals.dashboardCard, { days: REFERRAL_DAYS })}</strong>
+            {!!me?.bonusDays && <span className="muted small">{format(all.referrals.dashboardDays, { days: me.bonusDays })}</span>}
+          </span>
+        </span>
+        <Link className="button secondary" href="/dashboard/invite">{all.referrals.nav}</Link>
+      </div>
     </main>
   );
 }

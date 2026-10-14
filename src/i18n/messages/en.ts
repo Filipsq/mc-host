@@ -696,6 +696,48 @@ const en: Messages = {
       failed: "That didn't work. Try again in a moment.",
     },
   },
+  referrals: {
+    title: "Invite friends",
+    nav: "Invite",
+    subtitle: "Send a friend your link. When they sign up and pay for a server for at least {min} days, you both get {days} days free.",
+    yourLink: "Your link",
+    linkHint: "Send it on Discord or Messenger, or put it under your video. Your friend has 30 days after clicking it to sign up.",
+    daysLeft: "Days to use: {days}",
+    counts: "Invited: {invited} · Paid for a server: {paid}",
+    pickServer: "Add to server",
+    addDays: "Add {days} days",
+    added: "We added {days} days to {server}.",
+    noPaidServer: "You can add the days to a paid server. We'll keep them until you have one.",
+    noDaysYet: "When a friend pays for a server, the days appear here and we'll email you.",
+    howTitle: "How it works",
+    steps: [
+      "Your friend opens your link and signs up.",
+      "They pay for a server for at least {min} days.",
+      "They get {days} days free on their server right away, and you get {days} days for a paid server of your choice.",
+    ],
+    rules:
+      "You get the reward once for each friend, on their first payment of at least {min} days. You can add the days to a suspended server too, and it starts again. Your own extra accounts don't count.",
+    errors: {
+      noDays: "You have no days to use.",
+      free: "You can only add the days to a paid server.",
+      soldOut: "This server is suspended and the machine has no room right now. You still have the days: try later or pick another server.",
+      notFound: "We couldn't find that server.",
+    },
+    signupNotice: "A friend invited you: when you pay for a server for at least {min} days, you get {days} days free.",
+    homeBanner: "A friend invited you! Sign up and pay for a server for at least {min} days, and you get {days} days free.",
+    homeBannerButton: "Sign up",
+    dashboardCard: "Invite friends: {days} days free for both of you",
+    dashboardDays: "You have {days} days to use",
+    mail: {
+      subject: "You have {days} free days for an invite",
+      paragraphs: [
+        "Your friend paid for a server, so you both get {days} days free.",
+        "Add your days to a paid server of your choice on the invites page.",
+      ],
+      button: "Add the days to a server",
+      footer: "This email is about your {brand} account. Questions? Write to us: {contact}",
+    },
+  },
   planMail: {
     footer: "This email is about your server at {brand}. Questions? Write to us: {contact}",
     paid: {

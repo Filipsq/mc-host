@@ -577,6 +577,18 @@ main.legal { max-width: 760px; }
 mark.blank { background: rgb(240 163 58 / 0.18); color: var(--amber); border-radius: 4px; padding: 0 4px; }
 .contact-email { display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; font-weight: 600; }
 .address-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* Invites */
+.invite-link { font-size: 1.05rem; }
+.invite-days { gap: 14px; flex-wrap: nowrap; }
+.invite-days > svg { color: var(--accent); flex: none; }
+.invite-card { justify-content: space-between; }
+.invite-redeem { align-items: flex-end; }
+.invite-redeem .grow { flex: 1 1 220px; }
+.invite-steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+.invite-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.invite-banner > svg { color: var(--accent); flex: none; }
+.invite-banner > span { flex: 1 1 240px; }
 .address-label { margin: 0 0 4px; color: var(--muted); font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
 .address-value { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 600; overflow-wrap: anywhere; }
 .controls { justify-content: flex-start; padding-top: 14px; border-top: 1px solid var(--border); }

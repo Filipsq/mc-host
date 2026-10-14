@@ -19,7 +19,7 @@ import { activeLevel } from "@/lib/worlds";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
-import CopyButton from "./CopyButton";
+import CopyButton from "@/components/CopyButton";
 import EditionIcon from "@/components/EditionIcon";
 import Backups, { type BackupRow } from "./Backups";
 

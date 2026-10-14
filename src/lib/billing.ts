@@ -9,6 +9,7 @@ import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
 import { KEEP_DAYS, REMIND_BEFORE_DAYS, WARN_BEFORE_DELETE_DAYS, sendPlanMail } from "./planMail";
+import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
@@ -73,6 +74,7 @@ export async function startCheckout(opts: {
  */
 export async function fulfillPayment(paymentId: string) {
   const now = new Date();
+  let inviter: Inviter | null = null;
   const server = await db.$transaction(async (tx) => {
     // Claim the payment first so a retried webhook can't apply it twice.
     const claimed = await tx.payment.updateMany({
@@ -84,7 +86,10 @@ export async function fulfillPayment(paymentId: string) {
     const server = payment.server;
     if (!server) return null; // deleted before the payment went through
 
-    const paidUntil = new Date(creditStart(server, payment.plan, now).getTime() + payment.days * DAY);
+    // A friend's invite: the first long enough payment gets extra days, and so does whoever invited them.
+    inviter = await claimReferral(tx, payment.userId, payment.days);
+    const days = payment.days + (inviter ? REFERRAL_DAYS : 0);
+    const paidUntil = new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
     const planChanged = server.plan !== payment.plan;
     const needsHost = planChanged || server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED";
     return tx.server.update({
@@ -103,16 +108,18 @@ export async function fulfillPayment(paymentId: string) {
 
   // Before provisioning, which may wait for an image download.
   await sendPlanMail("paid", server);
+  if (inviter) await sendReferralMail(inviter);
   if (server.status === "PROVISIONING") await provision(server);
 }
 
 export type GiftResult = { error?: "free" | "soldOut" | "failed"; server?: Server };
 
 /**
- * An admin's gift: extends the paid period by `days` without a payment (e.g.
- * to make up for downtime), starting the server if it's suspended or unpaid.
+ * Extends the paid period by `days` without a payment, starting the server if
+ * it's suspended or unpaid: an admin's gift (e.g. to make up for downtime) or
+ * days its owner got for inviting a friend.
  */
-export async function giftDays(serverId: string, days: number): Promise<GiftResult> {
+export async function giftDays(serverId: string, days: number, why = "admin gift"): Promise<GiftResult> {
   const now = new Date();
   const s = await db.server.findUnique({ where: { id: serverId } });
   if (!s) return {};
@@ -128,7 +135,7 @@ export async function giftDays(serverId: string, days: number): Promise<GiftResu
       ...(needsHost && { status: "PROVISIONING" }),
     },
   });
-  console.info("admin gift", server.id, days, "days, paid until", server.paidUntil?.toISOString());
+  console.info(why, server.id, days, "days, paid until", server.paidUntil?.toISOString());
   if (server.status === "PROVISIONING" && !(await provision(server))) return { error: "failed", server };
   return { server };
 }
