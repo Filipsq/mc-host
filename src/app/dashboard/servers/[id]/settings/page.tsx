@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
-import { canRunNonPremium } from "@/lib/plugins";
+import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
+import { joinAddress } from "@/lib/servers";
 import { versionsFor } from "@/lib/settings";
 import { isModLoader } from "@/lib/modpacks";
 import { kindLabel } from "@/lib/serverType";
@@ -59,6 +60,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
         nonPremium={server.edition === "JAVA" ? { offered: canRunNonPremium(server), on: !server.onlineMode } : undefined}
+        crossplay={
+          server.edition === "JAVA"
+            ? { offered: canCrossplay(server), on: server.crossplay, host: joinAddress(server).host, port: server.port ?? 0 }
+            : undefined
+        }
         initial={{
           version: server.version,
           gameMode: server.gameMode,

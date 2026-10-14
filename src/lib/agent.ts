@@ -71,6 +71,7 @@ export type CreateServerSpec = {
   whitelist: boolean;
   whitelistPlayers: string[];
   onlineMode: boolean; // false: non-premium (Java on Paper only)
+  crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
   level: string; // the world folder it runs; empty for the image's default
   seed: string; // for a world it hasn't made yet
   levelType: string; // normal, flat, large_biomes or amplified (Java); empty if not chosen

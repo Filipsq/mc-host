@@ -1,0 +1,1 @@
+ALTER TABLE "Server" ADD COLUMN "crossplay" BOOLEAN NOT NULL DEFAULT false;

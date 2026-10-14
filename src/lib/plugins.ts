@@ -29,6 +29,9 @@ export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) =>
 /** Non-premium needs the AuthMe login plugin, so only Paper servers can run it. */
 export const canRunNonPremium = supportsPlugins;
 
+/** Bedrock players get in through the Geyser plugin, so crossplay is for Paper servers too. */
+export const canCrossplay = supportsPlugins;
+
 /** Mods picked one by one run on a Fabric, Forge or NeoForge server (a mod pack brings its own). */
 export const supportsMods = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && isModLoader(s.kind);
 

@@ -407,3 +407,70 @@ func TestSettingsEnv(t *testing.T) {
 		}
 	}
 }
+
+func TestCrossplay(t *testing.T) {
+	a := &agent{idle: 5 * time.Minute}
+	base := createRequest{ID: "abc12345", Name: "Test", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 30007, Hostname: "ekipa.mchost.pl", Version: "1.20.1", Kind: "vanilla"}
+
+	on := base
+	on.Crossplay = true
+	on.Plugins = []string{"gvQqBUqZ"}
+	if err := on.validate(); err != nil {
+		t.Fatal(err)
+	}
+	spec := a.containerSpec(on, images["JAVA"])
+	env := specEnv(spec)
+	for _, want := range []string{
+		"MODRINTH_PROJECTS=viaversion?,gvQqBUqZ?\n",
+		"PLUGINS=" + crossplayPlugins[0] + "," + crossplayPlugins[1] + "\n",
+	} {
+		if !strings.Contains(env, want) {
+			t.Fatalf("missing %q in\n%s", want, env)
+		}
+	}
+	host := spec["HostConfig"].(map[string]any)
+	ports := host["PortBindings"].(map[string]any)
+	if b := ports["25565/tcp"].([]map[string]string); b[0]["HostIp"] != "127.0.0.1" || b[0]["HostPort"] != "30007" {
+		t.Fatalf("java side should stay behind the router: %v", b)
+	}
+	if b := ports["19132/udp"].([]map[string]string); b[0]["HostIp"] != "" || b[0]["HostPort"] != "30007" {
+		t.Fatalf("geyser should be open on the server's port over UDP: %v", b)
+	}
+	if _, ok := spec["ExposedPorts"].(map[string]any)["19132/udp"]; !ok {
+		t.Fatal("geyser's port should be exposed")
+	}
+
+	// Off: the plugin list is still set, empty, so the image removes Geyser and Floodgate.
+	off := a.containerSpec(base, images["JAVA"])
+	if env := specEnv(off); !strings.Contains(env, "PLUGINS=\n") || strings.Contains(env, "viaversion") {
+		t.Fatalf("crossplay off should clear the plugins:\n%s", env)
+	}
+	if _, ok := off["HostConfig"].(map[string]any)["PortBindings"].(map[string]any)["19132/udp"]; ok {
+		t.Fatal("no UDP port without crossplay")
+	}
+
+	// Game modes keep their own plugins; mod servers and Bedrock can't have it.
+	sky := on
+	sky.Kind, sky.Plugins = "skyblock", nil
+	if env := specEnv(a.containerSpec(sky, images["JAVA"])); !strings.Contains(env, "MODRINTH_PROJECTS=bentobox,bskyblock,viaversion?\n") {
+		t.Fatalf("skyblock crossplay:\n%s", env)
+	}
+	fabric := base
+	fabric.Kind = "fabric"
+	if env := specEnv(a.containerSpec(fabric, images["JAVA"])); strings.Contains(env, "PLUGINS=") {
+		t.Fatalf("mod servers don't take Paper plugins:\n%s", env)
+	}
+	for _, bad := range []createRequest{
+		{ID: "abc12345", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 30007, Hostname: "ekipa.mchost.pl", Kind: "fabric", Crossplay: true},
+		{ID: "abc12345", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 30007, Crossplay: true},
+	} {
+		if err := bad.validate(); err == nil {
+			t.Errorf("%s/%s with crossplay should be refused", bad.Edition, bad.Kind)
+		}
+	}
+}
+
+// specEnv is a container spec's environment, one variable per line.
+func specEnv(spec map[string]any) string {
+	return strings.Join(spec["Env"].([]string), "\n") + "\n"
+}

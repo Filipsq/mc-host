@@ -131,6 +131,9 @@ model Server {
   // Java on Paper only: false lets in players without a bought Minecraft ("non-premium"),
   // who log in with a password through the AuthMe plugin.
   onlineMode       Boolean      @default(true)
+  // Java on Paper only: Bedrock players (phones, consoles, Windows) join too, through the
+  // Geyser plugin on the server's port over UDP.
+  crossplay        Boolean      @default(false)
   // The world folder the server runs (the image's default if null), and the seed and
   // type it was made with (src/lib/worlds.ts).
   level            String?

@@ -12,7 +12,7 @@ import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, 
 import { MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
 import { planById } from "@/lib/plans";
-import { canRunNonPremium } from "@/lib/plugins";
+import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import type { Suggestion } from "@/lib/ai";
 import AiCreator from "./AiCreator";
 import { LoaderFields, PackFields, type CurseforgeOption } from "./ModFields";
@@ -234,6 +234,16 @@ export default function CreateServerForm({ t, settings, billing, legal, plans, d
           <span className="stack-tight">
             <span>{settings.nonPremium}</span>
             <span className="muted small">{t.nonPremiumHint}</span>
+          </span>
+        </label>
+      )}
+      {edition === "JAVA" && canCrossplay({ edition, kind: gameById(game).kind }) && (
+        <label className="check">
+          {/* On unless the owner turned it off before an error sent the form back. */}
+          <input type="checkbox" name="crossplay" defaultChecked={v.name === undefined || v.crossplay === "on"} />
+          <span className="stack-tight">
+            <span>{settings.crossplay}</span>
+            <span className="muted small">{t.crossplayHint}</span>
           </span>
         </label>
       )}

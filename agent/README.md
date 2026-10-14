@@ -75,6 +75,10 @@ A Java server runs the world `level` (default `world`; Bedrock `Bedrock level`),
 `flat`) if it doesn't exist yet; the container's `mchost.level` label remembers which. With
 `onlineMode: false` (Paper kinds only) the server takes non-premium players, and the agent adds the
 AuthMe plugin with Polish messages, so players `/register` and `/login` with a password.
+With `crossplay: true` (Paper kinds only) Bedrock players join too: the image downloads Geyser and
+Floodgate from GeyserMC (`PLUGINS`, always set on Paper so turning it off removes just those two)
+and ViaVersion from Modrinth (for servers older than the newest version), and the container's
+19132/udp is published on the server's port on every address, next to the Java port on localhost.
 
 Paths in the file endpoints are relative to the server's `/data` (its volume). The agent opens the
 volume with `os.Root`, so neither `..` nor a symlink reaches outside it. Changes answer 409

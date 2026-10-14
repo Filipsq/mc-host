@@ -78,15 +78,31 @@ var (
 // someone else's name.
 const authMe = "9js4IEHC"
 
+// Crossplay: Geyser lets Bedrock players into a Java server, and Floodgate lets
+// them in without a Java account (Geyser switches to it by itself when both run
+// on the same server). Neither Paper build is on Modrinth, so they come from
+// GeyserMC. Geyser speaks the newest Java version; ViaVersion (on Modrinth)
+// lets it into a server running an older one.
+var crossplayPlugins = []string{
+	"https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot",
+	"https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot",
+}
+
+const viaVersion = "viaversion"
+
+// The port Geyser listens on inside the container (Bedrock's usual one).
+const geyserPort = "19132/udp"
+
 // pluginEnv has the image install a Paper server's plugins, or a mod loader's
 // mods, from Modrinth: the game mode's own, the login plugin a non-premium
 // server needs, then the owner's. The owner's are optional, so one without a
 // build for the server's version is skipped (with a warning in the console)
 // instead of keeping the server down, and doesn't hold back the version a game
 // mode picks; the login plugin isn't, so a non-premium server never runs
-// without it. The list is always set, even empty, because the image removes
-// the plugins and mods it installed that are no longer listed.
-func pluginEnv(kind string, plugins []string, offline bool) []string {
+// without it. Crossplay adds Geyser and Floodgate. The lists are always set,
+// even empty, because the image removes the plugins and mods it installed
+// that are no longer listed.
+func pluginEnv(kind string, plugins []string, offline, crossplay bool) []string {
 	var projects []string
 	if base := gameModePlugins[kind]; base != "" {
 		projects = strings.Split(base, ",")
@@ -94,10 +110,23 @@ func pluginEnv(kind string, plugins []string, offline bool) []string {
 	if offline {
 		projects = append(projects, authMe)
 	}
+	if crossplay {
+		// Optional: a server already on the newest version doesn't need it.
+		projects = append(projects, viaVersion+"?")
+	}
 	for _, p := range plugins {
 		projects = append(projects, p+"?")
 	}
-	return []string{"MODRINTH_PROJECTS=" + strings.Join(projects, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
+	env := []string{"MODRINTH_PROJECTS=" + strings.Join(projects, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
+	if paperKinds[kind] {
+		// Always set on Paper, so turning crossplay off removes the two plugins (and only them).
+		var urls []string
+		if crossplay {
+			urls = crossplayPlugins
+		}
+		env = append(env, "PLUGINS="+strings.Join(urls, ","))
+	}
+	return env
 }
 
 // Server IDs come from the panel (cuid); restrict them so they're safe in container names.
@@ -269,6 +298,9 @@ type createRequest struct {
 	// Java on Paper only: false lets in players without a bought Minecraft
 	// ("non-premium"); they log in with a password instead. On if missing.
 	OnlineMode *bool `json:"onlineMode"`
+	// Java on Paper only: Bedrock players (phones, consoles, Windows) join too,
+	// through the Geyser plugin on the server's port over UDP.
+	Crossplay bool `json:"crossplay"`
 
 	// The world the server runs (a folder in its files; see worlds.go) and,
 	// for one it hasn't made yet, its seed and type. The image's default
@@ -365,6 +397,8 @@ func (req *createRequest) validate() error {
 	switch {
 	case req.OnlineMode != nil && !*req.OnlineMode && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run non-premium")
+	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
+		return errors.New("only Java servers on Paper can run crossplay")
 	case req.Level != "" && !validWorldName.MatchString(req.Level):
 		return errors.New("invalid level")
 	case !validSeed.MatchString(req.Seed):
@@ -498,6 +532,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		"mchost.level":    req.level(),
 	}
 	var containerPort, hostIP string
+	bindings := map[string]any{} // more ports than the main one, if any
 	tty := false
 	// Leave headroom above the JVM heap for the JVM itself, or the kernel OOM-kills it.
 	limitMb := req.MemoryMb
@@ -525,7 +560,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}
 		if req.Kind != "modpack" {
-			env = append(env, pluginEnv(req.Kind, req.Plugins, req.offline())...)
+			env = append(env, pluginEnv(req.Kind, req.Plugins, req.offline(), req.Crossplay)...)
 		}
 		// Always set: the image only writes the properties it's given, so going back
 		// from non-premium has to say so.
@@ -575,6 +610,11 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		containerPort = "25565/tcp"
 		hostIP = "127.0.0.1" // players come in through the router, not directly
 		limitMb = req.MemoryMb + 512
+		if req.Crossplay {
+			// Bedrock has no hostname to route by, so Geyser gets the server's own
+			// port, open to everyone, over UDP (the Java side stays on TCP).
+			bindings[geyserPort] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}
+		}
 	} else {
 		env = append(env, "VERSION="+req.Version, "SERVER_NAME="+motd, "GAMEMODE="+req.GameMode)
 		if req.Level != "" {
@@ -595,12 +635,17 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		containerPort = "19132/udp"
 		tty = true // send-command writes to the server's stdin
 	}
+	bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
+	exposed := map[string]any{}
+	for port := range bindings {
+		exposed[port] = map[string]any{}
+	}
 	return map[string]any{
 		"Image":        image,
 		"Env":          env,
 		"Tty":          tty,
 		"OpenStdin":    tty,
-		"ExposedPorts": map[string]any{containerPort: map[string]any{}},
+		"ExposedPorts": exposed,
 		"Labels":       labels,
 		"HostConfig": map[string]any{
 			"Memory":     int64(limitMb) * 1024 * 1024,
@@ -615,10 +660,8 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 			"LogConfig": map[string]any{"Type": "json-file", "Config": map[string]string{"max-size": "10m", "max-file": "3"}},
 			// Restarts after a crash only; a clean exit (e.g. going to sleep) stays down.
 			"RestartPolicy": map[string]any{"Name": "on-failure", "MaximumRetryCount": 3},
-			"PortBindings": map[string]any{
-				containerPort: []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}},
-			},
-			"Mounts": []map[string]any{{"Type": "volume", "Source": containerName(req.ID), "Target": "/data"}},
+			"PortBindings":  bindings,
+			"Mounts":        []map[string]any{{"Type": "volume", "Source": containerName(req.ID), "Target": "/data"}},
 		},
 	}
 }

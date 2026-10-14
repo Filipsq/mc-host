@@ -4,7 +4,7 @@ import { startTransition, useActionState, useState } from "react";
 import type { Edition } from "@prisma/client";
 import { saveSettingsAction } from "../../actions";
 import { DIFFICULTIES, GAME_MODES, MOTD_MAX, isDowngrade } from "@/lib/settings";
-import type { Messages } from "@/i18n/messages";
+import { format, type Messages } from "@/i18n/messages";
 
 type Props = {
   serverId: string;
@@ -14,6 +14,7 @@ type Props = {
   versionNote?: string; // shown instead of the version picker when the version isn't up to the owner
   versionHint?: string; // replaces the usual hint under the version picker
   nonPremium?: { offered: boolean; on: boolean }; // Java only; offered on Paper servers
+  crossplay?: { offered: boolean; on: boolean; host: string; port: number }; // the same, with where Bedrock players join
   initial: {
     version: string;
     gameMode: string;
@@ -26,7 +27,7 @@ type Props = {
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, nonPremium, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, nonPremium, crossplay, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
@@ -109,6 +110,16 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
         </label>
       )}
       {nonPremium && !nonPremium.offered && <p className="muted small">{t.nonPremiumPaperOnly}</p>}
+      {crossplay?.offered && (
+        <label className="check">
+          <input type="checkbox" name="crossplay" defaultChecked={crossplay.on} />
+          <span className="stack-tight">
+            <span>{t.crossplay}</span>
+            <span className="muted small">{format(t.crossplayHint, { host: crossplay.host, port: crossplay.port })}</span>
+          </span>
+        </label>
+      )}
+      {crossplay && !crossplay.offered && <p className="muted small">{t.crossplayPaperOnly}</p>}
       <label className="check">
         <input type="checkbox" name="whitelist" checked={whitelist} onChange={(e) => setWhitelist(e.target.checked)} />
         <span>{t.whitelist}</span>

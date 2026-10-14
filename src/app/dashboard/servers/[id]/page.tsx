@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { getLiveDetails, joinAddress } from "@/lib/servers";
+import { crossplayAddress, getLiveDetails, joinAddress } from "@/lib/servers";
 import { allows, getServerAccess, type ServerNeed } from "@/lib/access";
 import { db } from "@/lib/db";
 import { diskLimitMb, formatMb, hardDiskLimitMb } from "@/lib/disk";
@@ -12,7 +12,7 @@ import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
-import { addonType, canRunNonPremium } from "@/lib/plugins";
+import { addonType, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
 import { FolderOpen, Globe, Puzzle, Users } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
@@ -51,6 +51,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const t = all.server;
   const b = all.billing;
   const { host, port } = joinAddress(server);
+  const bedrock = crossplayAddress(server);
   const kind = server.edition === "JAVA" && isServerKind(server.kind) ? server.kind : "vanilla";
   const islandCommand = ISLAND_COMMAND[kind];
   // Plugins on Paper, mods on a mod loader; the card reads accordingly.
@@ -107,7 +108,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
       <div className="card stack">
         <div className="address-card">
           <div>
-            <p className="address-label">{t.address}</p>
+            <p className="address-label">{bedrock ? t.javaAddress : t.address}</p>
             {server.edition === "JAVA" ? (
               <span className="address-value">{breakable(host)}</span>
             ) : (
@@ -119,6 +120,22 @@ export default async function ServerPage({ params, searchParams }: Props) {
           <CopyButton text={host} label={t.copy} copiedLabel={t.copied} />
         </div>
         {server.edition === "BEDROCK" && <p className="muted small">{t.bedrockJoin}</p>}
+        {bedrock && (
+          <>
+            <div className="address-card">
+              <div>
+                <p className="address-label">{t.crossplayAddress}</p>
+                <span className="address-value">
+                  {breakable(bedrock.host)} <span className="muted">· {t.port}</span> {bedrock.port}
+                </span>
+              </div>
+              <CopyButton text={bedrock.host} label={t.copy} copiedLabel={t.copied} />
+            </div>
+            <p className="muted small">
+              {t.crossplayJoin} {!planById(server.plan).alwaysOn && t.crossplaySleeping}
+            </p>
+          </>
+        )}
         {islandCommand && <p className="muted small">{format(t.islandHint, { command: islandCommand })}</p>}
         {kind === "modpack" && server.modpack && (
           <p className="muted small">
@@ -184,6 +201,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
               all.settings.difficulties[server.difficulty as Difficulty],
               server.whitelist && all.settings.whitelistOn,
               !server.onlineMode && canRunNonPremium(server) && all.settings.nonPremiumOn,
+              server.crossplay && canCrossplay(server) && all.settings.crossplayOn,
             ]
               .filter(Boolean)
               .join(" · ")}

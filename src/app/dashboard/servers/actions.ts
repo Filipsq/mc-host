@@ -26,7 +26,7 @@ import {
 } from "@/lib/settings";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAME_IDS, gameById } from "@/lib/games";
-import { KNOWN_PLUGINS, PLUGIN_SETS, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
+import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
@@ -64,6 +64,7 @@ const createSchema = z.object({
   motd: z.string().trim().max(MOTD_MAX).optional(),
   extraPlugins: z.string().max(500).optional(), // comma-separated KNOWN_PLUGINS keys
   nonPremium: z.literal("on").optional(),
+  crossplay: z.literal("on").optional(),
 });
 
 const MODPACK_PLAN_ERRORS = {
@@ -158,6 +159,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(parsed.data.motd && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
     onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind })),
+    crossplay: parsed.data.crossplay === "on" && canCrossplay({ edition, kind }),
     ...(modVersion && { version: modVersion }),
     ...(pack && { version: pack.gameVersion, ...packFields(pack) }),
     // Paid servers are only created on the game host once Stripe confirms payment.
@@ -320,6 +322,7 @@ const settingsSchema = z.object({
   whitelist: z.literal("on").optional(),
   players: z.string().default(""),
   nonPremium: z.literal("on").optional(),
+  crossplay: z.literal("on").optional(),
 });
 
 /** Saves the game settings and rebuilds the server with them (a running one restarts). */
@@ -353,6 +356,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       whitelist,
       whitelistPlayers: players,
       onlineMode: !(canRunNonPremium(server) && s.nonPremium === "on"),
+      // Kept as it was on a mod server, which has no checkbox for it.
+      crossplay: canCrossplay(server) ? s.crossplay === "on" : server.crossplay,
     },
   });
 

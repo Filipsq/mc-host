@@ -4,7 +4,7 @@ import { db } from "./db";
 import { AgentError, deleteServer, getServerState, recreateServer, type AgentState, type CreateServerSpec } from "./agent";
 import { getServerFor } from "./access";
 import { planById } from "./plans";
-import { addonType, canRunNonPremium } from "./plugins";
+import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
 
 export type LiveState =
   | "starting"
@@ -113,6 +113,15 @@ export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port
   return { host: GAME_HOST, port: server.port };
 }
 
+/**
+ * Where Bedrock players join a crossplay server: the same address as on Java
+ * (the wildcard DNS name points at the game host too) with the server's own port.
+ */
+export function crossplayAddress(server: Pick<Server, "edition" | "kind" | "crossplay" | "subdomain" | "port">) {
+  if (!server.crossplay || !canCrossplay(server)) return null;
+  return { host: joinAddress(server).host, port: server.port };
+}
+
 /** The address as players type it. */
 export function addressLabel(server: Pick<Server, "edition" | "subdomain" | "port">) {
   const { host, port } = joinAddress(server);
@@ -142,6 +151,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     whitelist: server.whitelist,
     whitelistPlayers: server.whitelistPlayers,
     onlineMode: server.onlineMode || !canRunNonPremium(server),
+    crossplay: server.crossplay && canCrossplay(server),
     level: server.level ?? "",
     seed: server.levelSeed ?? "",
     levelType: server.levelType ?? "",
