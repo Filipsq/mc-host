@@ -9,6 +9,7 @@ import { USER_AGENT } from "./modrinth";
 // It all needs CF_API_KEY; without one, CurseForge packs don't show anywhere.
 
 const API = () => process.env.CURSEFORGE_API_URL ?? "https://api.curseforge.com";
+const CDN = () => process.env.CURSEFORGE_CDN_URL ?? "https://edge.forgecdn.net";
 export const curseforgeEnabled = () => !!process.env.CF_API_KEY;
 
 const MINECRAFT = 432; // CurseForge's game ID for Minecraft
@@ -66,6 +67,7 @@ type Mod = {
 type File = {
   id: number;
   displayName: string;
+  fileName?: string;
   releaseType: number;
   fileLength: number;
   downloadUrl?: string | null;
@@ -91,19 +93,51 @@ async function call<T>(path: string, body?: unknown): Promise<T | null> {
   return res.json() as Promise<T>;
 }
 
+/**
+ * Where a pack file can be read from, in order: the link the API gives, then
+ * the file's usual address on CurseForge's file server, each with the API key
+ * as a header and, should that be refused, in the address too. (CurseForge's
+ * file server wants the key since July 2026.)
+ */
+function fileAddresses(file: File) {
+  // A "+" in a file name must be escaped, or the file server reads it as a space.
+  const urls = [file.downloadUrl!.replaceAll("+", "%2B")];
+  if (file.fileName) urls.push(`${CDN()}/files/${Math.floor(file.id / 1000)}/${file.id % 1000}/${encodeURIComponent(file.fileName)}`);
+  const key = encodeURIComponent(process.env.CF_API_KEY ?? "");
+  return [...new Set(urls)].flatMap((url) => [
+    { url, label: new URL(url).host },
+    { url: `${url}${url.includes("?") ? "&" : "?"}api-key=${key}`, label: `${new URL(url).host} with the key in the address` },
+  ]);
+}
+
+/** Fetches part of a file from the first address that answers, which it then keeps to (the key never goes in the error). */
+async function fetchPart(addresses: { url: string; label: string }[], from: number, to: number) {
+  const refused: string[] = [];
+  for (const a of addresses) {
+    const res = await fetch(a.url, {
+      headers: { Range: `bytes=${from}-${to}`, "User-Agent": USER_AGENT, "x-api-key": process.env.CF_API_KEY ?? "" },
+      signal: AbortSignal.timeout(60_000),
+      cache: "no-store",
+    });
+    if (res.ok) {
+      addresses.splice(0, addresses.length, a);
+      return res;
+    }
+    // What the first refusal says, for the log; the others only by their status.
+    const said = refused.length ? (await res.body?.cancel(), "") : `: ${(await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 100)}`;
+    refused.push(`${res.status} (${a.label})${said}`);
+    if (res.status >= 500) break; // the file server is down: other addresses won't help
+  }
+  throw new Error(`pack download answered ${refused.join(", ")}`);
+}
+
 /** Reads one file out of a zip on the web, fetching only the zip's directory and that file. */
-async function readZipEntry(url: string, size: number, name: string): Promise<Buffer | null> {
+async function readZipEntry(addresses: { url: string; label: string }[], size: number, name: string): Promise<Buffer | null> {
   let whole: Buffer | null = null; // when the server sends everything instead of a range
   const range = async (from: number, to: number) => {
     if (!whole) {
-      const res = await fetch(url, {
-        // CurseForge's file server wants the API key too (since July 2026; without it every file is "not found").
-        headers: { Range: `bytes=${from}-${to}`, "User-Agent": USER_AGENT, "x-api-key": process.env.CF_API_KEY ?? "" },
-        signal: AbortSignal.timeout(60_000),
-        cache: "no-store",
-      });
+      const res = await fetchPart(addresses, from, to);
       if (res.status === 206) return Buffer.from(await res.arrayBuffer());
-      if (!res.ok) throw new Error(`pack download answered ${res.status}`);
       if (Number(res.headers.get("content-length") ?? size) > 300 << 20) throw new Error("pack too big to read");
       whole = Buffer.from(await res.arrayBuffer());
     }
@@ -153,8 +187,7 @@ async function lookInside(file: File): Promise<Look | null> {
   if (known) return known;
   // No download link means the pack itself may not be downloaded by others.
   if (!file.downloadUrl) return { mods: 0, blocked: true };
-  // A "+" in a file name must be escaped, or the file server reads it as a space.
-  const raw = await readZipEntry(file.downloadUrl.replaceAll("+", "%2B"), file.fileLength, "manifest.json");
+  const raw = await readZipEntry(fileAddresses(file), file.fileLength, "manifest.json");
   if (!raw) {
     console.warn("curseforge pack has no readable manifest.json", file.downloadUrl);
     return null;
