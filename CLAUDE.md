@@ -65,3 +65,7 @@ browser.
 - `.claude/skills/skill-creator` — Anthropic's skill for writing and evaluating new skills.
 
 These are copied from https://github.com/anthropics/skills (Apache 2.0, see each `LICENSE.txt`).
+
+`.claude/settings.json` also enables the **Superpowers** plugin (github.com/obra/superpowers, MIT):
+brainstorming before building, written plans, test-driven development, systematic debugging and
+verification before calling work done. For bigger features, start with its brainstorming skill.
