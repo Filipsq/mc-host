@@ -93,60 +93,142 @@ async function call<T>(path: string, body?: unknown): Promise<T | null> {
   return res.json() as Promise<T>;
 }
 
+type Address = { url: string; part: boolean; kind: string; label: string };
+
+// The kind of address that last worked, tried first for the next pack (they all live on the same file server).
+let lastWorked: string | null = null;
+
 /**
- * Where a pack file can be read from, in order: the link the API gives, then
- * the file's usual address on CurseForge's file server, each with the API key
- * as a header and, should that be refused, in the address too. (CurseForge's
- * file server wants the key since July 2026.)
+ * Where a pack file can be read from: the link the API gives, the file's usual
+ * address built from its ID, and CurseForge's second file server; first asking
+ * for just the parts needed, then for the whole file, which some file servers
+ * insist on. The API key always goes along (CurseForge's file server wants it
+ * since July 2026).
  */
-function fileAddresses(file: File) {
+function fileAddresses(file: File): Address[] {
   // A "+" in a file name must be escaped, or the file server reads it as a space.
-  const urls = [file.downloadUrl!.replaceAll("+", "%2B")];
-  if (file.fileName) urls.push(`${CDN()}/files/${Math.floor(file.id / 1000)}/${file.id % 1000}/${encodeURIComponent(file.fileName)}`);
-  const key = encodeURIComponent(process.env.CF_API_KEY ?? "");
-  return [...new Set(urls)].flatMap((url) => [
-    { url, label: new URL(url).host },
-    { url: `${url}${url.includes("?") ? "&" : "?"}api-key=${key}`, label: `${new URL(url).host} with the key in the address` },
-  ]);
+  const link = file.downloadUrl!.replaceAll("+", "%2B");
+  const built = file.fileName ? `${CDN()}/files/${Math.floor(file.id / 1000)}/${file.id % 1000}/${encodeURIComponent(file.fileName)}` : link;
+  const mirror = link.replace("//edge.forgecdn.net/", "//mediafilez.forgecdn.net/");
+  const list: Address[] = [];
+  for (const part of [true, false]) {
+    for (const [kind, url] of [["link", link], ["built", built], ["mirror", mirror]]) {
+      if (list.some((a) => a.url === url && a.part === part)) continue;
+      list.push({ url, part, kind: `${kind} ${part}`, label: `${new URL(url).host}, ${part ? "part" : "whole file"}` });
+    }
+  }
+  return list.sort((a, b) => Number(b.kind === lastWorked) - Number(a.kind === lastWorked));
 }
 
-/** Fetches part of a file from the first address that answers, which it then keeps to (the key never goes in the error). */
-async function fetchPart(addresses: { url: string; label: string }[], from: number, to: number) {
+/**
+ * Fetches part of a file (or all of it, where the address says so) from the
+ * first address that answers, which it then keeps to. The error lists every
+ * refusal, without the key.
+ */
+async function fetchPart(addresses: Address[], from: number, to: number) {
   const refused: string[] = [];
   for (const a of addresses) {
     const res = await fetch(a.url, {
-      headers: { Range: `bytes=${from}-${to}`, "User-Agent": USER_AGENT, "x-api-key": process.env.CF_API_KEY ?? "" },
+      headers: {
+        ...(a.part ? { Range: `bytes=${from}-${to}` } : {}),
+        "User-Agent": USER_AGENT,
+        "x-api-key": process.env.CF_API_KEY ?? "",
+      },
       signal: AbortSignal.timeout(60_000),
       cache: "no-store",
     });
     if (res.ok) {
       addresses.splice(0, addresses.length, a);
+      lastWorked = a.kind;
       return res;
     }
-    // What the first refusal says, for the log; the others only by their status.
-    const said = refused.length ? (await res.body?.cancel(), "") : `: ${(await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 100)}`;
+    // What the first refusal says (and who said it), for the log; the others only by their status.
+    const said = refused.length
+      ? (await res.body?.cancel(), "")
+      : ` [${res.headers.get("server") ?? "?"}]: ${(await res.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 100)}`;
     refused.push(`${res.status} (${a.label})${said}`);
     if (res.status >= 500) break; // the file server is down: other addresses won't help
   }
   throw new Error(`pack download answered ${refused.join(", ")}`);
 }
 
-/** Reads one file out of a zip on the web, fetching only the zip's directory and that file. */
-async function readZipEntry(addresses: { url: string; label: string }[], size: number, name: string): Promise<Buffer | null> {
-  let whole: Buffer | null = null; // when the server sends everything instead of a range
+const WHOLE_MAX = 300 << 20; // the biggest pack file read whole
+
+/**
+ * Reads a whole zip as it downloads, stepping from entry to entry and stopping
+ * at the one wanted (manifest.json usually comes first, so that's a few KB).
+ * When the entries can't be stepped through, the whole file comes back for
+ * the directory at its end to find the entry.
+ */
+async function scanZip(res: Response, name: string): Promise<{ entry: Buffer | null } | { whole: Buffer }> {
+  const reader = res.body!.getReader();
+  let buf = Buffer.alloc(1 << 20);
+  let len = 0;
+  const fill = async (n: number) => {
+    while (len < n) {
+      const { done, value } = await reader.read();
+      if (done) return false;
+      if (len + value.length > WHOLE_MAX) {
+        await reader.cancel();
+        throw new Error("pack too big to read");
+      }
+      if (len + value.length > buf.length) {
+        const bigger = Buffer.alloc(Math.max(buf.length * 2, len + value.length));
+        buf.copy(bigger, 0, 0, len);
+        buf = bigger;
+      }
+      buf.set(value, len);
+      len += value.length;
+    }
+    return true;
+  };
+  for (let at = 0; (await fill(at + 30)) && buf.readUInt32LE(at) === 0x04034b50; ) {
+    const flags = buf.readUInt16LE(at + 6);
+    const method = buf.readUInt16LE(at + 8);
+    const packed = buf.readUInt32LE(at + 18);
+    const nameLen = buf.readUInt16LE(at + 26);
+    const start = at + 30 + nameLen + buf.readUInt16LE(at + 28);
+    if (flags & 8 || packed === 0xffffffff || !(await fill(start))) break; // size given after the data, or zip64
+    if (buf.toString("utf8", at + 30, at + 30 + nameLen) === name) {
+      const ok = packed <= 16 << 20 && (method === 0 || method === 8) && (await fill(start + packed));
+      await reader.cancel();
+      if (!ok) return { entry: null };
+      const data = Buffer.from(buf.subarray(start, start + packed));
+      return { entry: method === 0 ? data : inflateRawSync(data, { maxOutputLength: 16 << 20 }) };
+    }
+    at = start + packed;
+  }
+  while (await fill(len + 1));
+  return { whole: buf.subarray(0, len) };
+}
+
+/** Reads one file out of a zip on the web, fetching only the zip's directory and that file where it can. */
+async function readZipEntry(addresses: Address[], size: number, name: string): Promise<Buffer | null> {
+  // The end of central directory record sits in the last few bytes (after a comment of up to 64 KB).
+  let tailStart = Math.max(0, size - 70_000);
+  const first = await fetchPart(addresses, tailStart, size - 1);
+  let whole: Buffer | null = null;
+  let tail: Buffer;
+  if (first.status === 206) tail = Buffer.from(await first.arrayBuffer());
+  else {
+    // The whole file is coming: read it as it comes, stopping at the entry if it can.
+    const read = await scanZip(first, name);
+    if ("entry" in read) return read.entry;
+    whole = read.whole;
+    size = whole.length;
+    tailStart = Math.max(0, size - 70_000);
+    tail = whole.subarray(tailStart);
+  }
   const range = async (from: number, to: number) => {
     if (!whole) {
       const res = await fetchPart(addresses, from, to);
       if (res.status === 206) return Buffer.from(await res.arrayBuffer());
-      if (Number(res.headers.get("content-length") ?? size) > 300 << 20) throw new Error("pack too big to read");
+      if (Number(res.headers.get("content-length") ?? size) > WHOLE_MAX) throw new Error("pack too big to read");
       whole = Buffer.from(await res.arrayBuffer());
     }
     return whole.subarray(from, to + 1);
   };
 
-  // The end of central directory record sits in the last few bytes (after a comment of up to 64 KB).
-  const tailStart = Math.max(0, size - 70_000);
-  const tail = await range(tailStart, size - 1);
   const eocd = tail.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
   if (eocd < 0 || eocd + 22 > tail.length) return null;
   const dirSize = tail.readUInt32LE(eocd + 12);
@@ -295,6 +377,8 @@ async function refreshTop() {
       if (typeof p === "object") packs.push(p);
       else skipped[p] = (skipped[p] ?? 0) + 1;
     }
+    // Every pack so far failed to download: the rest would too, so they aren't asked for until the next try.
+    if (!packs.length && skipped.curseforgeUnavailable === i + found.length) break;
   }
   console.log(
     `curseforge top packs: ${Math.min(packs.length, TOP_SIZE)} of ${mods.length} found in ${Math.round((Date.now() - started) / 1000)}s, skipped ${JSON.stringify(skipped)}`,
