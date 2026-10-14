@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Server } from "@prisma/client";
 import type { Messages } from "@/i18n/messages";
 import { isServerKind } from "@/lib/modpacks";
+import { EDITION_NAMES } from "@/lib/editions";
 import { addressLabel } from "@/lib/servers";
 import { diskLimitMb } from "@/lib/disk";
 import type { Live } from "./data";
@@ -45,7 +46,7 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
                   </td>
                 )}
                 <td>
-                  {s.edition === "JAVA" ? "Java" : "Bedrock"}
+                  {EDITION_NAMES[s.edition]}
                   {s.edition === "JAVA" && isServerKind(s.kind) && s.kind !== "vanilla" && (
                     <div className="muted small">{s.kind === "modpack" ? (s.modpackTitle ?? s.modpack) : all.server.kinds[s.kind]}</div>
                   )}

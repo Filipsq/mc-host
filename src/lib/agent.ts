@@ -61,11 +61,12 @@ export type CreateServerSpec = {
   maxPlayers: number;
   version: string;
   hostname: string; // Java only
+  password?: string; // Terraria only: what players type to join
   autostop: boolean;
   backupsKept: number; // daily backups the agent keeps; 0 for none
   diskMb: number; // what the server's files may take
   gameMode: string;
-  difficulty: string;
+  difficulty: string; // Terraria: the world's classic, expert, master or journey
   motd: string; // empty: the name
   pvp: boolean; // Java only
   whitelist: boolean;
@@ -74,8 +75,8 @@ export type CreateServerSpec = {
   crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
   level: string; // the world folder it runs; empty for the image's default
   seed: string; // for a world it hasn't made yet
-  levelType: string; // normal, flat, large_biomes or amplified (Java); empty if not chosen
-  kind: string; // Java only: vanilla, skyblock, oneblock, modpack, fabric, forge or neoforge
+  levelType: string; // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria); empty if not chosen
+  kind: string; // Java: vanilla, skyblock, oneblock, modpack, fabric, forge or neoforge; Terraria: vanilla or tshock
   modpack?: string; // Modrinth slug or ID, or CurseForge slug, for a modpack
   modpackSource?: string; // "curseforge", or none for Modrinth
   modpackVersion?: string; // Modrinth version ID or CurseForge file ID, for a modpack
@@ -166,7 +167,8 @@ export async function sendCommand(id: string, command: string): Promise<string> 
 export type MetricSample = { t: number; cpu?: number; memMb: number; tps?: number; players: number };
 export type MetricsRange = "hour" | "day";
 /** Who is online now, and samples every 30 s (hour) or 5-minute averages (day) for the Statistics charts. */
-export type ServerMetrics = { players: string[]; maxPlayers?: number; samples: MetricSample[] };
+/** `online` is set when more players are connected than have known names (Terraria). */
+export type ServerMetrics = { players: string[]; online?: number; maxPlayers?: number; samples: MetricSample[] };
 
 export async function getMetrics(id: string, range: MetricsRange): Promise<ServerMetrics> {
   const res = await agentFetch(`/servers/${id}/metrics?range=${range}`, { timeoutMs: 5_000 });

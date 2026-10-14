@@ -11,7 +11,7 @@ export type WorldType = (typeof JAVA_WORLD_TYPES)[number];
 export const worldTypes = (edition: Edition): readonly WorldType[] => (edition === "JAVA" ? JAVA_WORLD_TYPES : BEDROCK_WORLD_TYPES);
 
 /** The world a server runs when none was picked: the images' own default. */
-export const defaultLevel = (edition: Edition) => (edition === "JAVA" ? "world" : "Bedrock level");
+export const defaultLevel = (edition: Edition) => (edition === "BEDROCK" ? "Bedrock level" : "world");
 
 export const activeLevel = (s: Pick<Server, "edition" | "level">) => s.level ?? defaultLevel(s.edition);
 

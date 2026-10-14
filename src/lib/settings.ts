@@ -45,9 +45,11 @@ export const MOTD_MAX = 60;
 export const WHITELIST_MAX = 100;
 
 // Java profile names, or Xbox gamertags for Bedrock (letters in any script, digits, spaces).
+// Terraria has no allow list here; its characters' names are up to 20 characters.
 const PLAYER_NAME: Record<Edition, RegExp> = {
   JAVA: /^[A-Za-z0-9_]{3,16}$/,
   BEDROCK: /^[\p{L}\p{N}_-][\p{L}\p{N} _-]{0,31}$/u,
+  TERRARIA: /^\S.{0,19}$/u,
 };
 
 export const isValidPlayerName = (edition: Edition, name: string) => PLAYER_NAME[edition].test(name);

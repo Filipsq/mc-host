@@ -1,8 +1,8 @@
 # MCHosting
 
-Web panel for free and paid Minecraft server hosting (Java and Bedrock).
+Web panel for free and paid Minecraft server hosting (Java and Bedrock), plus Terraria.
 
-Users can sign up, create a Java or Bedrock server on the free plan or a paid plan, start and stop
+Users can sign up, create a Java, Bedrock or Terraria server on the free plan or a paid plan, start and stop
 it, and use a live console. Java servers get an address like `ekipa.mchost.pl`. Free servers sleep
 when nobody is playing; Java ones wake up when a player joins.
 
@@ -61,6 +61,7 @@ npm run dev                   # http://localhost:3000
 - `src/lib/referrals.ts`, `src/app/r/[code]`, `src/app/dashboard/invite` — invites: each user's link `/r/<code>` remembers the inviter in a cookie until sign-up; the friend's first payment of 30+ days adds 7 days to their server and gives the inviter 7 days (`User.bonusDays`, with an email) to add to a paid server of their choice
 - Crossplay (`Server.crossplay`, Paper servers only, on by default for new ones): Bedrock players join a Java server through Geyser and Floodgate, at the server's Java address with its own port (UDP); the server page shows both addresses. A sleeping free server is only woken by a Java player or the Start button, and the whitelist only covers Java players
 - `src/lib/support.ts`, `src/app/api/support`, `src/app/dashboard/support`, `src/app/admin/support` — the Help chat: each user has one conversation with the admins; open chats poll for new messages, and whoever isn't looking gets an email about the first unread one
+- `src/lib/terraria.ts`, `TerrariaSettingsForm.tsx` — Terraria servers (`Edition` `TERRARIA`, `kind` `vanilla` or `tshock`): the world's size (`levelType`), difficulty (`difficulty`: classic, expert, master, journey) and seed are picked once in the create form; Settings change only the message and the join password (`Server.serverPassword`). Players join with the host and the server's own port (TCP); there are no plugins, worlds page or whitelist, and a sleeping free server wakes only from the panel
 - `src/lib/brand.ts` — the site name (MCHosting); `src/app/globals.css` — the dark theme and all styles
 - `public/art/` — the block artwork, drawn by `scripts/gen-art.mjs` (run `node scripts/gen-art.mjs` after editing it)
 

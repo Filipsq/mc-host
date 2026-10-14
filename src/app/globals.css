@@ -431,6 +431,7 @@ button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-colo
 .invite-band > div { flex: 1 1 320px; }
 .invite-band h2 { margin: 0 0 6px; font-size: 1.6rem; }
 .invite-band p { margin: 0; }
+.terraria-band h3 { margin: 0 0 6px; font-size: 1.35rem; }
 .invite-band-icon {
   display: grid; place-items: center; width: 60px; height: 60px; border-radius: 16px; flex: none;
   color: var(--accent); background: var(--accent-soft);

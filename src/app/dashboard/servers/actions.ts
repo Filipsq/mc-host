@@ -28,6 +28,7 @@ import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam }
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
+import { SERVER_PASSWORD, TERRARIA_KINDS, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -45,7 +46,7 @@ const createSchema = z.object({
     .string()
     .trim()
     .regex(/^[\p{L}\p{N} _-]{3,32}$/u),
-  edition: z.enum(["JAVA", "BEDROCK"]),
+  edition: z.enum(["JAVA", "BEDROCK", "TERRARIA"]),
   plan: planField,
   days: daysField,
   subdomain: z.string().trim().toLowerCase().optional(),
@@ -65,6 +66,13 @@ const createSchema = z.object({
   extraPlugins: z.string().max(500).optional(), // comma-separated KNOWN_PLUGINS keys
   nonPremium: z.literal("on").optional(),
   crossplay: z.literal("on").optional(),
+
+  // Terraria: the server's type and its world, which is made on the first start.
+  terrariaKind: z.enum(TERRARIA_KINDS).default("vanilla"),
+  worldSize: z.enum(WORLD_SIZES).default("medium"),
+  worldDifficulty: z.enum(WORLD_DIFFICULTIES).default("classic"),
+  seed: z.string().trim().max(100).default(""),
+  password: z.string().max(100).default(""),
 });
 
 const MODPACK_PLAN_ERRORS = {
@@ -110,16 +118,19 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   const { name, edition, plan, days } = parsed.data;
   const subdomain = edition === "JAVA" ? (parsed.data.subdomain ?? "") : null;
   if (subdomain !== null && !isValidSubdomain(subdomain)) return { error: "invalidSubdomain", values };
+  const terraria = edition === "TERRARIA";
+  if (terraria && parsed.data.seed && !WORLD_SEED.test(parsed.data.seed)) return { error: "invalidSeed", values };
+  if (terraria && parsed.data.password && !SERVER_PASSWORD.test(parsed.data.password)) return { error: "invalidPassword", values };
 
   if (plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE" } }))) {
     return { error: "freeLimit", values };
   }
   if (plan !== "FREE" && form.get("startNow") !== "on") return { error: "consentRequired", values };
 
-  // Bedrock has no ready games or mod packs here.
+  // Bedrock and Terraria have no ready games or mod packs here.
   const game = gameById(edition === "JAVA" ? parsed.data.game : "survival");
   // Mods run on the loader the owner picked, on a version it supports.
-  const kind = game.id === "mods" ? parsed.data.loader : game.kind;
+  const kind = terraria ? parsed.data.terrariaKind : game.id === "mods" ? parsed.data.loader : game.kind;
   const modVersion =
     game.id === "mods"
       ? LOADER_VERSIONS[parsed.data.loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION
@@ -153,9 +164,15 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     plan,
     memoryMb,
     kind,
-    plugins: pluginIds(startingPlugins(game.plugins, kind, edition === "JAVA" ? parsed.data.extraPlugins : undefined)),
-    ...(parsed.data.gameMode && { gameMode: parsed.data.gameMode }),
-    ...(parsed.data.difficulty && { difficulty: parsed.data.difficulty }),
+    plugins: edition === "JAVA" ? pluginIds(startingPlugins(game.plugins, kind, parsed.data.extraPlugins)) : [],
+    ...(parsed.data.gameMode && !terraria && { gameMode: parsed.data.gameMode }),
+    ...(parsed.data.difficulty && !terraria && { difficulty: parsed.data.difficulty }),
+    ...(terraria && {
+      difficulty: parsed.data.worldDifficulty,
+      levelType: parsed.data.worldSize,
+      levelSeed: parsed.data.seed || null,
+      serverPassword: parsed.data.password || null,
+    }),
     ...(parsed.data.motd && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
     onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind })),
@@ -329,7 +346,7 @@ const settingsSchema = z.object({
 export async function saveSettingsAction(id: string, _: SettingsState, form: FormData): Promise<SettingsState> {
   const server = await serverOrThrow(id, "settings");
   const parsed = settingsSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success) return { error: "invalidSettings" };
+  if (!parsed.success || server.edition === "TERRARIA") return { error: "invalidSettings" };
   const s = parsed.data;
   const java = server.edition === "JAVA";
 
@@ -365,6 +382,28 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
     if (onHost(server) && version !== server.version && planById(server.plan).backupsKept > 0) {
       await agent.createBackup(server.id).catch((err) => console.error("pre-update backup failed", server.id, err));
     }
+    await applyToHost(updated);
+  } catch (err) {
+    console.error("apply settings failed", server.id, err);
+    return { error: "applyFailed" };
+  }
+  revalidatePath(`/dashboard/servers/${id}`);
+  redirect(`/dashboard/servers/${id}?settings=saved`);
+}
+
+const terrariaSettingsSchema = z.object({ motd: z.string().trim(), password: z.string().default("") });
+
+/** Saves a Terraria server's settings (its world is set when made) and rebuilds it with them. */
+export async function saveTerrariaSettingsAction(id: string, _: SettingsState, form: FormData): Promise<SettingsState> {
+  const server = await serverOrThrow(id, "settings");
+  const parsed = terrariaSettingsSchema.safeParse(Object.fromEntries(form));
+  if (server.edition !== "TERRARIA" || !parsed.success) return { error: "invalidSettings" };
+  const { motd, password } = parsed.data;
+  if (motd.length > MOTD_MAX || /[\p{Cc}]/u.test(motd)) return { error: "motdTooLong" };
+  if (password && !SERVER_PASSWORD.test(password)) return { error: "invalidPassword" };
+
+  const updated = await db.server.update({ where: { id: server.id }, data: { motd, serverPassword: password || null } });
+  try {
     await applyToHost(updated);
   } catch (err) {
     console.error("apply settings failed", server.id, err);

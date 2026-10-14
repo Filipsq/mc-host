@@ -16,6 +16,8 @@ import { addonType, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
 import { FolderOpen, Globe, Puzzle, Users } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
+import { EDITION_NAMES } from "@/lib/editions";
+import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
@@ -51,6 +53,9 @@ export default async function ServerPage({ params, searchParams }: Props) {
   ]);
   const t = all.server;
   const b = all.billing;
+  const tt = all.terraria;
+  const terraria = server.edition === "TERRARIA";
+  const terrariaKind = terraria && isTerrariaKind(server.kind) ? server.kind : null;
   const { host, port } = joinAddress(server);
   const bedrock = crossplayAddress(server);
   const kind = server.edition === "JAVA" && isServerKind(server.kind) ? server.kind : "vanilla";
@@ -65,6 +70,35 @@ export default async function ServerPage({ params, searchParams }: Props) {
     diskUsed === undefined
       ? null
       : { used: formatMb(diskUsed, locale), limit: formatMb(diskLimit, locale), hard: formatMb(hardDiskLimitMb(diskLimit), locale) };
+  // The Settings card's one line.
+  const settingsSummary = (
+    terraria
+      ? [
+          terrariaKind && tt.kinds[terrariaKind],
+          format(tt.world, {
+            size: isWorldSize(server.levelType) ? tt.sizes[server.levelType] : "",
+            difficulty: isWorldDifficulty(server.difficulty) ? tt.difficulties[server.difficulty] : "",
+          }),
+          server.serverPassword && tt.passwordOn,
+        ]
+      : [
+          server.edition === "JAVA" &&
+            (kind === "vanilla"
+              ? server.version === "LATEST"
+                ? all.settings.latest
+                : server.version
+              : kind === "modpack" || isModLoader(kind)
+                ? `${t.kinds[kind]} · ${server.version === "LATEST" ? all.settings.latest : server.version}`
+                : t.kinds[kind]),
+          all.settings.modes[server.gameMode as GameMode],
+          all.settings.difficulties[server.difficulty as Difficulty],
+          server.whitelist && all.settings.whitelistOn,
+          !server.onlineMode && canRunNonPremium(server) && all.settings.nonPremiumOn,
+          server.crossplay && canCrossplay(server) && all.settings.crossplayOn,
+        ]
+  )
+    .filter(Boolean)
+    .join(" · ");
   // Keep refreshing while starting, or while a just-made payment is being confirmed.
   const waiting = live === "starting" || live === "restarting" || (payment === "success" && unpaid);
 
@@ -77,7 +111,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
           <div>
             <h1>{server.name}</h1>
             <div className="meta">
-              <span className="chip">{server.edition === "JAVA" ? "Java" : "Bedrock"}</span>
+              <span className="chip">{EDITION_NAMES[server.edition]}</span>
+              {terrariaKind === "tshock" && <span className="chip">{tt.kinds.tshock}</span>}
               <span className="chip">{all.plans[server.plan]}</span>
               <span className="chip">{server.memoryMb / 1024} GB RAM</span>
             </div>
@@ -121,6 +156,19 @@ export default async function ServerPage({ params, searchParams }: Props) {
           <CopyButton text={host} label={t.copy} copiedLabel={t.copied} />
         </div>
         {server.edition === "BEDROCK" && <p className="muted small">{t.bedrockJoin}</p>}
+        {terraria && (
+          <p className="muted small">
+            {tt.join}
+            {server.serverPassword && (
+              <>
+                <br />
+                {format(tt.joinPassword, { password: server.serverPassword })}
+              </>
+            )}
+          </p>
+        )}
+        {terrariaKind === "tshock" && can("console") && <p className="muted small">{tt.tshockSetup}</p>}
+        {terraria && live === "starting" && <p className="muted small">{tt.firstStart}</p>}
         {bedrock && (
           <>
             <div className="address-card">
@@ -189,23 +237,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
           <strong>{all.settings.title}</strong>{" "}
           <span className="muted">
             ·{" "}
-            {[
-              server.edition === "JAVA" &&
-                (kind === "vanilla"
-                  ? server.version === "LATEST"
-                    ? all.settings.latest
-                    : server.version
-                  : kind === "modpack" || isModLoader(kind)
-                    ? `${t.kinds[kind]} · ${server.version === "LATEST" ? all.settings.latest : server.version}`
-                    : t.kinds[kind]),
-              all.settings.modes[server.gameMode as GameMode],
-              all.settings.difficulties[server.difficulty as Difficulty],
-              server.whitelist && all.settings.whitelistOn,
-              !server.onlineMode && canRunNonPremium(server) && all.settings.nonPremiumOn,
-              server.crossplay && canCrossplay(server) && all.settings.crossplayOn,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
+            {settingsSummary}
           </span>
         </span>
         {can("settings") && (
@@ -219,7 +251,9 @@ export default async function ServerPage({ params, searchParams }: Props) {
         <div className="card row">
           <span>
             <strong>{all.files.title}</strong>{" "}
-            <span className="muted">· {server.kind === "modpack" || isModLoader(server.kind) ? all.files.cardTextMods : all.files.cardText}</span>
+            <span className="muted">
+              · {terraria ? all.files.cardTextTerraria : server.kind === "modpack" || isModLoader(server.kind) ? all.files.cardTextMods : all.files.cardText}
+            </span>
             {diskVars && (
               <span className="disk-line muted small">
                 {t.disk}: {format(t.diskUsage, diskVars)}
@@ -232,7 +266,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      {live !== "awaitingPayment" && can("files") && (
+      {live !== "awaitingPayment" && can("files") && !terraria && (
         <div className="card row">
           <span>
             <strong>{all.worlds.title}</strong>{" "}

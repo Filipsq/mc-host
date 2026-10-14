@@ -1,6 +1,6 @@
 # Node agent
 
-Runs on each game host and manages one Docker container per Minecraft server for the web panel.
+Runs on each game host and manages one Docker container per Minecraft (or Terraria) server for the web panel.
 It talks to Docker over `/var/run/docker.sock` with no extra dependencies.
 
 It also listens on the Java port (25565) and routes each player by the address they typed
@@ -9,7 +9,8 @@ wake it" in the server list and starts it when someone tries to join. Point a wi
 (`*.mchost.pl`) at the host.
 
 Free servers sleep after `IDLE_MINUTES` with nobody online: Java through the image's built-in
-autostop, Bedrock through the agent watching join/leave lines in the console.
+autostop, Bedrock through the agent watching join/leave lines in the console, Terraria through the
+agent counting players' connections to the game port.
 
 ```bash
 AGENT_TOKEN=some-long-secret go run .     # listens on :8081
@@ -37,14 +38,14 @@ go test ./...
 
 | Method | Path | |
 | --- | --- | --- |
-| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, diskMb, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackSource, modpackVersion, plugins, onlineMode, level, seed, levelType}` |
+| POST | `/servers` | Create and start a server: `{id, name, edition: JAVA\|BEDROCK\|TERRARIA, memoryMb, cpus, port, maxPlayers, version, hostname, autostop, backupsKept, diskMb, gameMode, difficulty, motd, pvp, whitelist, whitelistPlayers, kind, modpack, modpackSource, modpackVersion, plugins, onlineMode, level, seed, levelType, password}` |
 | PUT | `/servers/{id}` | Rebuild the container with a new spec (plan or settings change), keeping the world. With `?start=if-running` a stopped or sleeping server stays off |
 | GET | `/servers/{id}` | Container state, health, and when stopped why: `sleeping`, `stopped`, `crashed` or `disk`; `diskMb` (last measured) and `diskLimitMb` |
 | POST | `/servers/{id}/start`, `/stop` | Stop waits up to 60 s so the world is saved; `/stop?reason=suspended` also gives back the server's memory until it's renewed. Starting a free server that doesn't fit returns 503 `{"error":"full"}` |
 | DELETE | `/servers/{id}` | Removes the container, its world volume and its backups |
 | GET | `/servers/{id}/logs` | Console as Server-Sent Events (last 200 lines, then live) |
-| POST | `/servers/{id}/command` | `{command}`; Java via RCON, Bedrock via stdin |
-| GET | `/servers/{id}/metrics?range=hour\|day` | Who is online and samples of memory, CPU, TPS and players for the Statistics card (every 30 s, kept in memory for a day; `day` gives 5-minute averages). Java is read over one kept RCON connection, Bedrock from join/leave log lines |
+| POST | `/servers/{id}/command` | `{command}`; Java via RCON, Bedrock via stdin, Terraria through a pipe the server reads its console from |
+| GET | `/servers/{id}/metrics?range=hour\|day` | Who is online and samples of memory, CPU, TPS and players for the Statistics card (every 30 s, kept in memory for a day; `day` gives 5-minute averages). Java is read over one kept RCON connection, Bedrock from join/leave log lines, Terraria by counting connections to its port (`online`, sent when it differs from the names it could match from join/leave lines) |
 | GET | `/servers/{id}/backups` | `{keep, backups: [{name, size, createdAt}]}`, newest first |
 | POST | `/servers/{id}/backups` | Back up now. 403 when the plan has no backups |
 | GET | `/servers/{id}/backups/{name}` | Download a backup (`.tar.gz` of the server's `/data`) |
@@ -99,3 +100,12 @@ Each server gets the `itzg/minecraft-server` (Paper, with the Java its version n
 1.17–1.19, 21 for 1.20–1.21.11, 25 for 26.1 onwards) or `itzg/minecraft-bedrock-server` image,
 a memory limit and a CPU share from its plan (Java's heap starts at 1 GB and grows to the plan; idle, it gives memory back) (it may borrow one more idle core), its world in a `mc-<id>` volume, and up to 3 automatic
 restarts after a crash.
+
+Terraria servers (`edition: TERRARIA`) run `ryshe/terraria`: `kind` `vanilla` (Terraria) or `tshock`
+(TShock, with admin commands and permissions; its first start prints a `/setup` code). The agent
+replaces the image's start script: it writes `serverconfig.txt` from the spec (world `world`, made
+with `levelType` `small`, `medium` or `large`, `difficulty` `classic`, `expert`, `master` or
+`journey`, and `seed`; `maxPlayers`, `motd`, `password`) and feeds the server's console from a named
+pipe, which is how commands reach it and how `docker stop` saves the world (`exit`). The container's
+7777/tcp is published on the server's port on every address. Whitelists, plugins, crossplay,
+non-premium, mod packs and worlds endpoints are Minecraft only.

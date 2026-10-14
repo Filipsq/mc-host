@@ -147,11 +147,43 @@ function island() {
   return b;
 }
 
+// Terraria is flat, so its icon is flat pixel art: a sword, one character per pixel.
+const SWORD = [
+  ".............OOO",
+  "............OWWO",
+  "...........OWWBO",
+  "..........OWWBO.",
+  ".........OWWBO..",
+  "........OWWBO...",
+  ".......OWWBO....",
+  "......OWWBO.....",
+  "..OO.OWWBO......",
+  "..OGOWWBO.......",
+  "...OGWBO........",
+  "....OGGO........",
+  "...OHOGGO.......",
+  "..OHO..OGO......",
+  ".OGO....OO......",
+  "..O.............",
+];
+const SWORD_COLORS = { O: "#1b2430", W: "#e6f1f5", B: "#8fb3c2", G: "#f2c14e", H: "#8a5a35" };
+
+function pixelArt(rows, colors) {
+  let rects = "";
+  rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      if (colors[ch]) rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${colors[ch]}"/>`;
+    }),
+  );
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${rows[0].length} ${rows.length}" shape-rendering="crispEdges">${rects}</svg>`;
+}
+
 const dir = new URL("../public/art/", import.meta.url);
 fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(new URL("island.svg", dir), svg(render(island(), 11), 4));
 fs.writeFileSync(new URL("block-grass.svg", dir), svg(render([{ x: 0, y: 0, z: 0, type: "grass" }], 3), 1));
 fs.writeFileSync(new URL("block-stone.svg", dir), svg(render([{ x: 0, y: 0, z: 0, type: "deep" }], 5), 1));
 fs.writeFileSync(new URL("block-server.svg", dir), svg(render([{ x: 0, y: 0, z: 0, type: "server" }], 5), 1));
+fs.writeFileSync(new URL("sword.svg", dir), pixelArt(SWORD, SWORD_COLORS));
 fs.copyFileSync(new URL("block-grass.svg", dir), new URL("../src/app/icon.svg", import.meta.url));
 console.log("wrote", fs.readdirSync(dir).join(", "));

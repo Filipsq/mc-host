@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
-import type { Plan } from "@prisma/client";
+import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import EditionIcon from "@/components/EditionIcon";
@@ -13,12 +13,16 @@ import { MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
 import { planById } from "@/lib/plans";
 import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
+import { EDITION_NAMES } from "@/lib/editions";
+import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, WORLD_DIFFICULTIES, WORLD_SIZES } from "@/lib/terraria";
 import type { Suggestion } from "@/lib/ai";
 import AiCreator from "./AiCreator";
 import { LoaderFields, PackFields, type CurseforgeOption } from "./ModFields";
 
 type Props = {
   t: Messages["server"];
+  terraria: Messages["terraria"];
+  initialEdition?: Edition; // Terraria, when picked on the home page
   settings: Messages["settings"];
   billing: Messages["billing"];
   legal: Messages["legal"];
@@ -53,10 +57,10 @@ function slugify(name: string) {
     .slice(0, 32);
 }
 
-export default function CreateServerForm({ t, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, ai }: Props) {
+export default function CreateServerForm({ t, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const v = state.values ?? {};
-  const [edition, setEdition] = useState(v.edition ?? "JAVA");
+  const [edition, setEdition] = useState(v.edition ?? initialEdition ?? "JAVA");
   const [subdomain, setSubdomain] = useState(v.subdomain ?? "");
   const [subdomainEdited, setSubdomainEdited] = useState(!!v.subdomain);
   const [plan, setPlan] = useState<Plan>((v.plan as Plan | undefined) ?? defaultPlan);
@@ -149,17 +153,18 @@ export default function CreateServerForm({ t, settings, billing, legal, plans, d
       )}
       <fieldset className="stack">
         <legend>{t.edition}</legend>
-        {(["JAVA", "BEDROCK"] as const).map((ed) => (
+        {(["JAVA", "BEDROCK", "TERRARIA"] as const).map((ed) => (
           <label key={ed} className="choice">
             <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => setEdition(ed)} />
             <EditionIcon edition={ed} size={30} />
             <span>
-              <strong>{ed === "JAVA" ? "Java" : "Bedrock"}</strong>{" "}
-              <span className="muted">{ed === "JAVA" ? t.javaHint : t.bedrockHint}</span>
+              <strong>{ed === "TERRARIA" ? EDITION_NAMES[ed] : `Minecraft ${EDITION_NAMES[ed]}`}</strong>{" "}
+              <span className="muted">{{ JAVA: t.javaHint, BEDROCK: t.bedrockHint, TERRARIA: terraria.hint }[ed]}</span>
             </span>
           </label>
         ))}
       </fieldset>
+      {edition === "TERRARIA" && <TerrariaFields t={terraria} values={v} />}
       {edition === "JAVA" && (
         <label>
           {t.subdomain}
@@ -262,12 +267,14 @@ export default function CreateServerForm({ t, settings, billing, legal, plans, d
           {format(t.ramLow, { game: t.games[game], gb: wanted, plan: planById(plan).ramGb })}
         </p>
       )}
-      <p className="muted small">
-        {t.ramHelp}{" "}
-        <Link href="/#ram" target="_blank">
-          {t.ramHelpLink}
-        </Link>
-      </p>
+      {edition !== "TERRARIA" && (
+        <p className="muted small">
+          {t.ramHelp}{" "}
+          <Link href="/#ram" target="_blank">
+            {t.ramHelpLink}
+          </Link>
+        </p>
+      )}
       {plan !== "FREE" && (
         <>
           <p className="muted small">{billing.methods}</p>
@@ -279,6 +286,60 @@ export default function CreateServerForm({ t, settings, billing, legal, plans, d
         {pending ? (plan === "FREE" ? t.creating : billing.redirecting) : plan === "FREE" ? t.create : t.createAndPay}
       </button>
     </form>
+    </>
+  );
+}
+
+/** A Terraria server's type and the world it makes on its first start. */
+function TerrariaFields({ t, values }: { t: Messages["terraria"]; values: Record<string, string> }) {
+  return (
+    <>
+      <fieldset className="stack">
+        <legend>{t.kind}</legend>
+        <div className="plan-options">
+          {TERRARIA_KINDS.map((k) => (
+            <label key={k} className="choice plan-choice">
+              <input type="radio" name="terrariaKind" value={k} defaultChecked={(values.terrariaKind ?? "vanilla") === k} />
+              <span className="stack-tight">
+                <strong>{t.kinds[k]}</strong>
+                <span className="muted small">{t.kindHints[k]}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <div className="option-row">
+        <label>
+          {t.size}
+          <select name="worldSize" defaultValue={values.worldSize ?? "medium"}>
+            {WORLD_SIZES.map((s) => (
+              <option key={s} value={s}>
+                {t.sizes[s]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t.difficulty}
+          <select name="worldDifficulty" defaultValue={values.worldDifficulty ?? "classic"}>
+            {WORLD_DIFFICULTIES.map((d) => (
+              <option key={d} value={d}>
+                {t.difficulties[d]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <label>
+        {t.seed}
+        <input name="seed" maxLength={32} defaultValue={values.seed ?? ""} spellCheck={false} />
+        <span className="muted small">{t.seedHint}</span>
+      </label>
+      <label>
+        {t.password}
+        <input name="password" maxLength={SERVER_PASSWORD_MAX} defaultValue={values.password ?? ""} autoComplete="off" spellCheck={false} />
+        <span className="muted small">{t.passwordHint}</span>
+      </label>
     </>
   );
 }

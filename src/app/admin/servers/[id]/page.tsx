@@ -8,6 +8,7 @@ import { isServerKind } from "@/lib/modpacks";
 import { diskLimitMb } from "@/lib/disk";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { formats } from "../../format";
+import { EDITION_NAMES } from "@/lib/editions";
 import PaymentTable from "../../PaymentTable";
 import { DeleteButton, GiftForm } from "./AdminServerActions";
 
@@ -55,7 +56,7 @@ export default async function AdminServer({ params }: Props) {
           )),
     ],
     [t.address, <span key="a" className="mono">{addressLabel(server)}</span>],
-    [t.columns.type, [server.edition === "JAVA" ? "Java" : "Bedrock", kind && kind !== "vanilla" && (kind === "modpack" ? (server.modpackTitle ?? server.modpack) : all.server.kinds[kind])].filter(Boolean).join(" · ")],
+    [t.columns.type, [EDITION_NAMES[server.edition], kind && kind !== "vanilla" && (kind === "modpack" ? (server.modpackTitle ?? server.modpack) : all.server.kinds[kind])].filter(Boolean).join(" · ")],
     [t.version, server.modpackVersion ? `${server.version} (${server.modpackVersion})` : server.version],
     [t.columns.plan, `${all.plans[server.plan]} · ${f.gb(server.memoryMb)}`],
     [t.columns.disk, typeof state === "object" && state.diskMb !== undefined ? `${f.size(state.diskMb)} / ${f.size(diskLimitMb(server.plan))}` : "–"],

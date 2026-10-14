@@ -1,0 +1,2 @@
+ALTER TYPE "Edition" ADD VALUE 'TERRARIA';
+ALTER TABLE "Server" ADD COLUMN "serverPassword" TEXT;

@@ -48,6 +48,8 @@ export default async function NewServerPage({ searchParams }: Props) {
       <h1>{t.server.newTitle}</h1>
       <CreateServerForm
         t={t.server}
+        terraria={t.terraria}
+        initialEdition={game === "terraria" ? "TERRARIA" : undefined}
         settings={t.settings}
         billing={t.billing}
         legal={t.legal}

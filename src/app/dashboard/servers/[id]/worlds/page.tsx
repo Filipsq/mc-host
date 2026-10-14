@@ -19,7 +19,8 @@ export default async function WorldsPage({ params, searchParams }: Props) {
   if (!session?.user?.id) redirect("/login");
   const [{ id }, done] = await Promise.all([params, searchParams]);
   const server = await getServerFor(id, session.user.id, "files");
-  if (!server) notFound();
+  // Minecraft worlds only; a Terraria server's world is in its files.
+  if (!server || server.edition === "TERRARIA") notFound();
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.worlds;
   const back = <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>;

@@ -106,6 +106,7 @@ model PasswordReset {
 enum Edition {
   JAVA
   BEDROCK
+  TERRARIA
 }
 
 enum Plan {
@@ -134,7 +135,7 @@ model Server {
   version          String         @default("LATEST")
   // Game settings from the panel's Settings page (see src/lib/settings.ts).
   gameMode         String         @default("survival")
-  difficulty       String         @default("easy")
+  difficulty       String         @default("easy") // Terraria: the world's classic, expert, master or journey
   motd             String         @default("") // empty: the server's name
   pvp              Boolean        @default(true) // Java only
   whitelist        Boolean        @default(false)
@@ -146,11 +147,12 @@ model Server {
   // Geyser plugin on the server's port over UDP.
   crossplay        Boolean        @default(false)
   // The world folder the server runs (the image's default if null), and the seed and
-  // type it was made with (src/lib/worlds.ts).
+  // type it was made with (src/lib/worlds.ts). On Terraria the type is the world's size.
   level            String?
   levelSeed        String?
   levelType        String?
-  // Java only: what the server runs: vanilla (Paper), skyblock, oneblock, modpack, fabric, forge or neoforge (src/lib/modpacks.ts).
+  // What the server runs: on Java vanilla (Paper), skyblock, oneblock, modpack, fabric, forge or neoforge
+  // (src/lib/modpacks.ts); on Terraria vanilla or tshock (src/lib/terraria.ts).
   kind             String         @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.
   modpack          String?
@@ -163,7 +165,9 @@ model Server {
   plugins          String[]       @default([])
   // The list changed while the server ran; the container gets it on its next rebuild.
   pluginsPending   Boolean        @default(false)
-  // Host port of the server: behind the router for Java, public (UDP) for Bedrock.
+  // Terraria only: the password players type to join; none if null.
+  serverPassword   String?
+  // Host port of the server: behind the router for Java, public for Bedrock (UDP) and Terraria (TCP).
   port             Int?           @unique
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
   subdomain        String?        @unique

@@ -130,8 +130,11 @@ func (d *Docker) StopContainer(ctx context.Context, name string, timeoutSec int)
 	return d.call(ctx, http.MethodPost, "/containers/"+name+"/stop", url.Values{"t": {fmt.Sprint(timeoutSec)}}, nil, nil)
 }
 
+// RemoveContainer removes a container and the unnamed volumes its image asked
+// for (Terraria's images declare a few the servers don't use); the named
+// volume holding a server's world stays.
 func (d *Docker) RemoveContainer(ctx context.Context, name string) error {
-	return d.call(ctx, http.MethodDelete, "/containers/"+name, url.Values{"force": {"true"}}, nil, nil)
+	return d.call(ctx, http.MethodDelete, "/containers/"+name, url.Values{"force": {"true"}, "v": {"true"}}, nil, nil)
 }
 
 // RunOnce runs a short-lived container to completion and removes it,

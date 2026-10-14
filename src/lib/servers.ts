@@ -74,7 +74,8 @@ export async function destroyServer(server: Pick<Server, "id">) {
 }
 
 // Java servers' own ports sit behind the router (which owns 25565), so the
-// pool must not include 25565. Bedrock players connect to these ports directly.
+// pool must not include 25565. Bedrock (UDP) and Terraria (TCP) players connect
+// to these ports directly.
 const PORT_START = Number(process.env.PORT_RANGE_START ?? 30000);
 const PORT_END = Number(process.env.PORT_RANGE_END ?? 30999);
 
@@ -107,7 +108,7 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
 const GAME_DOMAIN = process.env.GAME_DOMAIN ?? "localhost";
 const GAME_HOST = process.env.GAME_HOST ?? "localhost";
 
-/** What players type in Minecraft to join. */
+/** What players type in the game to join: a Java address, or a host and port (Bedrock, Terraria). */
 export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port">) {
   if (server.edition === "JAVA") return { host: `${server.subdomain}.${GAME_DOMAIN}`, port: null };
   return { host: GAME_HOST, port: server.port };
@@ -141,6 +142,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     maxPlayers: plan.maxPlayers ?? 0,
     version: server.version,
     hostname: server.edition === "JAVA" ? joinAddress(server).host : "",
+    password: server.edition === "TERRARIA" ? (server.serverPassword ?? "") : undefined,
     autostop: !plan.alwaysOn,
     backupsKept: plan.backupsKept,
     diskMb: plan.diskGb * 1024,
@@ -148,14 +150,14 @@ export function agentSpec(server: Server): CreateServerSpec {
     difficulty: server.difficulty,
     motd: server.motd,
     pvp: server.pvp,
-    whitelist: server.whitelist,
+    whitelist: server.whitelist && server.edition !== "TERRARIA",
     whitelistPlayers: server.whitelistPlayers,
     onlineMode: server.onlineMode || !canRunNonPremium(server),
     crossplay: server.crossplay && canCrossplay(server),
     level: server.level ?? "",
     seed: server.levelSeed ?? "",
     levelType: server.levelType ?? "",
-    kind: server.edition === "JAVA" ? server.kind : "vanilla",
+    kind: server.edition === "BEDROCK" ? "vanilla" : server.kind,
     modpack: server.modpack ?? undefined,
     modpackSource: server.kind === "modpack" ? (server.modpackSource ?? undefined) : undefined,
     modpackVersion: server.modpackVersionId ?? undefined,

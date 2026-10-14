@@ -143,6 +143,15 @@ func (a *agent) pauseSaving(ctx context.Context, name, edition string) (resume f
 			run(ctx, cmd...)
 		}
 	}
+	if edition == "TERRARIA" {
+		// Terraria can't stop saving; it saves the world now and the copy waits for that.
+		run(ctx, terrariaCommand("save")...)
+		select {
+		case <-ctx.Done():
+		case <-time.After(5 * time.Second):
+		}
+		return func() {}
+	}
 	if edition == "BEDROCK" {
 		run(ctx, "send-command", "save hold")
 		// Bedrock finishes the save in progress within moments of "save hold".

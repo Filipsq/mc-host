@@ -1,6 +1,7 @@
 // Command agent runs on each game host. It creates and controls one Docker
-// container per Minecraft server on behalf of the web panel, and routes Java
-// players to the right server by the address they typed.
+// container per game server (Minecraft Java or Bedrock, or Terraria) on behalf
+// of the web panel, and routes Java players to the right server by the
+// address they typed.
 package main
 
 import (
@@ -37,7 +38,10 @@ var javaRelease = regexp.MustCompile(`^1\.(\d+)(?:\.(\d+))?$`)
 // Mod packs for 1.16 and older (like RLCraft on 1.12.2) need Java 8.
 // Skyblock and OneBlock follow their plugins' newest version, so they get the newest Java.
 func imageFor(edition, version, kind string) string {
-	if edition != "JAVA" {
+	switch edition {
+	case "TERRARIA":
+		return terrariaImages[kind]
+	case "BEDROCK":
 		return images[edition]
 	}
 	if kind == "skyblock" || kind == "oneblock" {
@@ -154,7 +158,8 @@ type agent struct {
 	diskUsage     sync.Map         // server id -> diskUse, the last measurement
 	diskMeasuring sync.Map         // server id -> true while a measurement runs in the background
 
-	metrics sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
+	metrics    sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
+	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
 }
 
 func main() {
@@ -210,13 +215,13 @@ func main() {
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
-		for _, img := range append([]string{backupImage}, images["JAVA"], images["BEDROCK"]) {
+		for _, img := range []string{backupImage, images["JAVA"], images["BEDROCK"], terrariaImages["vanilla"], terrariaImages["tshock"]} {
 			if err := a.ensureImage(context.Background(), img); err != nil {
 				log.Printf("prefetch %s: %v", img, err)
 			}
 		}
 	}()
-	go a.watchIdleBedrock(context.Background())
+	go a.watchIdle(context.Background())
 	go a.watchBackups(context.Background())
 	go a.watchDisk(context.Background())
 	go a.watchMetrics(context.Background())
@@ -288,13 +293,14 @@ type createRequest struct {
 	MaxPlayers int     `json:"maxPlayers"`
 	Version    string  `json:"version"`
 	Hostname   string  `json:"hostname"`    // Java only: the address players type, e.g. ekipa.mchost.pl
+	Password   string  `json:"password"`    // Terraria only: what players type to join; none if empty
 	Autostop   bool    `json:"autostop"`    // sleep when nobody is playing (free plan)
 	Backups    int     `json:"backupsKept"` // daily backups to keep; 0 for none
 	DiskMb     int64   `json:"diskMb"`      // disk space the server's files may take; 0 for no limit
 
 	// Game settings the owner picks in the panel.
-	GameMode   string   `json:"gameMode"`         // survival, creative or adventure
-	Difficulty string   `json:"difficulty"`       // peaceful, easy, normal or hard
+	GameMode   string   `json:"gameMode"`         // survival, creative or adventure (Minecraft)
+	Difficulty string   `json:"difficulty"`       // peaceful, easy, normal or hard; Terraria: classic, expert, master or journey
 	Motd       string   `json:"motd"`             // shown in the server list; the name if empty
 	PVP        *bool    `json:"pvp"`              // Java only; on if missing
 	Whitelist  bool     `json:"whitelist"`        // only listed players may join
@@ -311,9 +317,9 @@ type createRequest struct {
 	// world if empty.
 	Level     string `json:"level"`
 	Seed      string `json:"seed"`
-	LevelType string `json:"levelType"` // normal, flat, large_biomes or amplified (Java only)
+	LevelType string `json:"levelType"` // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria)
 
-	// Java only: what the server runs (see kinds). For a mod pack, where it comes
+	// What the server runs: on Java one of kinds; on Terraria vanilla or tshock. For a mod pack, where it comes
 	// from (modrinth, the default, or curseforge), the project's slug and the exact
 	// pack version (a Modrinth version ID or a CurseForge file ID), so players can
 	// install the same one.
@@ -337,8 +343,11 @@ var (
 )
 
 func (req *createRequest) validate() error {
+	if req.Edition == "TERRARIA" {
+		return req.validateTerraria()
+	}
 	if _, ok := images[req.Edition]; !ok {
-		return errors.New("edition must be JAVA or BEDROCK")
+		return errors.New("edition must be JAVA, BEDROCK or TERRARIA")
 	}
 	switch {
 	case !validID.MatchString(req.ID):
@@ -413,6 +422,42 @@ func (req *createRequest) validate() error {
 	return nil
 }
 
+func (req *createRequest) validateTerraria() error {
+	if req.Kind == "" {
+		req.Kind = "vanilla"
+	}
+	if req.Difficulty == "" {
+		req.Difficulty = "classic"
+	}
+	if req.LevelType == "" {
+		req.LevelType = "medium"
+	}
+	switch {
+	case !validID.MatchString(req.ID):
+		return errors.New("invalid id")
+	case req.MemoryMb < 512 || req.Port < 1024 || req.Port > 65535 || req.CPUs <= 0 || req.DiskMb < 0:
+		return errors.New("invalid memoryMb, cpus, port or diskMb")
+	case terrariaImages[req.Kind] == "":
+		return errors.New("a Terraria server's kind must be vanilla or tshock")
+	case terrariaDifficulties[req.Difficulty] == "":
+		return errors.New("a Terraria world's difficulty must be classic, expert, master or journey")
+	case terrariaSizes[req.LevelType] == "":
+		return errors.New("a Terraria world's size (levelType) must be small, medium or large")
+	case !validTerrariaPassword.MatchString(req.Password):
+		return errors.New("the password must be up to 32 letters, digits or symbols, without spaces")
+	case len([]rune(req.Motd)) > 100 || strings.ContainsFunc(req.Motd, unicode.IsControl):
+		return errors.New("motd must be one line of up to 100 characters")
+	case req.Level != "" && !validWorldName.MatchString(req.Level):
+		return errors.New("invalid level")
+	case !validSeed.MatchString(req.Seed):
+		return errors.New("invalid seed")
+	case req.Whitelist || len(req.Plugins) > 0 || req.Crossplay || req.offline() || req.Modpack != "" || req.Hostname != "":
+		return errors.New("whitelist, plugins, crossplay, onlineMode, modpacks and hostnames are Minecraft only")
+	}
+	req.Version = "LATEST"
+	return nil
+}
+
 // offline reports whether the server lets in players without a bought Minecraft.
 func (req *createRequest) offline() bool { return req.OnlineMode != nil && !*req.OnlineMode }
 
@@ -423,6 +468,8 @@ func (req *createRequest) level() string {
 		return req.Level
 	case req.Edition == "BEDROCK":
 		return defaultBedrockLevel
+	case req.Edition == "TERRARIA":
+		return defaultTerrariaLevel
 	}
 	return defaultJavaLevel
 }
@@ -495,6 +542,16 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 // run creates the server's container and, if start is set, starts it.
 func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	image := imageFor(req.Edition, req.Version, req.Kind)
+	if req.Edition == "TERRARIA" {
+		// Minecraft images fetch the newest game when the server starts; Terraria's
+		// images carry it, so a new container takes the newest image (players'
+		// games update themselves and only join a server on the same version).
+		pullCtx, cancel := context.WithTimeout(ctx, 3*time.Minute)
+		if err := a.docker.PullImage(pullCtx, image); err != nil {
+			log.Printf("pull %s: %v (using the one we have)", image, err)
+		}
+		cancel()
+	}
 	if err := a.ensureImage(ctx, image); err != nil {
 		return err
 	}
@@ -534,6 +591,15 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		"mchost.memory":   fmt.Sprint(req.MemoryMb),
 		"mchost.backups":  fmt.Sprint(req.Backups),
 		"mchost.level":    req.level(),
+	}
+	if req.Edition == "TERRARIA" {
+		// Players connect straight to the server's port: no router, no hostname.
+		env, entrypoint := terrariaSpec(req)
+		labels["mchost.maxplayers"] = fmt.Sprint(req.terrariaSlots())
+		bindings := map[string]any{terrariaPort: []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}}
+		spec := serverSpec(req, image, env, labels, bindings, false, req.MemoryMb, entrypoint)
+		spec["Healthcheck"] = terrariaHealthcheck
+		return spec
 	}
 	var containerPort, hostIP string
 	bindings := map[string]any{} // more ports than the main one, if any
@@ -640,11 +706,16 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		tty = true // send-command writes to the server's stdin
 	}
 	bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
+	return serverSpec(req, image, env, labels, bindings, tty, limitMb, nil)
+}
+
+// serverSpec is the container for a game server, whatever the game.
+func serverSpec(req createRequest, image string, env []string, labels map[string]string, bindings map[string]any, tty bool, limitMb int, entrypoint []string) map[string]any {
 	exposed := map[string]any{}
 	for port := range bindings {
 		exposed[port] = map[string]any{}
 	}
-	return map[string]any{
+	spec := map[string]any{
 		"Image":        image,
 		"Env":          env,
 		"Tty":          tty,
@@ -668,6 +739,11 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 			"Mounts":        []map[string]any{{"Type": "volume", "Source": containerName(req.ID), "Target": "/data"}},
 		},
 	}
+	if entrypoint != nil {
+		spec["Entrypoint"] = entrypoint
+		spec["Cmd"] = []string{}
+	}
+	return spec
 }
 
 func (a *agent) status(w http.ResponseWriter, r *http.Request) {
@@ -831,8 +907,11 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 	// Java servers take commands over RCON; Bedrock has no RCON, so the image
 	// writes them to the server's stdin instead (output shows up in the logs).
 	cmd := []string{"rcon-cli", req.Command}
-	if info.Config.Labels["mchost.edition"] == "BEDROCK" {
+	switch info.Config.Labels["mchost.edition"] {
+	case "BEDROCK":
 		cmd = []string{"send-command", req.Command}
+	case "TERRARIA":
+		cmd = terrariaCommand(req.Command)
 	}
 	out, err := a.docker.Exec(ctx, name, cmd)
 	if err != nil {

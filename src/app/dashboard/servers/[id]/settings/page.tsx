@@ -9,7 +9,9 @@ import { versionsFor } from "@/lib/settings";
 import { isModLoader } from "@/lib/modpacks";
 import { kindLabel } from "@/lib/serverType";
 import { format } from "@/i18n/messages";
+import { isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import SettingsForm from "./SettingsForm";
+import TerrariaSettingsForm from "./TerrariaSettingsForm";
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -19,6 +21,28 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   if (!access || !allows(access, "settings")) notFound();
   const { server } = access;
   const t = await getMessages();
+
+  if (server.edition === "TERRARIA") {
+    const tt = t.terraria;
+    const world = format(tt.world, {
+      size: isWorldSize(server.levelType) ? tt.sizes[server.levelType] : "",
+      difficulty: isWorldDifficulty(server.difficulty) ? tt.difficulties[server.difficulty] : "",
+    });
+    return (
+      <main className="wide-form stack">
+        <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
+        <h1>{t.settings.title}</h1>
+        <TerrariaSettingsForm
+          serverId={server.id}
+          name={server.name}
+          world={world}
+          initial={{ motd: server.motd, password: server.serverPassword ?? "" }}
+          t={t.settings}
+          terraria={tt}
+        />
+      </main>
+    );
+  }
 
   // Keep a version that's no longer offered selectable, so saving doesn't change it.
   const offered = versionsFor(server.kind);

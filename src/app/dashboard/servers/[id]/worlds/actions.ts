@@ -30,7 +30,7 @@ async function worldServer(id: string): Promise<Server | WorldError> {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const server = await getServerFor(id, session.user.id, "files");
-  if (!server) redirect("/dashboard");
+  if (!server || server.edition === "TERRARIA") redirect("/dashboard");
   if (!onHost(server)) return canChangeFiles(server) ? "notOnHost" : "readOnly";
   return server;
 }

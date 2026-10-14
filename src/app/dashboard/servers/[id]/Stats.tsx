@@ -73,6 +73,7 @@ export default function Stats({ id, java, running, memoryMb, locale, t }: Props)
   const now = data?.at ?? 0;
   const current = running && last && now - last.t < FRESH_SECONDS ? last : undefined;
   const players = running && data ? data.players : [];
+  const online = data?.online ?? players.length;
   const span = RANGES[data?.range ?? range];
   const from = now - span.seconds;
   const peak = (pick: (s: MetricSample) => number | undefined) => Math.max(0, ...samples.map((s) => pick(s) ?? 0));
@@ -142,7 +143,7 @@ export default function Stats({ id, java, running, memoryMb, locale, t }: Props)
         <div className="stats-players">
           <p className="address-label">{t.players}</p>
           <p className="stats-players-count">
-            <strong>{running && data ? (data.maxPlayers ? format(t.playersCount, { n: players.length, max: data.maxPlayers }) : players.length) : t.none}</strong>
+            <strong>{running && data ? (data.maxPlayers ? format(t.playersCount, { n: online, max: data.maxPlayers }) : online) : t.none}</strong>
           </p>
           {players.length > 0 ? (
             <ul className="stats-player-list">
@@ -154,7 +155,7 @@ export default function Stats({ id, java, running, memoryMb, locale, t }: Props)
               ))}
             </ul>
           ) : (
-            running && data && <p className="muted small">{t.nobody}</p>
+            running && data && online === 0 && <p className="muted small">{t.nobody}</p>
           )}
         </div>
         {notice && <p className="notice">{notice}</p>}

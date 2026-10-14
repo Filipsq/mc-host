@@ -39,13 +39,14 @@ type serverMetrics struct {
 	mu         sync.Mutex
 	samples    []metricSample // oldest first
 	players    []string       // who was online at the last sample
-	maxPlayers int            // Java only, from the list command
+	count      int            // how many, when their names aren't all known (Terraria)
+	maxPlayers int            // from Java's list command, or the label of a Terraria server
 	startedAt  string         // the container start the counters below belong to
 	cpuTotal   uint64
 	cpuSystem  uint64
 	tpsCmd     int       // index into tpsCommands that worked; -1 while unknown
 	tpsTried   time.Time // when none of them worked, the last try
-	logsSince  int64     // Bedrock: how far the join/leave lines were read
+	logsSince  int64     // Bedrock and Terraria: how far the join/leave lines were read
 	online     map[string]bool
 	rcon       *rconConn // Java: kept open between samples; only the sampler uses it
 	// Java: /list was taken over by a plugin, so the sampler asks minecraft:list.
@@ -158,7 +159,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		// Started again: its CPU counters, TPS command and players start over.
 		started, _ := time.Parse(time.RFC3339Nano, info.State.StartedAt)
 		m.startedAt, m.cpuTotal, m.cpuSystem, m.tpsCmd, m.tpsTried = info.State.StartedAt, 0, 0, -1, time.Time{}
-		m.logsSince, m.online, m.players, m.maxPlayers = started.Unix(), map[string]bool{}, nil, 0
+		m.logsSince, m.online, m.players, m.count, m.maxPlayers = started.Unix(), map[string]bool{}, nil, 0, 0
 		m.closeRCON()
 	}
 	m.mu.Unlock()
@@ -184,11 +185,20 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 	}
 	s.MemMb = int(memoryUsed(st.Memory.Usage, st.Memory.Stats) >> 20)
 
-	java := info.Config.Labels["mchost.edition"] != "BEDROCK"
+	edition := info.Config.Labels["mchost.edition"]
 	var players []string
-	maxPlayers := 0
+	count, maxPlayers := -1, 0 // count: -1 when it's len(players)
 	var tps *float64
-	if java {
+	switch edition {
+	case "TERRARIA":
+		var err error
+		if count, players, err = a.terrariaPlayers(ctx, name, m); err != nil {
+			return
+		}
+		maxPlayers, _ = strconv.Atoi(info.Config.Labels["mchost.maxplayers"])
+	case "BEDROCK":
+		players = a.bedrockPlayers(ctx, name, m)
+	default:
 		ip := info.IP()
 		run := func(cmd string) (string, error) { return a.rconRun(ctx, name, ip, m, cmd) }
 		if out, err := run(m.listCmd()); err == nil {
@@ -205,8 +215,9 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 			}
 			tps = javaTPS(run, m)
 		}
-	} else {
-		players = a.bedrockPlayers(ctx, name, m)
+	}
+	if count < 0 {
+		count = len(players)
 	}
 
 	m.mu.Lock()
@@ -222,8 +233,8 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 	}
 	m.cpuTotal, m.cpuSystem = st.CPU.Usage.Total, st.CPU.System
 	s.TPS = tps
-	s.Players = len(players)
-	m.players, m.maxPlayers = players, maxPlayers
+	s.Players = count
+	m.players, m.count, m.maxPlayers = players, count, maxPlayers
 	m.samples = append(dropBefore(m.samples, now.Add(-metricsKeep).Unix()), s)
 }
 
@@ -418,6 +429,9 @@ func (a *agent) metricsHandler(w http.ResponseWriter, r *http.Request) {
 	defer m.mu.Unlock()
 	if m.players != nil {
 		resp["players"] = m.players
+	}
+	if m.count != len(m.players) {
+		resp["online"] = m.count // more players than known names
 	}
 	if m.maxPlayers > 0 {
 		resp["maxPlayers"] = m.maxPlayers

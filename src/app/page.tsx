@@ -16,6 +16,7 @@ import CurseforgeTop from "@/components/CurseforgeTop";
 import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
 import { GAME_ICONS } from "@/components/gameIcons";
+import EditionIcon from "@/components/EditionIcon";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
 import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
@@ -204,6 +205,17 @@ export default async function Home() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div className="invite-band terraria-band" id="terraria">
+            <span className="invite-band-icon"><EditionIcon edition="TERRARIA" size={36} /></span>
+            <div>
+              <h3>{h.terrariaTitle}</h3>
+              <p className="muted">{h.terrariaText}</p>
+            </div>
+            <Link className="button large secondary" href={session?.user ? "/dashboard/new?game=terraria" : "/signup"}>
+              {h.terrariaCta}
+            </Link>
           </div>
         </div>
       </section>
