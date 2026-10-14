@@ -58,6 +58,8 @@ export default async function RootLayout({
               <Link href="/#cennik">{t.nav.pricing}</Link>
               <Link href="/#jak-to-dziala">{t.nav.howItWorks}</Link>
               <Link href="/#faq">{t.nav.faq}</Link>
+              {/* Signed in, the bar's buttons leave room for four links only. */}
+              {!signedIn && <Link href="/porownanie">{t.compare.nav}</Link>}
             </nav>
             <div className="topbar-actions">
               {signedIn ? (
@@ -101,6 +103,7 @@ export default async function RootLayout({
               <Link href="/#cennik">{t.nav.pricing}</Link>
               <Link href="/#jak-to-dziala">{t.nav.howItWorks}</Link>
               <Link href="/#faq">{t.nav.faq}</Link>
+              <Link href="/porownanie">{t.compare.nav}</Link>
             </div>
             <div className="footer-col">
               <p className="footer-title">{t.legal.footerTitle}</p>

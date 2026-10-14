@@ -253,6 +253,9 @@ export default async function Home() {
           <p className="pay-methods muted">
             <CreditCard size={16} aria-hidden /> {h.paymentMethods}
           </p>
+          <p className="compare-link">
+            <Link href="/porownanie">{h.compareLink}</Link>
+          </p>
           <RamCalculator
             t={h}
             planNames={t.plans}

@@ -128,7 +128,7 @@ button:disabled { opacity: 0.55; cursor: default; }
 .brand img { display: block; }
 .brand-accent { color: var(--accent); }
 .topnav { display: flex; gap: 22px; }
-.topnav a, .topbar-login { color: var(--muted); text-decoration: none; font-weight: 500; }
+.topnav a, .topbar-login { color: var(--muted); text-decoration: none; font-weight: 500; white-space: nowrap; }
 .topnav a:hover, .topbar-login:hover { color: var(--fg); }
 .topbar-actions { display: flex; align-items: center; gap: 14px; margin-left: auto; }
 
@@ -591,6 +591,37 @@ main.legal { max-width: 760px; }
 mark.blank { background: rgb(240 163 58 / 0.18); color: var(--amber); border-radius: 4px; padding: 0 4px; }
 .contact-email { display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; font-weight: 600; }
 .address-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* Comparison of free plans */
+main.compare { max-width: 1080px; }
+.compare h1 { margin-bottom: 8px; }
+.compare .lead { max-width: 720px; margin: 0; }
+.compare-scroll { position: relative; margin: 0 -16px; padding: 0 16px; } /* keeps the hidden labels inside its scroll */
+.compare-table { width: 100%; min-width: 820px; border-collapse: separate; border-spacing: 0; font-size: 0.92rem; }
+.compare-table th, .compare-table td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.compare-table thead th { vertical-align: bottom; font-size: 1.05rem; font-weight: 700; color: var(--fg); }
+.compare-table tbody th { width: 19%; min-width: 150px; font-weight: 600; color: var(--fg); }
+.compare-table th:first-child { position: sticky; left: 0; z-index: 1; background: var(--bg); }
+.compare-table thead th:first-child { color: var(--muted); font-size: 0.85rem; font-weight: 600; }
+.compare-plan { display: block; font-size: 0.78rem; font-weight: 500; color: var(--muted); }
+.compare-table .us { width: 21%; background: var(--accent-soft); border-left: 1px solid rgb(91 194 54 / 0.45); border-right: 1px solid rgb(91 194 54 / 0.45); }
+.compare-table thead .us { border-top: 1px solid rgb(91 194 54 / 0.45); border-radius: var(--radius-sm) var(--radius-sm) 0 0; color: var(--accent-strong); }
+.compare-table tbody tr:last-child .us { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.compare-table tbody tr:last-child td, .compare-table tbody tr:last-child th { border-bottom: 0; }
+.compare-table tbody tr:last-child .us { border-bottom: 1px solid rgb(91 194 54 / 0.45); }
+.compare-cell { display: flex; align-items: flex-start; gap: 8px; }
+.compare-icon { flex: none; margin-top: 2px; }
+.compare-cell.yes .compare-icon { color: var(--accent); }
+.compare-cell.no .compare-icon { color: var(--error); }
+.compare-cell.some .compare-icon { color: var(--amber); }
+.compare-text { color: #c9d4e0; }
+.compare-table .us .compare-text { color: var(--fg); }
+.compare-notes p { margin: 0; }
+.compare-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px 24px; overflow-wrap: anywhere; }
+.compare-sources ul { gap: 4px; }
+.compare-cta { justify-content: space-between; }
+.compare-link { margin: 10px 0 0; text-align: center; font-weight: 600; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 /* Invites */
 .invite-link { font-size: 1.05rem; }
