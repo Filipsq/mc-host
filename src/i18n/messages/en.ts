@@ -4,7 +4,7 @@ const en: Messages = {
   meta: {
     title: "Free and paid Minecraft server hosting from {price}",
     description:
-      "Free and paid Minecraft server hosting for Java and Bedrock. Create a server in a minute, with a console, plugins, mods and backups.",
+      "Free and paid Minecraft server hosting for Java and Bedrock, with crossplay between computers, phones and consoles. Create a server in a minute, with a console, plugins, mods and backups.",
   },
   nav: {
     language: "Language",
@@ -18,7 +18,7 @@ const en: Messages = {
     faq: "FAQ",
   },
   home: {
-    eyebrow: "Java and Bedrock · free plan with no time limit",
+    eyebrow: "Java and Bedrock crossplay · free plan with no time limit",
     title: "Minecraft servers in one click",
     subtitle:
       "Host a Java or Bedrock server for free, or upgrade for more players and always-on uptime.",
@@ -44,8 +44,8 @@ const en: Messages = {
         text: "Java players just type yourserver.{domain}. No port numbers.",
       },
       editions: {
-        title: "Java and Bedrock",
-        text: "Play on a computer, phone or console. You pick the edition when you create the server.",
+        title: "Crossplay: computer, phone and console",
+        text: "Java and Bedrock players (phone, console, Windows 10/11) play together on one server. It's on from the start on every new server without mods.",
       },
       console: {
         title: "Console in your browser",
@@ -116,7 +116,7 @@ const en: Messages = {
       },
       {
         q: "How do I join the server?",
-        a: "On Java, enter the server address, for example crew.{domain}, under Multiplayer → Add Server. On Bedrock, enter the address and port separately under Servers → Add Server.",
+        a: "On Java, enter the server address, for example crew.{domain}, under Multiplayer → Add Server. On Bedrock, enter the address and port separately under Servers → Add Server. You'll find both on the server's page in the panel.",
       },
       {
         q: "How can I pay?",
@@ -132,7 +132,7 @@ const en: Messages = {
       },
       {
         q: "Java or Bedrock?",
-        a: "Pick Java if you play on computers, or Bedrock if you play on phones, consoles or Windows 10/11. A server runs one edition.",
+        a: "You don't have to choose. A Java server without mods has crossplay, so players on phones, consoles and Windows 10/11 join together with players on computers. Pick a Bedrock server if you all play Bedrock. Only Java players can join a server with mods.",
       },
       {
         q: "Can we play with mods or on Skyblock?",
@@ -146,7 +146,15 @@ const en: Messages = {
         q: "Can the server be non-premium?",
         a: "Yes, on Java without mods. Turn on non-premium when creating the server or in Settings. Every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
       },
+      {
+        q: "How do invites work?",
+        a: "You'll find your link under Invite in the panel. When a friend signs up through it and pays for a server for at least {min} days, they get {days} days free on that server, and you get {days} days for a paid server of your choice.",
+      },
     ],
+    inviteTitle: "Invite friends, play longer",
+    inviteText: "Send a friend your link. When they pay for a server for at least {min} days, you both get {days} days free.",
+    inviteButton: "Get your link",
+    inviteSignUp: "Sign up and get your link",
     ctaTitle: "Ready to play?",
     ctaText: "Start a free server and send your friends the address.",
   },

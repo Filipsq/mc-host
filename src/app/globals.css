@@ -422,6 +422,20 @@ button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-colo
 .faq details[open] summary::after { content: "−"; }
 .faq details p { margin: 0; padding: 0 20px 18px; }
 
+/* Home: invites */
+.invite-section { padding-bottom: 0; }
+.invite-band {
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding: 28px 32px;
+  border-radius: 20px; border: 1px solid var(--border); background: var(--surface);
+}
+.invite-band > div { flex: 1 1 320px; }
+.invite-band h2 { margin: 0 0 6px; font-size: 1.6rem; }
+.invite-band p { margin: 0; }
+.invite-band-icon {
+  display: grid; place-items: center; width: 60px; height: 60px; border-radius: 16px; flex: none;
+  color: var(--accent); background: var(--accent-soft);
+}
+
 /* Home: closing call to action */
 .cta-band {
   display: flex; align-items: center; gap: 28px; padding: 36px 40px; border-radius: 20px;

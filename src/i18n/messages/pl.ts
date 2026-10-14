@@ -2,7 +2,7 @@ const pl = {
   meta: {
     title: "Hosting serwerów Minecraft za darmo i od {price}",
     description:
-      "Darmowy i płatny hosting serwerów Minecraft na Javę i Bedrock. Załóż serwer w minutę, z konsolą, pluginami, modami i kopiami zapasowymi. Płatność BLIK, Przelewy24 i kartą.",
+      "Darmowy i płatny hosting serwerów Minecraft na Javę i Bedrock, z crossplay między komputerem, telefonem i konsolą. Załóż serwer w minutę, z konsolą, pluginami, modami i kopiami zapasowymi. Płatność BLIK, Przelewy24 i kartą.",
   },
   nav: {
     language: "Język",
@@ -16,7 +16,7 @@ const pl = {
     faq: "FAQ",
   },
   home: {
-    eyebrow: "Java i Bedrock · darmowy plan bez limitu czasu",
+    eyebrow: "Crossplay Java i Bedrock · darmowy plan bez limitu czasu",
     title: "Serwer Minecraft w jedno kliknięcie",
     subtitle:
       "Postaw serwer na Javę lub Bedrock za darmo albo przejdź na plan płatny, by mieć więcej graczy i serwer działający 24/7.",
@@ -42,8 +42,8 @@ const pl = {
         text: "Gracze na Javie wpisują po prostu twojserwer.{domain}. Bez numerów portów.",
       },
       editions: {
-        title: "Java i Bedrock",
-        text: "Graj na komputerze, telefonie lub konsoli. Edycję wybierasz przy tworzeniu serwera.",
+        title: "Crossplay: komputer, telefon i konsola",
+        text: "Gracze z Javy i z Bedrocka (telefon, konsola, Windows 10/11) grają razem na jednym serwerze. Działa od razu na każdym nowym serwerze bez modów.",
       },
       console: {
         title: "Konsola w przeglądarce",
@@ -114,7 +114,7 @@ const pl = {
       },
       {
         q: "Jak dołączyć do serwera?",
-        a: "Na Javie wpisz adres serwera, np. ekipa.{domain}, w menu Tryb wieloosobowy → Dodaj serwer. Na Bedrock wpisz adres i port osobno w zakładce Serwery → Dodaj serwer.",
+        a: "Na Javie wpisz adres serwera, np. ekipa.{domain}, w menu Tryb wieloosobowy → Dodaj serwer. Na Bedrocku wpisz adres i port osobno w zakładce Serwery → Dodaj serwer. Oba znajdziesz na stronie serwera w panelu.",
       },
       {
         q: "Czym mogę zapłacić?",
@@ -130,7 +130,7 @@ const pl = {
       },
       {
         q: "Java czy Bedrock?",
-        a: "Wybierz Javę, jeśli gracie na komputerach, albo Bedrock, jeśli gracie na telefonach, konsolach lub Windows 10/11. Serwer działa w jednej edycji.",
+        a: "Nie musicie wybierać. Serwer na Javę bez modów ma crossplay, więc gracze z telefonów, konsol i Windows 10/11 dołączą razem z graczami z komputerów. Serwer na Bedrock wybierz, jeśli wszyscy gracie na Bedrocku. Na serwer z modami wchodzą tylko gracze z Javy.",
       },
       {
         q: "Czy mogę grać na modach albo na Skyblocku?",
@@ -144,7 +144,15 @@ const pl = {
         q: "Czy serwer może być non-premium?",
         a: "Tak, na Javie bez modów. Włącz non-premium przy tworzeniu serwera albo w Ustawieniach. Każdy gracz ustawi wtedy hasło komendą /register i będzie logować się przez /login, więc nikt nie zagra pod cudzym nickiem.",
       },
+      {
+        q: "Jak działa polecanie znajomych?",
+        a: "W panelu, w zakładce Polecaj, znajdziesz swój link. Gdy znajomy założy przez niego konto i opłaci serwer na co najmniej {min} dni, dostanie {days} dni gratis do tego serwera, a Ty {days} dni do wybranego płatnego serwera.",
+      },
     ],
+    inviteTitle: "Polecaj znajomym, graj dłużej",
+    inviteText: "Wyślij znajomemu swój link. Gdy opłaci serwer na co najmniej {min} dni, oboje dostaniecie {days} dni gratis.",
+    inviteButton: "Weź swój link",
+    inviteSignUp: "Załóż konto i weź link",
     ctaTitle: "Gotowy do gry?",
     ctaText: "Postaw darmowy serwer i wyślij znajomym adres.",
   },

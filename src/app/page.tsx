@@ -23,9 +23,9 @@ import { REFERRAL_COOKIE, REFERRAL_DAYS, REFERRAL_MIN_DAYS } from "@/lib/referra
 
 const featureIcons = {
   free: Gift,
+  editions: Smartphone,
   sleep: MoonStar,
   address: Globe,
-  editions: Smartphone,
   console: SquareTerminal,
   payments: CreditCard,
 } as const;
@@ -263,6 +263,21 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className="section invite-section" id="polecaj">
+        <div className="container">
+          <div className="invite-band">
+            <span className="invite-band-icon"><Gift size={30} aria-hidden /></span>
+            <div>
+              <h2>{h.inviteTitle}</h2>
+              <p className="muted">{format(h.inviteText, { days: REFERRAL_DAYS, min: REFERRAL_MIN_DAYS })}</p>
+            </div>
+            <Link className="button large" href={session?.user ? "/dashboard/invite" : "/signup"}>
+              {session?.user ? h.inviteButton : h.inviteSignUp}
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="section" id="faq">
         <div className="container narrow-container">
           <header className="section-head">
@@ -272,7 +287,9 @@ export default async function Home() {
             {h.faq.map((item) => (
               <details key={item.q}>
                 <summary>{item.q}</summary>
-                <p className="muted">{format(item.a, { domain, gb: free.ramGb, n: free.maxPlayers ?? 0 })}</p>
+                <p className="muted">
+                  {format(item.a, { domain, gb: free.ramGb, n: free.maxPlayers ?? 0, days: REFERRAL_DAYS, min: REFERRAL_MIN_DAYS })}
+                </p>
               </details>
             ))}
           </div>
