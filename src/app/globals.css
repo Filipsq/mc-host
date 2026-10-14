@@ -607,6 +607,44 @@ mark.blank { background: rgb(240 163 58 / 0.18); color: var(--amber); border-rad
 .address-value { font-family: var(--font-mono); font-size: 1.2rem; font-weight: 600; overflow-wrap: anywhere; }
 .controls { justify-content: flex-start; padding-top: 14px; border-top: 1px solid var(--border); }
 
+/* Live statistics on the server page: who is online and RAM, CPU, TPS and player charts. */
+.stats-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.stats-head h2 { margin: 0; }
+.stats-range { display: inline-flex; gap: 2px; padding: 3px; border-radius: var(--radius-sm); background: var(--surface); border: 1px solid var(--border); }
+.stats-range button { background: transparent; color: var(--muted); box-shadow: none; padding: 6px 12px; }
+.stats-range button:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); transform: none; }
+.stats-range button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.stats-players .address-label { margin: 0; }
+.stats-players-count { margin: 2px 0 8px; font-size: 1.35rem; }
+.stats-player-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.stats-player-list .dot { width: 7px; height: 7px; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; transition: opacity 0.15s; }
+.stats-grid.loading { opacity: 0.55; }
+.stats-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+@media (max-width: 640px) { .stats-grid { grid-template-columns: 1fr; } }
+.stats-tile { min-width: 0; padding: 14px; border-radius: var(--radius-sm); background: var(--bg-alt); border: 1px solid var(--border); }
+.stats-tile-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.stats-tile-head .address-label { margin: 0; }
+.stats-value { font-size: 1.3rem; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+.stats-sub { margin: 2px 0 10px; min-height: 1.2em; }
+.chart { --chart-line: #4fae2c; }
+.chart-plot { position: relative; height: 110px; touch-action: pan-y; cursor: crosshair; }
+.chart-plot svg { display: block; overflow: visible; }
+.chart-max { position: absolute; top: -4px; left: 0; font-size: 0.72rem; color: var(--muted); background: var(--bg-alt); padding-right: 4px; pointer-events: none; }
+.chart-grid { stroke: var(--border); stroke-width: 1; }
+.chart-area { fill: var(--chart-line); fill-opacity: 0.12; }
+.chart-line { fill: none; stroke: var(--chart-line); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-point { fill: var(--chart-line); }
+.chart-cross { stroke: var(--muted); stroke-opacity: 0.6; stroke-width: 1; }
+.chart-dot { fill: var(--chart-line); stroke: var(--bg-alt); stroke-width: 2; }
+.chart-tip {
+  position: absolute; top: -6px; transform: translate(10px, -100%); white-space: nowrap; pointer-events: none;
+  padding: 5px 9px; border-radius: 7px; background: var(--surface-2); border: 1px solid var(--border-strong);
+  font-size: 0.82rem; box-shadow: 0 6px 18px rgb(0 0 0 / 0.35); font-variant-numeric: tabular-nums;
+}
+.chart-tip.left { transform: translate(calc(-100% - 10px), -100%); }
+.chart-axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+
 .console-frame { border-radius: var(--radius); border: 1px solid var(--border-strong); overflow: hidden; background: #07090c; }
 .console-bar {
   display: flex; align-items: center; gap: 7px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--border);

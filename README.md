@@ -44,7 +44,7 @@ npm run dev                   # http://localhost:3000
 - `prisma/schema.prisma` — users and servers (edition, plan, status, memory)
 - `src/auth.ts` — Auth.js with email + password (bcrypt)
 - `src/app/actions.ts` — sign-up, log-in, log-out server actions
-- `src/app/dashboard` — server list, create-server page, and each server's page with controls and console
+- `src/app/dashboard` — server list, create-server page, and each server's page with controls, live statistics (`Stats.tsx`: who is online, RAM, CPU, TPS and player charts from the agent's `/metrics`) and console
 - `src/lib/agent.ts` — client for the node agent; `src/lib/servers.ts` — ports, addresses, ownership, live status
 - `src/lib/billing.ts`, `src/app/api/stripe`, `src/app/api/cron` — payments and the billing job
 - `agent/` — the node agent (see its README)

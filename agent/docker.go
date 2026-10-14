@@ -189,6 +189,9 @@ type ContainerInfo struct {
 		Tty    bool              `json:"Tty"`
 		Labels map[string]string `json:"Labels"`
 	} `json:"Config"`
+	HostConfig struct {
+		NanoCpus int64 `json:"NanoCpus"`
+	} `json:"HostConfig"`
 	RestartCount    int `json:"RestartCount"`
 	NetworkSettings struct {
 		Networks map[string]struct {

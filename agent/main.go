@@ -153,6 +153,8 @@ type agent struct {
 	diskLimits    map[string]int64 // server id -> MB its files may take (see disk.go)
 	diskUsage     sync.Map         // server id -> diskUse, the last measurement
 	diskMeasuring sync.Map         // server id -> true while a measurement runs in the background
+
+	metrics sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
 }
 
 func main() {
@@ -217,6 +219,7 @@ func main() {
 	go a.watchIdleBedrock(context.Background())
 	go a.watchBackups(context.Background())
 	go a.watchDisk(context.Background())
+	go a.watchMetrics(context.Background())
 
 	gameAddr := envOr("GAME_ADDR", ":25565")
 	ln, err := net.Listen("tcp", gameAddr)
@@ -245,6 +248,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("DELETE /servers/{id}", a.remove)
 	mux.HandleFunc("GET /servers/{id}/logs", a.logs)
 	mux.HandleFunc("POST /servers/{id}/command", a.command)
+	mux.HandleFunc("GET /servers/{id}/metrics", a.metricsHandler)
 	mux.HandleFunc("GET /servers/{id}/backups", a.backupsList)
 	mux.HandleFunc("POST /servers/{id}/backups", a.backupsCreate)
 	mux.HandleFunc("GET /servers/{id}/backups/{file}", a.backupDownload)

@@ -163,6 +163,16 @@ export async function sendCommand(id: string, command: string): Promise<string> 
   return (await res.json()).output;
 }
 
+export type MetricSample = { t: number; cpu?: number; memMb: number; tps?: number; players: number };
+export type MetricsRange = "hour" | "day";
+/** Who is online now, and samples every 30 s (hour) or 5-minute averages (day) for the Statistics charts. */
+export type ServerMetrics = { players: string[]; maxPlayers?: number; samples: MetricSample[] };
+
+export async function getMetrics(id: string, range: MetricsRange): Promise<ServerMetrics> {
+  const res = await agentFetch(`/servers/${id}/metrics?range=${range}`, { timeoutMs: 5_000 });
+  return res.json();
+}
+
 /** Opens the console log stream (Server-Sent Events) for a server. */
 export async function openLogStream(id: string, signal: AbortSignal) {
   return agentFetch(`/servers/${id}/logs`, { signal });

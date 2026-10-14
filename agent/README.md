@@ -44,6 +44,7 @@ go test ./...
 | DELETE | `/servers/{id}` | Removes the container, its world volume and its backups |
 | GET | `/servers/{id}/logs` | Console as Server-Sent Events (last 200 lines, then live) |
 | POST | `/servers/{id}/command` | `{command}`; Java via RCON, Bedrock via stdin |
+| GET | `/servers/{id}/metrics?range=hour\|day` | Who is online and samples of memory, CPU, TPS and players for the Statistics card (every 30 s, kept in memory for a day; `day` gives 5-minute averages). Java is read over one kept RCON connection, Bedrock from join/leave log lines |
 | GET | `/servers/{id}/backups` | `{keep, backups: [{name, size, createdAt}]}`, newest first |
 | POST | `/servers/{id}/backups` | Back up now. 403 when the plan has no backups |
 | GET | `/servers/{id}/backups/{name}` | Download a backup (`.tar.gz` of the server's `/data`) |

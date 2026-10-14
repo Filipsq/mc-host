@@ -19,6 +19,7 @@ import { activeLevel } from "@/lib/worlds";
 import AutoRefresh from "@/components/AutoRefresh";
 import ServerControls from "./ServerControls";
 import Console from "./Console";
+import Stats from "./Stats";
 import CopyButton from "@/components/CopyButton";
 import EditionIcon from "@/components/EditionIcon";
 import Backups, { type BackupRow } from "./Backups";
@@ -270,6 +271,17 @@ export default async function ServerPage({ params, searchParams }: Props) {
             <Users size={16} aria-hidden /> {all.access.manage}
           </Link>
         </div>
+      )}
+
+      {!unpaid && (
+        <Stats
+          id={server.id}
+          java={server.edition === "JAVA"}
+          running={live === "online" || live === "starting" || live === "restarting"}
+          memoryMb={server.memoryMb}
+          locale={locale}
+          t={t.stats}
+        />
       )}
 
       {!unpaid && can("console") && <Console id={server.id} t={t} />}
