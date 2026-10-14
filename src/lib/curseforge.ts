@@ -153,7 +153,10 @@ async function lookInside(file: File): Promise<Look | null> {
   // No download link means the pack itself may not be downloaded by others.
   if (!file.downloadUrl) return { mods: 0, blocked: true };
   const raw = await readZipEntry(file.downloadUrl, file.fileLength, "manifest.json");
-  if (!raw) return null;
+  if (!raw) {
+    console.warn("curseforge pack has no readable manifest.json", file.downloadUrl);
+    return null;
+  }
   const manifest = JSON.parse(raw.toString("utf8")) as Manifest;
   const ids = [...new Set((manifest.files ?? []).filter((f) => f.required !== false).map((f) => f.projectID))];
   let blocked = false;
@@ -227,6 +230,7 @@ export async function resolveCurseforgePack(ref: { slug: string; fileId?: number
 // The home page's list, refreshed in the background every hour and kept only in memory.
 const TOP_SIZE = 10;
 const TOP_TTL = 60 * 60_000;
+const EMPTY_RETRY = 5 * 60_000;
 let top: { at: number; packs: CurseforgePack[] } | null = null;
 let refreshing: Promise<void> | null = null;
 
@@ -238,14 +242,30 @@ async function refreshTop() {
     sortOrder: "desc",
     pageSize: "40",
   });
+  const started = Date.now();
   const mods = (await call<{ data: Mod[] }>(`/v1/mods/search?${params}`))?.data ?? [];
   const packs: CurseforgePack[] = [];
+  const skipped: Partial<Record<CurseforgeError, number>> = {};
   // In ranking order, a few at a time, skipping packs a server can't run here.
   for (let i = 0; i < mods.length && packs.length < TOP_SIZE; i += 4) {
-    const found = await Promise.all(mods.slice(i, i + 4).map((m) => packOf(m).catch(() => "curseforgeUnavailable" as const)));
-    packs.push(...found.filter((p): p is CurseforgePack => typeof p === "object"));
+    const found = await Promise.all(
+      mods.slice(i, i + 4).map((m) =>
+        packOf(m).catch((err) => {
+          console.error("curseforge pack skipped", m.slug, (err as Error).message);
+          return "curseforgeUnavailable" as const;
+        }),
+      ),
+    );
+    for (const p of found) {
+      if (typeof p === "object") packs.push(p);
+      else skipped[p] = (skipped[p] ?? 0) + 1;
+    }
   }
-  top = { at: Date.now(), packs: packs.slice(0, TOP_SIZE) };
+  console.log(
+    `curseforge top packs: ${Math.min(packs.length, TOP_SIZE)} of ${mods.length} found in ${Math.round((Date.now() - started) / 1000)}s, skipped ${JSON.stringify(skipped)}`,
+  );
+  // An empty list (CurseForge or its downloads failing) is tried again soon instead of in an hour.
+  top = { at: packs.length ? Date.now() : Date.now() - TOP_TTL + EMPTY_RETRY, packs: packs.slice(0, TOP_SIZE) };
 }
 
 /**
