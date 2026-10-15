@@ -235,7 +235,8 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   if (!parsed.success) return { error: "invalidPlan" };
   if (form.get("startNow") !== "on") return { error: "consentRequired" };
   // Renewing the same plan needs nothing new; an upgrade only needs the difference.
-  if (!(await canSellMemory(planById(parsed.data.plan).ramGb * 1024 - heldMemoryMb(server)))) {
+  const planMb = planById(parsed.data.plan).ramGb * 1024;
+  if (!(await canSellMemory(planMb - heldMemoryMb(server), planMb))) {
     return { error: "soldOut" };
   }
 

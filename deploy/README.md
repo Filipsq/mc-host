@@ -140,14 +140,15 @@ before taking real payments.
 ## Server memory
 
 `setup.sh` works out how much memory the Minecraft servers may share and writes it to `deploy/.env`
-as `MEMORY_LIMIT_MB` (on an 8 GB server that's about 5 GB). It also writes `MEMORY_OVERBOOK=1.5`:
-paid plans are sold up to 1.5 times that memory (about 7.5 GB on an 8 GB server), as most hosts do.
+as `MEMORY_LIMIT_MB` (on an 8 GB server that's about 5 GB). It also writes `MEMORY_OVERBOOK=2`:
+paid plans are sold up to 2 times that memory (about 10 GB on an 8 GB server), as most hosts do.
 That works because a stopped server uses no memory, and a running Java server starts small and only
 grows as far as its players need, up to its plan. Once it's all sold, the site shows paid plans as
 sold out.
 
-On an 8 GB server that means, for example, two Starters or one Standard. Pro (10 GB) needs more, so
-it shows as sold out until you move to a bigger machine.
+On an 8 GB server that means, for example, three Starters or one Standard and one Starter. A single
+server can't get more than the machine really has, so Pro (10 GB) shows as sold out until you move
+to a bigger machine.
 
 Free servers only use memory while someone plays. One starts only when the running servers' plans
 still fit in the overbooked limit and the machine really has its memory free with 1 GB to spare;

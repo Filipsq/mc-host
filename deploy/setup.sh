@@ -63,8 +63,10 @@ fi
 # Paid plans are sold up to this many times that memory, since stopped servers
 # use none and Java servers only what their players need (see README.md).
 if ! grep -q '^MEMORY_OVERBOOK=' .env; then
-  echo "MEMORY_OVERBOOK=1.5" >> .env
+  echo "MEMORY_OVERBOOK=2" >> .env
 fi
+# 1.5 was the default until 2026-10-15; it didn't leave room to earn on a plan.
+sed -i 's/^MEMORY_OVERBOOK=1\.5$/MEMORY_OVERBOOK=2/' .env
 echo "Minecraft servers may use up to $(grep '^MEMORY_LIMIT_MB=' .env | cut -d= -f2) MB of memory in total;"
 echo "paid plans are sold up to $(grep '^MEMORY_OVERBOOK=' .env | cut -d= -f2) times that."
 
