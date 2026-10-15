@@ -89,8 +89,11 @@ export default async function Home() {
             </ul>
           </div>
           <div className="hero-art" aria-hidden>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="island" src="/art/island.svg" alt="" width={560} height={520} />
+            <span className="island-shadow" />
+            <div className="island">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/art/island.svg" alt="" width={560} height={520} />
+            </div>
             <div className="hero-card">
               <span className="dot online" />
               <HeroAddress names={h.heroNames} domain={domain} />

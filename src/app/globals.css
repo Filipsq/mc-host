@@ -200,20 +200,30 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 .perks li { display: inline-flex; align-items: center; gap: 6px; }
 .perks svg { color: var(--accent); }
 .hero-art { position: relative; display: flex; justify-content: center; }
-.island { width: min(100%, 520px); height: auto; animation: float 6s ease-in-out infinite; filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.55)); }
+/* The island moves as one ready-drawn layer: no filter on it, so the browser
+   only shifts the picture each frame instead of redrawing its ~1700 shapes and
+   a blurred shadow. The shadow is a separate soft ellipse that stays put. */
+.island { position: relative; width: min(100%, 520px); animation: float 6s ease-in-out infinite; will-change: transform; }
+.island img { display: block; width: 100%; height: auto; }
+.island-shadow {
+  position: absolute; left: 50%; bottom: 2%; width: min(70%, 380px); aspect-ratio: 4 / 1; margin-left: max(-35%, -190px);
+  border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / 0.6), transparent);
+  animation: float-shadow 6s ease-in-out infinite; will-change: transform, opacity;
+}
 .hero-card {
   position: absolute; left: 0; bottom: 8%; display: flex; align-items: center; gap: 10px;
   padding: 10px 14px; border-radius: 12px; background: rgb(20 26 34 / 0.92); border: 1px solid var(--border-strong);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.45); font-size: 0.9rem; animation: float 6s ease-in-out infinite reverse;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.45); font-size: 0.9rem; animation: float 6s ease-in-out infinite reverse; will-change: transform;
 }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes float { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -12px, 0); } }
+@keyframes float-shadow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.9); opacity: 0.75; } }
 .hero-address { white-space: nowrap; }
 .caret {
   display: inline-block; width: 2px; height: 1.05em; margin: 0 -1px; vertical-align: -0.15em;
   background: var(--accent); animation: blink 1s steps(1) infinite;
 }
 @keyframes blink { 50% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .island, .hero-card, .caret { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .island, .island-shadow, .hero-card, .caret { animation: none; } }
 
 /* Home: sections */
 .section { padding: 80px 0; }
@@ -452,26 +462,35 @@ button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-colo
 
 /* Status */
 .badge {
-  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
   font-size: 0.82rem; font-weight: 700; white-space: nowrap;
   color: var(--muted); background: rgb(148 163 184 / 0.1); border: 1px solid rgb(148 163 184 / 0.25);
 }
 .badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 .badge.online { color: var(--accent-strong); background: var(--accent-soft); border-color: rgb(91 194 54 / 0.35); }
-.badge.online::before { box-shadow: 0 0 0 3px rgb(114 217 75 / 0.25); animation: pulse 2s ease-out infinite; }
+.badge.online::before { box-shadow: 0 0 0 3px rgb(114 217 75 / 0.25); }
+.badge.online::after {
+  content: ""; position: absolute; left: 10px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px;
+  border-radius: 50%; background: rgb(114 217 75 / 0.6); animation: pulse 2s ease-out infinite; will-change: transform, opacity;
+}
 .badge.starting, .badge.restarting, .badge.suspended, .badge.awaitingPayment {
   color: var(--amber); background: rgb(240 163 58 / 0.1); border-color: rgb(240 163 58 / 0.35);
 }
 .badge.sleeping { color: var(--sky); background: rgb(96 165 250 / 0.1); border-color: rgb(96 165 250 / 0.35); }
 .badge.crashed, .badge.diskFull { color: var(--error); background: rgb(248 113 113 / 0.1); border-color: rgb(248 113 113 / 0.35); }
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-.dot.online { background: var(--accent-strong); box-shadow: 0 0 0 4px rgb(114 217 75 / 0.2); animation: pulse 2s ease-out infinite; }
-/* A running server's light: a ring that keeps spreading out and fading. */
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgb(114 217 75 / 0.6); }
-  70%, 100% { box-shadow: 0 0 0 8px rgb(114 217 75 / 0); }
+.dot.online { position: relative; background: var(--accent-strong); box-shadow: 0 0 0 4px rgb(114 217 75 / 0.2); }
+.dot.online::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; background: rgb(114 217 75 / 0.6);
+  animation: pulse 2s ease-out infinite; will-change: transform, opacity;
 }
-@media (prefers-reduced-motion: reduce) { .dot.online, .badge.online::before { animation: none; } }
+/* A running server's light: a ring that keeps spreading out and fading. It
+   grows by scale and fades by opacity, so it never repaints what is around it. */
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  70%, 100% { transform: scale(2.8); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .dot.online::after, .badge.online::after { animation: none; opacity: 0; } }
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 6px;
@@ -519,7 +538,7 @@ code {
   content: ""; position: absolute; width: 220px; height: 120px; bottom: 0; border-radius: 50%;
   background: radial-gradient(closest-side, rgb(91 194 54 / 0.28), transparent); filter: blur(10px);
 }
-.empty-art img { position: relative; animation: float 6s ease-in-out infinite; filter: drop-shadow(0 20px 26px rgb(0 0 0 / 0.5)); }
+.empty-art img { position: relative; animation: float 6s ease-in-out infinite; will-change: transform; }
 .empty-games { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .empty-games .chip { text-decoration: none; transition: border-color 0.15s, color 0.15s; }
 .empty-games .chip:hover { border-color: var(--accent); color: var(--fg); }
