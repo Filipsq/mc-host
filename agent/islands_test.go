@@ -1,8 +1,10 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -57,5 +59,95 @@ func TestPrepareIslands(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(filepath.Dir(sky), ".mchost-first-login")); err != nil {
 		t.Fatal("no marker, so it would be switched on again after the owner turns it off")
+	}
+}
+
+func TestIslandsContainer(t *testing.T) {
+	a := &agent{}
+	for kind, want := range map[string]bool{"vanilla": false, "skyblock": true, "oneblock": true, "fabric": false} {
+		req := createRequest{ID: "abc12345", Name: "Wyspa", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 30001, Hostname: "wyspa.mchost.pl", Kind: kind}
+		if err := req.validate(); err != nil {
+			t.Fatal(err)
+		}
+		spec := a.containerSpec(req, imageFor(req.Edition, req.Version, req.Kind))
+		env := strings.Join(spec["Env"].([]string), "\n")
+		ep, _ := spec["Entrypoint"].([]string)
+		if got := strings.Contains(env, "PRE_START_SCRIPT="+addonsScriptPath) && len(ep) == 3; got != want {
+			t.Errorf("%s: add-on mover = %v, want %v (entrypoint %q)", kind, got, want, ep)
+		}
+		if want && (!strings.Contains(ep[2], addonsScript) || !strings.HasSuffix(ep[2], "exec /image/scripts/start\n")) {
+			t.Errorf("%s: entrypoint must write the script and start the image as usual:\n%s", kind, ep[2])
+		}
+	}
+}
+
+func TestAddonsScript(t *testing.T) {
+	if _, err := exec.LookPath("bash"); err != nil {
+		t.Skip("no bash")
+	}
+	dir := t.TempDir()
+	plugins := filepath.Join(dir, "plugins")
+	addons := filepath.Join(plugins, "BentoBox", "addons")
+	os.MkdirAll(addons, 0o755)
+	jar := func(name string, entries ...string) {
+		f, err := os.Create(filepath.Join(plugins, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		z := zip.NewWriter(f)
+		for _, e := range entries {
+			w, _ := z.Create(e)
+			w.Write([]byte("name: x\n"))
+		}
+		z.Close()
+		f.Close()
+	}
+	run := func() string {
+		cmd := exec.Command("bash", "-c", addonsScript)
+		cmd.Dir = dir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %s", err, out)
+		}
+		return string(out)
+	}
+	list := func(d string) string {
+		var names []string
+		entries, _ := os.ReadDir(d)
+		for _, e := range entries {
+			if !e.IsDir() {
+				names = append(names, e.Name())
+			}
+		}
+		return strings.Join(names, " ")
+	}
+
+	jar("BentoBox-3.10.0.jar", "plugin.yml", "world/bentobox/bentobox/BentoBox.class")
+	jar("AOneBlock-1.22.0.jar", "addon.yml", "plugin.yml", "world/bentobox/aoneblock/AOneBlock.class")
+	jar("Level-2.21.0.jar", "addon.yml", "plugin.yml", "world/bentobox/level/Level.class")
+	jar("AuthMe-5.6.0.jar", "plugin.yml", "fr/xephi/authme/addon.yml.bak")
+	os.WriteFile(filepath.Join(addons, "Mine.jar"), []byte("the owner's"), 0o644)
+	out := run()
+	if !strings.Contains(out, "AOneBlock-1.22.0.jar moved") {
+		t.Errorf("output: %s", out)
+	}
+	if got := list(plugins); got != "AuthMe-5.6.0.jar BentoBox-3.10.0.jar" {
+		t.Errorf("left in plugins: %s", got)
+	}
+	if got := list(addons); got != ".mchost-moved AOneBlock-1.22.0.jar Level-2.21.0.jar Mine.jar" {
+		t.Errorf("in addons: %s", got)
+	}
+
+	// The next start downloads a newer AOneBlock (and no longer Level): the old ones go.
+	jar("AOneBlock-1.23.0.jar", "addon.yml", "plugin.yml", "world/bentobox/aoneblock/AOneBlock.class")
+	run()
+	if got := list(addons); got != ".mchost-moved AOneBlock-1.23.0.jar Mine.jar" {
+		t.Errorf("after an update: %s", got)
+	}
+
+	// A start that downloaded nothing keeps what's there.
+	run()
+	if got := list(addons); got != ".mchost-moved AOneBlock-1.23.0.jar Mine.jar" {
+		t.Errorf("after a start with nothing new: %s", got)
 	}
 }

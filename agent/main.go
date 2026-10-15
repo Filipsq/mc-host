@@ -605,6 +605,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		return spec
 	}
 	var containerPort, hostIP string
+	var entrypoint []string
 	bindings := map[string]any{} // more ports than the main one, if any
 	tty := false
 	// Leave headroom above the JVM heap for the JVM itself, or the kernel OOM-kills it.
@@ -614,7 +615,8 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		switch req.Kind {
 		case "skyblock", "oneblock":
 			// The image picks the newest Minecraft version all the game mode's plugins support.
-			env = append(env, "TYPE=PAPER", "VERSION_FROM_MODRINTH_PROJECTS=TRUE")
+			env = append(env, "TYPE=PAPER", "VERSION_FROM_MODRINTH_PROJECTS=TRUE", "PRE_START_SCRIPT="+addonsScriptPath)
+			entrypoint = islandsEntrypoint // puts the game mode where BentoBox loads it
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
 			if req.ModpackSource == "curseforge" {
@@ -709,7 +711,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		tty = true // send-command writes to the server's stdin
 	}
 	bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
-	return serverSpec(req, image, env, labels, bindings, tty, limitMb, nil)
+	return serverSpec(req, image, env, labels, bindings, tty, limitMb, entrypoint)
 }
 
 // serverSpec is the container for a game server, whatever the game.

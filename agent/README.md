@@ -63,8 +63,10 @@ go test ./...
 | GET | `/stats` | For the admin panel: `{memoryLimitMb, memoryHeldMb, host: {cpus, load, memoryTotalMb, memoryAvailableMb, diskTotalMb, diskFreeMb}, servers: [{id, state, health, stopReason, memoryMb, memoryUsedMb, diskMb, diskLimitMb}]}` |
 
 Java servers run what `kind` says: `vanilla` (Paper, the default), `skyblock` or `oneblock`
-(Paper with the BentoBox plugins from Modrinth, on the newest Minecraft version they all support,
-with BentoBox set to make each new player's island as they first join and take them there),
+(Paper with the BentoBox plugins from Modrinth, on the newest Minecraft version they all support;
+the game mode add-on is moved into `plugins/BentoBox/addons` just before each start, the only place
+BentoBox loads add-ons from, and BentoBox is set to make each new player's island as they first join
+and take them there),
 `modpack` (the Modrinth mod pack `modpack` at version ID `modpackVersion`, on its Minecraft
 `version`; with `modpackSource: "curseforge"`, the CurseForge pack with slug `modpack` at file ID
 `modpackVersion`, whose manifest picks the Minecraft version and loader; packs for 1.16 and older

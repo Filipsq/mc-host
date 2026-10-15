@@ -63,3 +63,51 @@ func (a *agent) prepareIslands(ctx context.Context, id, kind string) {
 		log.Printf("island settings %s: %v", id, err)
 	}
 }
+
+// BentoBox loads its game modes (AOneBlock, BSkyBlock) and its other add-ons
+// only from plugins/BentoBox/addons, but the image puts everything it gets
+// from Modrinth in plugins/, where an add-on loads as an empty plugin: the game
+// mode never starts, so there's no island world and no /ob or /island, and
+// players stay in the ordinary world. The image runs a script of ours
+// (PRE_START_SCRIPT) after its downloads and just before the server starts;
+// addonsScript moves the add-ons to BentoBox's folder there. The image
+// downloads them into plugins/ again on every start, so the script replaces
+// the ones it moved the time before, which also brings in newer versions. It
+// never keeps the server from starting.
+const addonsScript = `#!/bin/bash
+addons=plugins/BentoBox/addons
+moved=$addons/.mchost-moved
+mkdir -p "$addons" || exit 0
+has() {
+  if command -v unzip >/dev/null; then unzip -Z1 "$1" 2>/dev/null | grep -qxF "$2"; else grep -qaF "$2" "$1"; fi
+}
+new=()
+for jar in plugins/*.jar; do
+  [ -f "$jar" ] || continue
+  # An add-on has an addon.yml; BentoBox itself, which loads them, stays put.
+  if has "$jar" addon.yml && ! has "$jar" world/bentobox/bentobox/BentoBox.class; then
+    name=${jar##*/}
+    if mv -f "$jar" "$addons/$name"; then
+      new+=("$name")
+      echo "[mchost] $name moved to $addons, where BentoBox loads it"
+    fi
+  fi
+done
+if [ ${#new[@]} -gt 0 ]; then
+  if [ -f "$moved" ]; then
+    while IFS= read -r old; do
+      [ -n "$old" ] || continue
+      for n in "${new[@]}"; do [ "$n" = "$old" ] && continue 2; done
+      rm -f "$addons/$old"
+    done <"$moved"
+  fi
+  printf '%s\n' "${new[@]}" >"$moved"
+fi
+exit 0
+`
+
+const addonsScriptPath = "/tmp/mchost-addons"
+
+// islandsEntrypoint puts addonsScript where PRE_START_SCRIPT points, then starts the image as usual.
+var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath + " <<'MCHOST'\n" + addonsScript +
+	"MCHOST\nchmod 755 " + addonsScriptPath + "\nexec /image/scripts/start\n"}
