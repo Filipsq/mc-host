@@ -112,3 +112,11 @@ fi
 echo "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
 docker compose ps
+
+# Each build leaves the previous site and agent images and their build cache
+# behind (several GB per update). Drop the leftovers; worlds and backups live
+# in volumes and the Minecraft images are in use, so neither is touched.
+echo "Removing leftovers from earlier builds..."
+docker image prune -f >/dev/null
+docker builder prune -f >/dev/null
+docker system df
