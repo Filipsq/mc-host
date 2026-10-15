@@ -562,6 +562,9 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	if req.offline() {
 		a.prepareLogin(ctx, req.ID)
 	}
+	if req.Edition == "JAVA" {
+		a.prepareIslands(ctx, req.ID, req.Kind)
+	}
 	if !start {
 		return nil
 	}

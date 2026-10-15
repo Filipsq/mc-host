@@ -404,7 +404,7 @@ const pl = {
       "Gracze muszą zainstalować u siebie tę samą paczkę, np. w Modrinth App. Pierwsze uruchomienie trwa dłużej, bo serwer pobiera mody.",
     packTooSmall: "za mało RAM-u dla tej paczki",
     modpackNoFree: "bez paczek modów",
-    islandHint: "Gracze wpisują {command}, żeby dostać swoją wyspę.",
+    islandHint: "Każdy nowy gracz dostaje swoją wyspę zaraz po pierwszym wejściu na serwer. Komenda {command} przenosi na nią z powrotem.",
     modpackInfo: "Paczka modów {title} {version} (Minecraft {mc}, {loader}).",
     modpackInstall: "Gracze muszą zainstalować tę samą wersję paczki.",
     modpackDownload: "Pobierz paczkę",

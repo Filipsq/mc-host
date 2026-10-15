@@ -405,7 +405,7 @@ const en: Messages = {
       "Players need to install the same pack, e.g. in the Modrinth App. The first start takes longer while the server downloads the mods.",
     packTooSmall: "too little RAM for this pack",
     modpackNoFree: "no mod packs",
-    islandHint: "Players type {command} to get their island.",
+    islandHint: "Every new player gets their island right after first joining the server. {command} takes them back to it.",
     modpackInfo: "Mod pack {title} {version} (Minecraft {mc}, {loader}).",
     modpackInstall: "Players need to install the same pack version.",
     modpackDownload: "Get the pack",
