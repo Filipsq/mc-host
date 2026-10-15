@@ -261,10 +261,12 @@ type Look = { mods: number; blocked: boolean };
 const looks = new Map<number, Look>();
 
 /**
- * Counts the pack's mods and checks every one may be downloaded outside
- * CurseForge; when an author forbids it the server's image can't install the pack.
+ * Counts the pack's mods and checks the server's image can download every one
+ * it needs: a file whose author forbids downloads outside CurseForge has no
+ * download link, and the image would stop and ask for it by hand. Files made
+ * only for the player's game don't count; the image leaves those out.
  */
-async function lookInside(file: File): Promise<Look | null> {
+async function lookInside(file: File, slug: string): Promise<Look | null> {
   const known = looks.get(file.id);
   if (known) return known;
   // No download link means the pack itself may not be downloaded by others.
@@ -275,13 +277,24 @@ async function lookInside(file: File): Promise<Look | null> {
     return null;
   }
   const manifest = JSON.parse(raw.toString("utf8")) as Manifest;
-  const ids = [...new Set((manifest.files ?? []).filter((f) => f.required !== false).map((f) => f.projectID))];
-  let blocked = false;
-  for (let i = 0; i < ids.length && !blocked; i += 500) {
-    const res = await call<{ data: Mod[] }>("/v1/mods", { modIds: ids.slice(i, i + 500), filterPcOnly: true });
-    blocked = (res?.data ?? []).some((m) => m.allowModDistribution === false);
+  const required = (manifest.files ?? []).filter((f) => f.required !== false);
+  const ids = [...new Set(required.map((f) => f.fileID))];
+  const blockers: string[] = [];
+  for (let i = 0; i < ids.length; i += 500) {
+    const asked = ids.slice(i, i + 500);
+    const found = (await call<{ data: File[] }>("/v1/mods/files", { fileIds: asked }))?.data ?? [];
+    for (const f of found) {
+      const clientOnly = f.gameVersions.includes("Client") && !f.gameVersions.includes("Server");
+      if (!f.downloadUrl && !clientOnly) blockers.push(f.displayName);
+    }
+    // A file CurseForge no longer has can't be downloaded either.
+    const have = new Set(found.map((f) => f.id));
+    blockers.push(...asked.filter((id) => !have.has(id)).map((id) => `file ${id} (missing)`));
   }
-  const look = { mods: ids.length, blocked };
+  if (blockers.length) {
+    console.log(`curseforge pack ${slug} needs mods downloaded by hand: ${blockers.slice(0, 3).join(", ")}${blockers.length > 3 ? ` and ${blockers.length - 3} more` : ""}`);
+  }
+  const look = { mods: new Set(required.map((f) => f.projectID)).size, blocked: blockers.length > 0 };
   if (looks.size > 500) looks.delete(looks.keys().next().value!);
   looks.set(file.id, look);
   return look;
@@ -309,7 +322,7 @@ async function packOf(mod: Mod, fileId?: number): Promise<CurseforgePack | Curse
   const gameVersion = file.gameVersions.filter((v) => GAME_VERSION.test(v)).sort(compareVersions).at(-1);
   const loader = file.gameVersions.map((v) => v.toLowerCase()).find((v) => LOADERS.includes(v));
   if (!gameVersion || !loader) return "modpackNotForServers";
-  const look = await lookInside(file);
+  const look = await lookInside(file, mod.slug);
   if (!look || look.blocked) return "modpackBlocked";
   const ramGb = ramForMods(look.mods);
   if (ramGb > MAX_RAM_GB) return "modpackTooBig";
