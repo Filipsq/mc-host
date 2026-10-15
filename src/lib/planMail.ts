@@ -4,6 +4,7 @@ import { messages, format } from "@/i18n/messages";
 import { defaultLocale, isLocale } from "@/i18n/config";
 import { BRAND_NAME } from "./brand";
 import { buttonMail, sendMail } from "./mail";
+import { sendPush } from "./push";
 
 // Emails about a server's paid plan: when a payment arrives, a few days
 // before the paid period ends (plans don't renew by themselves), when the
@@ -45,6 +46,8 @@ export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, 
     url: page,
     footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
   });
+  // The phone notification says the same in short; the email stays the full record.
+  await sendPush([server.ownerId], { title: mail.subject, body: format(t.paragraphs[0], vars), url: page });
   try {
     await sendMail(mail);
     return true;

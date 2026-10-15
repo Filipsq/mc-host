@@ -15,6 +15,7 @@ import { buttonMail, sendMail } from "@/lib/mail";
 import { RESET_LINK_MINUTES, createResetToken, resetPassword } from "@/lib/passwordReset";
 import { linkInvites } from "@/lib/access";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
+import { PUSH_COOKIE } from "@/lib/pushEndpoint";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
 
@@ -119,6 +120,12 @@ export async function setNewPassword(_: FormState, form: FormData): Promise<Form
 }
 
 export async function logOut() {
+  // This device stops getting the account's notifications; signing in again turns them back on.
+  const [session, jar] = await Promise.all([auth(), cookies()]);
+  const endpoint = jar.get(PUSH_COOKIE)?.value;
+  if (endpoint && session?.user?.id) {
+    await db.pushSubscription.deleteMany({ where: { endpoint, userId: session.user.id } });
+  }
   await signOut({ redirectTo: "/" });
 }
 

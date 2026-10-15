@@ -12,6 +12,8 @@ import EditionIcon from "@/components/EditionIcon";
 import { GAME_ICONS } from "@/components/gameIcons";
 import { GAMES } from "@/lib/games";
 import { REFERRAL_DAYS } from "@/lib/referrals";
+import { pushPublicKey } from "@/lib/push";
+import AppInstall from "@/components/AppInstall";
 
 type Props = { searchParams: Promise<{ haslo?: string }> };
 
@@ -125,6 +127,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         </span>
         <Link className="button secondary" href="/dashboard/invite">{all.referrals.nav}</Link>
       </div>
+      <AppInstall labels={all.app} pushKey={pushPublicKey()} />
     </main>
   );
 }

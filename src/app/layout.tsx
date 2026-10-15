@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { LayoutGrid, LogOut } from "lucide-react";
 import "@fontsource-variable/inter";
@@ -7,6 +7,7 @@ import "@fontsource/jersey-10/latin-ext.css";
 import { auth } from "@/auth";
 import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
+import ServiceWorker from "@/components/ServiceWorker";
 import SupportLink from "@/components/SupportLink";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -15,6 +16,8 @@ import { formatPrice, planById } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
 import { logOut } from "./actions";
 import "./globals.css";
+
+export const viewport: Viewport = { themeColor: "#0b0f14" };
 
 export async function generateMetadata(): Promise<Metadata> {
   const [t, { locale, currency }] = await Promise.all([getMessages(), getPreferences()]);
@@ -25,6 +28,8 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl()),
     title: { default: title, template: `%s · ${BRAND_NAME}` },
     description: t.meta.description,
+    // Added to an iPhone's home screen, the site opens full screen as "MCHosting".
+    appleWebApp: { capable: true, title: BRAND_NAME, statusBarStyle: "black" },
     openGraph: {
       type: "website",
       siteName: BRAND_NAME,
@@ -50,6 +55,7 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body>
+        <ServiceWorker />
         <header className="topbar">
           <div className={signedIn ? "topbar-inner signed-in" : "topbar-inner"}>
             <Logo />

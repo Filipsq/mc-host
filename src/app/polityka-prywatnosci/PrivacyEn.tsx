@@ -38,6 +38,11 @@ export default function PrivacyEn({ site }: { site: string }) {
               <td>art. 6(1)(b): performing the contract</td>
             </tr>
             <tr>
+              <td>Your device’s notification address (only if you turn on notifications in the panel)</td>
+              <td>Notifications on your phone or computer about payments, the end of a Period and chat replies</td>
+              <td>art. 6(1)(b): performing the contract</td>
+            </tr>
+            <tr>
               <td>Servers: name, address, edition, Plan, world, backups, console logs</td>
               <td>Providing server hosting</td>
               <td>art. 6(1)(b): performing the contract</td>
@@ -106,6 +111,11 @@ export default function PrivacyEn({ site }: { site: string }) {
           receives the description typed into the creator, not the email address or other Account data. Data is
           transferred to the USA under standard contractual clauses.
         </li>
+        <li>
+          Your browser’s or phone’s notification service (such as Google for Chrome and Android, Apple for iPhone,
+          Mozilla for Firefox), only if you turn on notifications in the panel. It delivers them to your device; the
+          notification’s content is encrypted and the service can’t read it.
+        </li>
         <li>The email provider we use to answer messages.</li>
         <li>Public authorities, when the law requires it.</li>
       </ul>
@@ -121,6 +131,7 @@ export default function PrivacyEn({ site }: { site: string }) {
         <li>Technical logs: continuously replaced by newer entries, and deleted at the latest with the Server.</li>
         <li>Correspondence: while the matter is handled, then until any claims would be time-barred.</li>
         <li>Chat messages in the panel: until the Account is deleted.</li>
+        <li>A device’s notification address: until you turn notifications off, log out on that device or delete the Account.</li>
         <li>A friend’s access to a Server: until the owner removes it, the friend leaves the Server, or the Server is deleted.</li>
       </ul>
 
@@ -139,7 +150,8 @@ export default function PrivacyEn({ site }: { site: string }) {
       <ul>
         <li><code>authjs.session-token</code>: keeps you logged in (up to 30 days);</li>
         <li><code>authjs.csrf-token</code>, <code>authjs.callback-url</code>: protect logging in;</li>
-        <li><code>locale</code>, <code>currency</code>: remember your language and currency (1 year).</li>
+        <li><code>locale</code>, <code>currency</code>: remember your language and currency (1 year);</li>
+        <li><code>push</code>: once you turn on notifications, tells which device stops getting them when you log out (1 year).</li>
       </ul>
       <p>
         We use no analytics or advertising cookies. Stripe’s payment page sets its own cookies, described in Stripe’s

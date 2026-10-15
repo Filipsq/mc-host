@@ -90,6 +90,19 @@ appear in `docker compose logs web`.
 Emails come from `no-reply@mchosting.pl`; set `MAIL_FROM` in `deploy/.env` to use another address on
 the same domain. The API goes over HTTPS, so Hetzner's block on outgoing mail ports doesn't matter.
 
+## Phone app and notifications
+
+The site installs as an app: on Android, Chrome offers "Install app" (or the button on the panel's
+"MCHosting app for your phone" card); on an iPhone, Safari → Share → Add to Home Screen. It opens the
+server list full screen, without the browser bar.
+
+Users who turn on notifications on that card get them on the device when a plan is paid, ends in 3
+days, is suspended or is about to be deleted, when the help chat gets a reply and when a referral
+pays out. Admins get one when a user writes in the help chat. An iPhone only gets them in the app
+added to the home screen (iOS 16.4 or newer). `setup.sh` makes the key pair the notifications are
+signed with (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` in `deploy/.env`); keep them unchanged, since new
+keys cut off every phone that turned notifications on.
+
 ## AI server creator
 
 On the home page and the new server page, players can describe the server they want and Claude (by

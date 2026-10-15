@@ -37,6 +37,11 @@ export default function PrivacyPl({ site }: { site: string }) {
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
             </tr>
             <tr>
+              <td>Adres powiadomień urządzenia (tylko gdy włączysz powiadomienia w panelu)</td>
+              <td>Powiadomienia na telefonie lub komputerze o płatnościach, końcu Okresu i odpowiedziach na czacie</td>
+              <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
+            </tr>
+            <tr>
               <td>Serwery: nazwa, adres, edycja, Plan, świat, kopie zapasowe, logi konsoli</td>
               <td>Świadczenie usługi hostingu serwerów</td>
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
@@ -105,6 +110,11 @@ export default function PrivacyPl({ site }: { site: string }) {
           tylko opis wpisany do kreatora, bez adresu e-mail ani innych danych Konta. Przekazanie danych do USA odbywa
           się na podstawie standardowych klauzul umownych.
         </li>
+        <li>
+          Usługa powiadomień Twojej przeglądarki lub telefonu (np. Google dla Chrome i Androida, Apple dla iPhone’a,
+          Mozilla dla Firefoksa) – tylko gdy włączysz powiadomienia w panelu. Dostarcza je na Twoje urządzenie; treść
+          powiadomienia jest zaszyfrowana i ta usługa jej nie widzi.
+        </li>
         <li>Dostawca poczty e-mail, przez którą odpowiadamy na wiadomości.</li>
         <li>Organy publiczne, gdy wymaga tego prawo.</li>
       </ul>
@@ -120,6 +130,7 @@ export default function PrivacyPl({ site }: { site: string }) {
         <li>Logi techniczne – na bieżąco zastępowane nowszymi wpisami; usuwamy je najpóźniej z usunięciem Serwera.</li>
         <li>Korespondencja – przez czas obsługi sprawy, a potem do upływu terminu przedawnienia roszczeń.</li>
         <li>Wiadomości z czatu w panelu – do usunięcia Konta.</li>
+        <li>Adres powiadomień urządzenia – do wyłączenia powiadomień, wylogowania się na tym urządzeniu albo usunięcia Konta.</li>
         <li>Dostęp znajomego do Serwera – do odebrania go przez właściciela, opuszczenia Serwera przez znajomego albo usunięcia Serwera.</li>
       </ul>
 
@@ -137,7 +148,8 @@ export default function PrivacyPl({ site }: { site: string }) {
       <ul>
         <li><code>authjs.session-token</code> – utrzymuje zalogowanie (do 30 dni);</li>
         <li><code>authjs.csrf-token</code>, <code>authjs.callback-url</code> – zabezpieczają logowanie;</li>
-        <li><code>locale</code>, <code>currency</code> – zapamiętują wybrany język i walutę (1 rok).</li>
+        <li><code>locale</code>, <code>currency</code> – zapamiętują wybrany język i walutę (1 rok);</li>
+        <li><code>push</code> – gdy włączysz powiadomienia: wskazuje, które urządzenie przestaje je dostawać po wylogowaniu (1 rok).</li>
       </ul>
       <p>
         Nie używamy cookies analitycznych ani reklamowych. Strona płatności Stripe ustawia własne cookies, opisane w
