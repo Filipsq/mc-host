@@ -6,7 +6,7 @@ import { db } from "./db";
 // limit). Paid servers keep their share even while stopped, so a plan is only
 // sold while its memory is free. Free servers don't count here: they only use
 // memory while awake, and the agent refuses to wake one that doesn't fit.
-// With MEMORY_OVERBOOK (e.g. 1.5) paid plans are sold up to that many times
+// With MEMORY_OVERBOOK (e.g. 2) paid plans are sold up to that many times
 // the limit, since stopped servers use nothing and Java servers only what
 // their players need; the agent then counts only running servers.
 // Two people paying for the last slot at the same moment can both get it;
@@ -35,10 +35,16 @@ export function salesLimitMb() {
   return Math.floor(memoryLimitMb() * overbook());
 }
 
-/** Whether `extraMb` more memory can be sold to paid servers. */
-export async function canSellMemory(extraMb: number) {
+/**
+ * Whether `extraMb` more memory can be sold to paid servers, for a plan of
+ * `planMb` in total. Overbooking shares memory between servers, but one server
+ * can't be given more than the machine really has.
+ */
+export async function canSellMemory(extraMb: number, planMb = extraMb) {
   const limit = salesLimitMb();
-  if (limit <= 0 || extraMb <= 0) return true;
+  if (limit <= 0) return true;
+  if (planMb > memoryLimitMb()) return false;
+  if (extraMb <= 0) return true;
   const { _sum } = await db.server.aggregate({
     _sum: { memoryMb: true },
     where: { plan: { not: "FREE" }, status: { in: HOLDING } },
