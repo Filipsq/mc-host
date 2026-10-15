@@ -8,18 +8,18 @@ datasource db {
 }
 
 model User {
-  id                 String          @id @default(cuid())
-  email              String          @unique
+  id                 String             @id @default(cuid())
+  email              String             @unique
   passwordHash       String
-  createdAt          DateTime        @default(now())
+  createdAt          DateTime           @default(now())
   // When the user accepted the terms (at sign-up); null for accounts made before there were any.
   termsAcceptedAt    DateTime?
   // Sessions that signed in before this are no longer accepted (see src/lib/session.ts).
   passwordChangedAt  DateTime?
   // The site's language the user last chose; emails are written in it.
-  locale             String          @default("pl")
+  locale             String             @default("pl")
   // Can open the admin panel and every server's panel. Set on the server with deploy/admin.sh.
-  admin              Boolean         @default(false)
+  admin              Boolean            @default(false)
   servers            Server[]
   payments           Payment[]
   passwordResets     PasswordReset[]
@@ -30,14 +30,31 @@ model User {
   // Referrals (src/lib/referrals.ts): the code in the user's invite link, who invited them,
   // when they first paid enough for both to get free days, and the days waiting to be
   // added to one of their servers.
-  referralCode       String?         @unique
-  referredBy         User?           @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referralCode       String?            @unique
+  referredBy         User?              @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
   referredById       String?
-  referrals          User[]          @relation("Referrals")
+  referrals          User[]             @relation("Referrals")
   referralRewardedAt DateTime?
-  bonusDays          Int             @default(0)
+  bonusDays          Int                @default(0)
+  // Phones and browsers that turned on notifications (src/lib/push.ts).
+  pushSubscriptions  PushSubscription[]
 
   @@index([referredById])
+}
+
+// A browser's Web Push subscription, made when the user turns on notifications
+// in the panel (most often in the app installed on their phone). Removed when
+// they turn them off or the push service says it no longer exists.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // One call to the AI (Claude), for the per-user and monthly limits and the

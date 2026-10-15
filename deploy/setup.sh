@@ -111,6 +111,23 @@ if ! grep -qE '^CF_API_KEY=.+' .env; then
   echo "CurseForge packs are off: set CF_API_KEY in deploy/.env (see deploy/README.md)."
 fi
 
+# Phone notifications from the installed app (Web Push) are signed with this
+# key pair. Made once; changing it later would cut off every subscribed phone.
+if ! grep -qE '^VAPID_PUBLIC_KEY=.+' .env; then
+  sed -i '/^VAPID_PUBLIC_KEY=/d; /^VAPID_PRIVATE_KEY=/d' .env
+  key=$(mktemp)
+  openssl ecparam -name prime256v1 -genkey -noout -out "$key"
+  b64url() { base64 -w0 | tr '+/' '-_' | tr -d '='; }
+  {
+    echo "# Keys for phone notifications; keep them unchanged."
+    echo "VAPID_PUBLIC_KEY=$(openssl ec -in "$key" -pubout -outform DER 2>/dev/null | tail -c 65 | b64url)"
+    # The 32-byte private number sits after a 7-byte header in the key's DER form.
+    echo "VAPID_PRIVATE_KEY=$(openssl ec -in "$key" -outform DER 2>/dev/null | head -c 39 | tail -c 32 | b64url)"
+  } >> .env
+  rm -f "$key"
+  echo "Made the key pair for phone notifications."
+fi
+
 echo "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
 docker compose ps

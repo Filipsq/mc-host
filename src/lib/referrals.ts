@@ -6,6 +6,7 @@ import { defaultLocale, isLocale } from "@/i18n/config";
 import { db } from "./db";
 import { BRAND_NAME } from "./brand";
 import { buttonMail, sendMail } from "./mail";
+import { sendPush } from "./push";
 
 // Referrals: a user shares their link (/r/<code>), and when a friend who signed
 // up through it first pays for at least REFERRAL_MIN_DAYS, both get
@@ -77,6 +78,7 @@ export async function sendReferralMail(inviter: Inviter) {
   const t = all.referrals.mail;
   const app = process.env.APP_URL ?? "http://localhost:3000";
   const vars = { days: REFERRAL_DAYS };
+  await sendPush([inviter.id], { title: format(t.subject, vars), body: format(t.paragraphs[0], vars), url: "/dashboard/invite" });
   try {
     await sendMail(
       buttonMail({

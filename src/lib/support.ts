@@ -6,6 +6,7 @@ import { messages, format } from "@/i18n/messages";
 import { defaultLocale, isLocale } from "@/i18n/config";
 import { BRAND_NAME } from "./brand";
 import { buttonMail, sendMail } from "./mail";
+import { sendPush } from "./push";
 
 // The "Help" chat: each user has one conversation with the admins. The pages
 // poll /api/support for new messages while they're open and visible, and
@@ -129,11 +130,11 @@ function shouldEmail(chat: SupportChat, from: Side, now: Date) {
 }
 
 async function notify(userId: string, from: Side, body: string) {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, locale: true } });
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, locale: true } });
   if (!user) return;
   const recipients =
     from === "user"
-      ? await db.user.findMany({ where: { admin: true }, select: { email: true, locale: true } })
+      ? await db.user.findMany({ where: { admin: true }, select: { id: true, email: true, locale: true } })
       : [user];
   const app = process.env.APP_URL ?? "http://localhost:3000";
   const preview = (body.length > 600 ? `${body.slice(0, 600)}…` : body)
@@ -144,14 +145,16 @@ async function notify(userId: string, from: Side, body: string) {
     const all = messages[isLocale(to.locale) ? to.locale : defaultLocale];
     const t = from === "user" ? all.support.mail.toStaff : all.support.mail.toUser;
     const vars = { email: user.email, brand: BRAND_NAME };
+    const url = from === "user" ? `${app}/admin/support/${userId}` : `${app}/dashboard/support`;
     const mail = buttonMail({
       to: to.email,
       subject: format(t.subject, vars),
       paragraphs: [format(t.intro, vars), ...preview],
       button: t.button,
-      url: from === "user" ? `${app}/admin/support/${userId}` : `${app}/dashboard/support`,
+      url,
       footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
     });
+    await sendPush([to.id], { title: mail.subject, body: preview.join(" ").slice(0, 160), url });
     try {
       await sendMail(mail);
     } catch (err) {
