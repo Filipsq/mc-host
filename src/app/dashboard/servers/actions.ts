@@ -11,6 +11,8 @@ import { agentSpec, applyToHost, createServerRecord, destroyServer, getOwnedServ
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
+import { stripeTestMode } from "@/lib/stripe";
+import { isAdmin } from "@/lib/admin";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
 import {
@@ -234,6 +236,8 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   const parsed = checkoutSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "invalidPlan" };
   if (form.get("startNow") !== "on") return { error: "consentRequired" };
+  // With test keys anyone could pay with a test card, so only admins may try it.
+  if (stripeTestMode() && !(await isAdmin(user.id))) return { error: "paymentsUnavailable" };
   // Renewing the same plan needs nothing new; an upgrade only needs the difference.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
   if (!(await canSellMemory(planMb - heldMemoryMb(server), planMb))) {

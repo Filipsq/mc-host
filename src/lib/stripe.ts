@@ -3,6 +3,11 @@ import Stripe from "stripe";
 
 let client: Stripe | undefined;
 
+/** Whether Stripe runs on test keys, where any test card "pays" without real money. */
+export function stripeTestMode() {
+  return !!process.env.STRIPE_SECRET_KEY?.startsWith("sk_test_");
+}
+
 export function stripe() {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY is not set");
