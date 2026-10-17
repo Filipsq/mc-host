@@ -1,5 +1,5 @@
 import "server-only";
-import type { Plan, Server, ServerStatus, User } from "@prisma/client";
+import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe } from "./stripe";
 import * as agent from "./agent";
@@ -178,6 +178,22 @@ export async function provision(server: Server) {
 
 export async function markPayment(sessionId: string, status: "FAILED" | "EXPIRED") {
   await db.payment.updateMany({ where: { stripeSessionId: sessionId, status: "PENDING" }, data: { status } });
+}
+
+// Checkouts made with Stripe test keys: no real money moved.
+export const TEST_PAYMENTS = { stripeSessionId: { startsWith: "cs_test_" } } satisfies Prisma.PaymentWhereInput;
+// What the admin may delete: test payments and ones that never went through.
+// Real paid (or still open) payments stay in the history for the accounts.
+export const REMOVABLE_PAYMENTS = {
+  OR: [TEST_PAYMENTS, { status: { in: ["FAILED", "EXPIRED"] } }],
+} satisfies Prisma.PaymentWhereInput;
+
+export function isTestPayment(p: Pick<Payment, "stripeSessionId">) {
+  return !!p.stripeSessionId?.startsWith("cs_test_");
+}
+
+export function isRemovablePayment(p: Pick<Payment, "stripeSessionId" | "status">) {
+  return isTestPayment(p) || p.status === "FAILED" || p.status === "EXPIRED";
 }
 
 /** Periodic housekeeping, run by /api/cron/billing. */

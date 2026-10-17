@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
-import { giftDays } from "@/lib/billing";
+import { REMOVABLE_PAYMENTS, TEST_PAYMENTS, giftDays } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { destroyServer } from "@/lib/servers";
 import { getPreferences } from "@/i18n/server";
@@ -35,4 +35,20 @@ export async function deleteServerAdminAction(id: string): Promise<{ error?: "fa
     console.info("admin deleted server", id);
   }
   redirect("/admin/servers");
+}
+
+/** Deletes one test, failed or expired payment from the history. */
+export async function deletePaymentAction(id: string) {
+  await requireAdmin();
+  const { count } = await db.payment.deleteMany({ where: { AND: [{ id }, REMOVABLE_PAYMENTS] } });
+  if (count > 0) console.info("admin deleted payment", id);
+  revalidatePath("/admin", "layout");
+}
+
+/** Deletes every payment made with Stripe test keys. */
+export async function deleteTestPaymentsAction() {
+  await requireAdmin();
+  const { count } = await db.payment.deleteMany({ where: TEST_PAYMENTS });
+  console.info("admin deleted test payments", count);
+  revalidatePath("/admin", "layout");
 }
