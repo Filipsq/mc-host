@@ -8,12 +8,14 @@ import { auth } from "@/auth";
 import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
 import ServiceWorker from "@/components/ServiceWorker";
-import SupportLink from "@/components/SupportLink";
+import HelpBubble from "@/components/HelpBubble";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { BRAND_NAME } from "@/lib/brand";
 import { formatPrice, planById } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
+import { isAdmin } from "@/lib/admin";
+import { MAX_LENGTH, RATE_COUNT, RATE_MINUTES } from "@/lib/support";
 import { logOut } from "./actions";
 import "./globals.css";
 
@@ -51,6 +53,7 @@ export default async function RootLayout({
     auth(),
   ]);
   const signedIn = !!session?.user;
+  const admin = session?.user?.id ? await isAdmin(session.user.id) : false;
 
   return (
     <html lang={locale}>
@@ -70,7 +73,6 @@ export default async function RootLayout({
             <div className="topbar-actions">
               {signedIn ? (
                 <>
-                  <SupportLink label={t.support.nav} unreadLabel={t.support.unread} />
                   <Link className="button small" href="/dashboard" aria-label={t.nav.dashboard}>
                     <LayoutGrid size={16} aria-hidden /> <span className="hide-phone">{t.nav.dashboard}</span>
                   </Link>
@@ -137,6 +139,13 @@ export default async function RootLayout({
             <span>{t.footer.disclaimer}</span>
           </div>
         </footer>
+        <HelpBubble
+          t={t.support}
+          signedIn={signedIn}
+          admin={admin}
+          maxLength={MAX_LENGTH}
+          rate={{ count: RATE_COUNT, minutes: RATE_MINUTES }}
+        />
       </body>
     </html>
   );
