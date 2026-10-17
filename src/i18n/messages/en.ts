@@ -2,7 +2,7 @@ import type { Messages } from "../messages";
 
 const en: Messages = {
   meta: {
-    title: "Free and paid Minecraft server hosting from {price}",
+    title: "Free and paid Minecraft server hosting",
     description:
       "Free and paid Minecraft server hosting for Java and Bedrock, with crossplay between computers, phones and consoles. Create a server in a minute, with a console, plugins, mods and backups.",
   },
