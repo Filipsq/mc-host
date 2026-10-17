@@ -1,6 +1,6 @@
 const pl = {
   meta: {
-    title: "Hosting serwerów Minecraft za darmo i od {price}",
+    title: "Hosting serwerów Minecraft za darmo",
     description:
       "Darmowy i płatny hosting serwerów Minecraft na Javę i Bedrock, z crossplay między komputerem, telefonem i konsolą. Załóż serwer w minutę, z konsolą, pluginami, modami i kopiami zapasowymi. Płatność BLIK, Przelewy24 i kartą.",
   },
