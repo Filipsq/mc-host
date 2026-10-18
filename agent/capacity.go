@@ -27,6 +27,14 @@ var errFull = errors.New("full")
 // initialHeapMb is the heap a Java server starts with; it grows up to the plan.
 const initialHeapMb = 1024
 
+// On a small machine (FREE_SERVER_MEMORY_MB set) free servers get less than
+// their plan, may use some swap, and a free server starts once the machine has
+// its starting heap free with a smaller margin, so two fit on 4 GB.
+const (
+	freeSwapMb           = 1024
+	smallMachineMarginMb = 512
+)
+
 // freeMemoryMarginMb is what has to stay free on the machine after a free server
 // starts, when overbooking and other servers are running: room for them to grow.
 const freeMemoryMarginMb = 1024
@@ -73,7 +81,12 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 				if inUse > 0 {
 					margin = freeMemoryMarginMb
 				}
-				if free, ok := memoryAvailableMb(); ok && free < int64(need+margin) {
+				startNeed := need
+				if a.freeMemory > 0 {
+					startNeed = min(need, initialHeapMb)
+					margin = min(margin, smallMachineMarginMb)
+				}
+				if free, ok := memoryAvailableMb(); ok && free < int64(startNeed+margin) {
 					return errFull
 				}
 			}

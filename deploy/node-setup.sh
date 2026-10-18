@@ -56,6 +56,20 @@ MEMORY_OVERBOOK=2
 CF_API_KEY=
 ENV
 fi
+total_mb=$(awk '/^MemTotal/ {print int($2 / 1024)}' /proc/meminfo)
+if [ "$total_mb" -lt 6144 ]; then
+  # A small machine: free servers get 1.5 GB instead of 2, so two fit at once,
+  # with a swap file to fall back on when both grow.
+  grep -q '^FREE_SERVER_MEMORY_MB=' .env || echo "FREE_SERVER_MEMORY_MB=1536" >> .env
+  if [ ! -f /swapfile ]; then
+    echo "Adding a 2 GB swap file..."
+    fallocate -l 2G /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile >/dev/null
+    swapon /swapfile
+    grep -q '^/swapfile ' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  fi
+fi
 # Written every time, from what the main machine sent.
 sed -i '/^NODE_ID=/d; /^AGENT_TOKEN=/d; /^AGENT_ADDR=/d' .env
 cat >> .env <<ENV

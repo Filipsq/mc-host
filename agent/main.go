@@ -143,6 +143,7 @@ type agent struct {
 	idle        time.Duration // free servers sleep after this long with no players
 	memoryLimit int           // MB of plan memory servers may hold in total; 0 means no limit
 	overbook    float64       // how many times memoryLimit the panel sells to paid plans (see capacity.go)
+	freeMemory  int           // MB a free server gets at most on this machine; 0: its plan's (see capacity.go)
 	startMu     sync.Mutex
 	backupDir   string   // where the agent keeps backups
 	backupMount string   // the same place as helper containers mount it: a volume name or host path
@@ -182,6 +183,10 @@ func main() {
 	if err != nil || overbook < 1 || overbook > 4 {
 		log.Fatal("MEMORY_OVERBOOK must be a number from 1 (no overbooking) to 4")
 	}
+	freeMemory, err := strconv.Atoi(envOr("FREE_SERVER_MEMORY_MB", "0"))
+	if err != nil || (freeMemory != 0 && freeMemory < 512) {
+		log.Fatal("FREE_SERVER_MEMORY_MB must be a number of megabytes, at least 512 (0 for the plan's)")
+	}
 	backupDir, err := filepath.Abs(envOr("BACKUP_DIR", "./backups"))
 	if err != nil {
 		log.Fatal(err)
@@ -201,6 +206,7 @@ func main() {
 		idle:        time.Duration(idleMin) * time.Minute,
 		memoryLimit: memoryLimit,
 		overbook:    overbook,
+		freeMemory:  freeMemory,
 		backupDir:   backupDir,
 		backupMount: envOr("BACKUP_MOUNT", backupDir),
 		volumesDir:  filepath.Clean(envOr("VOLUMES_DIR", "/var/lib/docker/volumes")),
@@ -582,6 +588,20 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 }
 
 func (a *agent) containerSpec(req createRequest, image string) map[string]any {
+	small := req.Autostop && a.freeMemory > 0 && req.MemoryMb > a.freeMemory
+	if small {
+		req.MemoryMb = a.freeMemory
+	}
+	spec := a.gameSpec(req, image)
+	if small {
+		// Too little memory for every free server's whole plan: may swap rather than be killed when they all grow.
+		hc := spec["HostConfig"].(map[string]any)
+		hc["MemorySwap"] = hc["Memory"].(int64) + int64(freeSwapMb)<<20
+	}
+	return spec
+}
+
+func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 	maxPlayers := fmt.Sprint(req.MaxPlayers)
 	if req.MaxPlayers <= 0 {
 		maxPlayers = "1000"

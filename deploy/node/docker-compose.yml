@@ -25,6 +25,7 @@ services:
       IDLE_MINUTES: ${IDLE_MINUTES:-5}
       MEMORY_LIMIT_MB: ${MEMORY_LIMIT_MB:-0}
       MEMORY_OVERBOOK: ${MEMORY_OVERBOOK:-1}
+      FREE_SERVER_MEMORY_MB: ${FREE_SERVER_MEMORY_MB:-0}
       CF_API_KEY: ${CF_API_KEY:-}
       BACKUP_DIR: /backups
       BACKUP_MOUNT: mchost-backups
