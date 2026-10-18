@@ -8,7 +8,15 @@ import { planById } from "./plans";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
-import { KEEP_DAYS, REMIND_BEFORE_DAYS, WARN_BEFORE_DELETE_DAYS, sendPlanMail } from "./planMail";
+import {
+  FREE_IDLE_DAYS,
+  FREE_IDLE_FROM,
+  KEEP_DAYS,
+  REMIND_BEFORE_DAYS,
+  WARN_BEFORE_DELETE_DAYS,
+  WARN_BEFORE_IDLE_DELETE_DAYS,
+  sendPlanMail,
+} from "./planMail";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import type { Currency, Locale } from "@/i18n/config";
 
@@ -153,6 +161,68 @@ export async function giftDays(serverId: string, days: number, why = "admin gift
 }
 
 /**
+ * When a free server nobody plays on is deleted: FREE_IDLE_DAYS after players
+ * were last seen, never sooner than WARN_BEFORE_IDLE_DELETE_DAYS after its
+ * owner was told, and not before the terms allow it (FREE_IDLE_FROM).
+ */
+export function idleDeletionDate(server: Pick<Server, "lastPlayedAt" | "deletionWarnedAt">, now = new Date()) {
+  const idle = server.lastPlayedAt.getTime() + FREE_IDLE_DAYS * DAY;
+  const toldAt = server.deletionWarnedAt?.getTime() ?? now.getTime();
+  return new Date(Math.max(idle, toldAt + WARN_BEFORE_IDLE_DELETE_DAYS * DAY, FREE_IDLE_FROM.getTime()));
+}
+
+/**
+ * Notes when players were last on each server (from the machines' stats), then
+ * warns about and later deletes free servers nobody has played on for
+ * FREE_IDLE_DAYS, so they don't hold disk, ports and free slots for good.
+ */
+async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; idleDeleted: number }) {
+  const stats = await agent.getStats().catch((err) => {
+    console.error("idle free servers: no stats", err);
+    return null;
+  });
+  // Without knowing who's playing, nobody is judged idle.
+  if (!stats) return;
+  const playing = stats.servers.filter((s) => (s.players ?? 0) > 0).map((s) => s.id);
+  if (playing.length > 0) {
+    await db.server.updateMany({ where: { id: { in: playing } }, data: { lastPlayedAt: now } });
+    await db.server.updateMany({ where: { id: { in: playing }, plan: "FREE" }, data: { deletionWarnedAt: null } });
+  }
+  // Warnings go out WARN_BEFORE_IDLE_DELETE_DAYS before the terms allow deleting.
+  if (now.getTime() < FREE_IDLE_FROM.getTime() - WARN_BEFORE_IDLE_DELETE_DAYS * DAY) return;
+  const idle = await db.server.findMany({
+    where: {
+      plan: "FREE",
+      status: { in: ["RUNNING", "STOPPED", "SLEEPING", "PROVISIONING"] },
+      lastPlayedAt: { lt: new Date(now.getTime() - (FREE_IDLE_DAYS - WARN_BEFORE_IDLE_DELETE_DAYS) * DAY) },
+      // A machine that didn't answer can't tell us whether anyone played there.
+      node: { notIn: stats.unreachable },
+    },
+    include: OWNER,
+  });
+  for (const s of idle) {
+    if (!s.deletionWarnedAt) {
+      const claim = await db.server.updateMany({ where: { id: s.id, deletionWarnedAt: null }, data: { deletionWarnedAt: now } });
+      if (claim.count === 0) continue;
+      if (await sendPlanMail("inactive", s, idleDeletionDate({ ...s, deletionWarnedAt: now }, now))) result.idleWarned++;
+      else await db.server.updateMany({ where: { id: s.id, deletionWarnedAt: now }, data: { deletionWarnedAt: null } });
+      continue;
+    }
+    if (idleDeletionDate(s, now) > now) continue;
+    // Still idle and still free (not upgraded or played on since it was read)?
+    const still = await db.server.count({ where: { id: s.id, plan: "FREE", lastPlayedAt: s.lastPlayedAt } });
+    if (still === 0) continue;
+    try {
+      await destroyServer(s);
+      console.info("deleted idle free server", s.id, "last played", s.lastPlayedAt.toISOString());
+      result.idleDeleted++;
+    } catch (err) {
+      console.error("deleting idle free server failed", s.id, err);
+    }
+  }
+}
+
+/**
  * When a suspended server is deleted: KEEP_DAYS after its paid period ended,
  * and never sooner than WARN_BEFORE_DELETE_DAYS after its owner was told
  * (or, not told yet, after now).
@@ -210,7 +280,7 @@ export function isRemovablePayment(p: Pick<Payment, "stripeSessionId" | "status"
 
 /** Periodic housekeeping, run by /api/cron/billing. */
 export async function runBillingJob(now = new Date()) {
-  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, abandoned: 0, provisioned: 0 };
+  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, abandoned: 0, provisioned: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Paid period over: stop the server but keep its world.
@@ -286,6 +356,8 @@ export async function runBillingJob(now = new Date()) {
       console.error("deleting suspended server failed", s.id, err);
     }
   }
+
+  await deleteIdleFreeServers(now, result);
 
   // Servers created for a payment that never happened free their port and address.
   const abandoned = await db.server.findMany({

@@ -11,6 +11,7 @@ export function formats(locale: string) {
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Warsaw" });
   const decimal = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   const money = (minor: number, currency: string) => formatPrice(minor / 100, currency as Currency, locale);
+  const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   return {
     date: (d: Date) => date.format(d),
     dateTime: (d: Date) => dateTime.format(d),
@@ -18,6 +19,13 @@ export function formats(locale: string) {
     gb: (mb: number) => `${decimal.format(mb / 1024)} GB`,
     size: (mb: number) => formatMb(mb, locale),
     money,
+    /** How long ago, e.g. "5 minut temu", "3 dni temu". */
+    ago(d: Date, now = Date.now()) {
+      const minutes = Math.max(0, Math.round((now - d.getTime()) / 60_000));
+      if (minutes < 60) return relative.format(-minutes, "minute");
+      if (minutes < 48 * 60) return relative.format(-Math.round(minutes / 60), "hour");
+      return relative.format(-Math.round(minutes / (24 * 60)), "day");
+    },
     /** Amounts in several currencies, each added up on its own, e.g. "120 zł + 8 €". */
     totals(rows: { amount: number; currency: string }[]) {
       const sums = new Map<string, number>();

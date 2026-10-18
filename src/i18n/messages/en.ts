@@ -830,6 +830,14 @@ const en: Messages = {
       ],
       button: "Pay for your server",
     },
+    inactive: {
+      subject: "Free server {server} will be deleted on {deleteOn}",
+      paragraphs: [
+        "Nobody has played on your free server {server} for {idleDays} days, and we delete such servers to make room for others.",
+        "On {deleteOn} we'll delete it, with its world. To keep it, just play on it before then. You can also download the world in the panel.",
+      ],
+      button: "Go to your server",
+    },
   },
   testPaymentMail: {
     server: {
@@ -923,6 +931,8 @@ const en: Messages = {
       plan: "Plan",
       state: "State",
       players: "Players",
+      startedAgo: "Started",
+      lastPlayed: "Last played",
       ramNow: "RAM now",
       disk: "Disk",
       paidUntil: "Paid until",

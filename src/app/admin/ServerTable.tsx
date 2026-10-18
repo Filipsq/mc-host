@@ -28,6 +28,8 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
             <th>{t.columns.plan}</th>
             <th>{t.columns.state}</th>
             <th>{t.columns.players}</th>
+            <th>{t.columns.startedAgo}</th>
+            <th>{t.columns.lastPlayed}</th>
             <th>{t.columns.ramNow}</th>
             <th>{t.columns.disk}</th>
             <th>{t.columns.paidUntil}</th>
@@ -64,6 +66,8 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
                 <td className="nowrap">
                   {l.players !== undefined ? (l.maxPlayers ? `${l.players} / ${l.maxPlayers}` : l.players) : "–"}
                 </td>
+                <td className="nowrap">{l.startedAt ? f.ago(l.startedAt) : "–"}</td>
+                <td className="nowrap">{f.ago(s.lastPlayedAt)}</td>
                 <td className="nowrap">{l.memoryUsedMb !== undefined ? f.gb(l.memoryUsedMb) : "–"}</td>
                 <td className={`nowrap${l.diskMb !== undefined && l.diskMb > diskLimitMb(s.plan) ? " over" : ""}`}>
                   {l.diskMb !== undefined ? `${f.size(l.diskMb)} / ${f.size(diskLimitMb(s.plan))}` : "–"}
