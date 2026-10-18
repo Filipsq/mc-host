@@ -829,6 +829,14 @@ const pl = {
       ],
       button: "Opłać serwer",
     },
+    inactive: {
+      subject: "Darmowy serwer {server} zostanie usunięty {deleteOn}",
+      paragraphs: [
+        "Na darmowy serwer {server} nikt nie wchodził od {idleDays} dni, a takie serwery usuwamy, żeby zrobić miejsce dla innych.",
+        "{deleteOn} usuniemy go razem ze światem. Żeby go zachować, wystarczy, że ktoś na nim zagra przed tą datą. Świat możesz też pobrać w panelu.",
+      ],
+      button: "Przejdź do serwera",
+    },
   },
   testPaymentMail: {
     server: {
@@ -922,6 +930,8 @@ const pl = {
       plan: "Plan",
       state: "Stan",
       players: "Gracze",
+      startedAgo: "Uruchomiony",
+      lastPlayed: "Ostatnio grano",
       ramNow: "RAM teraz",
       disk: "Dysk",
       paidUntil: "Opłacony do",

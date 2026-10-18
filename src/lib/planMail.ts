@@ -9,9 +9,9 @@ import { sendPush } from "./push";
 // Emails about a server's paid plan: when a payment arrives, a few days
 // before the paid period ends (plans don't renew by themselves), when the
 // server is suspended for it, and a few days before a suspended server is
-// deleted.
+// deleted. Also before a free server nobody plays on is deleted.
 
-export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion";
+export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion" | "inactive";
 export type ServerWithOwner = Server & { owner: Pick<User, "email" | "locale"> };
 
 /** How long before the end of a paid period its owner is reminded. */
@@ -20,6 +20,12 @@ export const REMIND_BEFORE_DAYS = 3;
 export const KEEP_DAYS = 14;
 /** How long before deleting a suspended server its owner is told. */
 export const WARN_BEFORE_DELETE_DAYS = 3;
+/** After how many days with nobody playing a free server is deleted (the terms say so too). */
+export const FREE_IDLE_DAYS = 7;
+/** How long before that its owner is told. */
+export const WARN_BEFORE_IDLE_DELETE_DAYS = 2;
+/** The terms that allow it take effect then (14 days' notice, §12); nothing is deleted for being idle before. */
+export const FREE_IDLE_FROM = new Date("2026-11-01T00:00:00+01:00");
 
 /** Emails the server's owner, in their language. Reports whether it went out; never throws. */
 export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, deleteOn?: Date): Promise<boolean> {
@@ -35,9 +41,10 @@ export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, 
     plan: all.plans[server.plan],
     date: server.paidUntil ? when(server.paidUntil) : "",
     days: KEEP_DAYS,
+    idleDays: FREE_IDLE_DAYS - WARN_BEFORE_IDLE_DELETE_DAYS,
     deleteOn: deleteOn ? when(deleteOn) : "",
   };
-  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" ? "" : "/billing"}`;
+  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" || kind === "inactive" ? "" : "/billing"}`;
   const mail = buttonMail({
     to: server.owner.email,
     subject: format(t.subject, vars),

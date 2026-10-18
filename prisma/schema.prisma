@@ -207,7 +207,10 @@ model Server {
   // The paidUntil its owner was last reminded of, so each period gets one reminder.
   reminderSentFor  DateTime?
   // When its owner was told a suspended server will be deleted; cleared by a payment.
+  // For a free server: told it will be deleted for nobody playing; cleared when someone plays.
   deletionWarnedAt DateTime?
+  // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
+  lastPlayedAt     DateTime       @default(now())
   payments         Payment[]
   owner            User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId          String

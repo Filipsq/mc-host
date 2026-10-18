@@ -25,6 +25,7 @@ type serverStats struct {
 	DiskLimitMb  int64  `json:"diskLimitMb,omitempty"`  // what its plan allows; 0 for no limit
 	Players      *int   `json:"players,omitempty"`      // online at the last metrics sample, while running
 	MaxPlayers   int    `json:"maxPlayers,omitempty"`   // when the server reports it
+	StartedAt    string `json:"startedAt,omitempty"`    // when it last started, while running
 }
 
 type hostStats struct {
@@ -84,6 +85,7 @@ func (a *agent) serverStats(ctx context.Context, c containerSummary) serverStats
 		s.StopReason = a.stopReason(id, info)
 		return s
 	}
+	s.StartedAt = info.State.StartedAt
 	s.Players, s.MaxPlayers = a.playersOnline(id)
 	var st struct {
 		Memory struct {

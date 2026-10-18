@@ -125,6 +125,7 @@ export type ServerStats = Pick<AgentState, "state" | "health" | "stopReason" | "
   memoryUsedMb?: number; // what it uses right now, while running
   players?: number; // online at the last sample, while running
   maxPlayers?: number; // when the server reports it
+  startedAt?: string; // when it last started, while running
 };
 
 export type HostStats = {
