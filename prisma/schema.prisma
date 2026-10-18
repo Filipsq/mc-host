@@ -62,6 +62,13 @@ model PushSubscription {
   @@index([userId])
 }
 
+// The notice admins show across the site (one row, id 1; empty text: none).
+model Announcement {
+  id        Int      @id @default(1)
+  text      String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
 // One call to the AI (Claude), for the per-user and monthly limits and the
 // admin panel's usage figures.
 model AiUsage {

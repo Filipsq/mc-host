@@ -850,7 +850,7 @@ const pl = {
   },
   admin: {
     title: "Panel admina",
-    nav: { overview: "Przegląd", servers: "Serwery", users: "Użytkownicy", payments: "Płatności", support: "Czat" },
+    nav: { overview: "Przegląd", servers: "Serwery", users: "Użytkownicy", payments: "Płatności", support: "Czat", announcement: "Ogłoszenie" },
     viewing: "Oglądasz serwer użytkownika {email} jako admin. Zmiany zrobisz tak jak właściciel.",
     openAdmin: "Otwórz w panelu admina",
     machine: "Maszyna",
@@ -972,6 +972,19 @@ const pl = {
     termsAccepted: "Zaakceptował regulamin",
     openPanel: "Otwórz panel serwera",
     payments: "Płatności",
+    announcement: {
+      title: "Ogłoszenie",
+      intro: "Tekst pojawia się na pasku na górze każdej strony, także w panelu klientów, np. o przerwie technicznej. Puste pole usuwa pasek.",
+      label: "Treść",
+      placeholder: "Dziś o 12:00 ulepszamy maszynę. Serwery nie będą działać przez ok. 10 minut.",
+      inGame: "Wyślij też na czat we wszystkich włączonych serwerach",
+      hint: "Na czacie zobaczą to tylko gracze, którzy są teraz w grze. Uśpione serwery go nie dostaną.",
+      submit: "Zapisz",
+      saved: "Ogłoszenie jest na stronie.",
+      sent: "Wysłane na czat {n} serwerów.",
+      cleared: "Pasek z ogłoszeniem usunięty.",
+      tooLong: "Ogłoszenie może mieć najwyżej {n} znaków.",
+    },
     gift: {
       title: "Dodaj dni",
       hint: "Przedłuża opłacony okres bez płatności, np. jako rekompensatę za przerwę. Zawieszony albo jeszcze nieopłacony serwer zostanie uruchomiony.",

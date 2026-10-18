@@ -10,6 +10,7 @@ const LINKS = [
   ["/admin/users", "users"],
   ["/admin/payments", "payments"],
   ["/admin/support", "support"],
+  ["/admin/announcement", "announcement"],
 ] as const;
 
 type Props = { labels: Messages["admin"]["nav"]; counts: Partial<Record<(typeof LINKS)[number][1], number>> };

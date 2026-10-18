@@ -851,7 +851,7 @@ const en: Messages = {
   },
   admin: {
     title: "Admin panel",
-    nav: { overview: "Overview", servers: "Servers", users: "Users", payments: "Payments", support: "Chat" },
+    nav: { overview: "Overview", servers: "Servers", users: "Users", payments: "Payments", support: "Chat", announcement: "Announcement" },
     viewing: "You're viewing {email}'s server as an admin. Changes work as they do for the owner.",
     openAdmin: "Open in the admin panel",
     machine: "Machine",
@@ -973,6 +973,19 @@ const en: Messages = {
     termsAccepted: "Accepted the terms",
     openPanel: "Open the server's panel",
     payments: "Payments",
+    announcement: {
+      title: "Announcement",
+      intro: "The text shows in a bar at the top of every page, customers' panel included, e.g. for planned maintenance. An empty field removes the bar.",
+      label: "Text",
+      placeholder: "Today at 12:00 we're upgrading the machine. Servers will be down for about 10 minutes.",
+      inGame: "Also send it to the chat of every server that's on",
+      hint: "Only players in the game right now see it in chat. Sleeping servers don't get it.",
+      submit: "Save",
+      saved: "The announcement is on the site.",
+      sent: "Sent to the chat of {n} servers.",
+      cleared: "Announcement bar removed.",
+      tooLong: "An announcement can be at most {n} characters.",
+    },
     gift: {
       title: "Add days",
       hint: "Extends the paid period without a payment, e.g. to make up for downtime. A suspended or not yet paid server is started.",

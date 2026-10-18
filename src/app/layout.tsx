@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { LayoutGrid, LogOut } from "lucide-react";
+import { LayoutGrid, LogOut, Megaphone } from "lucide-react";
 import "@fontsource-variable/inter";
 import "@fontsource/jersey-10/latin.css";
 import "@fontsource/jersey-10/latin-ext.css";
@@ -15,6 +15,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import { formatPrice, planById } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
 import { isAdmin } from "@/lib/admin";
+import { getAnnouncement } from "@/lib/announcement";
 import { MAX_LENGTH, RATE_COUNT, RATE_MINUTES } from "@/lib/support";
 import { logOut } from "./actions";
 import "./globals.css";
@@ -47,10 +48,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [{ locale, currency }, t, session] = await Promise.all([
+  const [{ locale, currency }, t, session, announcement] = await Promise.all([
     getPreferences(),
     getMessages(),
     auth(),
+    getAnnouncement(),
   ]);
   const signedIn = !!session?.user;
   const admin = session?.user?.id ? await isAdmin(session.user.id) : false;
@@ -98,6 +100,11 @@ export default async function RootLayout({
             </div>
           </div>
         </header>
+        {announcement && (
+          <div className="announcement-bar" role="status">
+            <Megaphone size={16} aria-hidden /> <span>{announcement}</span>
+          </div>
+        )}
         {children}
         <footer className="footer">
           <div className="container footer-grid">
