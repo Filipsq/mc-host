@@ -469,7 +469,7 @@ const pl = {
       soldOut: "Ten plan jest chwilowo wyprzedany. Spróbuj później albo wybierz mniejszy.",
       agentUnavailable: "Nie udało się uruchomić serwera. Spróbuj ponownie za chwilę.",
       notRunning: "Serwer nie jest uruchomiony",
-      invalidSubdomain: "Adres może mieć 3–32 znaki: małe litery, cyfry i myślniki",
+      invalidSubdomain: "Adres może mieć 3–32 znaki: małe litery bez polskich znaków, cyfry i myślniki (nie na początku ani na końcu)",
       subdomainTaken: "Ten adres jest już zajęty",
       invalidPlan: "Wybierz plan i okres",
       paymentsUnavailable: "Płatności są chwilowo niedostępne. Spróbuj później.",
