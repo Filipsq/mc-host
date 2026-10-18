@@ -13,6 +13,7 @@ import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
+import { isAdmin } from "@/lib/admin";
 import {
   DIFFICULTIES,
   GAME_MODES,
@@ -143,7 +144,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   }
 
   const memoryMb = planById(plan).ramGb * 1024;
-  if (plan !== "FREE" && !(await canSellMemory(memoryMb))) return { error: "soldOut", values };
+  // Admins may go over the sales limit to test buying; a plan still has to fit on the machine.
+  const extraMb = (await isAdmin(user.id)) ? 0 : memoryMb;
+  if (plan !== "FREE" && !(await canSellMemory(extraMb, memoryMb))) return { error: "soldOut", values };
 
   // Pin the pack's current version, so players know exactly which one to install.
   let pack: PackChoice | null = null;
@@ -235,8 +238,10 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   if (!parsed.success) return { error: "invalidPlan" };
   if (form.get("startNow") !== "on") return { error: "consentRequired" };
   // Renewing the same plan needs nothing new; an upgrade only needs the difference.
+  // Admins may go over the sales limit to test buying, as when creating a server.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
-  if (!(await canSellMemory(planMb - heldMemoryMb(server), planMb))) {
+  const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
+  if (!(await canSellMemory(extraMb, planMb))) {
     return { error: "soldOut" };
   }
 
