@@ -978,6 +978,35 @@ main.admin { max-width: 1160px; }
   background: none; border: 0; box-shadow: none; color: var(--muted); border-radius: 50%;
 }
 .help-tip-close:hover:not(:disabled) { background: var(--surface); color: var(--fg); }
+/* No admin on the site: a sleeping Steve sits on the bubble and says so. */
+.help-sleep {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-right: 8px; margin-bottom: -10px; padding: 0; height: auto;
+  background: none; border: 0; box-shadow: none; cursor: pointer; animation: help-in 0.3s ease-out;
+}
+.help-sleep:hover:not(:disabled) { background: none; }
+.help-sleep-say {
+  position: relative; padding: 6px 11px; margin-right: 18px; font-size: 0.82rem; font-weight: 600; color: var(--fg); white-space: nowrap;
+  background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 8px 22px rgb(0 0 0 / 0.45);
+}
+.help-sleep-say::after {
+  content: ""; position: absolute; right: 10px; bottom: -6px; width: 10px; height: 10px; background: var(--surface-2);
+  border-right: 1px solid var(--border-strong); border-bottom: 1px solid var(--border-strong); transform: rotate(45deg);
+}
+.help-sleep-steve { position: relative; display: block; line-height: 0; filter: drop-shadow(0 4px 0 rgb(0 0 0 / 0.35)); transform: rotate(-8deg); }
+.help-sleep-steve svg { display: block; image-rendering: pixelated; animation: help-breathe 3.2s ease-in-out infinite; transform-origin: bottom center; }
+.help-sleep-z { position: absolute; left: -16px; top: -6px; width: 16px; height: 30px; line-height: 1; pointer-events: none; }
+.help-sleep-z i {
+  position: absolute; left: 0; bottom: 0; font-style: normal; font-weight: 800; font-size: 0.7rem; color: var(--muted);
+  opacity: 0; animation: help-z 3s linear infinite;
+}
+.help-sleep-z i:nth-child(2) { animation-delay: 1s; font-size: 0.8rem; }
+.help-sleep-z i:nth-child(3) { animation-delay: 2s; font-size: 0.95rem; }
+@keyframes help-breathe { 50% { transform: scale(1.04, 0.97); } }
+@keyframes help-z {
+  0% { opacity: 0; transform: translate(6px, 4px); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-8px, -26px); }
+}
 .help-panel {
   width: min(400px, calc(100vw - 40px)); height: min(600px, calc(100dvh - 120px)); display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 18px 48px rgb(0 0 0 / 0.55);
@@ -1003,12 +1032,13 @@ main.admin { max-width: 1160px; }
 .help-guest p { margin: 0; }
 .help-guest-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
 @keyframes help-in { from { opacity: 0; transform: translateY(10px); } }
-@media (prefers-reduced-motion: reduce) { .help-tip, .help-panel { animation: none; } .help-fab { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .help-tip, .help-panel, .help-sleep, .help-sleep-steve svg { animation: none; } .help-fab { transition: none; } .help-sleep-z { display: none; } }
 /* On a phone the open chat takes the whole screen, like a messaging app. */
 @media (max-width: 640px) {
   .help { right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom)); }
   .help-fab { width: 56px; height: 56px; }
   .help.open { inset: 0; gap: 0; }
   .help.open .help-fab { display: none; }
+  .help-sleep-say { font-size: 0.78rem; }
   .help-panel { width: 100%; height: 100%; border: 0; border-radius: 0; padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
 }

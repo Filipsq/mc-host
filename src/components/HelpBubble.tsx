@@ -12,6 +12,8 @@ type Props = {
   t: Messages["support"];
   signedIn: boolean;
   admin: boolean;
+  /** Whether an admin was on the site when the page was rendered; kept up to date by polling. */
+  adminOnline: boolean;
   maxLength: number;
   rate: { count: number; minutes: number };
 };
@@ -37,9 +39,10 @@ function storage(fn: (s: Storage) => string | null | void) {
  * shows the number of unread replies, and greets new visitors with a short note
  * saying it is a chat with an admin. Admins are taken to their chat list.
  */
-export default function HelpBubble({ t, signedIn, admin, maxLength, rate }: Props) {
+export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength, rate }: Props) {
   const path = usePathname();
   const [count, setCount] = useState(0);
+  const [online, setOnline] = useState(adminOnline);
   const [open, setOpen] = useState(false);
   const [tip, setTip] = useState(false);
   const [chat, setChat] = useState<{ state: ChatState; hadUnread: boolean } | null>(null);
@@ -51,6 +54,12 @@ export default function HelpBubble({ t, signedIn, admin, maxLength, rate }: Prop
   const hidden = path.startsWith("/dashboard/support") || path.startsWith("/admin");
 
   const check = useCallback(async () => {
+    if (!admin) {
+      fetch("/api/support/online", { cache: "no-store" })
+        .then(async (res) => res.ok && setOnline(((await res.json()) as { online: boolean }).online))
+        .catch(() => {});
+    }
+    // Admins poll this too, which is what tells visitors an admin is online.
     if (!signedIn) return;
     try {
       const res = await fetch("/api/support", { cache: "no-store" });
@@ -58,7 +67,7 @@ export default function HelpBubble({ t, signedIn, admin, maxLength, rate }: Prop
     } catch {
       // Keep the last count.
     }
-  }, [signedIn]);
+  }, [signedIn, admin]);
 
   useEffect(() => {
     void check();
@@ -159,7 +168,9 @@ export default function HelpBubble({ t, signedIn, admin, maxLength, rate }: Prop
             <span className="help-avatar" aria-hidden><MessageCircle size={20} /></span>
             <div className="help-head-text">
               <strong id="help-title">{t.title}</strong>
-              <span className="muted small"><span className="dot online" aria-hidden /> {t.bubble.status}</span>
+              <span className="muted small">
+                <span className={online ? "dot online" : "dot"} aria-hidden /> {online ? t.bubble.status : t.bubble.offlineStatus}
+              </span>
             </div>
             {signedIn && (
               <Link className="help-icon" href="/dashboard/support" aria-label={t.bubble.fullScreen} title={t.bubble.fullScreen} onClick={() => setOpen(false)}>
@@ -213,6 +224,15 @@ export default function HelpBubble({ t, signedIn, admin, maxLength, rate }: Prop
           </button>
         </div>
       )}
+      {!online && !open && !tip && (
+        <button type="button" className="help-sleep" onClick={() => setOpen(true)} aria-label={`${t.bubble.offline}. ${t.bubble.open}`}>
+          <span className="help-sleep-say">{t.bubble.offline}</span>
+          <span className="help-sleep-steve">
+            <SleepingSteve title={t.bubble.sleeping} />
+            <span className="help-sleep-z" aria-hidden><i>z</i><i>z</i><i>Z</i></span>
+          </span>
+        </button>
+      )}
       <button
         ref={button}
         type="button"
@@ -225,5 +245,31 @@ export default function HelpBubble({ t, signedIn, admin, maxLength, rate }: Prop
         {!open && badge}
       </button>
     </div>
+  );
+}
+
+/** Pixels of the sleeping head, a row per line: hair, skin, shade, closed eyes, nose, mouth. */
+const STEVE = [
+  "hhhhhhhh",
+  "hhhhhhhh",
+  "hssssssh",
+  "ssssssss",
+  "seessees",
+  "sssnnsss",
+  "ssmmmmss",
+  "dssssssd",
+];
+const STEVE_COLORS: Record<string, string> = {
+  h: "#3d2a19", s: "#c8996b", d: "#a97c52", e: "#4b3020", n: "#9c6b45", m: "#6e4430",
+};
+
+/** A blocky sleeping Steve, drawn here from squares in the site's pixel style. */
+function SleepingSteve({ title }: { title: string }) {
+  return (
+    <svg viewBox="0 0 8 8" width="44" height="44" shapeRendering="crispEdges" role="img" aria-label={title}>
+      {STEVE.flatMap((row, y) =>
+        [...row].map((c, x) => <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill={STEVE_COLORS[c]} />),
+      )}
+    </svg>
   );
 }
