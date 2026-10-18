@@ -15,9 +15,9 @@ type PlanSpec = {
 
 export const plans: PlanSpec[] = [
   { id: "FREE", cpus: 1, ramGb: 2, diskGb: 2, maxPlayers: 10, alwaysOn: false, backupsKept: 0, price: { PLN: 0, EUR: 0, USD: 0, GBP: 0 } },
-  { id: "STARTER", cpus: 2, ramGb: 3, diskGb: 10, maxPlayers: 20, alwaysOn: true, backupsKept: 1, price: { PLN: 12, EUR: 3, USD: 3.5, GBP: 2.5 } },
-  { id: "STANDARD", cpus: 3, ramGb: 6, diskGb: 20, maxPlayers: 40, alwaysOn: true, backupsKept: 7, price: { PLN: 25, EUR: 6, USD: 7, GBP: 5.5 } },
-  { id: "PRO", cpus: 4, ramGb: 10, diskGb: 40, maxPlayers: null, alwaysOn: true, backupsKept: 14, price: { PLN: 39, EUR: 9.5, USD: 11, GBP: 8.5 } },
+  { id: "STARTER", cpus: 2, ramGb: 3, diskGb: 10, maxPlayers: 20, alwaysOn: true, backupsKept: 1, price: { PLN: 15, EUR: 3.5, USD: 4, GBP: 3 } },
+  { id: "STANDARD", cpus: 3, ramGb: 6, diskGb: 20, maxPlayers: 40, alwaysOn: true, backupsKept: 7, price: { PLN: 29, EUR: 7, USD: 8, GBP: 6 } },
+  { id: "PRO", cpus: 4, ramGb: 10, diskGb: 40, maxPlayers: null, alwaysOn: true, backupsKept: 14, price: { PLN: 45, EUR: 10.5, USD: 12, GBP: 9 } },
 ];
 
 export const planById = (id: Plan) => plans.find((p) => p.id === id)!;
