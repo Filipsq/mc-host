@@ -26,6 +26,7 @@ type routeTarget struct {
 	Addr    string // where Minecraft listens, e.g. 172.17.0.5:25565
 	Running bool
 	Reason  string // why it isn't running: sleeping, stopped, crashed, disk
+	Peer    string // set instead when the server is on another machine: that machine's router
 }
 
 type router struct {
@@ -46,6 +47,8 @@ const (
 	msgCrashedKick = "Serwer nie działa. Właściciel może go uruchomić w panelu.\nThe server is down. Its owner can start it from the panel."
 	msgDiskKick    = "Serwer zajmuje za dużo miejsca. Właściciel musi usunąć pliki w panelu.\nThe server uses too much disk space. Its owner has to delete files in the panel."
 	msgUnknown     = "§cNie ma takiego serwera\n§7No server at this address"
+	msgPeerDown    = "§cSerwer jest chwilowo niedostępny\n§7The server is unavailable right now"
+	msgPeerKick    = "Maszyna z tym serwerem jest chwilowo niedostępna. Spróbuj ponownie za kilka minut.\nThe machine this server runs on is unavailable right now. Try again in a few minutes."
 )
 
 func (rt *router) serve(ln net.Listener) error {
@@ -85,6 +88,20 @@ func (rt *router) handle(conn net.Conn) {
 	}
 
 	switch {
+	case target.Peer != "":
+		// On another machine: hand the connection over as is; its router does the rest.
+		peer, err := rt.dial(target.Peer)
+		if err != nil {
+			log.Printf("router: peer %s for %q: %v", target.Peer, host, err)
+			rt.answer(conn, r, hs, "Offline", msgPeerDown, msgPeerKick)
+			return
+		}
+		defer peer.Close()
+		_ = conn.SetReadDeadline(time.Time{})
+		if _, err := peer.Write(raw); err != nil {
+			return
+		}
+		pipe(conn, r, peer)
 	case target.Running:
 		backend, err := rt.dial(target.Addr)
 		if err != nil {

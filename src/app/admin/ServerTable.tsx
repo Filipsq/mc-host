@@ -1,10 +1,11 @@
 import Link from "next/link";
 import type { Server } from "@prisma/client";
-import type { Messages } from "@/i18n/messages";
+import { format, type Messages } from "@/i18n/messages";
 import { isServerKind } from "@/lib/modpacks";
 import { EDITION_NAMES } from "@/lib/editions";
 import { addressLabel } from "@/lib/servers";
 import { diskLimitMb } from "@/lib/disk";
+import { nodes } from "@/lib/nodes";
 import type { Live } from "./data";
 import type { Formats } from "./format";
 
@@ -15,6 +16,7 @@ type Props = { rows: ServerRow[]; live: Record<string, Live>; all: Messages; f: 
 export default function ServerTable({ rows, live, all, f, showOwner = true }: Props) {
   const t = all.admin;
   if (rows.length === 0) return <p className="muted">{t.noServers}</p>;
+  const severalMachines = nodes().length > 1;
   return (
     <div className="table-scroll card flush">
       <table className="admin-table">
@@ -57,6 +59,7 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
                 </td>
                 <td>
                   <span className={`badge ${l.state}`}>{all.server.live[l.state]}</span>
+                  {severalMachines && <div className="muted small nowrap">{format(t.onMachine, { node: s.node })}</div>}
                 </td>
                 <td className="nowrap">
                   {l.players !== undefined ? (l.maxPlayers ? `${l.players} / ${l.maxPlayers}` : l.players) : "–"}

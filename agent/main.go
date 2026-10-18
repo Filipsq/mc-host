@@ -158,6 +158,9 @@ type agent struct {
 	diskUsage     sync.Map         // server id -> diskUse, the last measurement
 	diskMeasuring sync.Map         // server id -> true while a measurement runs in the background
 
+	peerMu     sync.RWMutex
+	peerRoutes map[string]string // Java address -> router of the machine it's on (see peers.go)
+
 	metrics    sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
 	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
 }
@@ -212,6 +215,7 @@ func main() {
 		}
 	}
 	a.loadDiskLimits()
+	a.loadPeerRoutes()
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
@@ -231,7 +235,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("game listener: %v", err)
 	}
-	rt := &router{lookup: a.lookupByHost, wake: a.wake, dial: dialTCP}
+	rt := &router{lookup: a.lookupRoute, wake: a.wake, dial: dialTCP}
 	go func() { log.Fatal(rt.serve(ln)) }()
 	log.Printf("routing Java players on %s", gameAddr)
 
@@ -245,6 +249,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	mux.HandleFunc("GET /stats", a.stats)
 	mux.HandleFunc("PUT /disk-limits", a.putDiskLimits)
+	mux.HandleFunc("PUT /peer-routes", a.putPeerRoutes)
 	mux.HandleFunc("POST /servers", a.create)
 	mux.HandleFunc("PUT /servers/{id}", a.recreate)
 	mux.HandleFunc("GET /servers/{id}", a.status)

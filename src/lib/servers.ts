@@ -1,9 +1,10 @@
 import "server-only";
 import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
-import { AgentError, deleteServer, getServerState, recreateServer, type AgentState, type CreateServerSpec } from "./agent";
+import { AgentError, deleteServer, getServerState, recreateServer, setPeerRoutes, type AgentState, type CreateServerSpec } from "./agent";
 import { getServerFor } from "./access";
 import { planById } from "./plans";
+import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
 
 export type LiveState =
@@ -106,25 +107,45 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
 }
 
 const GAME_DOMAIN = process.env.GAME_DOMAIN ?? "localhost";
-const GAME_HOST = process.env.GAME_HOST ?? "localhost";
+
+/** The Java address: every machine's servers are reached through the main machine's router. */
+function javaHost(server: Pick<Server, "subdomain">) {
+  return `${server.subdomain}.${GAME_DOMAIN}`;
+}
 
 /** What players type in the game to join: a Java address, or a host and port (Bedrock, Terraria). */
-export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port">) {
-  if (server.edition === "JAVA") return { host: `${server.subdomain}.${GAME_DOMAIN}`, port: null };
-  return { host: GAME_HOST, port: server.port };
+export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port" | "node">) {
+  if (server.edition === "JAVA") return { host: javaHost(server), port: null };
+  return { host: nodeById(server.node).host, port: server.port };
 }
 
 /**
- * Where Bedrock players join a crossplay server: the same address as on Java
- * (the wildcard DNS name points at the game host too) with the server's own port.
+ * Where Bedrock players join a crossplay server, straight to its machine on the
+ * server's own port: on the main machine the Java address works too (the
+ * wildcard DNS name points there), on the others it's that machine's host.
  */
-export function crossplayAddress(server: Pick<Server, "edition" | "kind" | "crossplay" | "subdomain" | "port">) {
+export function bedrockHost(server: Pick<Server, "subdomain" | "node">) {
+  return server.node === MAIN_NODE ? javaHost(server) : nodeById(server.node).host;
+}
+
+export function crossplayAddress(server: Pick<Server, "edition" | "kind" | "crossplay" | "subdomain" | "port" | "node">) {
   if (!server.crossplay || !canCrossplay(server)) return null;
-  return { host: joinAddress(server).host, port: server.port };
+  return { host: bedrockHost(server), port: server.port };
+}
+
+/** Tells the main machine's router where the Java servers on the other machines are (see agent/peers.go). */
+export async function syncPeerRoutes() {
+  const others = nodes().filter((n) => n.id !== MAIN_NODE);
+  if (others.length === 0) return;
+  const servers = await db.server.findMany({
+    where: { edition: "JAVA", node: { in: others.map((n) => n.id) } },
+    select: { subdomain: true, node: true },
+  });
+  await setPeerRoutes(Object.fromEntries(servers.map((s) => [javaHost(s), routerAddress(nodeById(s.node))])));
 }
 
 /** The address as players type it. */
-export function addressLabel(server: Pick<Server, "edition" | "subdomain" | "port">) {
+export function addressLabel(server: Pick<Server, "edition" | "subdomain" | "port" | "node">) {
   const { host, port } = joinAddress(server);
   return server.edition === "JAVA" ? host : `${host}:${port}`;
 }
@@ -141,7 +162,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     port: server.port!,
     maxPlayers: plan.maxPlayers ?? 0,
     version: server.version,
-    hostname: server.edition === "JAVA" ? joinAddress(server).host : "",
+    hostname: server.edition === "JAVA" ? javaHost(server) : "",
     password: server.edition === "TERRARIA" ? (server.serverPassword ?? "") : undefined,
     autostop: !plan.alwaysOn,
     backupsKept: plan.backupsKept,

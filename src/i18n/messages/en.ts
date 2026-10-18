@@ -915,6 +915,7 @@ const en: Messages = {
       SUSPENDED: "Suspended",
     },
     paymentStatuses: { PAID: "Paid", PENDING: "Pending", FAILED: "Failed", EXPIRED: "Expired" },
+    onMachine: "machine {node}",
     columns: {
       server: "Server",
       owner: "Owner",

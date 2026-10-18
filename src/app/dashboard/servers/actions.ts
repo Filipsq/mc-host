@@ -7,12 +7,13 @@ import type { Plan, ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
-import { agentSpec, applyToHost, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain, onHost } from "@/lib/servers";
+import { agentSpec, applyToHost, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain, onHost, syncPeerRoutes } from "@/lib/servers";
+import { MAIN_NODE } from "@/lib/nodes";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
-import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
+import { canSellMemory, heldMemoryMb, pickNode } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
 import {
   DIFFICULTIES,
@@ -146,7 +147,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   const memoryMb = planById(plan).ramGb * 1024;
   // Admins may go over the sales limit to test buying; a plan still has to fit on the machine.
   const extraMb = (await isAdmin(user.id)) ? 0 : memoryMb;
-  if (plan !== "FREE" && !(await canSellMemory(extraMb, memoryMb))) return { error: "soldOut", values };
+  // The machine it goes on: the one with the most room (paid plans need room to sell).
+  const node = await pickNode(memoryMb, plan === "FREE" ? 0 : extraMb);
+  if (!node) return { error: "soldOut", values };
 
   // Pin the pack's current version, so players know exactly which one to install.
   let pack: PackChoice | null = null;
@@ -161,6 +164,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
 
   const server = await createServerRecord({
     ownerId: user.id,
+    node,
     name,
     edition,
     subdomain,
@@ -187,6 +191,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   });
   if (server === "subdomainTaken") return { error: "subdomainTaken", values };
   if (!server) return { error: "noPorts", values };
+  // On another machine, Java players reach it through the main machine's router.
+  if (server.node !== MAIN_NODE) await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
 
   if (plan !== "FREE") {
     let url: string;
@@ -241,7 +247,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   // Admins may go over the sales limit to test buying, as when creating a server.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
   const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
-  if (!(await canSellMemory(extraMb, planMb))) {
+  if (!(await canSellMemory(extraMb, planMb, server.node))) {
     return { error: "soldOut" };
   }
 
