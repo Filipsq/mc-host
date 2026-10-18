@@ -3,7 +3,7 @@ import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
 import * as agent from "./agent";
-import { agentSpec, destroyServer } from "./servers";
+import { agentSpec, destroyServer, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
@@ -137,7 +137,7 @@ export async function giftDays(serverId: string, days: number, why = "admin gift
   if (!s) return {};
   if (s.plan === "FREE") return { error: "free" };
   const needsHost = s.status === "AWAITING_PAYMENT" || s.status === "SUSPENDED";
-  if (needsHost && !(await canSellMemory(s.memoryMb))) return { error: "soldOut" };
+  if (needsHost && !(await canSellMemory(s.memoryMb, s.memoryMb, s.node))) return { error: "soldOut" };
   const from = s.paidUntil && s.paidUntil > now ? s.paidUntil : now;
   const server = await db.server.update({
     where: { id: s.id },
@@ -316,5 +316,6 @@ export async function runBillingJob(now = new Date()) {
   await agent
     .setDiskLimits(Object.fromEntries(onAgent.map((s) => [s.id, diskLimitMb(s.plan)])))
     .catch((err) => console.error("disk limits not sent", err));
+  await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
   return result;
 }

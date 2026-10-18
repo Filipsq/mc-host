@@ -914,6 +914,7 @@ const pl = {
       SUSPENDED: "Zawieszony",
     },
     paymentStatuses: { PAID: "Opłacona", PENDING: "Oczekuje", FAILED: "Nieudana", EXPIRED: "Wygasła" },
+    onMachine: "maszyna {node}",
     columns: {
       server: "Serwer",
       owner: "Właściciel",

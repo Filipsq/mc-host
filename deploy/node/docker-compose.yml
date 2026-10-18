@@ -1,0 +1,41 @@
+# An extra game machine: only the agent (with its Java router) and the
+# Minecraft containers it starts. The site, database and billing stay on the
+# main machine, which reaches this agent through a WireGuard tunnel.
+# Set up with deploy/add-node.sh on the main machine.
+name: mchost
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "3"
+
+services:
+  agent:
+    build: ../../agent
+    restart: unless-stopped
+    logging: *logging
+    network_mode: host
+    environment:
+      AGENT_TOKEN: ${AGENT_TOKEN}
+      # The tunnel address only (10.88.0.x); the firewall lets in only the tunnel on 8081.
+      AGENT_ADDR: ${AGENT_ADDR}
+      GAME_ADDR: ":25565"
+      STATE_DIR: /state
+      IDLE_MINUTES: ${IDLE_MINUTES:-5}
+      MEMORY_LIMIT_MB: ${MEMORY_LIMIT_MB:-0}
+      MEMORY_OVERBOOK: ${MEMORY_OVERBOOK:-1}
+      CF_API_KEY: ${CF_API_KEY:-}
+      BACKUP_DIR: /backups
+      BACKUP_MOUNT: mchost-backups
+      VOLUMES_DIR: /var/lib/docker/volumes
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/docker/volumes:/var/lib/docker/volumes
+      - agent-state:/state
+      - backups:/backups
+
+volumes:
+  agent-state:
+  backups:
+    name: mchost-backups

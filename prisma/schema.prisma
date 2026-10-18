@@ -161,6 +161,8 @@ model Server {
   plan             Plan           @default(FREE)
   status           ServerStatus   @default(PROVISIONING)
   memoryMb         Int
+  // The game machine it runs on: "main", or an extra machine from NODES (src/lib/nodes.ts).
+  node             String         @default("main")
   version          String         @default("LATEST")
   // Game settings from the panel's Settings page (see src/lib/settings.ts).
   gameMode         String         @default("survival")
