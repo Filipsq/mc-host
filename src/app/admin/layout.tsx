@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
+import { stripeTestMode } from "@/lib/stripe";
 import { getMessages } from "@/i18n/server";
 import AdminNav from "./AdminNav";
 
@@ -19,6 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <main className="stack admin">
       <h1>{t.title}</h1>
       <AdminNav labels={t.nav} counts={{ support: waiting }} />
+      {stripeTestMode() && <p className="notice warn">{t.testMode}</p>}
       {children}
     </main>
   );

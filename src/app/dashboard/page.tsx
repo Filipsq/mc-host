@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/admin";
-import { getMessages } from "@/i18n/server";
+import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { addressLabel, getLiveState } from "@/lib/servers";
 import { sharedServers } from "@/lib/access";
@@ -14,6 +14,7 @@ import { GAMES } from "@/lib/games";
 import { REFERRAL_DAYS } from "@/lib/referrals";
 import { pushPublicKey } from "@/lib/push";
 import AppInstall from "@/components/AppInstall";
+import TestPaymentNotice from "@/components/TestPaymentNotice";
 
 type Props = { searchParams: Promise<{ haslo?: string }> };
 
@@ -21,7 +22,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [all, servers, shared, { haslo }, admin, me] = await Promise.all([
+  const [all, servers, shared, { haslo }, admin, me, { locale }] = await Promise.all([
     getMessages(),
     db.server.findMany({
       where: { ownerId: session.user.id },
@@ -31,6 +32,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     searchParams,
     isAdmin(session.user.id),
     db.user.findUnique({ where: { id: session.user.id }, select: { bonusDays: true } }),
+    getPreferences(),
   ]);
   const [states, sharedStates] = await Promise.all([
     Promise.all(servers.map((s) => getLiveState(s))),
@@ -52,6 +54,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
       </header>
       {haslo === "zmienione" && <p className="notice success">{t.passwordChanged}</p>}
+      <TestPaymentNotice userId={session.user.id} all={all} locale={locale} />
       {servers.length === 0 ? (
         <div className="card stack empty">
           <span className="empty-art">

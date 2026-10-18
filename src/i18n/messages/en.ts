@@ -237,6 +237,11 @@ const en: Messages = {
     emptyGames: "Or start from a ready-made game:",
     createServer: "Create server",
     passwordChanged: "Your password was changed. Other devices will need to log in again.",
+    testPayment: {
+      server: "Because of our mistake, the payment for server {server} was not taken. We're sorry! The server runs free until {date}. Pay for it again to keep playing: the new period starts after that date.",
+      retry: "Because of our mistake, your payment didn't go through and no money was taken. We're sorry! When you first pay for a server, you get {days} extra days free.",
+      pay: "Pay for the server",
+    },
   },
   app: {
     title: "MCHosting app for your phone",
@@ -826,6 +831,24 @@ const en: Messages = {
       button: "Pay for your server",
     },
   },
+  testPaymentMail: {
+    server: {
+      subject: "The payment for server {server} was not taken",
+      paragraphs: [
+        "Because of our mistake, the payment for server {server} was not taken. Our payment system was in test mode, so no money was taken from you.",
+        "We're very sorry! To make up for it, the server runs free for {days} more days, until {date}. To keep playing, pay for it again. The new paid period starts after those {days} days, so you lose nothing.",
+      ],
+      button: "Pay for the server",
+    },
+    retry: {
+      subject: "Your payment at {brand} didn't go through",
+      paragraphs: [
+        "Because of our mistake, your payment at {brand} couldn't go through. Our payment system was in test mode, so no money was taken from you.",
+        "We're very sorry! Payments work now. When you pay for a server, we'll add {days} days free to the paid period.",
+      ],
+      button: "Go to the panel",
+    },
+  },
   admin: {
     title: "Admin panel",
     nav: { overview: "Overview", servers: "Servers", users: "Users", payments: "Payments", support: "Chat" },
@@ -911,6 +934,26 @@ const en: Messages = {
       user: "User",
       amount: "Amount",
       paidAt: "Paid at",
+    },
+    testMode: "Stripe is on a test key, so nobody really pays. Customers now see \"Payments are unavailable right now\", and only admins can make test payments. Put the live keys in deploy/.env.",
+    testPayments: {
+      title: "Customers who didn't pay because of the test key",
+      hint: "On the test key nobody really paid. These customers got a paid plan from a test payment, or their payment didn't go through. Once you send the apology, a server with a plan runs free for {days} days from now, and a new payment adds on after them. Whoever's payment didn't go through gets {days} days free on their first payment. The customer gets an email, a notification and a notice in the panel.",
+      liveFirst: "You can send this once Stripe is on the live keys, since the email asks customers to pay again.",
+      deleteAfter: "Delete the test payments only after sending the apologies: they're the only record of whose payment didn't go through.",
+      customer: "Customer",
+      servers: "Servers with a plan from a test payment",
+      gets: "Gets",
+      failedOnly: "payment didn't go through",
+      serverGets: "{days} days free from now",
+      retryGets: "{days} days free on the first payment",
+      send: "Send apology",
+      confirmOne: "Send the apology to {email} and add {days} days? This can't be undone.",
+      sendAll: "Send to everyone ({n})",
+      confirmAll: "Send the apology to {n} customers and add {days} days for them? This can't be undone.",
+      told: "Told",
+      paidSince: "paid since",
+      notPaid: "not paid yet",
     },
     paymentRemove: {
       testChip: "test",

@@ -1,7 +1,7 @@
 import "server-only";
 import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
-import { stripe } from "./stripe";
+import { stripe, stripeTestMode } from "./stripe";
 import * as agent from "./agent";
 import { agentSpec, destroyServer } from "./servers";
 import { planById } from "./plans";
@@ -35,6 +35,10 @@ export async function startCheckout(opts: {
   startConsent: boolean; // asked for the server to start before the withdrawal period ends
 }) {
   const { user, server, plan, days, currency, locale, startConsent } = opts;
+  // Test keys take no money, so only admins may check out with them (to try the site).
+  if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
+    throw new Error("Stripe runs on test keys: only admins can pay");
+  }
   const amount = Math.round(priceFor(plan, days, currency) * 100);
   const payment = await db.payment.create({
     data: { userId: user.id, serverId: server.id, plan, days, amount, currency, startConsent },
@@ -88,7 +92,7 @@ export async function fulfillPayment(paymentId: string) {
 
     // A friend's invite: the first long enough payment gets extra days, and so does whoever invited them.
     inviter = await claimReferral(tx, payment.userId, payment.days);
-    const days = payment.days + (inviter ? REFERRAL_DAYS : 0);
+    const days = payment.days + (inviter ? REFERRAL_DAYS : 0) + (await claimApologyDays(tx, payment.userId));
     const paidUntil = new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
     const planChanged = server.plan !== payment.plan;
     const needsHost = planChanged || server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED";
@@ -110,6 +114,14 @@ export async function fulfillPayment(paymentId: string) {
   await sendPlanMail("paid", server);
   if (inviter) await sendReferralMail(inviter);
   if (server.status === "PROVISIONING") await provision(server);
+}
+
+/** Days the payer gets on top to make up for a payment of theirs that didn't go through (testPayments.ts), once. */
+async function claimApologyDays(tx: Prisma.TransactionClient, userId: string) {
+  const { apologyDays } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { apologyDays: true } });
+  if (apologyDays <= 0) return 0;
+  const { count } = await tx.user.updateMany({ where: { id: userId, apologyDays }, data: { apologyDays: 0 } });
+  return count ? apologyDays : 0;
 }
 
 export type GiftResult = { error?: "free" | "soldOut" | "failed"; server?: Server };

@@ -236,6 +236,11 @@ const pl = {
     emptyGames: "Albo zacznij od gotowej gry:",
     createServer: "Utwórz serwer",
     passwordChanged: "Hasło zostało zmienione. Na innych urządzeniach trzeba będzie zalogować się ponownie.",
+    testPayment: {
+      server: "Przez nasz błąd płatność za serwer {server} nie została pobrana. Przepraszamy! Serwer działa za darmo do {date}. Opłać go jeszcze raz, żeby grać dalej: nowy okres zacznie się po tej dacie.",
+      retry: "Przez nasz błąd Twoja płatność nie przeszła i nie pobraliśmy żadnych pieniędzy. Przepraszamy! Przy pierwszej opłacie serwera dostaniesz {days} dni gratis.",
+      pay: "Opłać serwer",
+    },
   },
   app: {
     title: "Aplikacja MCHosting na telefon",
@@ -825,6 +830,24 @@ const pl = {
       button: "Opłać serwer",
     },
   },
+  testPaymentMail: {
+    server: {
+      subject: "Płatność za serwer {server} nie została pobrana",
+      paragraphs: [
+        "Przez nasz błąd płatność za serwer {server} nie została pobrana. System płatności działał w trybie testowym, więc nie pobraliśmy od Ciebie żadnych pieniędzy.",
+        "Bardzo przepraszamy! Żeby to wynagrodzić, serwer działa za darmo jeszcze {days} dni, do {date}. Żeby grać dalej, opłać go jeszcze raz. Nowy opłacony okres zacznie się po tych {days} dniach, więc nic nie tracisz.",
+      ],
+      button: "Opłać serwer",
+    },
+    retry: {
+      subject: "Twoja płatność w {brand} nie przeszła",
+      paragraphs: [
+        "Przez nasz błąd Twoja płatność w {brand} nie mogła przejść. System płatności działał w trybie testowym, więc nie pobraliśmy od Ciebie żadnych pieniędzy.",
+        "Bardzo przepraszamy! Płatności już działają. Gdy opłacisz serwer, do opłaconego okresu dodamy {days} dni gratis.",
+      ],
+      button: "Przejdź do panelu",
+    },
+  },
   admin: {
     title: "Panel admina",
     nav: { overview: "Przegląd", servers: "Serwery", users: "Użytkownicy", payments: "Płatności", support: "Czat" },
@@ -910,6 +933,26 @@ const pl = {
       user: "Użytkownik",
       amount: "Kwota",
       paidAt: "Opłacona",
+    },
+    testMode: "Stripe działa na kluczu testowym, więc nikt naprawdę nie płaci. Klienci widzą teraz „Płatności są chwilowo niedostępne”, a testowo zapłacić mogą tylko admini. Wpisz klucze live w deploy/.env.",
+    testPayments: {
+      title: "Klienci, którzy nie zapłacili przez testowy klucz",
+      hint: "Na kluczu testowym nikt naprawdę nie płacił. Ci klienci dostali płatny plan z testowej płatności albo ich płatność nie przeszła. Po wysłaniu przeprosin serwer z planem działa za darmo {days} dni od teraz, a nowa płatność dolicza się po nich. Komu płatność nie przeszła, dostaje {days} dni gratis do pierwszej opłaty. Klient dostaje maila, powiadomienie i komunikat w panelu.",
+      liveFirst: "Wyślesz to po przełączeniu Stripe na klucze live, bo mail prosi klientów o ponowną płatność.",
+      deleteAfter: "Płatności testowe usuń dopiero po wysłaniu przeprosin: tylko z nich wiadomo, komu płatność nie przeszła.",
+      customer: "Klient",
+      servers: "Serwery z planem z testowej płatności",
+      gets: "Dostanie",
+      failedOnly: "płatność nie przeszła",
+      serverGets: "{days} dni za darmo od teraz",
+      retryGets: "{days} dni gratis do pierwszej opłaty",
+      send: "Wyślij przeprosiny",
+      confirmOne: "Wysłać przeprosiny do {email} i dodać {days} dni? Tego nie da się cofnąć.",
+      sendAll: "Wyślij wszystkim ({n})",
+      confirmAll: "Wysłać przeprosiny do {n} klientów i dodać im {days} dni? Tego nie da się cofnąć.",
+      told: "Poinformowani",
+      paidSince: "opłacono od tego czasu",
+      notPaid: "jeszcze nie opłacono",
     },
     paymentRemove: {
       testChip: "test",

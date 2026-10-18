@@ -68,7 +68,13 @@ added below.
 3. Put the secret key and the webhook signing secret into `deploy/.env`, then run
    `docker compose up -d` in `deploy/` again.
 
-Use test keys (`sk_test_…`) first and pay with Stripe's test cards and test BLIK codes.
+Use test keys (`sk_test_…`) first and pay with Stripe's test cards and test BLIK codes. Test keys
+take no money, so while they're in, only admins can check out; customers see "payments unavailable"
+and the admin panel says Stripe is on a test key. For real payments, switch the Dashboard to live
+mode, do steps 1 and 2 there again (live mode has its own payment methods and webhooks, and Managed
+Payments must be off there too) and put the live secret key (`sk_live_…` or a restricted `rk_live_…`
+with Checkout Sessions write access) and the live webhook's signing secret into `deploy/.env`. The
+publishable key (`pk_live_…`) isn't used: checkout happens on Stripe's own page.
 
 Also turn on **Successful payments** under Settings → Customer emails, so every buyer gets a receipt by
 email. Polish consumer law expects a confirmation of the purchase on a "durable medium", and the receipt

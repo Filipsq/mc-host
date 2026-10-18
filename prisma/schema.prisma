@@ -36,6 +36,11 @@ model User {
   referrals          User[]             @relation("Referrals")
   referralRewardedAt DateTime?
   bonusDays          Int                @default(0)
+  // The site ran on Stripe test keys at first, so some checkouts took no money
+  // (src/lib/testPayments.ts): when the user was told, and the days their first
+  // real payment adds on top to make up for it.
+  paymentNoticeAt    DateTime?
+  apologyDays        Int                @default(0)
   // Phones and browsers that turned on notifications (src/lib/push.ts).
   pushSubscriptions  PushSubscription[]
 

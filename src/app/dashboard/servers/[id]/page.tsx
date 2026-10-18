@@ -25,6 +25,7 @@ import Stats from "./Stats";
 import CopyButton from "@/components/CopyButton";
 import EditionIcon from "@/components/EditionIcon";
 import Backups, { type BackupRow } from "./Backups";
+import TestPaymentNotice from "@/components/TestPaymentNotice";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -122,6 +123,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
       </header>
 
       {payment === "success" && <p className="notice success">{b.success}</p>}
+      {payment !== "success" && <TestPaymentNotice userId={session.user.id} all={all} locale={locale} serverId={server.id} />}
       {settings === "saved" && <p className="notice success">{all.settings.saved}</p>}
       {typeChanged === "changed" && server.edition === "JAVA" && (
         <p className="notice success">{format(all.serverType.done, { type: kindLabel(server, all), world: activeLevel(server) })}</p>
