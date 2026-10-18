@@ -25,6 +25,7 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
             <th>{t.columns.type}</th>
             <th>{t.columns.plan}</th>
             <th>{t.columns.state}</th>
+            <th>{t.columns.players}</th>
             <th>{t.columns.ramNow}</th>
             <th>{t.columns.disk}</th>
             <th>{t.columns.paidUntil}</th>
@@ -56,6 +57,9 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
                 </td>
                 <td>
                   <span className={`badge ${l.state}`}>{all.server.live[l.state]}</span>
+                </td>
+                <td className="nowrap">
+                  {l.players !== undefined ? (l.maxPlayers ? `${l.players} / ${l.maxPlayers}` : l.players) : "–"}
                 </td>
                 <td className="nowrap">{l.memoryUsedMb !== undefined ? f.gb(l.memoryUsedMb) : "–"}</td>
                 <td className={`nowrap${l.diskMb !== undefined && l.diskMb > diskLimitMb(s.plan) ? " over" : ""}`}>

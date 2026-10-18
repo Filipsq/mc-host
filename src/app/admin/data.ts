@@ -11,7 +11,7 @@ export async function machineStats(): Promise<HostStats | null> {
   });
 }
 
-export type Live = { state: LiveState; memoryUsedMb?: number; diskMb?: number };
+export type Live = { state: LiveState; memoryUsedMb?: number; diskMb?: number; players?: number; maxPlayers?: number };
 
 /** Each server's state for the tables, from one stats call instead of one call per server. */
 export function liveStates(servers: Pick<Server, "id" | "status">[], stats: HostStats | null) {
@@ -23,6 +23,8 @@ export function liveStates(servers: Pick<Server, "id" | "status">[], stats: Host
       state: liveStateFrom(server, stats ? (s ?? "missing") : "unknown"),
       memoryUsedMb: s?.memoryUsedMb,
       diskMb: s?.diskMb,
+      players: s?.players,
+      maxPlayers: s?.maxPlayers,
     };
   }
   return live;

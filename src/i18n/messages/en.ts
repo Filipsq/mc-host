@@ -921,6 +921,7 @@ const en: Messages = {
       type: "Type",
       plan: "Plan",
       state: "State",
+      players: "Players",
       ramNow: "RAM now",
       disk: "Disk",
       paidUntil: "Paid until",

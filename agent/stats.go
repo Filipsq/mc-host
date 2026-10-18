@@ -23,6 +23,8 @@ type serverStats struct {
 	MemoryUsedMb *int   `json:"memoryUsedMb,omitempty"` // what it uses right now, while running
 	DiskMb       *int64 `json:"diskMb,omitempty"`       // what its files take, as last measured
 	DiskLimitMb  int64  `json:"diskLimitMb,omitempty"`  // what its plan allows; 0 for no limit
+	Players      *int   `json:"players,omitempty"`      // online at the last metrics sample, while running
+	MaxPlayers   int    `json:"maxPlayers,omitempty"`   // when the server reports it
 }
 
 type hostStats struct {
@@ -81,6 +83,7 @@ func (a *agent) serverStats(ctx context.Context, c containerSummary) serverStats
 		s.StopReason = a.stopReason(id, info)
 		return s
 	}
+	s.Players, s.MaxPlayers = a.playersOnline(id)
 	var st struct {
 		Memory struct {
 			Usage int64            `json:"usage"`
@@ -129,4 +132,20 @@ func (a *agent) hostStats() hostStats {
 		h.DiskFreeMb = int64(fs.Bavail) * fs.Bsize >> 20
 	}
 	return h
+}
+
+// playersOnline is who the metrics sampler last saw online; nil before its first sample.
+func (a *agent) playersOnline(id string) (*int, int) {
+	v, ok := a.metrics.Load(id)
+	if !ok {
+		return nil, 0
+	}
+	m := v.(*serverMetrics)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.samples) == 0 {
+		return nil, 0
+	}
+	n := m.count
+	return &n, m.maxPlayers
 }

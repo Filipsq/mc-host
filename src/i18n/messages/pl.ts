@@ -920,6 +920,7 @@ const pl = {
       type: "Typ",
       plan: "Plan",
       state: "Stan",
+      players: "Gracze",
       ramNow: "RAM teraz",
       disk: "Dysk",
       paidUntil: "Opłacony do",
