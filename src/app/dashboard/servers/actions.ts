@@ -118,7 +118,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     return { error, values };
   }
   const { name, edition, plan, days } = parsed.data;
-  const subdomain = edition === "JAVA" ? (parsed.data.subdomain ?? "") : null;
+  // A hyphen left at the end when someone pressed Enter mid-typing.
+  const subdomain = edition === "JAVA" ? (parsed.data.subdomain ?? "").replace(/-+$/, "") : null;
   if (subdomain !== null && !isValidSubdomain(subdomain)) return { error: "invalidSubdomain", values };
   const terraria = edition === "TERRARIA";
   if (terraria && parsed.data.seed && !WORLD_SEED.test(parsed.data.seed)) return { error: "invalidSeed", values };

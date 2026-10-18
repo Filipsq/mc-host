@@ -44,17 +44,23 @@ type Props = {
   };
 };
 
-// "Serwer Ekipy" -> "serwer-ekipy"
-function slugify(name: string) {
-  return name
+// "Serwer Ekipy!" -> "serwer-ekipy-", while typing: Polish letters lose
+// their accents and anything else an address can't have becomes one hyphen.
+function toAddress(text: string) {
+  return text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/ł/g, "l")
     .replace(/Ł/g, "L")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-+/, "")
     .slice(0, 32);
+}
+
+// "Serwer Ekipy" -> "serwer-ekipy"
+function slugify(name: string) {
+  return toAddress(name).replace(/-+$/, "");
 }
 
 export default function CreateServerForm({ t, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, ai }: Props) {
@@ -174,12 +180,15 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
               required
               minLength={3}
               maxLength={32}
-              pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]"
               value={subdomain}
               onChange={(e) => {
                 setSubdomainEdited(true);
-                setSubdomain(e.target.value.toLowerCase());
+                setSubdomain(toAddress(e.target.value));
+                e.target.setCustomValidity("");
               }}
+              onBlur={() => setSubdomain((a) => a.replace(/-+$/, ""))}
+              // The browser's own "Podaj wartość w wymaganym formacie" doesn't say what's wrong.
+              onInvalid={(e) => e.currentTarget.setCustomValidity(t.errors.invalidSubdomain)}
             />
             <span className="muted">.{domain}</span>
           </span>

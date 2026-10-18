@@ -470,7 +470,7 @@ const en: Messages = {
       soldOut: "This plan is sold out for now. Try again later or pick a smaller one.",
       agentUnavailable: "Couldn't start the server. Try again in a moment.",
       notRunning: "The server isn't running",
-      invalidSubdomain: "Address must be 3–32 characters: lowercase letters, numbers and hyphens",
+      invalidSubdomain: "Address must be 3–32 characters: lowercase letters, numbers and hyphens (not at the start or end)",
       subdomainTaken: "That address is already taken",
       invalidPlan: "Choose a plan and period",
       paymentsUnavailable: "Payments are unavailable right now. Try again later.",
