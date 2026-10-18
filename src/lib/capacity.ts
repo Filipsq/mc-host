@@ -45,10 +45,14 @@ async function roomByNode() {
     _sum: { memoryMb: true },
     where: { plan: { not: "FREE" }, status: { in: HOLDING } },
   });
+  const free = await db.server.groupBy({ by: ["node"], _sum: { memoryMb: true }, where: { plan: "FREE" } });
   const heldOn = new Map(held.map((h) => [h.node, h._sum.memoryMb ?? 0]));
+  const freeOn = new Map(free.map((h) => [h.node, h._sum.memoryMb ?? 0]));
   return nodes().map((node) => ({
     node,
     room: node.memoryLimitMb > 0 ? Math.floor(node.memoryLimitMb * overbook()) - (heldOn.get(node.id) ?? 0) : Infinity,
+    // Free servers hold nothing, but each machine wakes only a few at once, so they're spread out too.
+    freeMb: freeOn.get(node.id) ?? 0,
   }));
 }
 
@@ -74,6 +78,7 @@ export async function pickNode(planMb: number, extraMb = planMb, nodeId?: string
   const candidates = (await roomByNode()).filter(
     ({ node, room }) => (!nodeId || node.id === nodeId) && fitsMachine(node, planMb) && (extraMb <= 0 || room >= extraMb),
   );
-  candidates.sort((a, b) => b.room - a.room);
+  const left = (c: { room: number; freeMb: number }) => (extraMb > 0 ? c.room : c.room - c.freeMb);
+  candidates.sort((a, b) => left(b) - left(a));
   return candidates[0]?.node.id ?? null;
 }

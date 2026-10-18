@@ -28,7 +28,7 @@ var errFull = errors.New("full")
 const initialHeapMb = 1024
 
 // freeMemoryMarginMb is what has to stay free on the machine after a free server
-// starts, when overbooking: room for the servers already running to grow.
+// starts, when overbooking and other servers are running: room for them to grow.
 const freeMemoryMarginMb = 1024
 
 // meminfoPath describes the whole machine, also inside the agent's container.
@@ -62,11 +62,18 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 				return err
 			}
 			need, _ := strconv.Atoi(info.Config.Labels["mchost.memory"])
-			if a.memoryInUse(list, id)+need > a.memoryCap() {
+			inUse := a.memoryInUse(list, id)
+			if inUse+need > a.memoryCap() {
 				return errFull
 			}
 			if a.overbook > 1 {
-				if free, ok := memoryAvailableMb(); ok && free < int64(need+freeMemoryMarginMb) {
+				// The margin is for servers already running to grow into; with
+				// none, a small machine can still run one free server.
+				margin := 0
+				if inUse > 0 {
+					margin = freeMemoryMarginMb
+				}
+				if free, ok := memoryAvailableMb(); ok && free < int64(need+margin) {
 					return errFull
 				}
 			}

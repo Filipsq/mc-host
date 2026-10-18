@@ -64,11 +64,22 @@ func TestStartFreeServerOverbooked(t *testing.T) {
 	if err := a.startServer(ctx, "free1234"); err != nil || started != 1 {
 		t.Fatalf("overbooked, with memory free: %v (started %d)", err, started)
 	}
-	// ...as long as the machine really has the memory, with room to spare.
+	// ...as long as the machine really has the memory, with room to spare for the running one.
 	available(2048 + freeMemoryMarginMb - 1)
 	if err := a.startServer(ctx, "free1234"); !errors.Is(err, errFull) {
 		t.Fatalf("overbooked, machine short of memory: %v", err)
 	}
+	// Alone on the machine it needs no room to spare, so a small machine fits one.
+	list[0]["State"] = "exited"
+	available(2048)
+	if err := a.startServer(ctx, "free1234"); err != nil {
+		t.Fatalf("overbooked, alone on the machine: %v", err)
+	}
+	available(2047)
+	if err := a.startServer(ctx, "free1234"); !errors.Is(err, errFull) {
+		t.Fatalf("overbooked, alone, short of memory: %v", err)
+	}
+	list[0]["State"] = "running"
 	// Running servers' plans still can't go past the factor.
 	available(8000)
 	list[1]["State"] = "running"
