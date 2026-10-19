@@ -13,6 +13,7 @@ export function formats(locale: string) {
   const money = (minor: number, currency: string) => formatPrice(minor / 100, currency as Currency, locale);
   const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   return {
+    locale,
     date: (d: Date) => date.format(d),
     dateTime: (d: Date) => dateTime.format(d),
     number: (n: number) => decimal.format(n),
