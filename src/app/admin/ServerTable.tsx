@@ -61,6 +61,7 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
         cell: (s) => (
           <td className="nowrap">
             {all.plans[s.plan]} · {f.gb(s.memoryMb)}
+            {s.adminTest && <div className="muted small">{t.testServer}</div>}
           </td>
         ),
       },

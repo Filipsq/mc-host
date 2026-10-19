@@ -58,7 +58,7 @@ export default async function AdminServer({ params }: Props) {
     [t.address, <span key="a" className="mono">{addressLabel(server)}</span>],
     [t.columns.type, [EDITION_NAMES[server.edition], kind && kind !== "vanilla" && (kind === "modpack" ? (server.modpackTitle ?? server.modpack) : all.server.kinds[kind])].filter(Boolean).join(" · ")],
     [t.version, server.modpackVersion ? `${server.version} (${server.modpackVersion})` : server.version],
-    [t.columns.plan, `${all.plans[server.plan]} · ${f.gb(server.memoryMb)}`],
+    [t.columns.plan, `${all.plans[server.plan]} · ${f.gb(server.memoryMb)}${server.adminTest ? ` · ${t.testServer}` : ""}`],
     [t.columns.disk, typeof state === "object" && state.diskMb !== undefined ? `${f.size(state.diskMb)} / ${f.size(diskLimitMb(server.plan))}` : "–"],
     [t.status, t.statuses[server.status]],
     [t.columns.paidUntil, server.plan !== "FREE" && server.paidUntil ? f.dateTime(server.paidUntil) : "–"],

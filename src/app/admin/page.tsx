@@ -46,9 +46,11 @@ export default async function AdminOverview() {
 
   const sold = servers.reduce((sum, s) => sum + heldMemoryMb(s), 0);
   const online = servers.filter((s) => ["online", "starting", "restarting"].includes(live[s.id].state)).length;
+  // Admins' test servers aren't sales, so they're counted on their own.
+  const tests = servers.filter((s) => s.adminTest).length;
   const byPlan = (["FREE", "STARTER", "STANDARD", "PRO"] as const).map((plan) => ({
     plan,
-    n: servers.filter((s) => s.plan === plan).length,
+    n: servers.filter((s) => s.plan === plan && !s.adminTest).length,
   }));
   // Test payments took no money, so they never count as revenue.
   const last30All = paid.filter((p) => p.paidAt! >= new Date(now.getTime() - 30 * DAY));
@@ -149,7 +151,7 @@ export default async function AdminOverview() {
           <Tile
             label={t.serversTotal}
             value={String(servers.length)}
-            hint={[stats ? format(t.serversOnline, { n: online }) : "", ...byPlan.map((p) => `${all.plans[p.plan]}: ${p.n}`)]
+            hint={[stats ? format(t.serversOnline, { n: online }) : "", ...byPlan.map((p) => `${all.plans[p.plan]}: ${p.n}`), tests ? format(t.testServers, { n: tests }) : ""]
               .filter(Boolean)
               .join(" · ")}
             href="/admin/servers"

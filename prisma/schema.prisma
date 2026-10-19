@@ -212,6 +212,8 @@ model Server {
   deletionWarnedAt DateTime?
   // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
   lastPlayedAt     DateTime       @default(now())
+  // Made by an admin to try things out, without paying: kept out of sales numbers.
+  adminTest        Boolean        @default(false)
   payments         Payment[]
   owner            User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId          String

@@ -288,6 +288,8 @@ const pl = {
     period: "Okres",
     freeTaken: "masz już darmowy serwer",
     createAndPay: "Utwórz i zapłać",
+    adminTest: "Utwórz za darmo (test admina)",
+    adminTestHint: "Widzisz to tylko jako admin: serwer dostaje wybrany plan na wybrany okres bez płatności i jest oznaczony jako testowy w panelu admina. Nie liczy się do przychodów.",
     sleepingJava: "Serwer śpi, bo nikt nie grał. Obudzi się sam, gdy ktoś spróbuje dołączyć.",
     sleepingBedrock: "Serwer śpi, bo nikt nie grał. Kliknij Uruchom, aby go obudzić.",
     disk: "Dysk",
@@ -980,6 +982,8 @@ const pl = {
       SUSPENDED: "Zawieszony",
     },
     paymentStatuses: { PAID: "Opłacona", PENDING: "Oczekuje", FAILED: "Nieudana", EXPIRED: "Wygasła" },
+    testServer: "Test",
+    testServers: "Testowe: {n}",
     onMachine: "maszyna {node}",
     columns: {
       server: "Serwer",

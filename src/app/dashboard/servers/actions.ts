@@ -48,6 +48,8 @@ import { format, type Messages } from "@/i18n/messages";
 export type ServerErrorCode = keyof Messages["server"]["errors"];
 export type CreateServerState = { error?: ServerErrorCode; values?: Record<string, string> };
 
+const DAY = 24 * 60 * 60 * 1000;
+
 const planField = z.enum(["FREE", "STARTER", "STANDARD", "PRO"]);
 const daysField = z.coerce
   .number()
@@ -136,10 +138,12 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (terraria && parsed.data.seed && !WORLD_SEED.test(parsed.data.seed)) return { error: "invalidSeed", values };
   if (terraria && parsed.data.password && !SERVER_PASSWORD.test(parsed.data.password)) return { error: "invalidPassword", values };
 
-  if (plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE" } }))) {
+  // An admin's test server: any plan, without paying, to try things out.
+  const adminTest = form.get("adminTest") === "on" && (await isAdmin(user.id));
+  if (!adminTest && plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE", adminTest: false } }))) {
     return { error: "freeLimit", values };
   }
-  if (plan !== "FREE" && form.get("startNow") !== "on") return { error: "consentRequired", values };
+  if (!adminTest && plan !== "FREE" && form.get("startNow") !== "on") return { error: "consentRequired", values };
 
   // Bedrock and Terraria have no ready games or mod packs here.
   const game = gameById(edition === "JAVA" ? parsed.data.game : "survival");
@@ -202,14 +206,15 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(modVersion && { version: modVersion }),
     ...(pack && { version: pack.gameVersion, ...packFields(pack) }),
     // Paid servers are only created on the game host once Stripe confirms payment.
-    status: plan === "FREE" ? "PROVISIONING" : "AWAITING_PAYMENT",
+    status: plan === "FREE" || adminTest ? "PROVISIONING" : "AWAITING_PAYMENT",
+    ...(adminTest && { adminTest, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
   });
   if (server === "subdomainTaken") return { error: "subdomainTaken", values };
   if (!server) return { error: "noPorts", values };
   // On another machine, Java players reach it through the main machine's router.
   if (server.node !== MAIN_NODE) await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
 
-  if (plan !== "FREE") {
+  if (plan !== "FREE" && !adminTest) {
     let url: string;
     try {
       url = await checkoutUrl(user, server, plan, days);

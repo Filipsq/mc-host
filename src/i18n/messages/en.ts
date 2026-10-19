@@ -289,6 +289,8 @@ const en: Messages = {
     period: "Period",
     freeTaken: "you already have a free server",
     createAndPay: "Create and pay",
+    adminTest: "Create for free (admin test)",
+    adminTestHint: "Only admins see this: the server gets the chosen plan for the chosen period without paying and is marked as a test server in the admin panel. It doesn't count toward revenue.",
     sleepingJava: "The server is asleep because nobody was playing. It wakes up by itself when someone tries to join.",
     disk: "Disk",
     diskUsage: "{used} of {limit}",
@@ -981,6 +983,8 @@ const en: Messages = {
       SUSPENDED: "Suspended",
     },
     paymentStatuses: { PAID: "Paid", PENDING: "Pending", FAILED: "Failed", EXPIRED: "Expired" },
+    testServer: "Test",
+    testServers: "Test: {n}",
     onMachine: "machine {node}",
     columns: {
       server: "Server",
