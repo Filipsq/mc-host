@@ -146,7 +146,8 @@ type agent struct {
 	freeMemory  int           // MB a free server gets at most on this machine; 0: its plan's (see capacity.go)
 	startMu     sync.Mutex
 	netMu       sync.Mutex
-	netReady    bool     // the game network exists (see ensureGameNetwork)
+	netOn       bool     // GAME_NETWORK=on: servers join the game network (see ensureGameNetwork)
+	netReady    bool     // the game network exists
 	backupDir   string   // where the agent keeps backups
 	backupMount string   // the same place as helper containers mount it: a volume name or host path
 	serverLocks sync.Map // server id -> *sync.Mutex, held during backups, restores and file changes
@@ -216,6 +217,7 @@ func main() {
 		uploadMax:   uploadMb << 20,
 		unzipMax:    4 * uploadMb << 20,
 		cfKey:       os.Getenv("CF_API_KEY"),
+		netOn:       os.Getenv("GAME_NETWORK") == "on",
 	}
 	for _, dir := range []string{a.stateDir, a.backupDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -590,7 +592,9 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	name := containerName(req.ID)
 	spec := a.containerSpec(req, image)
 	if a.ensureGameNetwork(ctx) {
-		spec["HostConfig"].(map[string]any)["NetworkMode"] = gameNetwork
+		hc := spec["HostConfig"].(map[string]any)
+		hc["NetworkMode"] = gameNetwork
+		hc["Dns"] = gameDNS
 	}
 	if err := a.docker.CreateContainer(ctx, name, spec); err != nil {
 		return err
@@ -987,16 +991,29 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 // metadata service and the tunnel between machines.
 const gameNetwork = "mchost-games"
 
+// gameDNS answers servers' lookups (Paper, plugins, mod packs) on the game
+// network. Docker would otherwise pass them on to whatever the provider set up
+// on the host, which may sit behind the firewall that keeps servers away from
+// the provider's own addresses, or fail now and then (seen on a node as
+// SERVFAIL for fill.papermc.io).
+var gameDNS = []string{"1.1.1.1", "9.9.9.9", "8.8.8.8"}
+
 var gameNetworkOptions = map[string]string{
 	"com.docker.network.bridge.enable_icc": "false",
 	"com.docker.network.bridge.name":       "mchost0",
 }
 
-// ensureGameNetwork makes the game network once. If Docker refuses, servers
+// ensureGameNetwork makes the game network once. It's off unless GAME_NETWORK=on:
+// on the live machines servers on it lost their internet now and then (DNS
+// SERVFAIL and timeouts downloading Paper and Geyser), so they stay on
+// Docker's default network until that's understood. If Docker refuses, servers
 // fall back to Docker's default network rather than not starting at all.
 func (a *agent) ensureGameNetwork(ctx context.Context) bool {
 	a.netMu.Lock()
 	defer a.netMu.Unlock()
+	if !a.netOn {
+		return false
+	}
 	if !a.netReady {
 		if err := a.docker.EnsureNetwork(ctx, gameNetwork, gameNetworkOptions); err != nil {
 			log.Printf("network %s: %v (using Docker's default network)", gameNetwork, err)
