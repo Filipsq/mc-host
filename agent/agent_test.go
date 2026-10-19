@@ -310,7 +310,7 @@ func TestKindEnv(t *testing.T) {
 	pack := base
 	pack.Kind, pack.Modpack, pack.ModpackVersion, pack.Version = "modpack", "cobblemon-fabric", "BpTjgzL8", "1.21.1"
 	env = envOf(pack)
-	for _, want := range []string{"TYPE=MODRINTH\n", "MODRINTH_MODPACK=cobblemon-fabric\n", "MODRINTH_VERSION=BpTjgzL8\n", "VERSION=1.21.1\n", "MODRINTH_EXCLUDE_FILES=missingmodschecker\n", "INIT_MEMORY=1024M\n", "MAX_MEMORY=3072M\n"} {
+	for _, want := range []string{"TYPE=MODRINTH\n", "MODRINTH_MODPACK=cobblemon-fabric\n", "MODRINTH_VERSION=BpTjgzL8\n", "VERSION=1.21.1\n", "MODRINTH_EXCLUDE_FILES=missingmodschecker\n", "PRE_START_SCRIPT=/tmp/mchost-pack\n", "INIT_MEMORY=1024M\n", "MAX_MEMORY=3072M\n"} {
 		if !strings.Contains(env, want) {
 			t.Errorf("modpack env missing %q:\n%s", want, env)
 		}

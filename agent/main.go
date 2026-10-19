@@ -681,7 +681,8 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 				}
 			} else {
 				env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version,
-					"MODRINTH_EXCLUDE_FILES="+packExcludes)
+					"MODRINTH_EXCLUDE_FILES="+packExcludes, "PRE_START_SCRIPT="+packScriptPath)
+				entrypoint = packEntrypoint
 			}
 		case "fabric", "forge", "neoforge":
 			// The image installs the loader for the version; pluginEnv adds the mods.
