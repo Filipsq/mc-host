@@ -58,7 +58,8 @@ func (a *agent) stats(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 	writeJSON(w, http.StatusOK, map[string]any{
 		"memoryLimitMb": a.memoryCap(),
-		"memoryBaseMb":  a.memoryLimit, // before overbooking: what deploy/add-node.sh puts in NODES
+		"memoryBaseMb":  a.memoryLimit,  // before overbooking: what deploy/add-node.sh puts in NODES
+		"arch":          runtime.GOARCH, // amd64 or arm64; deploy/add-node.sh puts it in NODES too
 		"memoryHeldMb":  a.memoryInUse(list, ""),
 		"host":          a.hostStats(),
 		"servers":       servers,

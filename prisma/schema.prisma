@@ -183,7 +183,7 @@ model Server {
   levelSeed        String?
   levelType        String?
   // What the server runs: on Java vanilla (Paper), skyblock, oneblock, modpack, fabric, forge or neoforge
-  // (src/lib/modpacks.ts); on Terraria vanilla or tshock (src/lib/terraria.ts).
+  // (src/lib/modpacks.ts); on Terraria vanilla, tshock or tmodloader (src/lib/terraria.ts).
   kind             String         @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.
   modpack          String?
@@ -192,7 +192,8 @@ model Server {
   modpackVersionId String?
   modpackVersion   String? // the pack version's number, e.g. "1.6.1"
   modpackLoader    String? // fabric, forge, neoforge or quilt
-  // Paper servers only: Modrinth project IDs of the plugins the owner added (src/lib/plugins.ts).
+  // Modrinth project IDs of the plugins (Paper) or mods (mod loaders) the owner added (src/lib/plugins.ts);
+  // on tModLoader, Steam Workshop IDs of its mods.
   plugins          String[]       @default([])
   // The list changed while the server ran; the container gets it on its next rebuild.
   pluginsPending   Boolean        @default(false)

@@ -1,5 +1,6 @@
 import type { Server } from "@prisma/client";
 import { isModLoader } from "./modpacks";
+import { isTmodloader } from "./terraria";
 
 // Plugins come from Modrinth. The panel only keeps the list; the server's
 // image downloads them when it starts (agent/main.go pluginEnv).
@@ -35,11 +36,14 @@ export const canCrossplay = supportsPlugins;
 /** Mods picked one by one run on a Fabric, Forge or NeoForge server (a mod pack brings its own). */
 export const supportsMods = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && isModLoader(s.kind);
 
-export type AddonType = "plugin" | "mod";
+export type AddonType = "plugin" | "mod" | "workshop";
 
-/** What the owner adds from Modrinth on the Plugins page: plugins, mods, or nothing (Bedrock, mod packs). */
+/**
+ * What the owner adds on the Plugins page: plugins or mods from Modrinth,
+ * tModLoader mods from the Steam Workshop, or nothing (Bedrock, mod packs, plain Terraria).
+ */
 export const addonType = (s: Pick<Server, "edition" | "kind">): AddonType | null =>
-  supportsPlugins(s) ? "plugin" : supportsMods(s) ? "mod" : null;
+  supportsPlugins(s) ? "plugin" : supportsMods(s) ? "mod" : isTmodloader(s) ? "workshop" : null;
 
 export const pluginPage = (slug: string, type: AddonType = "plugin") => `https://modrinth.com/${type}/${slug}`;
 

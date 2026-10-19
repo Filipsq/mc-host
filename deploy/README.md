@@ -200,6 +200,11 @@ every player with the main machine's IP. Bedrock, Terraria and crossplay servers
 `n2.mchosting.pl:port`. To update the second machine after updating the site, run the same
 `./add-node.sh` command again.
 
+Terraria with mods (tModLoader) runs only on x86 machines (amd64): its image and Steam parts don't
+exist for Arm. `setup.sh` and `add-node.sh` note each machine's processor (`GAME_ARCH` in `.env`,
+`arch` in `NODES`), and new tModLoader servers go only to an x86 machine; with none, the site says
+the plan is sold out.
+
 ## Backups
 
 Paid servers are backed up once a day (Starter keeps the last one, Standard 7, Pro 14), and owners

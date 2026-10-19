@@ -94,7 +94,8 @@ python3 - "$NODE_ID" "$NODE_WG" "$AGENT_TOKEN" "$NODE_ID.$DOMAIN" "$stats" <<'PY
 import json, re, sys
 node_id, wg_ip, token, host, stats = sys.argv[1:]
 node = {"id": node_id, "url": f"http://{wg_ip}:8081", "token": token, "host": host,
-        "memoryLimitMb": json.loads(stats).get("memoryBaseMb", 0)}
+        "memoryLimitMb": json.loads(stats).get("memoryBaseMb", 0),
+        "arch": json.loads(stats).get("arch", "")}
 with open(".env") as f:
     lines = f.read().splitlines()
 current = next((l for l in lines if l.startswith("NODES=")), None)

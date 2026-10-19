@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -137,5 +138,52 @@ func TestApplyTerrariaJoins(t *testing.T) {
 	})
 	if len(online) != 2 || !online["Alex"] || !online["Jan Kowalski"] {
 		t.Fatalf("online = %v", online)
+	}
+}
+
+func TestValidateTmodloader(t *testing.T) {
+	req := terrariaRequest()
+	req.Kind, req.Plugins = "tmodloader", []string{"2824688072", "2563309347"}
+	err := req.validate()
+	if tmodSupported() != (err == nil) {
+		t.Fatalf("on %s: %v", runtime.GOARCH, err)
+	}
+	if !tmodSupported() {
+		return
+	}
+	for name, mods := range map[string][]string{
+		"slug":      {"calamity"},
+		"injection": {"1 +quit"},
+		"too long":  {"1234567890123"},
+	} {
+		r := terrariaRequest()
+		r.Kind, r.Plugins = "tmodloader", mods
+		if r.validate() == nil {
+			t.Errorf("%s: accepted %v", name, mods)
+		}
+	}
+	r := terrariaRequest()
+	r.Kind, r.Plugins = "vanilla", []string{"2824688072"}
+	if r.validate() == nil {
+		t.Error("plain Terraria has no mods")
+	}
+}
+
+func TestContainerSpecTmodloader(t *testing.T) {
+	req := terrariaRequest()
+	req.Kind, req.Plugins, req.Version = "tmodloader", []string{"2824688072", "2824688266"}, "LATEST"
+	spec := (&agent{idle: 5 * time.Minute}).containerSpec(req, imageFor(req.Edition, req.Version, req.Kind))
+	if spec["Image"] != tmodImage {
+		t.Fatalf("image = %v", spec["Image"])
+	}
+	if ep := spec["Entrypoint"].([]string); ep[0] != "/bin/bash" || ep[2] != tmodScript {
+		t.Fatalf("entrypoint = %v", ep)
+	}
+	env := strings.Join(spec["Env"].([]string), "\n")
+	if !strings.Contains(env, "MCHOST_MODS=2824688072,2824688266") || !strings.Contains(env, "MCHOST_KIND=tmodloader") {
+		t.Fatalf("env = %s", env)
+	}
+	if spec["Healthcheck"].(map[string]any)["StartPeriod"] != int64(30*time.Minute) {
+		t.Fatal("tModLoader gets longer to download and load its mods")
 	}
 }
