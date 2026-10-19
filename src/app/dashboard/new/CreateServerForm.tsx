@@ -35,6 +35,7 @@ type Props = {
   packIcons: Record<string, string | undefined>;
   cfPack?: CurseforgeOption; // a CurseForge pack picked on the home page
   curseforge: boolean; // whether CurseForge links work
+  admin: boolean; // admins also get a button to make a test server without paying
   /** Set when the AI creator is on. */
   ai?: {
     t: Messages["ai"];
@@ -63,8 +64,9 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ t, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, ai }: Props) {
+export default function CreateServerForm({ t, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
+  const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
   const [edition, setEdition] = useState(v.edition ?? initialEdition ?? "JAVA");
   const [subdomain, setSubdomain] = useState(v.subdomain ?? "");
@@ -134,7 +136,10 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
         // Submitted by hand rather than through `action`, which resets the form after an
         // error and leaves the radio buttons out of step with what's shown.
         e.preventDefault();
-        const data = new FormData(e.currentTarget);
+        // With the button pressed, so an admin's test button sends its adminTest field.
+        const submitter = (e.nativeEvent as SubmitEvent).submitter;
+        const data = new FormData(e.currentTarget, submitter);
+        setTesting(submitter?.getAttribute("name") === "adminTest");
         startTransition(() => action(data));
       }}
     >
@@ -307,8 +312,16 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
       )}
       {state.error && <p className="error">{t.errors[state.error]}</p>}
       <button type="submit" disabled={pending}>
-        {pending ? (plan === "FREE" ? t.creating : billing.redirecting) : plan === "FREE" ? t.create : t.createAndPay}
+        {pending && !testing ? (plan === "FREE" ? t.creating : billing.redirecting) : plan === "FREE" ? t.create : t.createAndPay}
       </button>
+      {admin && (
+        <>
+          <button type="submit" className="secondary" name="adminTest" value="on" disabled={pending}>
+            {pending && testing ? t.creating : t.adminTest}
+          </button>
+          <p className="muted small">{t.adminTestHint}</p>
+        </>
+      )}
     </form>
     </>
   );

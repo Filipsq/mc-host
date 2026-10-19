@@ -9,6 +9,7 @@ import { curseforgeEnabled, resolveCurseforgePack } from "@/lib/curseforge";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
 import { isGameId } from "@/lib/games";
 import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
+import { isAdmin } from "@/lib/admin";
 import CreateServerForm from "./CreateServerForm";
 
 type Props = { searchParams: Promise<{ pack?: string; cf?: string; game?: string; opis?: string }> };
@@ -20,12 +21,14 @@ export default async function NewServerPage({ searchParams }: Props) {
     const { opis } = await searchParams;
     redirect(opis ? `/login?opis=${encodeURIComponent(opis.slice(0, DESCRIPTION_MAX))}` : "/login");
   }
-  const [t, { locale, currency }, freeCount, packArt, { pack, cf, game, opis }] = await Promise.all([
+  const [t, { locale, currency }, freeCount, packArt, { pack, cf, game, opis }, admin] = await Promise.all([
     getMessages(),
     getPreferences(),
-    db.server.count({ where: { ownerId: session.user.id, plan: "FREE" } }),
+    // An admin's test servers don't use up their own free one.
+    db.server.count({ where: { ownerId: session.user.id, plan: "FREE", adminTest: false } }),
     getPackArt(CURATED_PACKS.map((p) => p.slug)),
     searchParams,
+    isAdmin(session.user.id),
   ]);
   const hasFree = freeCount > 0;
   const plans = planOptions(t, currency).map((p) =>
@@ -73,6 +76,7 @@ export default async function NewServerPage({ searchParams }: Props) {
         packIcons={packIcons}
         domain={process.env.GAME_DOMAIN ?? "localhost"}
         money={{ locale, currency }}
+        admin={admin}
         ai={
           aiEnabled()
             ? {

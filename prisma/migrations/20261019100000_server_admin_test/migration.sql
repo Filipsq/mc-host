@@ -1,0 +1,1 @@
+ALTER TABLE "Server" ADD COLUMN "adminTest" BOOLEAN NOT NULL DEFAULT false;
