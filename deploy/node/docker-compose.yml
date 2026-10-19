@@ -27,6 +27,8 @@ services:
       MEMORY_OVERBOOK: ${MEMORY_OVERBOOK:-1}
       FREE_SERVER_MEMORY_MB: ${FREE_SERVER_MEMORY_MB:-0}
       CF_API_KEY: ${CF_API_KEY:-}
+      # "on" puts game servers on their own network (agent/main.go, ensureGameNetwork).
+      GAME_NETWORK: ${GAME_NETWORK:-off}
       BACKUP_DIR: /backups
       BACKUP_MOUNT: mchost-backups
       VOLUMES_DIR: /var/lib/docker/volumes
