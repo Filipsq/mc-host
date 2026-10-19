@@ -18,7 +18,7 @@ export default async function AdminSupport() {
       take: SHOWN,
       include: {
         user: { select: { email: true } },
-        messages: { orderBy: { createdAt: "desc" }, take: 1, select: { body: true, fromStaff: true } },
+        messages: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 1, select: { body: true, fromStaff: true, image: { select: { id: true } } } },
       },
     }),
   ]);
@@ -45,7 +45,7 @@ export default async function AdminSupport() {
                   <span className="chat-list-main">
                     <strong className="break">{c.user.email}</strong>
                     <span className="chat-preview muted">
-                      {lastMsg ? `${lastMsg.fromStaff ? `${t.you}: ` : ""}${lastMsg.body}` : ""}
+                      {lastMsg ? `${lastMsg.fromStaff ? `${t.you}: ` : ""}${lastMsg.body || (lastMsg.image ? t.photo : "")}` : ""}
                     </span>
                   </span>
                   <span className="chat-list-side">

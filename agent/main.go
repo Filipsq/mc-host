@@ -143,7 +143,10 @@ type agent struct {
 	idle        time.Duration // free servers sleep after this long with no players
 	memoryLimit int           // MB of plan memory servers may hold in total; 0 means no limit
 	overbook    float64       // how many times memoryLimit the panel sells to paid plans (see capacity.go)
+	freeMemory  int           // MB a free server gets at most on this machine; 0: its plan's (see capacity.go)
 	startMu     sync.Mutex
+	netMu       sync.Mutex
+	netReady    bool     // the game network exists (see ensureGameNetwork)
 	backupDir   string   // where the agent keeps backups
 	backupMount string   // the same place as helper containers mount it: a volume name or host path
 	serverLocks sync.Map // server id -> *sync.Mutex, held during backups, restores and file changes
@@ -157,6 +160,9 @@ type agent struct {
 	diskLimits    map[string]int64 // server id -> MB its files may take (see disk.go)
 	diskUsage     sync.Map         // server id -> diskUse, the last measurement
 	diskMeasuring sync.Map         // server id -> true while a measurement runs in the background
+
+	peerMu     sync.RWMutex
+	peerRoutes map[string]string // Java address -> router of the machine it's on (see peers.go)
 
 	metrics    sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
 	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
@@ -179,6 +185,10 @@ func main() {
 	if err != nil || overbook < 1 || overbook > 4 {
 		log.Fatal("MEMORY_OVERBOOK must be a number from 1 (no overbooking) to 4")
 	}
+	freeMemory, err := strconv.Atoi(envOr("FREE_SERVER_MEMORY_MB", "0"))
+	if err != nil || (freeMemory != 0 && freeMemory < 512) {
+		log.Fatal("FREE_SERVER_MEMORY_MB must be a number of megabytes, at least 512 (0 for the plan's)")
+	}
 	backupDir, err := filepath.Abs(envOr("BACKUP_DIR", "./backups"))
 	if err != nil {
 		log.Fatal(err)
@@ -198,6 +208,7 @@ func main() {
 		idle:        time.Duration(idleMin) * time.Minute,
 		memoryLimit: memoryLimit,
 		overbook:    overbook,
+		freeMemory:  freeMemory,
 		backupDir:   backupDir,
 		backupMount: envOr("BACKUP_MOUNT", backupDir),
 		volumesDir:  filepath.Clean(envOr("VOLUMES_DIR", "/var/lib/docker/volumes")),
@@ -212,10 +223,15 @@ func main() {
 		}
 	}
 	a.loadDiskLimits()
+	a.loadPeerRoutes()
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
-		for _, img := range []string{backupImage, images["JAVA"], images["BEDROCK"], terrariaImages["vanilla"], terrariaImages["tshock"]} {
+		prefetch := []string{backupImage, images["JAVA"], images["BEDROCK"], terrariaImages["vanilla"], terrariaImages["tshock"]}
+		if tmodSupported() {
+			prefetch = append(prefetch, tmodImage)
+		}
+		for _, img := range prefetch {
 			if err := a.ensureImage(context.Background(), img); err != nil {
 				log.Printf("prefetch %s: %v", img, err)
 			}
@@ -231,7 +247,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("game listener: %v", err)
 	}
-	rt := &router{lookup: a.lookupByHost, wake: a.wake, dial: dialTCP}
+	rt := &router{lookup: a.lookupRoute, wake: a.wake, dial: dialTCP}
 	go func() { log.Fatal(rt.serve(ln)) }()
 	log.Printf("routing Java players on %s", gameAddr)
 
@@ -245,6 +261,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	mux.HandleFunc("GET /stats", a.stats)
 	mux.HandleFunc("PUT /disk-limits", a.putDiskLimits)
+	mux.HandleFunc("PUT /peer-routes", a.putPeerRoutes)
 	mux.HandleFunc("POST /servers", a.create)
 	mux.HandleFunc("PUT /servers/{id}", a.recreate)
 	mux.HandleFunc("GET /servers/{id}", a.status)
@@ -319,7 +336,7 @@ type createRequest struct {
 	Seed      string `json:"seed"`
 	LevelType string `json:"levelType"` // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria)
 
-	// What the server runs: on Java one of kinds; on Terraria vanilla or tshock. For a mod pack, where it comes
+	// What the server runs: on Java one of kinds; on Terraria vanilla, tshock or tmodloader. For a mod pack, where it comes
 	// from (modrinth, the default, or curseforge), the project's slug and the exact
 	// pack version (a Modrinth version ID or a CurseForge file ID), so players can
 	// install the same one.
@@ -328,6 +345,7 @@ type createRequest struct {
 	Modpack        string `json:"modpack"`
 	ModpackVersion string `json:"modpackVersion"`
 	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
+	// On tModLoader: the Steam Workshop IDs of the owner's mods.
 	Plugins []string `json:"plugins"`
 }
 
@@ -438,7 +456,9 @@ func (req *createRequest) validateTerraria() error {
 	case req.MemoryMb < 512 || req.Port < 1024 || req.Port > 65535 || req.CPUs <= 0 || req.DiskMb < 0:
 		return errors.New("invalid memoryMb, cpus, port or diskMb")
 	case terrariaImages[req.Kind] == "":
-		return errors.New("a Terraria server's kind must be vanilla or tshock")
+		return errors.New("a Terraria server's kind must be vanilla, tshock or tmodloader")
+	case req.Kind == "tmodloader" && !tmodSupported():
+		return errors.New("tModLoader servers need an x86 (amd64) machine")
 	case terrariaDifficulties[req.Difficulty] == "":
 		return errors.New("a Terraria world's difficulty must be classic, expert, master or journey")
 	case terrariaSizes[req.LevelType] == "":
@@ -451,8 +471,17 @@ func (req *createRequest) validateTerraria() error {
 		return errors.New("invalid level")
 	case !validSeed.MatchString(req.Seed):
 		return errors.New("invalid seed")
-	case req.Whitelist || len(req.Plugins) > 0 || req.Crossplay || req.offline() || req.Modpack != "" || req.Hostname != "":
-		return errors.New("whitelist, plugins, crossplay, onlineMode, modpacks and hostnames are Minecraft only")
+	case len(req.Plugins) > 0 && req.Kind != "tmodloader":
+		return errors.New("only tModLoader servers take mods")
+	case len(req.Plugins) > 100:
+		return errors.New("at most 100 mods")
+	case req.Whitelist || req.Crossplay || req.offline() || req.Modpack != "" || req.Hostname != "":
+		return errors.New("whitelist, crossplay, onlineMode, modpacks and hostnames are Minecraft only")
+	}
+	for _, id := range req.Plugins {
+		if !validWorkshopID.MatchString(id) {
+			return fmt.Errorf("invalid Steam Workshop ID %q", id)
+		}
 	}
 	req.Version = "LATEST"
 	return nil
@@ -556,7 +585,11 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 		return err
 	}
 	name := containerName(req.ID)
-	if err := a.docker.CreateContainer(ctx, name, a.containerSpec(req, image)); err != nil {
+	spec := a.containerSpec(req, image)
+	if a.ensureGameNetwork(ctx) {
+		spec["HostConfig"].(map[string]any)["NetworkMode"] = gameNetwork
+	}
+	if err := a.docker.CreateContainer(ctx, name, spec); err != nil {
 		return err
 	}
 	if req.offline() {
@@ -577,6 +610,20 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 }
 
 func (a *agent) containerSpec(req createRequest, image string) map[string]any {
+	small := req.Autostop && a.freeMemory > 0 && req.MemoryMb > a.freeMemory
+	if small {
+		req.MemoryMb = a.freeMemory
+	}
+	spec := a.gameSpec(req, image)
+	if small {
+		// Too little memory for every free server's whole plan: may swap rather than be killed when they all grow.
+		hc := spec["HostConfig"].(map[string]any)
+		hc["MemorySwap"] = hc["Memory"].(int64) + int64(freeSwapMb)<<20
+	}
+	return spec
+}
+
+func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 	maxPlayers := fmt.Sprint(req.MaxPlayers)
 	if req.MaxPlayers <= 0 {
 		maxPlayers = "1000"
@@ -601,7 +648,7 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 		labels["mchost.maxplayers"] = fmt.Sprint(req.terrariaSlots())
 		bindings := map[string]any{terrariaPort: []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}}
 		spec := serverSpec(req, image, env, labels, bindings, false, req.MemoryMb, entrypoint)
-		spec["Healthcheck"] = terrariaHealthcheck
+		spec["Healthcheck"] = terrariaHealthcheck(req.Kind)
 		return spec
 	}
 	var containerPort, hostIP string
@@ -742,6 +789,10 @@ func serverSpec(req createRequest, image string, env []string, labels map[string
 			"RestartPolicy": map[string]any{"Name": "on-failure", "MaximumRetryCount": 3},
 			"PortBindings":  bindings,
 			"Mounts":        []map[string]any{{"Type": "volume", "Source": containerName(req.ID), "Target": "/data"}},
+			// Players' plugins and mods run inside: nothing in there may gain
+			// more rights than it started with, or forge packets to its neighbours.
+			"SecurityOpt": []string{"no-new-privileges:true"},
+			"CapDrop":     []string{"NET_RAW"},
 		},
 	}
 	if entrypoint != nil {
@@ -924,6 +975,33 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"output": strings.TrimSpace(out)})
+}
+
+// gameNetwork is the Docker network game servers join. Servers on it can't
+// reach each other (a player's plugin can't attack someone else's server);
+// the router, on the host, still reaches each of them. Its bridge is named so
+// the firewall set up by deploy/ can keep servers away from the cloud's
+// metadata service and the tunnel between machines.
+const gameNetwork = "mchost-games"
+
+var gameNetworkOptions = map[string]string{
+	"com.docker.network.bridge.enable_icc": "false",
+	"com.docker.network.bridge.name":       "mchost0",
+}
+
+// ensureGameNetwork makes the game network once. If Docker refuses, servers
+// fall back to Docker's default network rather than not starting at all.
+func (a *agent) ensureGameNetwork(ctx context.Context) bool {
+	a.netMu.Lock()
+	defer a.netMu.Unlock()
+	if !a.netReady {
+		if err := a.docker.EnsureNetwork(ctx, gameNetwork, gameNetworkOptions); err != nil {
+			log.Printf("network %s: %v (using Docker's default network)", gameNetwork, err)
+			return false
+		}
+		a.netReady = true
+	}
+	return true
 }
 
 func (a *agent) ensureImage(ctx context.Context, image string) error {

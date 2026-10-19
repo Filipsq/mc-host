@@ -36,6 +36,11 @@ model User {
   referrals          User[]             @relation("Referrals")
   referralRewardedAt DateTime?
   bonusDays          Int                @default(0)
+  // The site ran on Stripe test keys at first, so some checkouts took no money
+  // (src/lib/testPayments.ts): when the user was told, and the days their first
+  // real payment adds on top to make up for it.
+  paymentNoticeAt    DateTime?
+  apologyDays        Int                @default(0)
   // Phones and browsers that turned on notifications (src/lib/push.ts).
   pushSubscriptions  PushSubscription[]
 
@@ -55,6 +60,13 @@ model PushSubscription {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// The notice admins show across the site (one row, id 1; empty text: none).
+model Announcement {
+  id        Int      @id @default(1)
+  text      String   @default("")
+  updatedAt DateTime @updatedAt
 }
 
 // One call to the AI (Claude), for the per-user and monthly limits and the
@@ -103,8 +115,25 @@ model SupportMessage {
   authorId  String?
   body      String
   createdAt DateTime    @default(now())
+  // Set when an admin deleted the message: its text and picture are gone and
+  // the open chats drop it on their next poll.
+  deletedAt DateTime?
+  image     SupportImage?
 
   @@index([chatId, createdAt])
+  @@index([chatId, deletedAt])
+}
+
+// A picture sent with a chat message (screenshots, mostly). Kept in the
+// database so it goes with the message, the chat and the account.
+model SupportImage {
+  id        String         @id @default(cuid())
+  messageId String         @unique
+  message   SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  // image/png, image/jpeg, image/webp or image/gif, checked from the file's first bytes.
+  type      String
+  size      Int
+  data      Bytes
 }
 
 // A "forgot password" link. Only the hash of the link's token is stored.
@@ -149,6 +178,8 @@ model Server {
   plan             Plan           @default(FREE)
   status           ServerStatus   @default(PROVISIONING)
   memoryMb         Int
+  // The game machine it runs on: "main", or an extra machine from NODES (src/lib/nodes.ts).
+  node             String         @default("main")
   version          String         @default("LATEST")
   // Game settings from the panel's Settings page (see src/lib/settings.ts).
   gameMode         String         @default("survival")
@@ -169,7 +200,7 @@ model Server {
   levelSeed        String?
   levelType        String?
   // What the server runs: on Java vanilla (Paper), skyblock, oneblock, modpack, fabric, forge or neoforge
-  // (src/lib/modpacks.ts); on Terraria vanilla or tshock (src/lib/terraria.ts).
+  // (src/lib/modpacks.ts); on Terraria vanilla, tshock or tmodloader (src/lib/terraria.ts).
   kind             String         @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.
   modpack          String?
@@ -178,7 +209,8 @@ model Server {
   modpackVersionId String?
   modpackVersion   String? // the pack version's number, e.g. "1.6.1"
   modpackLoader    String? // fabric, forge, neoforge or quilt
-  // Paper servers only: Modrinth project IDs of the plugins the owner added (src/lib/plugins.ts).
+  // Modrinth project IDs of the plugins (Paper) or mods (mod loaders) the owner added (src/lib/plugins.ts);
+  // on tModLoader, Steam Workshop IDs of its mods.
   plugins          String[]       @default([])
   // The list changed while the server ran; the container gets it on its next rebuild.
   pluginsPending   Boolean        @default(false)
@@ -193,7 +225,10 @@ model Server {
   // The paidUntil its owner was last reminded of, so each period gets one reminder.
   reminderSentFor  DateTime?
   // When its owner was told a suspended server will be deleted; cleared by a payment.
+  // For a free server: told it will be deleted for nobody playing; cleared when someone plays.
   deletionWarnedAt DateTime?
+  // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
+  lastPlayedAt     DateTime       @default(now())
   payments         Payment[]
   owner            User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   ownerId          String

@@ -20,6 +20,7 @@ ufw allow 25565/tcp >/dev/null       # Java players, through the agent's router
 ufw allow 30000:30999/udp >/dev/null # Bedrock players (and crossplay), one port per server
 ufw allow 30000:30999/tcp >/dev/null # Terraria players, one port per server
 ufw --force enable >/dev/null
+./game-firewall.sh install
 
 if [ ! -f .env ]; then
   # Ask until it looks like a domain: a stray Enter left over from pasting the
@@ -69,6 +70,11 @@ fi
 sed -i 's/^MEMORY_OVERBOOK=1\.5$/MEMORY_OVERBOOK=2/' .env
 echo "Minecraft servers may use up to $(grep '^MEMORY_LIMIT_MB=' .env | cut -d= -f2) MB of memory in total;"
 echo "paid plans are sold up to $(grep '^MEMORY_OVERBOOK=' .env | cut -d= -f2) times that."
+
+# What this machine's processor is (amd64 or arm64): tModLoader servers only
+# run on amd64, so the site sends them to a machine that has one.
+sed -i '/^GAME_ARCH=/d' .env
+echo "GAME_ARCH=$(dpkg --print-architecture)" >> .env
 
 # Emails (password reset links) go out through Brevo; see deploy/README.md.
 if ! grep -q '^BREVO_API_KEY=' .env; then
@@ -130,6 +136,8 @@ fi
 
 echo "Building and starting (the first build takes a few minutes)..."
 docker compose up -d --build
+# Caddy reads its Caddyfile only when it starts.
+docker compose restart caddy >/dev/null
 docker compose ps
 
 # Each build leaves the previous site and agent images and their build cache

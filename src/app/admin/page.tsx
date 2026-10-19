@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { heldMemoryMb, memoryLimitMb, overbook, salesLimitMb } from "@/lib/capacity";
 import { diskLimitMb } from "@/lib/disk";
-import { deletionDate } from "@/lib/billing";
+import { deletionDate, isTestPayment } from "@/lib/billing";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { liveStates, machineStats } from "./data";
@@ -17,7 +17,7 @@ const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 export default async function AdminOverview() {
   await requireAdmin();
   const now = new Date();
-  const [all, { locale }, stats, users, newUsers, servers, paid, chats, ai] = await Promise.all([
+  const [all, { locale }, stats, users, newUsers, servers, paid, pending, chats, ai] = await Promise.all([
     getMessages(),
     getPreferences(),
     machineStats(),
@@ -26,7 +26,12 @@ export default async function AdminOverview() {
     db.server.findMany({ orderBy: { createdAt: "desc" } }),
     db.payment.findMany({
       where: { status: "PAID", paidAt: { gte: new Date(now.getTime() - 31 * DAY) } },
-      select: { amount: true, currency: true, paidAt: true },
+      select: { amount: true, currency: true, paidAt: true, stripeSessionId: true },
+    }),
+    // Checkouts started but not paid yet: open ones and BLIK/Przelewy24 still being confirmed.
+    db.payment.findMany({
+      where: { status: "PENDING", createdAt: { gte: new Date(now.getTime() - 30 * DAY) } },
+      select: { amount: true, currency: true, stripeSessionId: true },
     }),
     db.supportChat.findMany({
       where: { lastFromStaff: false },
@@ -45,8 +50,12 @@ export default async function AdminOverview() {
     plan,
     n: servers.filter((s) => s.plan === plan).length,
   }));
-  const last30 = paid.filter((p) => p.paidAt! >= new Date(now.getTime() - 30 * DAY));
-  const thisMonth = paid.filter((p) => p.paidAt! >= monthStart(now));
+  // Test payments took no money, so they never count as revenue.
+  const last30All = paid.filter((p) => p.paidAt! >= new Date(now.getTime() - 30 * DAY));
+  const last30 = last30All.filter((p) => !isTestPayment(p));
+  const tests30 = last30All.filter(isTestPayment);
+  const thisMonth = paid.filter((p) => !isTestPayment(p) && p.paidAt! >= monthStart(now));
+  const waiting = pending.filter((p) => !isTestPayment(p));
 
   const crashed = servers.filter((s) => live[s.id].state === "crashed");
   const overDisk = servers.filter((s) => (live[s.id].diskMb ?? 0) > diskLimitMb(s.plan));
@@ -145,12 +154,26 @@ export default async function AdminOverview() {
               .join(" · ")}
             href="/admin/servers"
           />
-          <Tile
-            label={t.revenue30}
-            value={f.totals(last30) || t.none}
-            hint={format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}
-            href="/admin/payments"
-          />
+          <div className="card stat">
+            <p className="stat-label">
+              <Link href="/admin/payments">{t.revenue30}</Link>
+            </p>
+            <div className="revenue-split">
+              <Link href="/admin/payments?status=PAID">
+                <span className="muted small">{t.revenuePaid}</span>
+                <span className="stat-value">{f.totals(last30) || t.none}</span>
+              </Link>
+              <Link href="/admin/payments?status=PENDING">
+                <span className="muted small">{format(t.revenuePending, { n: waiting.length })}</span>
+                <span className="stat-value pending">{f.totals(waiting) || t.none}</span>
+              </Link>
+            </div>
+            <p className="muted small">{format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}</p>
+            <p className="muted small">{t.revenuePendingHint}</p>
+            {tests30.length > 0 && (
+              <p className="muted small">{format(t.revenueTests, { amount: f.totals(tests30) })}</p>
+            )}
+          </div>
           <Tile
             label={t.aiUsage}
             value={aiEnabled() || ai.calls > 0 ? format(t.aiValue, { n: ai.calls, limit: ai.limit }) : t.aiOff}

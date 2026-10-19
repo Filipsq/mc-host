@@ -11,18 +11,22 @@ export async function machineStats(): Promise<HostStats | null> {
   });
 }
 
-export type Live = { state: LiveState; memoryUsedMb?: number; diskMb?: number };
+export type Live = { state: LiveState; memoryUsedMb?: number; diskMb?: number; players?: number; maxPlayers?: number; startedAt?: Date };
 
 /** Each server's state for the tables, from one stats call instead of one call per server. */
-export function liveStates(servers: Pick<Server, "id" | "status">[], stats: HostStats | null) {
+export function liveStates(servers: Pick<Server, "id" | "status" | "node">[], stats: HostStats | null) {
   const byId = new Map(stats?.servers.map((s) => [s.id, s]));
   const live: Record<string, Live> = {};
   for (const server of servers) {
     const s = byId.get(server.id);
+    const known = stats && !stats.unreachable.includes(server.node);
     live[server.id] = {
-      state: liveStateFrom(server, stats ? (s ?? "missing") : "unknown"),
+      state: liveStateFrom(server, known ? (s ?? "missing") : "unknown"),
       memoryUsedMb: s?.memoryUsedMb,
       diskMb: s?.diskMb,
+      players: s?.players,
+      maxPlayers: s?.maxPlayers,
+      startedAt: s?.startedAt ? new Date(s.startedAt) : undefined,
     };
   }
   return live;

@@ -19,3 +19,8 @@ export function stripe() {
   }
   return client;
 }
+
+/** Whether Stripe runs on test keys, where nobody really pays (not in local tests against a mock). */
+export function stripeTestMode() {
+  return !process.env.STRIPE_API_URL && /^(sk|rk)_test_/.test(process.env.STRIPE_SECRET_KEY ?? "");
+}

@@ -38,6 +38,12 @@ func TestContainerSpecJava(t *testing.T) {
 	if got := host["Memory"].(int64); got != (2048+512)*1024*1024 {
 		t.Fatalf("memory limit = %d", got)
 	}
+	if opts := host["SecurityOpt"].([]string); len(opts) != 1 || opts[0] != "no-new-privileges:true" {
+		t.Fatalf("security options = %v", opts)
+	}
+	if caps := host["CapDrop"].([]string); len(caps) != 1 || caps[0] != "NET_RAW" {
+		t.Fatalf("dropped capabilities = %v", caps)
+	}
 	bindings := host["PortBindings"].(map[string]any)["25565/tcp"].([]map[string]string)
 	if bindings[0]["HostPort"] != "25570" || bindings[0]["HostIp"] != "127.0.0.1" {
 		t.Fatalf("java should bind only to localhost (behind the router): %v", bindings)

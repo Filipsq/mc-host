@@ -14,7 +14,7 @@ import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/
 import { planById } from "@/lib/plans";
 import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { EDITION_NAMES } from "@/lib/editions";
-import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, WORLD_DIFFICULTIES, WORLD_SIZES } from "@/lib/terraria";
+import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SIZES, isTerrariaKind, type TerrariaKind } from "@/lib/terraria";
 import type { Suggestion } from "@/lib/ai";
 import AiCreator from "./AiCreator";
 import { LoaderFields, PackFields, type CurseforgeOption } from "./ModFields";
@@ -44,17 +44,23 @@ type Props = {
   };
 };
 
-// "Serwer Ekipy" -> "serwer-ekipy"
-function slugify(name: string) {
-  return name
+// "Serwer Ekipy!" -> "serwer-ekipy-", while typing: Polish letters lose
+// their accents and anything else an address can't have becomes one hyphen.
+function toAddress(text: string) {
+  return text
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .replace(/ł/g, "l")
     .replace(/Ł/g, "L")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .replace(/^-+/, "")
     .slice(0, 32);
+}
+
+// "Serwer Ekipy" -> "serwer-ekipy"
+function slugify(name: string) {
+  return toAddress(name).replace(/-+$/, "");
 }
 
 export default function CreateServerForm({ t, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, ai }: Props) {
@@ -69,6 +75,7 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
   const [name, setName] = useState(v.name ?? "");
   const [loader, setLoader] = useState<ModLoader>(isModLoader(v.loader) ? v.loader : "fabric");
   const [modVersion, setModVersion] = useState(v.modVersion ?? MOD_DEFAULT_VERSION);
+  const [terrariaKind, setTerrariaKind] = useState<TerrariaKind>(isTerrariaKind(v.terrariaKind) ? v.terrariaKind : "vanilla");
   // What the AI creator picked beyond the form's own fields; sent as hidden fields.
   const [aiSettings, setAiSettings] = useState<Pick<Suggestion, "gameMode" | "difficulty" | "pvp" | "motd" | "plugins"> | null>(null);
   // Bumped by each AI suggestion so the plan picker starts from the suggested plan.
@@ -92,9 +99,13 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
     const gb = slug === "curseforge" ? cfPack?.ramGb : CURATED_PACKS.find((p) => p.slug === slug)?.ramGb;
     return gb ? planForRam(gb) : MODPACK_MIN_PLAN;
   };
-  const minPlan = modded ? packPlan(pack) : "FREE";
+  // tModLoader needs more memory than the free plan has.
+  const tmod = edition === "TERRARIA" && terrariaKind === "tmodloader";
+  const minPlan = modded ? packPlan(pack) : tmod ? TMOD_MIN_PLAN : "FREE";
   const planChoices = plans.map((p) =>
-    planAtLeast(p.id, minPlan) || p.disabledNote ? p : { ...p, disabledNote: p.id === "FREE" ? t.modpackNoFree : t.packTooSmall },
+    planAtLeast(p.id, minPlan) || p.disabledNote
+      ? p
+      : { ...p, disabledNote: tmod ? terraria.tmodNoFree : p.id === "FREE" ? t.modpackNoFree : t.packTooSmall },
   );
   const planName = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
   // A ready game that's comfortable with more memory than the chosen plan has.
@@ -164,7 +175,17 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
           </label>
         ))}
       </fieldset>
-      {edition === "TERRARIA" && <TerrariaFields t={terraria} values={v} />}
+      {edition === "TERRARIA" && (
+        <TerrariaFields
+          t={terraria}
+          values={v}
+          kind={terrariaKind}
+          onKind={(k) => {
+            setTerrariaKind(k);
+            if (k === "tmodloader" && !planAtLeast(plan, TMOD_MIN_PLAN)) setPlan(TMOD_MIN_PLAN);
+          }}
+        />
+      )}
       {edition === "JAVA" && (
         <label>
           {t.subdomain}
@@ -174,12 +195,15 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
               required
               minLength={3}
               maxLength={32}
-              pattern="[a-z0-9][a-z0-9\-]{1,30}[a-z0-9]"
               value={subdomain}
               onChange={(e) => {
                 setSubdomainEdited(true);
-                setSubdomain(e.target.value.toLowerCase());
+                setSubdomain(toAddress(e.target.value));
+                e.target.setCustomValidity("");
               }}
+              onBlur={() => setSubdomain((a) => a.replace(/-+$/, ""))}
+              // The browser's own "Podaj wartość w wymaganym formacie" doesn't say what's wrong.
+              onInvalid={(e) => e.currentTarget.setCustomValidity(t.errors.invalidSubdomain)}
             />
             <span className="muted">.{domain}</span>
           </span>
@@ -291,7 +315,17 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
 }
 
 /** A Terraria server's type and the world it makes on its first start. */
-function TerrariaFields({ t, values }: { t: Messages["terraria"]; values: Record<string, string> }) {
+function TerrariaFields({
+  t,
+  values,
+  kind,
+  onKind,
+}: {
+  t: Messages["terraria"];
+  values: Record<string, string>;
+  kind: TerrariaKind;
+  onKind: (k: TerrariaKind) => void;
+}) {
   return (
     <>
       <fieldset className="stack">
@@ -299,10 +333,11 @@ function TerrariaFields({ t, values }: { t: Messages["terraria"]; values: Record
         <div className="plan-options">
           {TERRARIA_KINDS.map((k) => (
             <label key={k} className="choice plan-choice">
-              <input type="radio" name="terrariaKind" value={k} defaultChecked={(values.terrariaKind ?? "vanilla") === k} />
+              <input type="radio" name="terrariaKind" value={k} checked={kind === k} onChange={() => onKind(k)} />
               <span className="stack-tight">
                 <strong>{t.kinds[k]}</strong>
                 <span className="muted small">{t.kindHints[k]}</span>
+                {k === "tmodloader" && <span className="ram-pill">{t.tmodPlan}</span>}
               </span>
             </label>
           ))}

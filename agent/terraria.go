@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -11,16 +12,30 @@ import (
 )
 
 // Terraria servers run the ryshe/terraria images: plain Terraria, or TShock
-// (Terraria with admin commands, permissions and anti-cheat). Both keep
-// everything in the server's volume at /data: serverconfig.txt (written on
-// every start from the panel's settings), the world in Worlds/<level>.wld and,
-// for TShock, its config and database in tshock/. Players connect straight to
-// the server's port over TCP; there's no hostname to route by.
+// (Terraria with admin commands, permissions and anti-cheat); or
+// jacobsmile/tmodloader1.4 for tModLoader (Terraria with mods from the Steam
+// Workshop). All keep everything in the server's volume at /data:
+// serverconfig.txt (written on every start from the panel's settings), the
+// world in Worlds/<level>.wld and, for TShock, its config and database in
+// tshock/; for tModLoader its mod settings in tModLoader/ and the mods in
+// steamMods/. Players connect straight to the server's port over TCP; there's
+// no hostname to route by.
 
 var terrariaImages = map[string]string{
-	"vanilla": "ryshe/terraria:vanilla-latest",
-	"tshock":  "ryshe/terraria:tshock-latest",
+	"vanilla":    "ryshe/terraria:vanilla-latest",
+	"tshock":     "ryshe/terraria:tshock-latest",
+	"tmodloader": tmodImage,
 }
+
+// tModLoader's image is built for x86 only, and tModLoader doesn't support
+// Arm anyway (its Steam parts don't run there), so only x86 machines take it.
+const tmodImage = "jacobsmile/tmodloader1.4:latest"
+
+// tmodSupported reports whether this machine can run tModLoader servers.
+func tmodSupported() bool { return runtime.GOARCH == "amd64" }
+
+// A Steam Workshop item's ID, as in steamcommunity.com/sharedfiles/filedetails/?id=2824688072.
+var validWorkshopID = regexp.MustCompile(`^[0-9]{1,12}$`)
 
 const (
 	terrariaPort         = "7777/tcp"
@@ -62,6 +77,50 @@ else
   case "${TARGETARCH:-}" in arm*) exe="mono ./TerrariaServer.exe" ;; esac
   $exe -config /data/serverconfig.txt -logpath /data/logs <&3 &
 fi
+pid=$!
+trap 'echo exit >&3' TERM INT
+code=0
+while kill -0 "$pid" 2>/dev/null; do wait "$pid"; code=$?; done
+exit "$code"
+`
+
+// tmodScript starts a tModLoader server the same way. Before that it fetches
+// the owner's Workshop mods (MCHOST_MODS, comma-separated IDs) with the
+// image's steamcmd, which also brings them up to date, removes the ones taken
+// off the list, and enables the listed ones plus any .tmod uploaded to
+// tModLoader/Mods. If Steam doesn't answer, the server starts with the mods it
+// downloaded before.
+const tmodScript = `set -u
+mkdir -p /data/Worlds /data/tModLoader/Mods /data/steamMods
+printf '%s\n' "$MCHOST_CONFIG" > /data/serverconfig.txt
+content=/data/steamMods/steamapps/workshop/content/1281930
+ids=$(printf '%s' "$MCHOST_MODS" | tr ',' ' ')
+if [ -n "$ids" ]; then
+  set --
+  for id in $ids; do set -- "$@" +workshop_download_item 1281930 "$id"; done
+  echo "[mchost] Downloading mods from the Steam Workshop: $ids"
+  steamcmd +force_install_dir /data/steamMods +login anonymous "$@" +quit ||
+    echo "[mchost] Steam didn't answer; starting with the mods downloaded before"
+fi
+for dir in "$content"/*/; do
+  [ -d "$dir" ] || continue
+  case " $ids " in *" $(basename "$dir") "*) ;; *) rm -rf "$dir" ;; esac
+done
+names=""
+for id in $ids; do
+  # Mods keep a folder per tModLoader version they were built for; the newest is the one to run.
+  dir=$(ls -d "$content/$id"/*/ 2>/dev/null | sort -V | tail -n 1)
+  f=$(ls "${dir:-$content/$id/}"*.tmod 2>/dev/null | head -n 1)
+  if [ -n "$f" ]; then names="$names $(basename "$f" .tmod)"; else echo "[mchost] Mod $id isn't downloaded, skipping it"; fi
+done
+for f in /data/tModLoader/Mods/*.tmod; do [ -f "$f" ] && names="$names $(basename "$f" .tmod)"; done
+sep=""
+{ printf '['; for n in $names; do printf '%s"%s"' "$sep" "$n"; sep=","; done; printf ']\n'; } > /data/tModLoader/Mods/enabled.json
+echo "[mchost] Enabled mods:${names:- none}"
+rm -f /tmp/console && mkfifo /tmp/console
+exec 3<>/tmp/console
+cd /terraria-server
+./LaunchUtils/ScriptCaller.sh -server -tmlsavedirectory /data/tModLoader -steamworkshopfolder /data/steamMods/steamapps/workshop -config /data/serverconfig.txt <&3 &
 pid=$!
 trap 'echo exit >&3' TERM INT
 code=0
@@ -126,18 +185,29 @@ func terrariaSpec(req createRequest) (env []string, entrypoint []string) {
 		"MCHOST_CONFIG=" + terrariaConfig(req),
 		fmt.Sprintf("MCHOST_MAX_PLAYERS=%d", req.terrariaSlots()),
 	}
+	if req.Kind == "tmodloader" {
+		env = append(env, "MCHOST_MODS="+strings.Join(req.Plugins, ","))
+		return env, []string{"/bin/bash", "-c", tmodScript}
+	}
 	return env, []string{"/bin/sh", "-c", terrariaScript}
 }
 
 // The panel shows a server as online once Docker calls it healthy: for
 // Terraria, once it listens on its port, which is after the world has loaded
 // (making a new one takes a while, hence the long start period).
-var terrariaHealthcheck = map[string]any{
-	"Test":        []string{"CMD-SHELL", "cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | grep -q ':1E61 [0-9A-F]*:0000 0A'"},
-	"Interval":    int64(10 * time.Second),
-	"Timeout":     int64(5 * time.Second),
-	"StartPeriod": int64(15 * time.Minute),
-	"Retries":     3,
+// tModLoader first downloads and loads its mods, which takes longer still.
+func terrariaHealthcheck(kind string) map[string]any {
+	start := 15 * time.Minute
+	if kind == "tmodloader" {
+		start = 30 * time.Minute
+	}
+	return map[string]any{
+		"Test":        []string{"CMD-SHELL", "cat /proc/net/tcp /proc/net/tcp6 2>/dev/null | grep -q ':1E61 [0-9A-F]*:0000 0A'"},
+		"Interval":    int64(10 * time.Second),
+		"Timeout":     int64(5 * time.Second),
+		"StartPeriod": int64(start),
+		"Retries":     3,
+	}
 }
 
 // terrariaCommand types a command into the server's console. Its answer shows up in the logs.

@@ -7,12 +7,24 @@ import type { Plan, ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
-import { agentSpec, applyToHost, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain, onHost } from "@/lib/servers";
+import {
+  agentSpec,
+  applyToHost,
+  createServerRecord,
+  destroyServer,
+  getOwnedServer,
+  isValidSubdomain,
+  onHost,
+  syncPeerRoutes,
+  worldTooNew,
+} from "@/lib/servers";
+import { MAIN_NODE } from "@/lib/nodes";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
-import { canSellMemory, heldMemoryMb } from "@/lib/capacity";
+import { canSellMemory, heldMemoryMb, pickNode } from "@/lib/capacity";
+import { isAdmin } from "@/lib/admin";
 import {
   DIFFICULTIES,
   GAME_MODES,
@@ -24,11 +36,12 @@ import {
   parsePlayers,
   versionsFor,
 } from "@/lib/settings";
+import { activeLevel } from "@/lib/worlds";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
-import { SERVER_PASSWORD, TERRARIA_KINDS, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
+import { SERVER_PASSWORD, TERRARIA_KINDS, TMOD_ARCH, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -116,7 +129,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     return { error, values };
   }
   const { name, edition, plan, days } = parsed.data;
-  const subdomain = edition === "JAVA" ? (parsed.data.subdomain ?? "") : null;
+  // A hyphen left at the end when someone pressed Enter mid-typing.
+  const subdomain = edition === "JAVA" ? (parsed.data.subdomain ?? "").replace(/-+$/, "") : null;
   if (subdomain !== null && !isValidSubdomain(subdomain)) return { error: "invalidSubdomain", values };
   const terraria = edition === "TERRARIA";
   if (terraria && parsed.data.seed && !WORLD_SEED.test(parsed.data.seed)) return { error: "invalidSeed", values };
@@ -135,6 +149,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     game.id === "mods"
       ? LOADER_VERSIONS[parsed.data.loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION
       : null;
+  // tModLoader needs more memory than the free plan has, and an x86 machine (pickNode below).
+  const tmod = terraria && kind === "tmodloader";
+  if (tmod && !planAtLeast(plan, TMOD_MIN_PLAN)) return { error: "tmodPaidOnly", values };
   if (kind === "modpack") {
     if (!packNamed(parsed.data)) return { error: "modpackLink", values };
     const curated = CURATED_PACKS.find((p) => p.slug === parsed.data.pack);
@@ -143,7 +160,11 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   }
 
   const memoryMb = planById(plan).ramGb * 1024;
-  if (plan !== "FREE" && !(await canSellMemory(memoryMb))) return { error: "soldOut", values };
+  // Admins may go over the sales limit to test buying; a plan still has to fit on the machine.
+  const extraMb = (await isAdmin(user.id)) ? 0 : memoryMb;
+  // The machine it goes on: the one with the most room (paid plans need room to sell).
+  const node = await pickNode(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, tmod ? TMOD_ARCH : undefined);
+  if (!node) return { error: "soldOut", values };
 
   // Pin the pack's current version, so players know exactly which one to install.
   let pack: PackChoice | null = null;
@@ -158,6 +179,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
 
   const server = await createServerRecord({
     ownerId: user.id,
+    node,
     name,
     edition,
     subdomain,
@@ -184,6 +206,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   });
   if (server === "subdomainTaken") return { error: "subdomainTaken", values };
   if (!server) return { error: "noPorts", values };
+  // On another machine, Java players reach it through the main machine's router.
+  if (server.node !== MAIN_NODE) await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
 
   if (plan !== "FREE") {
     let url: string;
@@ -235,8 +259,10 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   if (!parsed.success) return { error: "invalidPlan" };
   if (form.get("startNow") !== "on") return { error: "consentRequired" };
   // Renewing the same plan needs nothing new; an upgrade only needs the difference.
+  // Admins may go over the sales limit to test buying, as when creating a server.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
-  if (!(await canSellMemory(planMb - heldMemoryMb(server), planMb))) {
+  const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
+  if (!(await canSellMemory(extraMb, planMb, server.node))) {
     return { error: "soldOut" };
   }
 
@@ -362,6 +388,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   if (players.length > WHITELIST_MAX) return { error: "tooManyPlayers" };
   const whitelist = s.whitelist === "on";
   if (whitelist && players.length === 0) return { error: "whitelistEmpty" };
+  if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
 
   const updated = await db.server.update({
     where: { id: server.id },

@@ -1,14 +1,22 @@
 import "server-only";
-import type { Plan, Server, ServerStatus, User } from "@prisma/client";
+import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
-import { stripe } from "./stripe";
+import { stripe, stripeTestMode } from "./stripe";
 import * as agent from "./agent";
-import { agentSpec, destroyServer } from "./servers";
+import { agentSpec, destroyServer, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
-import { KEEP_DAYS, REMIND_BEFORE_DAYS, WARN_BEFORE_DELETE_DAYS, sendPlanMail } from "./planMail";
+import {
+  FREE_IDLE_DAYS,
+  FREE_IDLE_FROM,
+  KEEP_DAYS,
+  REMIND_BEFORE_DAYS,
+  WARN_BEFORE_DELETE_DAYS,
+  WARN_BEFORE_IDLE_DELETE_DAYS,
+  sendPlanMail,
+} from "./planMail";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import type { Currency, Locale } from "@/i18n/config";
 
@@ -35,6 +43,10 @@ export async function startCheckout(opts: {
   startConsent: boolean; // asked for the server to start before the withdrawal period ends
 }) {
   const { user, server, plan, days, currency, locale, startConsent } = opts;
+  // Test keys take no money, so only admins may check out with them (to try the site).
+  if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
+    throw new Error("Stripe runs on test keys: only admins can pay");
+  }
   const amount = Math.round(priceFor(plan, days, currency) * 100);
   const payment = await db.payment.create({
     data: { userId: user.id, serverId: server.id, plan, days, amount, currency, startConsent },
@@ -88,7 +100,7 @@ export async function fulfillPayment(paymentId: string) {
 
     // A friend's invite: the first long enough payment gets extra days, and so does whoever invited them.
     inviter = await claimReferral(tx, payment.userId, payment.days);
-    const days = payment.days + (inviter ? REFERRAL_DAYS : 0);
+    const days = payment.days + (inviter ? REFERRAL_DAYS : 0) + (await claimApologyDays(tx, payment.userId));
     const paidUntil = new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
     const planChanged = server.plan !== payment.plan;
     const needsHost = planChanged || server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED";
@@ -112,6 +124,14 @@ export async function fulfillPayment(paymentId: string) {
   if (server.status === "PROVISIONING") await provision(server);
 }
 
+/** Days the payer gets on top to make up for a payment of theirs that didn't go through (testPayments.ts), once. */
+async function claimApologyDays(tx: Prisma.TransactionClient, userId: string) {
+  const { apologyDays } = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { apologyDays: true } });
+  if (apologyDays <= 0) return 0;
+  const { count } = await tx.user.updateMany({ where: { id: userId, apologyDays }, data: { apologyDays: 0 } });
+  return count ? apologyDays : 0;
+}
+
 export type GiftResult = { error?: "free" | "soldOut" | "failed"; server?: Server };
 
 /**
@@ -125,7 +145,7 @@ export async function giftDays(serverId: string, days: number, why = "admin gift
   if (!s) return {};
   if (s.plan === "FREE") return { error: "free" };
   const needsHost = s.status === "AWAITING_PAYMENT" || s.status === "SUSPENDED";
-  if (needsHost && !(await canSellMemory(s.memoryMb))) return { error: "soldOut" };
+  if (needsHost && !(await canSellMemory(s.memoryMb, s.memoryMb, s.node))) return { error: "soldOut" };
   const from = s.paidUntil && s.paidUntil > now ? s.paidUntil : now;
   const server = await db.server.update({
     where: { id: s.id },
@@ -138,6 +158,68 @@ export async function giftDays(serverId: string, days: number, why = "admin gift
   console.info(why, server.id, days, "days, paid until", server.paidUntil?.toISOString());
   if (server.status === "PROVISIONING" && !(await provision(server))) return { error: "failed", server };
   return { server };
+}
+
+/**
+ * When a free server nobody plays on is deleted: FREE_IDLE_DAYS after players
+ * were last seen, never sooner than WARN_BEFORE_IDLE_DELETE_DAYS after its
+ * owner was told, and not before the terms allow it (FREE_IDLE_FROM).
+ */
+export function idleDeletionDate(server: Pick<Server, "lastPlayedAt" | "deletionWarnedAt">, now = new Date()) {
+  const idle = server.lastPlayedAt.getTime() + FREE_IDLE_DAYS * DAY;
+  const toldAt = server.deletionWarnedAt?.getTime() ?? now.getTime();
+  return new Date(Math.max(idle, toldAt + WARN_BEFORE_IDLE_DELETE_DAYS * DAY, FREE_IDLE_FROM.getTime()));
+}
+
+/**
+ * Notes when players were last on each server (from the machines' stats), then
+ * warns about and later deletes free servers nobody has played on for
+ * FREE_IDLE_DAYS, so they don't hold disk, ports and free slots for good.
+ */
+async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; idleDeleted: number }) {
+  const stats = await agent.getStats().catch((err) => {
+    console.error("idle free servers: no stats", err);
+    return null;
+  });
+  // Without knowing who's playing, nobody is judged idle.
+  if (!stats) return;
+  const playing = stats.servers.filter((s) => (s.players ?? 0) > 0).map((s) => s.id);
+  if (playing.length > 0) {
+    await db.server.updateMany({ where: { id: { in: playing } }, data: { lastPlayedAt: now } });
+    await db.server.updateMany({ where: { id: { in: playing }, plan: "FREE" }, data: { deletionWarnedAt: null } });
+  }
+  // Warnings go out WARN_BEFORE_IDLE_DELETE_DAYS before the terms allow deleting.
+  if (now.getTime() < FREE_IDLE_FROM.getTime() - WARN_BEFORE_IDLE_DELETE_DAYS * DAY) return;
+  const idle = await db.server.findMany({
+    where: {
+      plan: "FREE",
+      status: { in: ["RUNNING", "STOPPED", "SLEEPING", "PROVISIONING"] },
+      lastPlayedAt: { lt: new Date(now.getTime() - (FREE_IDLE_DAYS - WARN_BEFORE_IDLE_DELETE_DAYS) * DAY) },
+      // A machine that didn't answer can't tell us whether anyone played there.
+      node: { notIn: stats.unreachable },
+    },
+    include: OWNER,
+  });
+  for (const s of idle) {
+    if (!s.deletionWarnedAt) {
+      const claim = await db.server.updateMany({ where: { id: s.id, deletionWarnedAt: null }, data: { deletionWarnedAt: now } });
+      if (claim.count === 0) continue;
+      if (await sendPlanMail("inactive", s, idleDeletionDate({ ...s, deletionWarnedAt: now }, now))) result.idleWarned++;
+      else await db.server.updateMany({ where: { id: s.id, deletionWarnedAt: now }, data: { deletionWarnedAt: null } });
+      continue;
+    }
+    if (idleDeletionDate(s, now) > now) continue;
+    // Still idle and still free (not upgraded or played on since it was read)?
+    const still = await db.server.count({ where: { id: s.id, plan: "FREE", lastPlayedAt: s.lastPlayedAt } });
+    if (still === 0) continue;
+    try {
+      await destroyServer(s);
+      console.info("deleted idle free server", s.id, "last played", s.lastPlayedAt.toISOString());
+      result.idleDeleted++;
+    } catch (err) {
+      console.error("deleting idle free server failed", s.id, err);
+    }
+  }
 }
 
 /**
@@ -180,9 +262,25 @@ export async function markPayment(sessionId: string, status: "FAILED" | "EXPIRED
   await db.payment.updateMany({ where: { stripeSessionId: sessionId, status: "PENDING" }, data: { status } });
 }
 
+// Checkouts made with Stripe test keys: no real money moved.
+export const TEST_PAYMENTS = { stripeSessionId: { startsWith: "cs_test_" } } satisfies Prisma.PaymentWhereInput;
+// What the admin may delete: test payments and ones that never went through.
+// Real paid (or still open) payments stay in the history for the accounts.
+export const REMOVABLE_PAYMENTS = {
+  OR: [TEST_PAYMENTS, { status: { in: ["FAILED", "EXPIRED"] } }],
+} satisfies Prisma.PaymentWhereInput;
+
+export function isTestPayment(p: Pick<Payment, "stripeSessionId">) {
+  return !!p.stripeSessionId?.startsWith("cs_test_");
+}
+
+export function isRemovablePayment(p: Pick<Payment, "stripeSessionId" | "status">) {
+  return isTestPayment(p) || p.status === "FAILED" || p.status === "EXPIRED";
+}
+
 /** Periodic housekeeping, run by /api/cron/billing. */
 export async function runBillingJob(now = new Date()) {
-  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, abandoned: 0, provisioned: 0 };
+  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, abandoned: 0, provisioned: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Paid period over: stop the server but keep its world.
@@ -259,6 +357,8 @@ export async function runBillingJob(now = new Date()) {
     }
   }
 
+  await deleteIdleFreeServers(now, result);
+
   // Servers created for a payment that never happened free their port and address.
   const abandoned = await db.server.findMany({
     where: { status: "AWAITING_PAYMENT", createdAt: { lt: new Date(now.getTime() - DAY) } },
@@ -288,5 +388,6 @@ export async function runBillingJob(now = new Date()) {
   await agent
     .setDiskLimits(Object.fromEntries(onAgent.map((s) => [s.id, diskLimitMb(s.plan)])))
     .catch((err) => console.error("disk limits not sent", err));
+  await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
   return result;
 }

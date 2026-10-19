@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { LayoutGrid, LogOut } from "lucide-react";
+import { LayoutGrid, LogOut, Megaphone } from "lucide-react";
 import "@fontsource-variable/inter";
 import "@fontsource/jersey-10/latin.css";
 import "@fontsource/jersey-10/latin-ext.css";
@@ -8,10 +8,14 @@ import { auth } from "@/auth";
 import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
 import ServiceWorker from "@/components/ServiceWorker";
-import SupportLink from "@/components/SupportLink";
+import HelpBubble from "@/components/HelpBubble";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { siteUrl } from "@/lib/site";
+import { isAdmin } from "@/lib/admin";
+import { adminOnline } from "@/lib/presence";
+import { getAnnouncement } from "@/lib/announcement";
+import { CHAT_RATE, MAX_LENGTH } from "@/lib/support";
 import { logOut } from "./actions";
 import "./globals.css";
 
@@ -41,12 +45,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [{ locale, currency }, t, session] = await Promise.all([
+  const [{ locale, currency }, t, session, announcement] = await Promise.all([
     getPreferences(),
     getMessages(),
     auth(),
+    getAnnouncement(),
   ]);
   const signedIn = !!session?.user;
+  const admin = session?.user?.id ? await isAdmin(session.user.id) : false;
 
   return (
     <html lang={locale}>
@@ -66,7 +72,6 @@ export default async function RootLayout({
             <div className="topbar-actions">
               {signedIn ? (
                 <>
-                  <SupportLink label={t.support.nav} unreadLabel={t.support.unread} />
                   <Link className="button small" href="/dashboard" aria-label={t.nav.dashboard}>
                     <LayoutGrid size={16} aria-hidden /> <span className="hide-phone">{t.nav.dashboard}</span>
                   </Link>
@@ -92,6 +97,11 @@ export default async function RootLayout({
             </div>
           </div>
         </header>
+        {announcement && (
+          <div className="announcement-bar" role="status">
+            <Megaphone size={16} aria-hidden /> <span>{announcement}</span>
+          </div>
+        )}
         {children}
         <footer className="footer">
           <div className="container footer-grid">
@@ -133,6 +143,14 @@ export default async function RootLayout({
             <span>{t.footer.disclaimer}</span>
           </div>
         </footer>
+        <HelpBubble
+          t={t.support}
+          signedIn={signedIn}
+          admin={admin}
+          adminOnline={adminOnline()}
+          maxLength={MAX_LENGTH}
+          rate={CHAT_RATE}
+        />
       </body>
     </html>
   );

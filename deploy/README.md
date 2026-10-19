@@ -68,7 +68,13 @@ added below.
 3. Put the secret key and the webhook signing secret into `deploy/.env`, then run
    `docker compose up -d` in `deploy/` again.
 
-Use test keys (`sk_test_…`) first and pay with Stripe's test cards and test BLIK codes.
+Use test keys (`sk_test_…`) first and pay with Stripe's test cards and test BLIK codes. Test keys
+take no money, so while they're in, only admins can check out; customers see "payments unavailable"
+and the admin panel says Stripe is on a test key. For real payments, switch the Dashboard to live
+mode, do steps 1 and 2 there again (live mode has its own payment methods and webhooks, and Managed
+Payments must be off there too) and put the live secret key (`sk_live_…` or a restricted `rk_live_…`
+with Checkout Sessions write access) and the live webhook's signing secret into `deploy/.env`. The
+publishable key (`pk_live_…`) isn't used: checkout happens on Stripe's own page.
 
 Also turn on **Successful payments** under Settings → Customer emails, so every buyer gets a receipt by
 email. Polish consumer law expects a confirmation of the purchase on a "durable medium", and the receipt
@@ -176,6 +182,28 @@ can always start them.
 
 To change either, edit `deploy/.env` and run `docker compose up -d` in `deploy/`. Servers made
 before an update pick up the smaller starting memory the next time their settings are saved.
+
+## A second machine
+
+When the main machine is full and a bigger one isn't available, add another game machine at any
+provider (Hetzner, OVH, ...). It only runs the agent and Minecraft servers; the website, database and
+Java router stay on the main one, which reaches it through an encrypted WireGuard tunnel.
+
+1. Buy a VPS with Ubuntu 24.04 and note its IP, user (`root` at Hetzner, `ubuntu` at OVH) and password.
+2. On the main machine: `cd ~/mc-host && git pull && cd deploy && ./add-node.sh n2 root@<its IP>`
+   It asks for the new machine's password, sets everything up there and adds it to the site.
+3. In your DNS, add an A record `n2` pointing at the new machine's IP.
+
+New servers go to the machine with the most room. Java players still type `name.mchosting.pl`: the
+main machine's router passes them on through the tunnel, so a server on the second machine sees
+every player with the main machine's IP. Bedrock, Terraria and crossplay servers there join at
+`n2.mchosting.pl:port`. To update the second machine after updating the site, run the same
+`./add-node.sh` command again.
+
+Terraria with mods (tModLoader) runs only on x86 machines (amd64): its image and Steam parts don't
+exist for Arm. `setup.sh` and `add-node.sh` note each machine's processor (`GAME_ARCH` in `.env`,
+`arch` in `NODES`), and new tModLoader servers go only to an x86 machine; with none, the site says
+the plan is sold out.
 
 ## Backups
 

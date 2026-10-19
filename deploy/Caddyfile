@@ -1,5 +1,14 @@
 # HTTPS certificates are fetched automatically from Let's Encrypt.
 {$DOMAIN}, www.{$DOMAIN} {
 	encode zstd gzip
+	header {
+		# Browsers only ever use HTTPS here, and no other site may show ours in a frame
+		# (so nobody can trick a signed-in admin into clicking on a hidden panel).
+		Strict-Transport-Security "max-age=31536000"
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
 	reverse_proxy 127.0.0.1:3000
 }

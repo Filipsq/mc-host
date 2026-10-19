@@ -121,6 +121,15 @@ func (d *Docker) CreateContainer(ctx context.Context, name string, spec map[stri
 	return d.call(ctx, http.MethodPost, "/containers/create", url.Values{"name": {name}}, spec, nil)
 }
 
+// EnsureNetwork creates the bridge network with these options unless it exists.
+func (d *Docker) EnsureNetwork(ctx context.Context, name string, options map[string]string) error {
+	err := d.call(ctx, http.MethodGet, "/networks/"+name, nil, nil, nil)
+	if !errors.Is(err, errNotFound) {
+		return err
+	}
+	return d.call(ctx, http.MethodPost, "/networks/create", nil, map[string]any{"Name": name, "Driver": "bridge", "Options": options}, nil)
+}
+
 func (d *Docker) StartContainer(ctx context.Context, name string) error {
 	return d.call(ctx, http.MethodPost, "/containers/"+name+"/start", nil, nil, nil)
 }

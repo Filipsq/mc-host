@@ -25,6 +25,7 @@ import Stats from "./Stats";
 import CopyButton from "@/components/CopyButton";
 import EditionIcon from "@/components/EditionIcon";
 import Backups, { type BackupRow } from "./Backups";
+import TestPaymentNotice from "@/components/TestPaymentNotice";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -61,7 +62,12 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const kind = server.edition === "JAVA" && isServerKind(server.kind) ? server.kind : "vanilla";
   const islandCommand = ISLAND_COMMAND[kind];
   // Plugins on Paper, mods on a mod loader; the card reads accordingly.
-  const addons = { plugin: all.plugins, mod: { ...all.plugins, ...all.mods }, none: null }[addonType(server) ?? "none"];
+  const addons = {
+    plugin: all.plugins,
+    mod: { ...all.plugins, ...all.mods },
+    workshop: { ...all.plugins, ...all.mods, ...all.workshop },
+    none: null,
+  }[addonType(server) ?? "none"];
   const unpaid = live === "awaitingPayment" || live === "suspended";
   // What the server's files take, as the agent last measured, against what the plan gives.
   const diskUsed = agent?.diskMb;
@@ -112,7 +118,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
             <h1>{server.name}</h1>
             <div className="meta">
               <span className="chip">{EDITION_NAMES[server.edition]}</span>
-              {terrariaKind === "tshock" && <span className="chip">{tt.kinds.tshock}</span>}
+              {terrariaKind && terrariaKind !== "vanilla" && <span className="chip">{tt.kinds[terrariaKind]}</span>}
               <span className="chip">{all.plans[server.plan]}</span>
               <span className="chip">{server.memoryMb / 1024} GB RAM</span>
             </div>
@@ -122,6 +128,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
       </header>
 
       {payment === "success" && <p className="notice success">{b.success}</p>}
+      {payment !== "success" && <TestPaymentNotice userId={session.user.id} all={all} locale={locale} serverId={server.id} />}
       {settings === "saved" && <p className="notice success">{all.settings.saved}</p>}
       {typeChanged === "changed" && server.edition === "JAVA" && (
         <p className="notice success">{format(all.serverType.done, { type: kindLabel(server, all), world: activeLevel(server) })}</p>
@@ -168,7 +175,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
           </p>
         )}
         {terrariaKind === "tshock" && can("console") && <p className="muted small">{tt.tshockSetup}</p>}
-        {terraria && live === "starting" && <p className="muted small">{tt.firstStart}</p>}
+        {terrariaKind === "tmodloader" && <p className="muted small">{tt.tmodJoin}</p>}
+        {terraria && live === "starting" && <p className="muted small">{terrariaKind === "tmodloader" ? tt.tmodFirstStart : tt.firstStart}</p>}
         {bedrock && (
           <>
             <div className="address-card">

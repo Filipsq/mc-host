@@ -63,6 +63,13 @@ export function parsePlayers(text: string) {
     .filter((n) => n && !seen.has(n.toLowerCase()) && seen.add(n.toLowerCase()));
 }
 
+/**
+ * Whether the version is from before Minecraft's year-based versions (26.1+).
+ * Those can't open a world 26.1 or newer saved at all: 26.1 moved its seed and
+ * dimensions out of level.dat.
+ */
+export const isPreYearVersion = (v: string) => v.startsWith("1.");
+
 function versionParts(v: string) {
   return v === "LATEST" ? [Infinity] : v.split(".").map(Number);
 }
