@@ -115,8 +115,25 @@ model SupportMessage {
   authorId  String?
   body      String
   createdAt DateTime    @default(now())
+  // Set when an admin deleted the message: its text and picture are gone and
+  // the open chats drop it on their next poll.
+  deletedAt DateTime?
+  image     SupportImage?
 
   @@index([chatId, createdAt])
+  @@index([chatId, deletedAt])
+}
+
+// A picture sent with a chat message (screenshots, mostly). Kept in the
+// database so it goes with the message, the chat and the account.
+model SupportImage {
+  id        String         @id @default(cuid())
+  messageId String         @unique
+  message   SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  // image/png, image/jpeg, image/webp or image/gif, checked from the file's first bytes.
+  type      String
+  size      Int
+  data      Bytes
 }
 
 // A "forgot password" link. Only the hash of the link's token is stored.

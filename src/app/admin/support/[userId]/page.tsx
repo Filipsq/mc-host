@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { MAX_LENGTH, RATE_COUNT, RATE_MINUTES, readChat } from "@/lib/support";
+import { CHAT_RATE, MAX_LENGTH, readChat } from "@/lib/support";
 import SupportChat from "@/components/SupportChat";
 
 type Props = { params: Promise<{ userId: string }> };
@@ -56,7 +56,7 @@ export default async function AdminChat({ params }: Props) {
         chat={user.id}
         otherName={user.email}
         maxLength={MAX_LENGTH}
-        rate={{ count: RATE_COUNT, minutes: RATE_MINUTES }}
+        rate={CHAT_RATE}
         hadUnread={(user.supportChat?.staffUnread ?? 0) > 0}
       />
     </>

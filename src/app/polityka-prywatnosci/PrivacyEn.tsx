@@ -68,7 +68,7 @@ export default function PrivacyEn({ site }: { site: string }) {
               <td>art. 6(1)(f): legitimate interest</td>
             </tr>
             <tr>
-              <td>Contents of emails, chat messages in the panel, complaints and withdrawals</td>
+              <td>Contents of emails, chat messages in the panel (pictures included), complaints and withdrawals</td>
               <td>Replying, handling complaints and withdrawals</td>
               <td>art. 6(1)(b), (c) and (f)</td>
             </tr>
@@ -130,7 +130,7 @@ export default function PrivacyEn({ site }: { site: string }) {
         <li>Payment data: 5 years from the end of the year of payment (tax law).</li>
         <li>Technical logs: continuously replaced by newer entries, and deleted at the latest with the Server.</li>
         <li>Correspondence: while the matter is handled, then until any claims would be time-barred.</li>
-        <li>Chat messages in the panel: until the Account is deleted.</li>
+        <li>Chat messages in the panel, with the pictures sent: until the Account is deleted or an administrator deletes the message.</li>
         <li>A device’s notification address: until you turn notifications off, log out on that device or delete the Account.</li>
         <li>A friend’s access to a Server: until the owner removes it, the friend leaves the Server, or the Server is deleted.</li>
       </ul>

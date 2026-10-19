@@ -67,7 +67,7 @@ export default function PrivacyPl({ site }: { site: string }) {
               <td>art. 6 ust. 1 lit. f – prawnie uzasadniony interes</td>
             </tr>
             <tr>
-              <td>Treść wiadomości e-mail, wiadomości z czatu w panelu, reklamacji i odstąpień</td>
+              <td>Treść wiadomości e-mail, wiadomości z czatu w panelu (także wysłane zdjęcia), reklamacji i odstąpień</td>
               <td>Odpowiedź na wiadomość, obsługa reklamacji i odstąpień</td>
               <td>art. 6 ust. 1 lit. b, c i f</td>
             </tr>
@@ -129,7 +129,7 @@ export default function PrivacyPl({ site }: { site: string }) {
         <li>Dane płatności – 5 lat od końca roku, w którym nastąpiła płatność (przepisy podatkowe).</li>
         <li>Logi techniczne – na bieżąco zastępowane nowszymi wpisami; usuwamy je najpóźniej z usunięciem Serwera.</li>
         <li>Korespondencja – przez czas obsługi sprawy, a potem do upływu terminu przedawnienia roszczeń.</li>
-        <li>Wiadomości z czatu w panelu – do usunięcia Konta.</li>
+        <li>Wiadomości z czatu w panelu, razem z wysłanymi zdjęciami – do usunięcia Konta albo usunięcia wiadomości przez administratora.</li>
         <li>Adres powiadomień urządzenia – do wyłączenia powiadomień, wylogowania się na tym urządzeniu albo usunięcia Konta.</li>
         <li>Dostęp znajomego do Serwera – do odebrania go przez właściciela, opuszczenia Serwera przez znajomego albo usunięcia Serwera.</li>
       </ul>
