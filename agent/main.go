@@ -630,6 +630,15 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 	return spec
 }
 
+// Java uses memory beyond its heap (classes, threads, the garbage collector,
+// network buffers for Geyser), so its container gets a quarter of the plan on
+// top, at least 1 GB: with only 512 MB a Starter with Geyser was OOM-killed
+// right after starting. Network buffers are capped (by default they may grow
+// as big as the heap) so they stay inside that room.
+const directMemoryMb = 256
+
+func javaHeadroomMb(planMb int) int { return max(1024, planMb/4) }
+
 func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 	maxPlayers := fmt.Sprint(req.MaxPlayers)
 	if req.MaxPlayers <= 0 {
@@ -709,7 +718,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		// need, up to the plan; an idle one gives memory back to the machine.
 		// Aikar's garbage collector flags avoid the pauses that stall chunk loading.
 		env = append(env, fmt.Sprintf("INIT_MEMORY=%dM", min(req.MemoryMb, initialHeapMb)), fmt.Sprintf("MAX_MEMORY=%dM", req.MemoryMb),
-			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
+			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000 -XX:MaxDirectMemorySize="+fmt.Sprint(directMemoryMb)+"m", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
 			players := req.Players
@@ -740,7 +749,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		labels["mchost.host"] = req.Hostname
 		containerPort = "25565/tcp"
 		hostIP = "127.0.0.1" // players come in through the router, not directly
-		limitMb = req.MemoryMb + 512
+		limitMb = req.MemoryMb + javaHeadroomMb(req.MemoryMb)
 		if req.Crossplay {
 			// Bedrock has no hostname to route by, so Geyser gets the server's own
 			// port, open to everyone, over UDP (the Java side stays on TCP).

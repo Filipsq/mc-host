@@ -35,7 +35,7 @@ func TestContainerSpecJava(t *testing.T) {
 	a := &agent{idle: 5 * time.Minute}
 	spec := a.containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 25570, MaxPlayers: 10, Hostname: "ekipa.mchost.pl", Autostop: true}, images["JAVA"])
 	host := spec["HostConfig"].(map[string]any)
-	if got := host["Memory"].(int64); got != (2048+512)*1024*1024 {
+	if got := host["Memory"].(int64); got != (2048+1024)*1024*1024 {
 		t.Fatalf("memory limit = %d", got)
 	}
 	if opts := host["SecurityOpt"].([]string); len(opts) != 1 || opts[0] != "no-new-privileges:true" {
