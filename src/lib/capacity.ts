@@ -63,7 +63,8 @@ function fitsMachine(node: GameNode, planMb: number) {
 
 /**
  * Whether `extraMb` more memory can be sold to a paid server of `planMb` in
- * total on machine `nodeId`, or for a new server on any machine.
+ * total on machine `nodeId`, or on any machine (a server already on a full one
+ * moves when the plan is paid for, see moveIfFull in servers.ts).
  */
 export async function canSellMemory(extraMb: number, planMb = extraMb, nodeId?: string) {
   return (await pickNode(planMb, extraMb, nodeId)) !== null;
@@ -76,11 +77,25 @@ export async function canSellMemory(extraMb: number, planMb = extraMb, nodeId?: 
  * with that processor (tModLoader runs on amd64 only). Null when none fits.
  */
 export async function pickNode(planMb: number, extraMb = planMb, nodeId?: string, arch?: string): Promise<string | null> {
+  return (await rankNodes(planMb, extraMb, nodeId, arch))[0] ?? null;
+}
+
+/** Every machine pickNode could choose, best first. */
+export async function rankNodes(planMb: number, extraMb = planMb, nodeId?: string, arch?: string): Promise<string[]> {
   const candidates = (await roomByNode()).filter(
     ({ node, room }) =>
       (!nodeId || node.id === nodeId) && (!arch || node.arch === arch) && fitsMachine(node, planMb) && (extraMb <= 0 || room >= extraMb),
   );
-  const left = (c: { room: number; freeMb: number }) => (extraMb > 0 ? c.room : c.room - c.freeMb);
+  // Free servers go where the most is left for the machine's size, so a small
+  // machine doesn't get as many as a big one.
+  const left = (c: { node: GameNode; room: number; freeMb: number }) =>
+    extraMb > 0 ? c.room : (c.room - c.freeMb) / Math.max(c.node.memoryLimitMb, 1);
   candidates.sort((a, b) => left(b) - left(a));
-  return candidates[0]?.node.id ?? null;
+  return candidates.map((c) => c.node.id);
+}
+
+/** Whether the paid servers on machine `nodeId` hold more memory than it may sell. */
+export async function oversold(nodeId: string) {
+  const here = (await roomByNode()).find((c) => c.node.id === nodeId);
+  return here !== undefined && here.room < 0;
 }

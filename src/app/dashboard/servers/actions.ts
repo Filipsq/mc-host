@@ -23,7 +23,7 @@ import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
-import { canSellMemory, heldMemoryMb, pickNode } from "@/lib/capacity";
+import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
 import {
   DIFFICULTIES,
@@ -153,7 +153,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     game.id === "mods"
       ? LOADER_VERSIONS[parsed.data.loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION
       : null;
-  // tModLoader needs more memory than the free plan has, and an x86 machine (pickNode below).
+  // tModLoader needs more memory than the free plan has, and an x86 machine (rankNodes below).
   const tmod = terraria && kind === "tmodloader";
   if (tmod && !planAtLeast(plan, TMOD_MIN_PLAN)) return { error: "tmodPaidOnly", values };
   if (kind === "modpack") {
@@ -167,7 +167,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   // Admins may go over the sales limit to test buying; a plan still has to fit on the machine.
   const extraMb = (await isAdmin(user.id)) ? 0 : memoryMb;
   // The machine it goes on: the one with the most room (paid plans need room to sell).
-  const node = await pickNode(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, tmod ? TMOD_ARCH : undefined);
+  const candidates = await rankNodes(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, tmod ? TMOD_ARCH : undefined);
+  const node = candidates[0];
   if (!node) return { error: "soldOut", values };
 
   // Pin the pack's current version, so players know exactly which one to install.
@@ -181,7 +182,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     pack = resolved;
   }
 
-  const server = await createServerRecord({
+  let server = await createServerRecord({
     ownerId: user.id,
     node,
     name,
@@ -226,14 +227,24 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     redirect(url);
   }
 
-  try {
-    await agent.createServer(agentSpec(server));
-  } catch (err) {
-    if (!agent.isFull(err)) console.error("create server failed", server.id, err);
-    // Clean up anything half-created so the user can try again.
-    await agent.deleteServer(server.id).catch(() => {});
-    await db.server.delete({ where: { id: server.id } });
-    return { error: agent.isFull(err) ? "full" : "agentUnavailable", values };
+  for (let next = 1; ; next++) {
+    try {
+      await agent.createServer(agentSpec(server));
+      break;
+    } catch (err) {
+      if (!agent.isFull(err)) console.error("create server failed", server.id, err);
+      // Clean up anything half-created so the user can try again.
+      await agent.deleteServer(server.id).catch(() => {});
+      // That machine has no free server's worth of memory awake right now: try the next one.
+      if (agent.isFull(err) && next < candidates.length) {
+        server = await db.server.update({ where: { id: server.id }, data: { node: candidates[next] } });
+        agent.forgetServerNode(server.id);
+        await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
+        continue;
+      }
+      await db.server.delete({ where: { id: server.id } });
+      return { error: agent.isFull(err) ? "full" : "agentUnavailable", values };
+    }
   }
 
   await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" } });
@@ -267,7 +278,8 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   // Admins may go over the sales limit to test buying, as when creating a server.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
   const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
-  if (!(await canSellMemory(extraMb, planMb, server.node))) {
+  // Its own machine may be full: then the whole plan has to fit on another, where it moves once paid for (moveIfFull).
+  if (!(await canSellMemory(extraMb, planMb, server.node)) && !(await canSellMemory(planMb))) {
     return { error: "soldOut" };
   }
 

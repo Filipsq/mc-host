@@ -25,8 +25,13 @@ export function isDiskFull(err: unknown) {
   return err instanceof AgentError && err.status === 507 && err.message === "diskFull";
 }
 
-// Which machine each server is on; a server never moves, so this only grows.
+// Which machine each server is on, until it moves (forgetServerNode).
 const serverNodes = new Map<string, string>();
+
+/** Makes the next call about the server look up its machine again, after a move. */
+export function forgetServerNode(id: string) {
+  serverNodes.delete(id);
+}
 
 async function nodeOfServer(id: string): Promise<GameNode> {
   let node = serverNodes.get(id);
@@ -204,8 +209,34 @@ export async function stopServer(id: string, reason?: "suspended") {
   await agentFetch(`/servers/${id}/stop${query}`, { method: "POST", timeoutMs: 90_000 });
 }
 
-export async function deleteServer(id: string) {
-  await agentFetch(`/servers/${id}`, { method: "DELETE", timeoutMs: 90_000 });
+/** Deletes a server, with its world and backups, from its machine or from `node`. */
+export async function deleteServer(id: string, node?: GameNode) {
+  await agentFetch(`/servers/${id}`, { method: "DELETE", timeoutMs: 90_000, node });
+}
+
+const MOVE_TIMEOUT_MS = 2 * 60 * 60_000;
+
+/**
+ * Copies a server's files and backups from machine `from` to `to`, where it
+ * doesn't exist yet. The server is stopped on `from` first and left there.
+ */
+export async function copyServer(id: string, from: GameNode, to: GameNode) {
+  const send = async (path: string, res: Response) => {
+    await agentFetch(path, {
+      method: "PUT",
+      node: to,
+      body: res.body,
+      headers: { "Content-Type": "application/gzip", "Content-Length": res.headers.get("Content-Length") ?? "" },
+      ...({ duplex: "half" } as object),
+      timeoutMs: MOVE_TIMEOUT_MS,
+    });
+  };
+  await send(`/servers/${id}/import`, await agentFetch(`/servers/${id}/export`, { node: from, timeoutMs: MOVE_TIMEOUT_MS }));
+  const { backups } = (await (await agentFetch(`/servers/${id}/backups`, { node: from })).json()) as { backups: Backup[] };
+  for (const b of backups) {
+    const path = `/servers/${id}/backups/${b.name}`;
+    await send(path, await agentFetch(path, { node: from, timeoutMs: MOVE_TIMEOUT_MS }));
+  }
 }
 
 export async function sendCommand(id: string, command: string): Promise<string> {
