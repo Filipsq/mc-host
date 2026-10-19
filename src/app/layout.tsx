@@ -10,9 +10,7 @@ import PreferencesPicker from "@/components/PreferencesPicker";
 import ServiceWorker from "@/components/ServiceWorker";
 import HelpBubble from "@/components/HelpBubble";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { format } from "@/i18n/messages";
 import { BRAND_NAME } from "@/lib/brand";
-import { formatPrice, planById } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
 import { isAdmin } from "@/lib/admin";
 import { adminOnline } from "@/lib/presence";
@@ -24,10 +22,8 @@ import "./globals.css";
 export const viewport: Viewport = { themeColor: "#0b0f14" };
 
 export async function generateMetadata(): Promise<Metadata> {
-  const [t, { locale, currency }] = await Promise.all([getMessages(), getPreferences()]);
-  // "from" the cheapest paid plan, in the visitor's currency.
-  const from = formatPrice(planById("STARTER").price[currency], currency, locale);
-  const title = `${BRAND_NAME} · ${format(t.meta.title, { price: from })}`;
+  const [t, { locale }] = await Promise.all([getMessages(), getPreferences()]);
+  const title = `${BRAND_NAME} · ${t.meta.title}`;
   return {
     metadataBase: new URL(siteUrl()),
     title: { default: title, template: `%s · ${BRAND_NAME}` },
