@@ -111,3 +111,21 @@ const addonsScriptPath = "/tmp/mchost-addons"
 // islandsEntrypoint puts addonsScript where PRE_START_SCRIPT points, then starts the image as usual.
 var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath + " <<'MCHOST'\n" + addonsScript +
 	"MCHOST\nchmod 755 " + addonsScriptPath + "\nexec /image/scripts/start\n"}
+
+// packScript takes packExcludes out of a Modrinth pack's mods just before the
+// server starts. MODRINTH_EXCLUDE_FILES only covers the files the pack has the
+// image download; a pack can also carry a mod inside its own zip ("overrides"),
+// which the image copies in again on every start (Better MC does this with
+// Missing Mods Checker).
+const packScript = `#!/bin/bash
+for jar in mods/` + packExcludes + `*.jar; do
+  [ -f "$jar" ] && rm -f "$jar" && echo "[mchost] removed $jar (a player-side mod that stops servers)"
+done
+exit 0
+`
+
+const packScriptPath = "/tmp/mchost-pack"
+
+// packEntrypoint puts packScript where PRE_START_SCRIPT points, then starts the image as usual.
+var packEntrypoint = []string{"/bin/bash", "-c", "cat >" + packScriptPath + " <<'MCHOST'\n" + packScript +
+	"MCHOST\nchmod 755 " + packScriptPath + "\nexec /image/scripts/start\n"}

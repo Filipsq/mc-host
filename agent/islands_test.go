@@ -151,3 +151,30 @@ func TestAddonsScript(t *testing.T) {
 		t.Errorf("after a start with nothing new: %s", got)
 	}
 }
+
+func TestPackScriptRemovesExcludedMods(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "mods"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"missingmodschecker.jar", "missingmodschecker-1.0.1.jar", "modernfix.jar"} {
+		if err := os.WriteFile(filepath.Join(dir, "mods", name), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cmd := exec.Command("bash", "-c", packScript)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	left, _ := filepath.Glob(filepath.Join(dir, "mods", "*"))
+	if len(left) != 1 || filepath.Base(left[0]) != "modernfix.jar" {
+		t.Fatalf("mods left: %v", left)
+	}
+	// No mods folder yet (first start): still exits cleanly.
+	cmd = exec.Command("bash", "-c", packScript)
+	cmd.Dir = t.TempDir()
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+}
