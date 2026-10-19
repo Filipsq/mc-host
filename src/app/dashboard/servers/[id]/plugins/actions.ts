@@ -10,6 +10,8 @@ import { agentSpec } from "@/lib/servers";
 import { getServerFor } from "@/lib/access";
 import { getAddon } from "@/lib/modrinth";
 import { GAME_MODE_PLUGINS, PLUGINS_MAX, PLUGIN_SETS, addonType, isProjectId, pluginIds, setFits } from "@/lib/plugins";
+import { POPULAR_TMOD_MODS, parseWorkshopInput } from "@/lib/terraria";
+import { resolveWorkshopItem } from "@/lib/steam";
 import type { Messages } from "@/i18n/messages";
 
 export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; pending?: boolean };
@@ -23,9 +25,14 @@ async function addonServer(id: string) {
   return server && type ? { ...server, type } : null;
 }
 
-/** Adds a Modrinth plugin or mod (by project ID, as search results give it) to the server. */
+/** Adds a Modrinth plugin or mod (by project ID, as search results give it), or a popular tModLoader mod, to the server. */
 export async function addPluginAction(id: string, projectId: string): Promise<PluginResult> {
   const server = await addonServer(id);
+  if (server?.type === "workshop") {
+    // One of the popular mods, with the mods it needs.
+    const mod = POPULAR_TMOD_MODS.find((m) => m.id === projectId);
+    return mod ? addWorkshopMods(server, [mod.id, ...mod.with]) : { error: "failed" };
+  }
   if (!server || !isProjectId(projectId)) return { error: "failed" };
   if (server.plugins.includes(projectId)) return {};
   if (server.plugins.length >= PLUGINS_MAX) return { error: "tooMany" };
@@ -34,6 +41,33 @@ export async function addPluginAction(id: string, projectId: string): Promise<Pl
   // The game mode's own plugins are always there.
   if ((GAME_MODE_PLUGINS[server.kind] ?? []).some((p) => p.slug === plugin.slug)) return {};
   return savePlugins(server, [...server.plugins, plugin.id]);
+}
+
+/**
+ * Adds a tModLoader mod from a pasted Steam Workshop link or ID, with the mods
+ * it needs; a collection's link adds all its mods.
+ */
+export async function addWorkshopModAction(id: string, input: string): Promise<PluginResult> {
+  const server = await addonServer(id);
+  if (server?.type !== "workshop") return { error: "failed" };
+  const workshopId = parseWorkshopInput(input.slice(0, 300));
+  if (!workshopId) return { error: "workshopLink" };
+  let mods;
+  try {
+    mods = await resolveWorkshopItem(workshopId);
+  } catch (err) {
+    console.error("Steam Workshop lookup failed", workshopId, err);
+    return { error: "steamUnavailable" };
+  }
+  if (!mods || mods.length === 0) return { error: "pluginNotFound" };
+  return addWorkshopMods(server, mods.map((m) => m.id));
+}
+
+async function addWorkshopMods(server: Server, ids: string[]): Promise<PluginResult> {
+  const missing = [...new Set(ids)].filter((m) => !server.plugins.includes(m));
+  if (missing.length === 0) return {};
+  if (server.plugins.length + missing.length > PLUGINS_MAX) return { error: "tooMany" };
+  return savePlugins(server, [...server.plugins, ...missing]);
 }
 
 /** Adds the plugins of a ready set that the server doesn't have yet. */

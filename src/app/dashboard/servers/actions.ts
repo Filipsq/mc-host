@@ -41,7 +41,7 @@ import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam }
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
-import { SERVER_PASSWORD, TERRARIA_KINDS, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
+import { SERVER_PASSWORD, TERRARIA_KINDS, TMOD_ARCH, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -149,6 +149,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     game.id === "mods"
       ? LOADER_VERSIONS[parsed.data.loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION
       : null;
+  // tModLoader needs more memory than the free plan has, and an x86 machine (pickNode below).
+  const tmod = terraria && kind === "tmodloader";
+  if (tmod && !planAtLeast(plan, TMOD_MIN_PLAN)) return { error: "tmodPaidOnly", values };
   if (kind === "modpack") {
     if (!packNamed(parsed.data)) return { error: "modpackLink", values };
     const curated = CURATED_PACKS.find((p) => p.slug === parsed.data.pack);
@@ -160,7 +163,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   // Admins may go over the sales limit to test buying; a plan still has to fit on the machine.
   const extraMb = (await isAdmin(user.id)) ? 0 : memoryMb;
   // The machine it goes on: the one with the most room (paid plans need room to sell).
-  const node = await pickNode(memoryMb, plan === "FREE" ? 0 : extraMb);
+  const node = await pickNode(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, tmod ? TMOD_ARCH : undefined);
   if (!node) return { error: "soldOut", values };
 
   // Pin the pack's current version, so players know exactly which one to install.

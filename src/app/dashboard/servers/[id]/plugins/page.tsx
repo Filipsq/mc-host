@@ -8,7 +8,9 @@ import { getServerFor } from "@/lib/access";
 import { getPluginInfos, searchAddons } from "@/lib/modrinth";
 import { GAME_MODE_PLUGINS, KNOWN_PLUGINS, PLUGIN_SETS, addonType, pluginIds, pluginPage, setFits } from "@/lib/plugins";
 import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
-import { AddPluginButton, AddSetButton, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
+import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
+import { getWorkshopTitles } from "@/lib/steam";
+import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> };
 
@@ -30,6 +32,69 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         {back}
         <h1>{t.title}</h1>
         <p className="notice">{{ BEDROCK: t.notBedrock, TERRARIA: t.notTerraria, JAVA: t.notModpack }[server.edition]}</p>
+      </main>
+    );
+  }
+
+  if (type === "workshop") {
+    const tw = { ...all.plugins, ...all.mods, ...all.workshop };
+    const titles = await getWorkshopTitles(server.plugins);
+    return (
+      <main className="stack">
+        {back}
+        <h1>{tw.title}</h1>
+        <p className="muted">{tw.intro}</p>
+        <ApplyPlugins id={server.id} pending={server.pluginsPending} t={tw} />
+        <section className="stack">
+          <h2>{tw.installed}</h2>
+          <ul className="card plugin-list">
+            {server.plugins.map((wid) => {
+              const title = titles.get(wid) ?? KNOWN_TMOD_TITLES[wid] ?? wid;
+              return (
+                <li key={wid}>
+                  <span className="plugin-icon"><Puzzle size={20} aria-hidden /></span>
+                  <span className="plugin-main">
+                    <strong>{title}</strong>
+                    <a className="small" href={workshopPage(wid)} target="_blank" rel="noreferrer">
+                      {tw.onSteam} <ExternalLink size={12} aria-hidden />
+                    </a>
+                  </span>
+                  <RemovePluginButton id={server.id} pluginId={wid} title={title} t={tw} />
+                </li>
+              );
+            })}
+            {server.plugins.length === 0 && <li className="muted">{tw.none}</li>}
+          </ul>
+          <p className="muted small">
+            {tw.config} <Link href={`/dashboard/servers/${server.id}/files?path=tModLoader`}>{tw.openConfig}</Link>
+          </p>
+        </section>
+        <section className="stack">
+          <h2>{tw.addLink}</h2>
+          <p className="muted">{tw.addLinkHint}</p>
+          <AddWorkshopForm id={server.id} t={tw} placeholder={tw.linkPlaceholder} />
+        </section>
+        <section className="stack">
+          <h2>{tw.popular}</h2>
+          <ul className="card plugin-list">
+            {POPULAR_TMOD_MODS.map((m) => (
+              <li key={m.id}>
+                <span className="plugin-icon"><Package size={20} aria-hidden /></span>
+                <span className="plugin-main">
+                  <a href={workshopPage(m.id)} target="_blank" rel="noreferrer">
+                    <strong>{m.title}</strong>
+                  </a>
+                  <span className="muted small">{tw.popularHints[m.id as keyof typeof tw.popularHints]}</span>
+                  {m.with.length > 0 && (
+                    <span className="small">{format(tw.withMods, { list: m.with.map((w) => KNOWN_TMOD_TITLES[w] ?? w).join(", ") })}</span>
+                  )}
+                  {"ramGb" in m && <span className="ram-pill">{format(all.server.ramFrom, { gb: m.ramGb })}</span>}
+                </span>
+                <AddPluginButton id={server.id} pluginId={m.id} added={server.plugins.includes(m.id)} t={tw} />
+              </li>
+            ))}
+          </ul>
+        </section>
       </main>
     );
   }

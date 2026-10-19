@@ -72,11 +72,13 @@ export async function canSellMemory(extraMb: number, planMb = extraMb, nodeId?: 
 /**
  * The machine a new server of `planMb` goes on: of those it fits on (with room
  * to sell `extraMb` more, for paid plans), the one with the most room left.
- * With `nodeId`, only that machine is considered. Null when none fits.
+ * With `nodeId`, only that machine is considered; with `arch`, only machines
+ * with that processor (tModLoader runs on amd64 only). Null when none fits.
  */
-export async function pickNode(planMb: number, extraMb = planMb, nodeId?: string): Promise<string | null> {
+export async function pickNode(planMb: number, extraMb = planMb, nodeId?: string, arch?: string): Promise<string | null> {
   const candidates = (await roomByNode()).filter(
-    ({ node, room }) => (!nodeId || node.id === nodeId) && fitsMachine(node, planMb) && (extraMb <= 0 || room >= extraMb),
+    ({ node, room }) =>
+      (!nodeId || node.id === nodeId) && (!arch || node.arch === arch) && fitsMachine(node, planMb) && (extraMb <= 0 || room >= extraMb),
   );
   const left = (c: { room: number; freeMb: number }) => (extraMb > 0 ? c.room : c.room - c.freeMb);
   candidates.sort((a, b) => left(b) - left(a));

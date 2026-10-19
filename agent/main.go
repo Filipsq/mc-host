@@ -227,7 +227,11 @@ func main() {
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
-		for _, img := range []string{backupImage, images["JAVA"], images["BEDROCK"], terrariaImages["vanilla"], terrariaImages["tshock"]} {
+		prefetch := []string{backupImage, images["JAVA"], images["BEDROCK"], terrariaImages["vanilla"], terrariaImages["tshock"]}
+		if tmodSupported() {
+			prefetch = append(prefetch, tmodImage)
+		}
+		for _, img := range prefetch {
 			if err := a.ensureImage(context.Background(), img); err != nil {
 				log.Printf("prefetch %s: %v", img, err)
 			}
@@ -332,7 +336,7 @@ type createRequest struct {
 	Seed      string `json:"seed"`
 	LevelType string `json:"levelType"` // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria)
 
-	// What the server runs: on Java one of kinds; on Terraria vanilla or tshock. For a mod pack, where it comes
+	// What the server runs: on Java one of kinds; on Terraria vanilla, tshock or tmodloader. For a mod pack, where it comes
 	// from (modrinth, the default, or curseforge), the project's slug and the exact
 	// pack version (a Modrinth version ID or a CurseForge file ID), so players can
 	// install the same one.
@@ -341,6 +345,7 @@ type createRequest struct {
 	Modpack        string `json:"modpack"`
 	ModpackVersion string `json:"modpackVersion"`
 	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
+	// On tModLoader: the Steam Workshop IDs of the owner's mods.
 	Plugins []string `json:"plugins"`
 }
 
@@ -451,7 +456,9 @@ func (req *createRequest) validateTerraria() error {
 	case req.MemoryMb < 512 || req.Port < 1024 || req.Port > 65535 || req.CPUs <= 0 || req.DiskMb < 0:
 		return errors.New("invalid memoryMb, cpus, port or diskMb")
 	case terrariaImages[req.Kind] == "":
-		return errors.New("a Terraria server's kind must be vanilla or tshock")
+		return errors.New("a Terraria server's kind must be vanilla, tshock or tmodloader")
+	case req.Kind == "tmodloader" && !tmodSupported():
+		return errors.New("tModLoader servers need an x86 (amd64) machine")
 	case terrariaDifficulties[req.Difficulty] == "":
 		return errors.New("a Terraria world's difficulty must be classic, expert, master or journey")
 	case terrariaSizes[req.LevelType] == "":
@@ -464,8 +471,17 @@ func (req *createRequest) validateTerraria() error {
 		return errors.New("invalid level")
 	case !validSeed.MatchString(req.Seed):
 		return errors.New("invalid seed")
-	case req.Whitelist || len(req.Plugins) > 0 || req.Crossplay || req.offline() || req.Modpack != "" || req.Hostname != "":
-		return errors.New("whitelist, plugins, crossplay, onlineMode, modpacks and hostnames are Minecraft only")
+	case len(req.Plugins) > 0 && req.Kind != "tmodloader":
+		return errors.New("only tModLoader servers take mods")
+	case len(req.Plugins) > 100:
+		return errors.New("at most 100 mods")
+	case req.Whitelist || req.Crossplay || req.offline() || req.Modpack != "" || req.Hostname != "":
+		return errors.New("whitelist, crossplay, onlineMode, modpacks and hostnames are Minecraft only")
+	}
+	for _, id := range req.Plugins {
+		if !validWorkshopID.MatchString(id) {
+			return fmt.Errorf("invalid Steam Workshop ID %q", id)
+		}
 	}
 	req.Version = "LATEST"
 	return nil
@@ -632,7 +648,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		labels["mchost.maxplayers"] = fmt.Sprint(req.terrariaSlots())
 		bindings := map[string]any{terrariaPort: []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}}
 		spec := serverSpec(req, image, env, labels, bindings, false, req.MemoryMb, entrypoint)
-		spec["Healthcheck"] = terrariaHealthcheck
+		spec["Healthcheck"] = terrariaHealthcheck(req.Kind)
 		return spec
 	}
 	var containerPort, hostIP string

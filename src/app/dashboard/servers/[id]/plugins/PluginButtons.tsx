@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Plus, RotateCw, Trash2 } from "lucide-react";
-import { addPluginAction, addPluginSetAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
+import { addPluginAction, addPluginSetAction, addWorkshopModAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -64,6 +64,27 @@ export function RemovePluginButton({ id, pluginId, title, t }: { id: string; plu
       </button>
       <Message message={message} />
     </span>
+  );
+}
+
+/** Adds a tModLoader mod by its Steam Workshop link or ID. */
+export function AddWorkshopForm({ id, t, placeholder }: { id: string; t: T; placeholder: string }) {
+  const { pending, message, save } = useSave(t);
+  const [input, setInput] = useState("");
+  return (
+    <form
+      className="plugin-search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (input.trim()) save(() => addWorkshopModAction(id, input));
+      }}
+    >
+      <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} aria-label={placeholder} maxLength={300} spellCheck={false} />
+      <button disabled={pending}>
+        <Plus size={16} aria-hidden /> {t.install}
+      </button>
+      <Message message={message} />
+    </form>
   );
 }
 

@@ -71,6 +71,11 @@ sed -i 's/^MEMORY_OVERBOOK=1\.5$/MEMORY_OVERBOOK=2/' .env
 echo "Minecraft servers may use up to $(grep '^MEMORY_LIMIT_MB=' .env | cut -d= -f2) MB of memory in total;"
 echo "paid plans are sold up to $(grep '^MEMORY_OVERBOOK=' .env | cut -d= -f2) times that."
 
+# What this machine's processor is (amd64 or arm64): tModLoader servers only
+# run on amd64, so the site sends them to a machine that has one.
+sed -i '/^GAME_ARCH=/d' .env
+echo "GAME_ARCH=$(dpkg --print-architecture)" >> .env
+
 # Emails (password reset links) go out through Brevo; see deploy/README.md.
 if ! grep -q '^BREVO_API_KEY=' .env; then
   cat >> .env <<'ENV'
