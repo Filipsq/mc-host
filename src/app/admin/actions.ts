@@ -6,7 +6,9 @@ import { requireAdmin } from "@/lib/admin";
 import { REMOVABLE_PAYMENTS, TEST_PAYMENTS, giftDays } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { ANNOUNCEMENT_MAX, sayOnAllServers, setAnnouncement } from "@/lib/announcement";
-import { destroyServer } from "@/lib/servers";
+import { applyToHost, destroyServer, moveServer } from "@/lib/servers";
+import { nodes } from "@/lib/nodes";
+import { TMOD_ARCH } from "@/lib/terraria";
 import { stripeTestMode } from "@/lib/stripe";
 import { makeUpForTestPayment, untoldCustomers } from "@/lib/testPayments";
 import { getPreferences } from "@/i18n/server";
@@ -38,6 +40,25 @@ export async function deleteServerAdminAction(id: string): Promise<{ error?: "fa
     console.info("admin deleted server", id);
   }
   redirect("/admin/servers");
+}
+
+export type MoveState = { error?: "invalid" | "failed"; moved?: string };
+
+/** Moves a server, stopped, with its files and backups, to another machine (to take load off a full one). */
+export async function moveServerAdminAction(id: string, _: MoveState, form: FormData): Promise<MoveState> {
+  await requireAdmin();
+  const to = nodes().find((n) => n.id === form.get("node"));
+  const server = await db.server.findUnique({ where: { id } });
+  if (!server || !to || to.id === server.node) return { error: "invalid" };
+  if (server.edition === "TERRARIA" && server.kind === "tmodloader" && to.arch && to.arch !== TMOD_ARCH) return { error: "invalid" };
+  if (to.memoryLimitMb > 0 && server.memoryMb > to.memoryLimitMb) return { error: "invalid" };
+  const moved = await moveServer(server, to.id);
+  revalidatePath(`/admin/servers/${id}`);
+  if (!moved) return { error: "failed" };
+  console.info("admin moved server", id, "to", to.id);
+  // Only its files went over: build its container there, stopped, so Start works.
+  await applyToHost(moved).catch((err) => console.error("admin: container not built after move", id, err));
+  return { moved: to.id };
 }
 
 /** Deletes one test, failed or expired payment from the history. */

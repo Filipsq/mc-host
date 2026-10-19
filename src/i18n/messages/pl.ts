@@ -1072,6 +1072,19 @@ const pl = {
         failed: "Dni dodane, ale maszyna jeszcze nie uruchomiła serwera. Rozliczenia ponowią próbę.",
       },
     },
+    move: {
+      title: "Przenieś na inną maszynę",
+      hint: "Zatrzymuje serwer i kopiuje świat, pliki i kopie zapasowe na wybraną maszynę. Potem uruchom go ponownie. Przy dużym świecie trwa to kilka minut. Adres Java się nie zmienia, adres Bedrock/Terraria tak.",
+      machine: "Maszyna",
+      to: "Na maszynę",
+      submit: "Przenieś",
+      moving: "Przenoszę...",
+      done: "Przeniesiono na {node}. Serwer jest zatrzymany, uruchom go w panelu.",
+      errors: {
+        invalid: "Ten serwer nie może trafić na tę maszynę.",
+        failed: "Nie udało się przenieść serwera, został na starej maszynie. Spróbuj ponownie.",
+      },
+    },
     remove: {
       title: "Usuń serwer",
       hint: "Usuwa serwer razem ze światem i kopiami zapasowymi. Płatności zostają w historii.",

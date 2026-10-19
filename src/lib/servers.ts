@@ -243,6 +243,16 @@ export async function moveIfFull(server: Server): Promise<Server | null> {
   const arch = server.edition === "TERRARIA" && server.kind === "tmodloader" ? TMOD_ARCH : undefined;
   const to = await pickNode(server.memoryMb, server.memoryMb, undefined, arch);
   if (!to || to === server.node) return server;
+  return (await moveServer(server, to)) ?? server;
+}
+
+/**
+ * Moves the server, files and backups, to machine `to`, stopped. Returns the
+ * server as it is now, or null while another move of it runs or if the copy
+ * failed (then it stays where it was).
+ */
+export async function moveServer(server: Server, to: string): Promise<Server | null> {
+  if (moving.has(server.id) || to === server.node) return null;
   const from = nodeById(server.node);
   moving.add(server.id);
   try {
@@ -264,7 +274,7 @@ export async function moveIfFull(server: Server): Promise<Server | null> {
     console.error("move failed", server.id, from.id, "->", to, err);
     // Whatever reached the other machine; the server goes on where it was.
     await deleteServer(server.id, nodeById(to)).catch(() => {});
-    return server;
+    return null;
   } finally {
     moving.delete(server.id);
   }

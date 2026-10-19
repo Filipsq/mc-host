@@ -1073,6 +1073,19 @@ const en: Messages = {
         failed: "Days added, but the machine hasn't started the server yet. Billing will retry.",
       },
     },
+    move: {
+      title: "Move to another machine",
+      hint: "Stops the server and copies its world, files and backups to the chosen machine. Start it again afterwards. A big world takes a few minutes. The Java address stays the same; the Bedrock/Terraria address changes.",
+      machine: "Machine",
+      to: "To machine",
+      submit: "Move",
+      moving: "Moving...",
+      done: "Moved to {node}. The server is stopped; start it from the panel.",
+      errors: {
+        invalid: "This server can't go on that machine.",
+        failed: "The server couldn't be moved and stayed on its old machine. Try again.",
+      },
+    },
     remove: {
       title: "Delete server",
       hint: "Deletes the server with its world and backups. Payments stay in the history.",
