@@ -45,6 +45,7 @@ ufw allow in on wg0 to any port 25565 proto tcp >/dev/null # Java players, passe
 ufw allow 30000:30999/udp >/dev/null # Bedrock players (and crossplay)
 ufw allow 30000:30999/tcp >/dev/null # Terraria players
 ufw --force enable >/dev/null
+../game-firewall.sh install
 
 if [ ! -f .env ]; then
   # Only the agent runs here, so less is kept back for the system than on the main machine.
