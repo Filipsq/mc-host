@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/node"
 
-if [ "$#" -ne 1 ] || ! mapfile -t f < <(echo "$1" | base64 -d) || [ "${#f[@]}" -ne 6 ]; then
+if [ "$#" -lt 1 ] || ! mapfile -t f < <(echo "$1" | base64 -d) || [ "${#f[@]}" -ne 6 ]; then
   echo "Run ./add-node.sh on the main machine instead (see deploy/README.md)." >&2
   exit 1
 fi
@@ -81,7 +81,13 @@ AGENT_ADDR=$NODE_WG:8081
 ENV
 chmod 600 .env
 
-echo "Building and starting the agent (the first build takes a few minutes)..."
-docker compose up -d --build
+if [ "${2:-}" = prebuilt ]; then
+  # add-node.sh built the agent on the main machine and loaded it here.
+  echo "Starting the agent..."
+  docker compose up -d
+else
+  echo "Building and starting the agent (the first build takes a few minutes)..."
+  docker compose up -d --build
+fi
 docker image prune -f >/dev/null
 docker builder prune -f >/dev/null

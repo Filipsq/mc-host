@@ -76,7 +76,21 @@ SSH=(ssh -o StrictHostKeyChecking=accept-new -o ControlMaster=auto -o "ControlPa
 tar -C .. -cz agent deploy/node deploy/node-setup.sh deploy/game-firewall.sh deploy/public-dns.sh | "${SSH[@]}" "$TARGET" 'mkdir -p mc-host && tar -xz -C mc-host'
 SUDO=""
 [[ "$TARGET" == root@* ]] || SUDO="sudo"
-"${SSH[@]}" -t "$TARGET" "$SUDO mc-host/deploy/node-setup.sh $BUNDLE"
+
+# Build the agent here and send it over, so the other machine downloads nothing
+# (its link to Docker Hub can crawl). Only once Docker is there (not on the first run).
+PREBUILT=""
+arch=$("${SSH[@]}" "$TARGET" 'command -v docker >/dev/null && uname -m' || true)
+case "$arch" in x86_64) arch=amd64 ;; aarch64) arch=arm64 ;; *) arch="" ;; esac
+if [ -n "$arch" ]; then
+  echo "Building the agent for $NODE_ID ($arch)..."
+  docker build -q --platform "linux/$arch" -t "mchost-node-agent:$arch" ../agent >/dev/null
+  echo "Sending it to $NODE_ID..."
+  docker save "mchost-node-agent:$arch" | gzip | "${SSH[@]}" "$TARGET" \
+    "gunzip | $SUDO docker load -q >/dev/null && $SUDO docker tag mchost-node-agent:$arch mchost-agent:latest"
+  PREBUILT=prebuilt
+fi
+"${SSH[@]}" -t "$TARGET" "$SUDO mc-host/deploy/node-setup.sh $BUNDLE $PREBUILT"
 
 echo "Checking that this machine reaches it through the tunnel..."
 stats=""
