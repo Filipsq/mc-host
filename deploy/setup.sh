@@ -21,6 +21,7 @@ ufw allow 30000:30999/udp >/dev/null # Bedrock players (and crossplay), one port
 ufw allow 30000:30999/tcp >/dev/null # Terraria players, one port per server
 ufw --force enable >/dev/null
 ./game-firewall.sh install
+./public-dns.sh
 
 if [ ! -f .env ]; then
   # Ask until it looks like a domain: a stray Enter left over from pasting the

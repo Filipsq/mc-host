@@ -46,6 +46,7 @@ ufw allow 30000:30999/udp >/dev/null # Bedrock players (and crossplay)
 ufw allow 30000:30999/tcp >/dev/null # Terraria players
 ufw --force enable >/dev/null
 ../game-firewall.sh install
+../public-dns.sh
 
 if [ ! -f .env ]; then
   # Only the agent runs here, so less is kept back for the system than on the main machine.
