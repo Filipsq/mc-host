@@ -117,6 +117,15 @@ for f in /data/tModLoader/Mods/*.tmod; do [ -f "$f" ] && names="$names $(basenam
 sep=""
 { printf '['; for n in $names; do printf '%s"%s"' "$sep" "$n"; sep=","; done; printf ']\n'; } > /data/tModLoader/Mods/enabled.json
 echo "[mchost] Enabled mods:${names:- none}"
+# Its launch logs (and the errors .NET prints, in Natives.log) go next to the
+# server's files, where the panel's file manager shows them.
+mkdir -p /data/tModLoader-Logs
+rm -rf /terraria-server/tModLoader-Logs && ln -s /data/tModLoader-Logs /terraria-server/tModLoader-Logs
+# .NET aborts at once without the ICU library, which the image's Ubuntu may lack.
+if ! ls /usr/lib/*/libicuuc.so.* /lib/*/libicuuc.so.* >/dev/null 2>&1; then
+  echo "[mchost] No ICU library in the image: running .NET in invariant globalization mode"
+  export DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1 DOTNET_SYSTEM_GLOBALIZATION_PREDEFINED_CULTURES_ONLY=false
+fi
 rm -f /tmp/console && mkfifo /tmp/console
 exec 3<>/tmp/console
 cd /terraria-server
@@ -125,6 +134,14 @@ pid=$!
 trap 'echo exit >&3' TERM INT
 code=0
 while kill -0 "$pid" 2>/dev/null; do wait "$pid"; code=$?; done
+if [ "$code" != 0 ]; then
+  # Show why in the console: .NET's own errors only go to Natives.log.
+  for f in Natives.log server.log; do
+    [ -s "/data/tModLoader-Logs/$f" ] || continue
+    echo "[mchost] The server stopped with code $code. Last lines of tModLoader-Logs/$f:"
+    tail -n 40 "/data/tModLoader-Logs/$f"
+  done
+fi
 exit "$code"
 `
 
@@ -166,7 +183,11 @@ func terrariaConfig(req createRequest) string {
 		"secure=1",
 		"language=en-US", // the agent reads the English join and leave lines
 		"upnp=0",
-		"priority=1",
+	}
+	// Vanilla and TShock ask for a higher priority; .NET's tModLoader can't
+	// get one without CAP_SYS_NICE, so it keeps the normal one.
+	if req.Kind != "tmodloader" {
+		lines = append(lines, "priority=1")
 	}
 	if req.Seed != "" {
 		lines = append(lines, "seed="+req.Seed)
