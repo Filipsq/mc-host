@@ -7,7 +7,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { getServerFor } from "@/lib/access";
-import { applyToHost, onHost } from "@/lib/servers";
+import { applyToHost, onHost, worldTooNew } from "@/lib/servers";
 import { canChangeFiles, fileError, type FileError } from "@/lib/files";
 import {
   activeLevel,
@@ -20,6 +20,7 @@ import {
   worldTypes,
   type WorldType,
 } from "@/lib/worlds";
+import { isPreYearVersion } from "@/lib/settings";
 import type { Messages } from "@/i18n/messages";
 
 export type WorldError = keyof Messages["worlds"]["errors"] | FileError;
@@ -62,7 +63,9 @@ export async function switchWorldAction(id: string, name: string): Promise<World
   if (typeof server === "string") return { error: server };
   try {
     const { worlds } = await agent.listWorlds(server.id, server.edition);
-    if (!worlds.some((w) => w.name === name)) return { error: "notFound" };
+    const world = worlds.find((w) => w.name === name);
+    if (!world) return { error: "notFound" };
+    if (world.newGame && server.edition === "JAVA" && isPreYearVersion(server.version)) return { error: "worldTooNew" };
     await playWorld(server, name);
   } catch (err) {
     return { error: worldError(err) };
@@ -105,7 +108,11 @@ export async function importWorldAction(id: string, upload: string, name: string
   }
   try {
     await agent.importWorld(server.id, server.edition, upload, name);
-    if (play) await playWorld(server, name);
+    if (play) {
+      // Kept in the list either way: it plays once the server runs a newer version.
+      if (await worldTooNew(server, name, server.version)) return { error: "worldTooNew" };
+      await playWorld(server, name);
+    }
   } catch (err) {
     return { error: worldError(err) };
   }

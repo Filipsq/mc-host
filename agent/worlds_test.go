@@ -148,6 +148,8 @@ func TestWorldsJava(t *testing.T) {
 		"bskyblock_world/level.dat":              "island",
 		"bskyblock_world_nether/level.dat":       "island nether",
 		"bskyblock_world_nether/DIM-1/r.0.0.mca": "x",
+		// Saved by Minecraft 26.1+: the seed and dimensions are no longer in level.dat.
+		"bskyblock_world/data/minecraft/world_gen_settings.dat": "gen",
 	})
 
 	rec := call(t, h, "GET", "/servers/abc12345/worlds", nil)
@@ -168,6 +170,9 @@ func TestWorldsJava(t *testing.T) {
 	}
 	if list.Active != "world" {
 		t.Errorf("active = %q", list.Active)
+	}
+	if !list.Worlds[0].NewGame || list.Worlds[1].NewGame || list.Worlds[2].NewGame {
+		t.Errorf("only bskyblock_world was saved by Minecraft 26+: %+v", list.Worlds)
 	}
 	if w := list.Worlds[2]; w.Size != int64(len("a")+len("region")+len("lock")+len("n")+len("nether")+len("e")+len("end")) {
 		t.Errorf("world size = %d", w.Size)

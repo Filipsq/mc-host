@@ -41,6 +41,20 @@ type worldInfo struct {
 	Name     string    `json:"name"`
 	Size     int64     `json:"size"`
 	Modified time.Time `json:"modified"` // when the world was last saved
+	NewGame  bool      `json:"newGame,omitempty"`
+}
+
+// savedByNewGame reports whether a Java world was saved by Minecraft 26.1 or
+// newer. 26.1 moved the world's seed and dimensions out of level.dat (into
+// data/minecraft/world_gen_settings.dat) and its dimensions into dimensions/,
+// so 1.21.11 and older can't open it at all ("No key dimensions in MapLike").
+func (s *serverFiles) savedByNewGame(dir string) bool {
+	for _, p := range []string{dir + "/data/minecraft/world_gen_settings.dat", dir + "/dimensions/minecraft/overworld"} {
+		if _, err := s.root.Lstat(p); err == nil {
+			return true
+		}
+	}
+	return false
 }
 
 // worldRequest reads ?edition= and the world's name (from the path, or ?name=).
@@ -140,6 +154,7 @@ func (s *serverFiles) worlds(bedrock bool) ([]worldInfo, error) {
 		if fi, err := s.root.Lstat(worldDir(bedrock, n) + "/level.dat"); err == nil {
 			w.Modified = fi.ModTime().UTC().Truncate(time.Second)
 		}
+		w.NewGame = !bedrock && s.savedByNewGame(n)
 		list = append(list, w)
 	}
 	sort.Slice(list, func(i, j int) bool { return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name) })

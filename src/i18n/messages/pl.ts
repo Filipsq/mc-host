@@ -537,6 +537,8 @@ const pl = {
       invalidPlayer: "Niepoprawny nick: {player}",
       tooManyPlayers: "Lista może mieć najwyżej 100 graczy",
       applyFailed: "Zapisaliśmy ustawienia, ale nie udało się ich zastosować na serwerze. Spróbuj ponownie za chwilę.",
+      worldTooNew:
+        "Świat tego serwera zapisał Minecraft 26 lub nowszy, a starsze wersje (1.x) w ogóle go nie otworzą. Zostaw wersję „Najnowsza” albo zrób nowy świat w zakładce Światy.",
     },
   },
   files: {
@@ -668,6 +670,8 @@ const pl = {
       notFound: "Nie ma takiego świata. Odśwież stronę.",
       active: "Na tym świecie gra serwer, więc nie można go usunąć.",
       noWorld: "W tym pliku nie ma świata Minecrafta (brakuje pliku level.dat).",
+      worldTooNew:
+        "Ten świat zapisał Minecraft 26 lub nowszy, a serwer ma starszą wersję (1.x), która go nie otworzy. Zmień wersję w Ustawieniach na „Najnowsza”, a potem włącz ten świat.",
       notOnHost: "Światy będą dostępne, gdy serwer będzie opłacony.",
       unavailable: "Nie udało się wczytać światów. Spróbuj ponownie za chwilę.",
     },

@@ -7,7 +7,17 @@ import type { Plan, ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
-import { agentSpec, applyToHost, createServerRecord, destroyServer, getOwnedServer, isValidSubdomain, onHost, syncPeerRoutes } from "@/lib/servers";
+import {
+  agentSpec,
+  applyToHost,
+  createServerRecord,
+  destroyServer,
+  getOwnedServer,
+  isValidSubdomain,
+  onHost,
+  syncPeerRoutes,
+  worldTooNew,
+} from "@/lib/servers";
 import { MAIN_NODE } from "@/lib/nodes";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
@@ -26,6 +36,7 @@ import {
   parsePlayers,
   versionsFor,
 } from "@/lib/settings";
+import { activeLevel } from "@/lib/worlds";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
@@ -374,6 +385,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   if (players.length > WHITELIST_MAX) return { error: "tooManyPlayers" };
   const whitelist = s.whitelist === "on";
   if (whitelist && players.length === 0) return { error: "whitelistEmpty" };
+  if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
 
   const updated = await db.server.update({
     where: { id: server.id },

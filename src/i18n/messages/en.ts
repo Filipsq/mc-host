@@ -538,6 +538,8 @@ const en: Messages = {
       invalidPlayer: "Invalid name: {player}",
       tooManyPlayers: "The list can have at most 100 players",
       applyFailed: "We saved the settings but couldn't apply them on the server. Try again in a moment.",
+      worldTooNew:
+        "This server's world was saved by Minecraft 26 or newer, and older versions (1.x) can't open it at all. Keep the version on “Latest” or make a new world on the Worlds tab.",
     },
   },
   files: {
@@ -669,6 +671,8 @@ const en: Messages = {
       notFound: "There's no such world. Refresh the page.",
       active: "The server plays this world, so it can't be deleted.",
       noWorld: "There's no Minecraft world in this file (level.dat is missing).",
+      worldTooNew:
+        "This world was saved by Minecraft 26 or newer, and the server runs an older version (1.x) that can't open it. Set the version to “Latest” in Settings, then play this world.",
       notOnHost: "Worlds will be here once the server is paid for.",
       unavailable: "Couldn't load the worlds. Try again in a moment.",
     },
