@@ -145,6 +145,8 @@ type agent struct {
 	overbook    float64       // how many times memoryLimit the panel sells to paid plans (see capacity.go)
 	freeMemory  int           // MB a free server gets at most on this machine; 0: its plan's (see capacity.go)
 	startMu     sync.Mutex
+	netMu       sync.Mutex
+	netReady    bool     // the game network exists (see ensureGameNetwork)
 	backupDir   string   // where the agent keeps backups
 	backupMount string   // the same place as helper containers mount it: a volume name or host path
 	serverLocks sync.Map // server id -> *sync.Mutex, held during backups, restores and file changes
@@ -567,7 +569,11 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 		return err
 	}
 	name := containerName(req.ID)
-	if err := a.docker.CreateContainer(ctx, name, a.containerSpec(req, image)); err != nil {
+	spec := a.containerSpec(req, image)
+	if a.ensureGameNetwork(ctx) {
+		spec["HostConfig"].(map[string]any)["NetworkMode"] = gameNetwork
+	}
+	if err := a.docker.CreateContainer(ctx, name, spec); err != nil {
 		return err
 	}
 	if req.offline() {
@@ -767,6 +773,10 @@ func serverSpec(req createRequest, image string, env []string, labels map[string
 			"RestartPolicy": map[string]any{"Name": "on-failure", "MaximumRetryCount": 3},
 			"PortBindings":  bindings,
 			"Mounts":        []map[string]any{{"Type": "volume", "Source": containerName(req.ID), "Target": "/data"}},
+			// Players' plugins and mods run inside: nothing in there may gain
+			// more rights than it started with, or forge packets to its neighbours.
+			"SecurityOpt": []string{"no-new-privileges:true"},
+			"CapDrop":     []string{"NET_RAW"},
 		},
 	}
 	if entrypoint != nil {
@@ -949,6 +959,33 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"output": strings.TrimSpace(out)})
+}
+
+// gameNetwork is the Docker network game servers join. Servers on it can't
+// reach each other (a player's plugin can't attack someone else's server);
+// the router, on the host, still reaches each of them. Its bridge is named so
+// the firewall set up by deploy/ can keep servers away from the cloud's
+// metadata service and the tunnel between machines.
+const gameNetwork = "mchost-games"
+
+var gameNetworkOptions = map[string]string{
+	"com.docker.network.bridge.enable_icc": "false",
+	"com.docker.network.bridge.name":       "mchost0",
+}
+
+// ensureGameNetwork makes the game network once. If Docker refuses, servers
+// fall back to Docker's default network rather than not starting at all.
+func (a *agent) ensureGameNetwork(ctx context.Context) bool {
+	a.netMu.Lock()
+	defer a.netMu.Unlock()
+	if !a.netReady {
+		if err := a.docker.EnsureNetwork(ctx, gameNetwork, gameNetworkOptions); err != nil {
+			log.Printf("network %s: %v (using Docker's default network)", gameNetwork, err)
+			return false
+		}
+		a.netReady = true
+	}
+	return true
 }
 
 func (a *agent) ensureImage(ctx context.Context, image string) error {

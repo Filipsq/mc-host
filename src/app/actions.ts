@@ -1,7 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
@@ -16,6 +16,7 @@ import { RESET_LINK_MINUTES, createResetToken, resetPassword } from "@/lib/passw
 import { linkInvites } from "@/lib/access";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 import { PUSH_COOKIE } from "@/lib/pushEndpoint";
+import { RESETS_PER_IP, SIGNUPS_PER_IP, clientIp, hit, isLimited, loginLimited } from "@/lib/rateLimit";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
 
@@ -43,6 +44,9 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   if (await db.user.findUnique({ where: { email } })) {
     return { error: "emailTaken", email };
   }
+  const signupKey = `signup:ip:${clientIp(await headers())}`;
+  if (isLimited(signupKey, SIGNUPS_PER_IP.max, SIGNUPS_PER_IP.windowMs)) return { error: "tooManyAttempts", email };
+  hit(signupKey);
   const { locale } = await getPreferences();
   // Signed up through a friend's invite link (see src/lib/referrals.ts).
   const jar = await cookies();
@@ -65,6 +69,10 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
 }
 
 export async function logIn(_: FormState, form: FormData): Promise<FormState> {
+  const email = credentialsSchema.shape.email.safeParse(String(form.get("email") ?? "").trim());
+  if (email.success && loginLimited(email.data, clientIp(await headers()))) {
+    return { error: "tooManyAttempts", email: String(form.get("email") ?? "") };
+  }
   try {
     await signIn("credentials", {
       email: form.get("email"),
@@ -89,6 +97,9 @@ export async function requestPasswordReset(_: FormState, form: FormData): Promis
   const parsed = credentialsSchema.shape.email.safeParse(raw.trim());
   if (!parsed.success) return { error: "invalidEmail", email: raw };
   const email = parsed.data;
+  const resetKey = `reset:ip:${clientIp(await headers())}`;
+  if (isLimited(resetKey, RESETS_PER_IP.max, RESETS_PER_IP.windowMs)) return { error: "tooManyAttempts", email: raw };
+  hit(resetKey);
 
   const token = await createResetToken(email);
   if (token) {

@@ -226,6 +226,7 @@ const en: Messages = {
       termsRequired: "Accept the Terms of Service to create an account",
       passwordsDiffer: "The passwords don’t match. Type the same password in both fields",
       linkInvalid: "This link has expired or was already used. Ask for a new one",
+      tooManyAttempts: "Too many attempts. Try again later",
     },
   },
   dashboard: {

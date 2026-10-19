@@ -225,6 +225,7 @@ const pl = {
       termsRequired: "Zaakceptuj Regulamin, aby założyć konto",
       passwordsDiffer: "Hasła się różnią. Wpisz to samo hasło w obu polach",
       linkInvalid: "Ten link wygasł albo został już użyty. Poproś o nowy",
+      tooManyAttempts: "Za dużo prób. Spróbuj ponownie później",
     },
   },
   dashboard: {
