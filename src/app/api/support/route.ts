@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/admin";
 import { getPreferences } from "@/i18n/server";
 import { readChat, unreadCount } from "@/lib/support";
+import { markAdminSeen } from "@/lib/presence";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
   const params = req.nextUrl.searchParams;
   const admin = await isAdmin(userId);
   const headers = { "cache-control": "no-store" };
+  if (admin) markAdminSeen();
 
   const since = params.get("since");
   if (since === null) return NextResponse.json({ count: await unreadCount(userId, admin) }, { headers });

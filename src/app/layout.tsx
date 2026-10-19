@@ -15,6 +15,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import { formatPrice, planById } from "@/lib/plans";
 import { siteUrl } from "@/lib/site";
 import { isAdmin } from "@/lib/admin";
+import { adminOnline } from "@/lib/presence";
 import { getAnnouncement } from "@/lib/announcement";
 import { MAX_LENGTH, RATE_COUNT, RATE_MINUTES } from "@/lib/support";
 import { logOut } from "./actions";
@@ -150,6 +151,7 @@ export default async function RootLayout({
           t={t.support}
           signedIn={signedIn}
           admin={admin}
+          adminOnline={adminOnline()}
           maxLength={MAX_LENGTH}
           rate={{ count: RATE_COUNT, minutes: RATE_MINUTES }}
         />
