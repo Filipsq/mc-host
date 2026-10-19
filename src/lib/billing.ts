@@ -3,7 +3,7 @@ import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
 import * as agent from "./agent";
-import { agentSpec, destroyServer, syncPeerRoutes } from "./servers";
+import { agentSpec, destroyServer, moveIfFull, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
@@ -145,7 +145,7 @@ export async function giftDays(serverId: string, days: number, why = "admin gift
   if (!s) return {};
   if (s.plan === "FREE") return { error: "free" };
   const needsHost = s.status === "AWAITING_PAYMENT" || s.status === "SUSPENDED";
-  if (needsHost && !(await canSellMemory(s.memoryMb, s.memoryMb, s.node))) return { error: "soldOut" };
+  if (needsHost && !(await canSellMemory(s.memoryMb, s.memoryMb))) return { error: "soldOut" };
   const from = s.paidUntil && s.paidUntil > now ? s.paidUntil : now;
   const server = await db.server.update({
     where: { id: s.id },
@@ -248,6 +248,10 @@ function creditStart(server: Server, newPlan: Plan, now: Date) {
 /** Creates or rebuilds the container for the server's current plan. */
 export async function provision(server: Server) {
   try {
+    // Its machine may have no room left for the new plan: then it goes to one that has.
+    const here = await moveIfFull(server);
+    if (!here) return false; // being moved; the call moving it provisions it
+    server = here;
     await agent.recreateServer(agentSpec(server));
     await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
     return true;

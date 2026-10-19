@@ -18,9 +18,8 @@ import (
 //
 // With MEMORY_OVERBOOK above 1 the panel sells that many times the limit, as
 // most hosts do: a stopped server uses no memory, and a running Java server
-// only as much as its players need (its heap starts small). Then only running
-// servers count, against the limit times the factor, and a free server also
-// waits until the machine really has its memory free.
+// only as much as its players need (its heap starts small). Then a free server
+// starts whenever the machine really has its memory free, keeping 10% spare.
 
 var errFull = errors.New("full")
 
@@ -38,6 +37,9 @@ const (
 // freeMemoryMarginMb is what has to stay free on the machine after a free server
 // starts, when overbooking and other servers are running: room for them to grow.
 const freeMemoryMarginMb = 1024
+
+// freeRamReservePct of the machine's memory stays free after a free server starts.
+const freeRamReservePct = 10
 
 // meminfoPath describes the whole machine, also inside the agent's container.
 var meminfoPath = "/proc/meminfo"
@@ -71,12 +73,14 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 			}
 			need, _ := strconv.Atoi(info.Config.Labels["mchost.memory"])
 			inUse := a.memoryInUse(list, id)
-			if inUse+need > a.memoryCap() {
+			if a.overbook <= 1 && inUse+need > a.memoryCap() {
 				return errFull
 			}
 			if a.overbook > 1 {
-				// The margin is for servers already running to grow into; with
-				// none, a small machine can still run one free server.
+				// Overbooked, what counts is the memory really free: a free server
+				// starts while the machine stays under 90% used. The margin is for
+				// servers already running to grow into; with none, a small
+				// machine can still run one free server.
 				margin := 0
 				if inUse > 0 {
 					margin = freeMemoryMarginMb
@@ -86,7 +90,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 					startNeed = min(need, initialHeapMb)
 					margin = min(margin, smallMachineMarginMb)
 				}
-				if free, ok := memoryAvailableMb(); ok && free < int64(startNeed+margin) {
+				if total, free, ok := readMeminfo(); ok && free < int64(startNeed)+max(int64(margin), total*freeRamReservePct/100) {
 					return errFull
 				}
 			}

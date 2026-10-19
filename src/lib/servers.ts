@@ -3,7 +3,9 @@ import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
 import {
   AgentError,
+  copyServer,
   deleteServer,
+  forgetServerNode,
   getServerState,
   listWorlds,
   recreateServer,
@@ -13,7 +15,9 @@ import {
   type World,
 } from "./agent";
 import { getServerFor } from "./access";
+import { oversold, pickNode } from "./capacity";
 import { planById } from "./plans";
+import { TMOD_ARCH } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
 import { isPreYearVersion } from "./settings";
@@ -221,6 +225,49 @@ export async function applyToHost(server: Server) {
   await recreateServer(agentSpec(server), { keepStopped: true });
   // The rebuild brought the plugin list up to date too.
   if (server.pluginsPending) await db.server.update({ where: { id: server.id }, data: { pluginsPending: false } });
+}
+
+// Servers being moved right now, so a retry doesn't start a second move.
+const moving = new Set<string>();
+
+/**
+ * When a paid plan leaves the server's machine with more sold than it may sell
+ * (it was bought for a server already there), moves the server, files and
+ * backups, to a machine with room, stopped. Returns the server as it is now, or
+ * null while another call is moving it. If no machine has room or the copy
+ * fails, it stays where it is.
+ */
+export async function moveIfFull(server: Server): Promise<Server | null> {
+  if (moving.has(server.id)) return null;
+  if (server.adminTest || !(await oversold(server.node))) return server;
+  const arch = server.edition === "TERRARIA" && server.kind === "tmodloader" ? TMOD_ARCH : undefined;
+  const to = await pickNode(server.memoryMb, server.memoryMb, undefined, arch);
+  if (!to || to === server.node) return server;
+  const from = nodeById(server.node);
+  moving.add(server.id);
+  try {
+    let copied = true;
+    try {
+      await copyServer(server.id, from, nodeById(to));
+    } catch (err) {
+      // Never created on the game host (paid for before its first start): nothing to copy.
+      if (!(err instanceof AgentError && err.status === 404)) throw err;
+      copied = false;
+    }
+    const moved = await db.server.update({ where: { id: server.id }, data: { node: to } });
+    forgetServerNode(server.id);
+    console.info("moved", server.id, "from", from.id, "to", to);
+    await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
+    if (copied) await deleteServer(server.id, from).catch((err) => console.error("old copy not deleted", server.id, from.id, err));
+    return moved;
+  } catch (err) {
+    console.error("move failed", server.id, from.id, "->", to, err);
+    // Whatever reached the other machine; the server goes on where it was.
+    await deleteServer(server.id, nodeById(to)).catch(() => {});
+    return server;
+  } finally {
+    moving.delete(server.id);
+  }
 }
 
 // Also the mail names OVH's default DNS zone defines: they have records of
