@@ -17,7 +17,7 @@ import { siteUrl } from "@/lib/site";
 import { isAdmin } from "@/lib/admin";
 import { adminOnline } from "@/lib/presence";
 import { getAnnouncement } from "@/lib/announcement";
-import { MAX_LENGTH, RATE_COUNT, RATE_MINUTES } from "@/lib/support";
+import { CHAT_RATE, MAX_LENGTH } from "@/lib/support";
 import { logOut } from "./actions";
 import "./globals.css";
 
@@ -153,7 +153,7 @@ export default async function RootLayout({
           admin={admin}
           adminOnline={adminOnline()}
           maxLength={MAX_LENGTH}
-          rate={{ count: RATE_COUNT, minutes: RATE_MINUTES }}
+          rate={CHAT_RATE}
         />
       </body>
     </html>

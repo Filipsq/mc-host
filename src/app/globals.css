@@ -880,6 +880,23 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 }
 .chat-msg:not(.own) .chat-bubble { border-bottom-left-radius: 5px; }
 .chat-msg.own .chat-bubble { background: var(--accent-soft); border-color: rgb(91 194 54 / 0.35); border-bottom-right-radius: 5px; }
+.chat-bubble p { margin: 0; }
+.chat-bubble.with-image { padding: 4px; }
+.chat-bubble.with-image p { padding: 5px 9px 4px; }
+.chat-image { display: block; }
+.chat-image img { display: block; max-width: min(280px, 100%); max-height: 320px; border-radius: 10px; background: var(--bg-alt); }
+.chat-row { display: flex; align-items: center; gap: 4px; max-width: 100%; }
+.chat-msg.own .chat-row { flex-direction: row-reverse; }
+.chat-delete {
+  flex: none; padding: 6px; height: auto; background: transparent; border: none; box-shadow: none; color: var(--muted); opacity: 0.55;
+}
+.chat-delete:hover, .chat-delete:focus-visible { opacity: 1; color: #ff6b6b; background: transparent; }
+.chat-attach { padding: 0 13px; }
+.chat-attachment { display: flex; align-items: center; gap: 10px; padding: 10px 14px 0; border-top: 1px solid var(--border); background: var(--bg-alt); }
+.chat-attachment img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); }
+.chat-attachment span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-attachment-remove { padding: 6px; height: auto; }
+.chat-attachment + .chat-form { border-top: none; }
 .chat-time { font-size: 0.72rem; color: var(--muted); margin: 2px 4px 0; }
 .chat-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 12px; }
 .chat-empty p { margin: 0; max-width: 420px; }
