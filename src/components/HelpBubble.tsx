@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Maximize2, MessageCircle, X } from "lucide-react";
 import type { Messages } from "@/i18n/messages";
-import type { ChatState } from "@/lib/support";
+import type { ChatRate, ChatState } from "@/lib/support";
 import SupportChat from "./SupportChat";
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
   /** Whether an admin was on the site when the page was rendered; kept up to date by polling. */
   adminOnline: boolean;
   maxLength: number;
-  rate: { count: number; minutes: number };
+  rate: ChatRate;
 };
 
 const CHECK_MS = 30_000;

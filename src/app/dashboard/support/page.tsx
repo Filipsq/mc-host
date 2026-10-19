@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { MAX_LENGTH, RATE_COUNT, RATE_MINUTES, readChat } from "@/lib/support";
+import { CHAT_RATE, MAX_LENGTH, readChat } from "@/lib/support";
 import SupportChat from "@/components/SupportChat";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -39,7 +39,7 @@ export default async function SupportPage() {
         initial={state}
         otherName={t.staff}
         maxLength={MAX_LENGTH}
-        rate={{ count: RATE_COUNT, minutes: RATE_MINUTES }}
+        rate={CHAT_RATE}
         hadUnread={(before?.userUnread ?? 0) > 0}
       />
     </main>
