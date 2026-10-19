@@ -587,7 +587,9 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	name := containerName(req.ID)
 	spec := a.containerSpec(req, image)
 	if a.ensureGameNetwork(ctx) {
-		spec["HostConfig"].(map[string]any)["NetworkMode"] = gameNetwork
+		hc := spec["HostConfig"].(map[string]any)
+		hc["NetworkMode"] = gameNetwork
+		hc["Dns"] = gameDNS
 	}
 	if err := a.docker.CreateContainer(ctx, name, spec); err != nil {
 		return err
@@ -983,6 +985,13 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 // the firewall set up by deploy/ can keep servers away from the cloud's
 // metadata service and the tunnel between machines.
 const gameNetwork = "mchost-games"
+
+// gameDNS answers servers' lookups (Paper, plugins, mod packs) on the game
+// network. Docker would otherwise pass them on to whatever the provider set up
+// on the host, which may sit behind the firewall that keeps servers away from
+// the provider's own addresses, or fail now and then (seen on a node as
+// SERVFAIL for fill.papermc.io).
+var gameDNS = []string{"1.1.1.1", "9.9.9.9", "8.8.8.8"}
 
 var gameNetworkOptions = map[string]string{
 	"com.docker.network.bridge.enable_icc": "false",
