@@ -97,6 +97,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 		return errDiskFull
 	}
 	a.clearMarkers(id)
+	a.fixLogin(ctx, id)
 	return a.docker.StartContainer(ctx, containerName(id))
 }
 

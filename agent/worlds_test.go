@@ -306,4 +306,18 @@ func TestPrepareLogin(t *testing.T) {
 	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != "mine" {
 		t.Fatalf("config overwritten: %q", b)
 	}
+	// Servers made before the address settings get the new config.
+	os.WriteFile(filepath.Join(data, "plugins", "AuthMe", "config.yml"), []byte(oldAuthMeConfig), 0o644)
+	a.fixLogin(context.Background(), "abc12345")
+	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != authMeConfig {
+		t.Fatalf("old config not replaced: %q", b)
+	}
+	// A config AuthMe filled in has its per-address limits turned off, nothing else.
+	full := "# AuthMe\nsettings:\n  sessions:\n    # Do you want to enable sessions?\n    enabled: true\n    timeout: 10\n  restrictions:\n    allowedNicknameCharacters: '[a-zA-Z0-9_]*'\n    maxRegPerIp: 1\n    maxLoginPerIp: 0\n    unrestrictions:\n      enabled: true\n    maxJoinPerIp: 2\nSecurity:\n  tempban:\n    enableTempban: true\n    maxLoginTries: 10\n"
+	want := "# AuthMe\nsettings:\n  sessions:\n    # Do you want to enable sessions?\n    enabled: false\n    timeout: 10\n  restrictions:\n    allowedNicknameCharacters: '[a-zA-Z0-9_]*'\n    maxRegPerIp: 0\n    maxLoginPerIp: 0\n    unrestrictions:\n      enabled: true\n    maxJoinPerIp: 0\nSecurity:\n  tempban:\n    enableTempban: false\n    maxLoginTries: 10\n"
+	os.WriteFile(filepath.Join(data, "plugins", "AuthMe", "config.yml"), []byte(full), 0o644)
+	a.fixLogin(context.Background(), "abc12345")
+	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != want {
+		t.Fatalf("fixed config = %q", b)
+	}
 }
