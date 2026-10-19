@@ -681,7 +681,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 				}
 			} else {
 				env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version,
-					"MODRINTH_EXCLUDE_FILES="+packExcludes, "PRE_START_SCRIPT="+packScriptPath)
+					"MODRINTH_EXCLUDE_FILES="+strings.Join(packExcludes, ","), "PRE_START_SCRIPT="+packScriptPath)
 				entrypoint = packEntrypoint
 			}
 		case "fabric", "forge", "neoforge":
@@ -996,8 +996,10 @@ const gameNetwork = "mchost-games"
 // packExcludes are client-side mods that some packs mark for servers too and
 // that stop a server from starting. Missing Mods Checker opens a window when a
 // player-only mod isn't there (always, on a server), which a server can't do
-// (Better MC: java.awt.HeadlessException).
-const packExcludes = "missingmodschecker"
+// (Better MC: java.awt.HeadlessException). FTB Quests Freeze Fix ships an empty
+// en_us.json, which a server can't read (Better MC: "JsonObject.entrySet()
+// because $$2 is null"); it only fixes the FTB Quests screen anyway.
+var packExcludes = []string{"missingmodschecker", "ftbquestsfreezefix"}
 
 // gameDNS answers servers' lookups (Paper, plugins, mod packs). Docker would otherwise pass them on to whatever the provider set up
 // on the host, which may sit behind the firewall that keeps servers away from

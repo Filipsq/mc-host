@@ -117,8 +117,8 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // image download; a pack can also carry a mod inside its own zip ("overrides"),
 // which the image copies in again on every start (Better MC does this with
 // Missing Mods Checker).
-const packScript = `#!/bin/bash
-for jar in mods/` + packExcludes + `*.jar; do
+var packScript = `#!/bin/bash
+for jar in mods/{` + strings.Join(packExcludes, ",") + `}*.jar; do
   [ -f "$jar" ] && rm -f "$jar" && echo "[mchost] removed $jar (a player-side mod that stops servers)"
 done
 exit 0

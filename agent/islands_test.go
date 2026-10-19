@@ -157,7 +157,7 @@ func TestPackScriptRemovesExcludedMods(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "mods"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"missingmodschecker.jar", "missingmodschecker-1.0.1.jar", "modernfix.jar"} {
+	for _, name := range []string{"missingmodschecker.jar", "missingmodschecker-1.0.1.jar", "ftbquestsfreezefix-fabric-1.0.0-1.20.1.jar", "modernfix.jar"} {
 		if err := os.WriteFile(filepath.Join(dir, "mods", name), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
