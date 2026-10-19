@@ -178,3 +178,81 @@ func TestPackScriptRemovesExcludedMods(t *testing.T) {
 		t.Fatalf("%v: %s", err, out)
 	}
 }
+
+func TestPackScriptAddsMissingLibraries(t *testing.T) {
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "mods")
+	if err := os.MkdirAll(mods, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	jar := func(name, meta string) {
+		f, err := os.Create(filepath.Join(mods, name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		z := zip.NewWriter(f)
+		if meta != "" {
+			w, _ := z.Create("fabric.mod.json")
+			w.Write([]byte(meta))
+		}
+		z.Close()
+		f.Close()
+	}
+	jar("waystones.jar", `{"id": "waystones", "depends": {"balm-fabric": "*", "fabricloader": ">=0.14"}}`)
+	jar("bop.jar", `{"id": "biomesoplenty", "depends": {"terrablender": "*", "minecraft": "1.20.1"}}`)
+	jar("ftbquests.jar", `{"id": "ftbquests", "depends": {"ftblibrary": "*", "architectury": "*"}}`)
+	jar("arch.jar", `{"id": "architectury", "provides": ["architectury-api"]}`)
+	jar("forge-only.jar", "")
+
+	// A stand-in curl answers like Modrinth and FTB's Maven and logs what was fetched.
+	bin := t.TempDir()
+	fake := `#!/bin/bash
+url="${@: -1}"; out=; prev=
+for a in "$@"; do [ "$prev" = -o ] && out=$a; prev=$a; done
+echo "$url" >>"$LOG"
+case $url in
+  *maven-metadata.xml) echo '<versions><version>2001.2.9</version><version>2001.2.13</version><version>2101.1.0</version></versions>' ;;
+  *api.modrinth.com/v2/project/balm/*) echo '[{"files":[{"primary":true,"url":"https://cdn/balm-fabric-1.20.1-7.3.44.jar","filename":"balm-fabric-1.20.1-7.3.44.jar"}]}]' ;;
+  *api.modrinth.com/v2/project/terrablender/*) echo '[]' ;;
+  *) echo jar >"$out" ;;
+esac
+`
+	if err := os.WriteFile(filepath.Join(bin, "curl"), []byte(fake), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	log := filepath.Join(bin, "log")
+	cmd := exec.Command("bash", "-c", packScript)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "VERSION=1.20.1", "LOG="+log)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	for _, name := range []string{"balm-fabric-1.20.1-7.3.44.jar", "ftb-library-fabric-2001.2.13.jar"} {
+		if _, err := os.Stat(filepath.Join(mods, name)); err != nil {
+			t.Errorf("%s not added: %s", name, out)
+		}
+	}
+	if !strings.Contains(string(out), "could not download terrablender for 1.20.1") {
+		t.Errorf("no word on the missing terrablender: %s", out)
+	}
+	fetched, _ := os.ReadFile(log)
+	if strings.Count(string(fetched), "project/balm/") != 1 || strings.Contains(string(fetched), "architectury") {
+		t.Errorf("fetched:\n%s", fetched)
+	}
+
+	// Everything there now but TerraBlender: the next start only tries that again.
+	os.Remove(log)
+	jar("tb.jar", `{"id": "terrablender"}`)
+	jar("balm-fabric-1.20.1-7.3.44.jar", `{"id": "balm-fabric"}`)
+	jar("ftb-library-fabric-2001.2.13.jar", `{"id": "ftblibrary"}`)
+	cmd = exec.Command("bash", "-c", packScript)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "VERSION=1.20.1", "LOG="+log)
+	if out, err := cmd.CombinedOutput(); err != nil || strings.Contains(string(out), "added") {
+		t.Fatalf("%v: %s", err, out)
+	}
+	if fetched, _ := os.ReadFile(log); len(fetched) != 0 {
+		t.Errorf("fetched again:\n%s", fetched)
+	}
+}

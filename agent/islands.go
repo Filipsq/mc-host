@@ -117,10 +117,44 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // image download; a pack can also carry a mod inside its own zip ("overrides"),
 // which the image copies in again on every start (Better MC does this with
 // Missing Mods Checker).
+//
+// It then downloads the packLibs a Fabric mod in the pack requires but no jar
+// provides. Some packs don't list them for servers at all, so
+// MODRINTH_FORCE_INCLUDE_FILES can't bring them in (Better MC: TerraBlender,
+// Balm and FTB Library, the last of which isn't on Modrinth).
 var packScript = `#!/bin/bash
 for jar in mods/{` + strings.Join(packExcludes, ",") + `}*.jar; do
   [ -f "$jar" ] && rm -f "$jar" && echo "[mchost] removed $jar (a player-side mod that stops servers)"
 done
+if [ -d mods ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
+  have=" " need=" "
+  for jar in mods/*.jar; do
+    meta=$(unzip -p "$jar" fabric.mod.json 2>/dev/null) || continue
+    have+="$(jq -r '([.id] + (.provides // [])) | join(" ")' <<<"$meta" 2>/dev/null) "
+    need+="$(jq -r '(.depends // {}) | keys | join(" ")' <<<"$meta" 2>/dev/null) "
+  done
+  for lib in ` + strings.Join(packLibs, " ") + `; do
+    [[ "$need" == *" $lib "* && "$have" != *" $lib "* ]] || continue
+    case $lib in
+      ftblibrary)
+        # FTB numbers its versions after Minecraft's: 2001.x is for 1.20.1.
+        p=$(awk -F. '{printf "%d%02d", $2, $3}' <<<"$VERSION")
+        v=$(curl -fsS https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-fabric/maven-metadata.xml | grep -o "<version>$p\.[^<]*" | sed 's/<version>//' | sort -V | tail -1)
+        url= file=
+        [ -n "$v" ] && url=https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-fabric/$v/ftb-library-fabric-$v.jar file=ftb-library-fabric-$v.jar ;;
+      *)
+        read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/${lib%-fabric}/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$VERSION%22%5D" |
+          jq -r '[.[0].files[] | select(.primary)][0] | .url + " " + .filename' 2>/dev/null) ;;
+    esac
+    if [ -n "$url" ] && curl -fsSL -o "mods/$file" "$url"; then
+      echo "[mchost] added mods/$file (needed by the pack's mods)"
+      have+="$lib ${lib%-fabric} $lib-fabric "
+    else
+      [ -n "$file" ] && rm -f "mods/$file"
+      echo "[mchost] could not download $lib for $VERSION"
+    fi
+  done
+fi
 exit 0
 `
 

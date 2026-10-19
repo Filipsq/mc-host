@@ -1019,6 +1019,10 @@ var packExcludes = []string{"missingmodschecker", "ftbquestsfreezefix"}
 // dev.ftb.mods.ftblibrary), so the image installs them anyway.
 var packIncludes = []string{"terrablender", "balm", "ftb-library"}
 
+// packLibs are Fabric mod IDs packScript downloads when a mod needs one and the
+// pack left it out (Better MC). Balm calls itself balm-fabric on some versions.
+var packLibs = []string{"terrablender", "balm-fabric", "balm", "ftblibrary"}
+
 // gameDNS answers servers' lookups (Paper, plugins, mod packs). Docker would otherwise pass them on to whatever the provider set up
 // on the host, which may sit behind the firewall that keeps servers away from
 // the provider's own addresses, or fail now and then (seen on a node as
