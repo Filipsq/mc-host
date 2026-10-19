@@ -680,7 +680,8 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 					env = append(env, "CF_API_KEY="+a.cfKey)
 				}
 			} else {
-				env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version)
+				env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version,
+					"MODRINTH_EXCLUDE_FILES="+packExcludes)
 			}
 		case "fabric", "forge", "neoforge":
 			// The image installs the loader for the version; pluginEnv adds the mods.
@@ -990,6 +991,12 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 // the firewall set up by deploy/ can keep servers away from the cloud's
 // metadata service and the tunnel between machines.
 const gameNetwork = "mchost-games"
+
+// packExcludes are client-side mods that some packs mark for servers too and
+// that stop a server from starting. Missing Mods Checker opens a window when a
+// player-only mod isn't there (always, on a server), which a server can't do
+// (Better MC: java.awt.HeadlessException).
+const packExcludes = "missingmodschecker"
 
 // gameDNS answers servers' lookups (Paper, plugins, mod packs). Docker would otherwise pass them on to whatever the provider set up
 // on the host, which may sit behind the firewall that keeps servers away from
