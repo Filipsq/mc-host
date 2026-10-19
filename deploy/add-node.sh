@@ -73,7 +73,7 @@ BUNDLE=$(printf '%s\n' "$NODE_ID" "$NODE_WG" "$NODE_KEY" "$MAIN_PUB" "$MAIN_IP" 
 
 echo "Copying the agent to $TARGET (you may be asked for its password)..."
 SSH=(ssh -o StrictHostKeyChecking=accept-new -o ControlMaster=auto -o "ControlPath=/tmp/mchost-node-%r@%h" -o ControlPersist=120)
-tar -C .. -cz agent deploy/node deploy/node-setup.sh deploy/game-firewall.sh | "${SSH[@]}" "$TARGET" 'mkdir -p mc-host && tar -xz -C mc-host'
+tar -C .. -cz agent deploy/node deploy/node-setup.sh deploy/game-firewall.sh deploy/public-dns.sh | "${SSH[@]}" "$TARGET" 'mkdir -p mc-host && tar -xz -C mc-host'
 SUDO=""
 [[ "$TARGET" == root@* ]] || SUDO="sudo"
 "${SSH[@]}" -t "$TARGET" "$SUDO mc-host/deploy/node-setup.sh $BUNDLE"
