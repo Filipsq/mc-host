@@ -12,3 +12,18 @@ if [ "$(cat "$conf" 2>/dev/null)" != "$want" ]; then
   printf '%s\n' "$want" > "$conf"
   systemctl restart systemd-resolved
 fi
+
+# Game servers get their resolvers from Docker, which copies every resolver the
+# host knows, the provider's first. Docker's own setting puts the public ones
+# first for every container; it takes effect when Docker next restarts.
+daemon=/etc/docker/daemon.json
+if [ -d /etc/docker ] && ! grep -q '"dns"' "$daemon" 2>/dev/null; then
+  python3 - "$daemon" <<'PY'
+import json, os, sys
+path = sys.argv[1]
+cfg = json.load(open(path)) if os.path.exists(path) and os.path.getsize(path) else {}
+cfg["dns"] = ["1.1.1.1", "9.9.9.9", "8.8.8.8"]
+json.dump(cfg, open(path, "w"), indent=2)
+PY
+  echo "Docker: public DNS set; it applies after 'systemctl restart docker' or a reboot."
+fi
