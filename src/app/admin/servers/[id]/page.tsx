@@ -10,7 +10,8 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { formats } from "../../format";
 import { EDITION_NAMES } from "@/lib/editions";
 import PaymentTable from "../../PaymentTable";
-import { DeleteButton, GiftForm } from "./AdminServerActions";
+import { DeleteButton, GiftForm, MoveForm } from "./AdminServerActions";
+import { nodes } from "@/lib/nodes";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -42,6 +43,10 @@ export default async function AdminServer({ params }: Props) {
   const live = liveStateFrom(server, state);
   const kind = server.edition === "JAVA" && isServerKind(server.kind) ? server.kind : null;
 
+  const otherNodes = nodes()
+    .filter((n) => n.id !== server.node && (n.memoryLimitMb <= 0 || server.memoryMb <= n.memoryLimitMb))
+    .map((n) => ({ id: n.id, label: n.memoryLimitMb > 0 ? `${n.id} (${f.gb(n.memoryLimitMb)})` : n.id }));
+
   const details: [string, React.ReactNode][] = [
     [t.columns.owner, <Link key="o" href={`/admin/users/${server.owner.id}`}>{server.owner.email}</Link>],
     [
@@ -66,6 +71,7 @@ export default async function AdminServer({ params }: Props) {
     [t.columns.created, f.dateTime(server.createdAt)],
     ["ID", <span key="i" className="mono">{server.id}</span>],
     ["Port", server.port ?? "–"],
+    [t.move.machine, <span key="n" className="mono">{server.node}</span>],
   ];
 
   return (
@@ -100,6 +106,14 @@ export default async function AdminServer({ params }: Props) {
           <h3>{t.gift.title}</h3>
           <p className="muted small">{t.gift.hint}</p>
           <GiftForm id={server.id} t={t.gift} />
+        </section>
+      )}
+
+      {otherNodes.length > 0 && server.status !== "AWAITING_PAYMENT" && (
+        <section className="card stack">
+          <h3>{t.move.title}</h3>
+          <p className="muted small">{t.move.hint}</p>
+          <MoveForm id={server.id} nodes={otherNodes} t={t.move} />
         </section>
       )}
 
