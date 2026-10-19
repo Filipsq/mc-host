@@ -138,7 +138,7 @@ func TestSmallMachineFitsTwoFreeServers(t *testing.T) {
 	// Free servers get the machine's smaller memory and some swap; paid ones keep their plan.
 	spec := a.containerSpec(createRequest{ID: "second12", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 30001, Autostop: true}, "img")
 	hc := spec["HostConfig"].(map[string]any)
-	if hc["Memory"] != int64(1536+512)<<20 || hc["MemorySwap"] != int64(1536+512+freeSwapMb)<<20 {
+	if hc["Memory"] != int64(1536+1024)<<20 || hc["MemorySwap"] != int64(1536+1024+freeSwapMb)<<20 {
 		t.Fatalf("free server memory %v swap %v", hc["Memory"], hc["MemorySwap"])
 	}
 	if spec["Labels"].(map[string]string)["mchost.memory"] != "1536" {
@@ -146,7 +146,7 @@ func TestSmallMachineFitsTwoFreeServers(t *testing.T) {
 	}
 	spec = a.containerSpec(createRequest{ID: "paid1234", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 30002}, "img")
 	hc = spec["HostConfig"].(map[string]any)
-	if hc["Memory"] != int64(2048+512)<<20 || hc["MemorySwap"] != hc["Memory"] {
+	if hc["Memory"] != int64(2048+1024)<<20 || hc["MemorySwap"] != hc["Memory"] {
 		t.Fatalf("paid server memory %v swap %v", hc["Memory"], hc["MemorySwap"])
 	}
 }
