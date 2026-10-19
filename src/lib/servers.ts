@@ -1,11 +1,22 @@
 import "server-only";
 import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
-import { AgentError, deleteServer, getServerState, recreateServer, setPeerRoutes, type AgentState, type CreateServerSpec } from "./agent";
+import {
+  AgentError,
+  deleteServer,
+  getServerState,
+  listWorlds,
+  recreateServer,
+  setPeerRoutes,
+  type AgentState,
+  type CreateServerSpec,
+  type World,
+} from "./agent";
 import { getServerFor } from "./access";
 import { planById } from "./plans";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
+import { isPreYearVersion } from "./settings";
 
 export type LiveState =
   | "starting"
@@ -184,6 +195,17 @@ export function agentSpec(server: Server): CreateServerSpec {
     modpackVersion: server.modpackVersionId ?? undefined,
     plugins: addonType(server) ? server.plugins : [],
   };
+}
+
+/**
+ * Whether `version` can't open the world `level` because Minecraft 26.1 or newer
+ * saved it (the server would stop at once with "No key dimensions"). If the
+ * agent can't say, it lets the change through.
+ */
+export async function worldTooNew(server: Pick<Server, "id" | "edition">, level: string, version: string) {
+  if (server.edition !== "JAVA" || !isPreYearVersion(version)) return false;
+  const { worlds } = await listWorlds(server.id, "JAVA").catch(() => ({ worlds: [] as World[] }));
+  return worlds.some((w) => w.name === level && w.newGame);
 }
 
 /** Whether the server is on the game host: paid for (or free) and not suspended. */

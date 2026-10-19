@@ -297,7 +297,8 @@ export async function changeFiles(
   return res.json();
 }
 
-export type World = { name: string; size: number; modified: string };
+// newGame: saved by Minecraft 26.1 or newer, which 1.21.11 and older can't open.
+export type World = { name: string; size: number; modified: string; newGame?: boolean };
 
 /** The server's worlds by name, and the one it runs. */
 export async function listWorlds(id: string, edition: Edition): Promise<{ worlds: World[]; active: string }> {
