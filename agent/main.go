@@ -794,8 +794,10 @@ func serverSpec(req createRequest, image string, env []string, labels map[string
 			"PidsLimit": 512,
 			// Keep only the newest console output: it holds players' IP addresses and would otherwise fill the disk.
 			"LogConfig": map[string]any{"Type": "json-file", "Config": map[string]string{"max-size": "10m", "max-file": "3"}},
-			// Restarts after a crash only; a clean exit (e.g. going to sleep) stays down.
-			"RestartPolicy": map[string]any{"Name": "on-failure", "MaximumRetryCount": 3},
+			// Restarts once after a crash; a clean exit (e.g. going to sleep) stays down.
+			// More tries only repeat a broken start (a mod pack re-checks hundreds of
+			// files each time) and load the whole machine; the owner sees "Awaria".
+			"RestartPolicy": map[string]any{"Name": "on-failure", "MaximumRetryCount": 1},
 			"PortBindings":  bindings,
 			"Mounts":        []map[string]any{{"Type": "volume", "Source": containerName(req.ID), "Target": "/data"}},
 			// Players' plugins and mods run inside: nothing in there may gain
