@@ -909,6 +909,25 @@ const en: Messages = {
       button: "Go to your server",
     },
   },
+  comebackMail: {
+    subject: "Hey! It's been a while on {server}",
+    paragraphs: [
+      "Hey! Nobody has played on your server {server} for {days} days. Your world is waiting for you.",
+      "Come back and play, and bring your friends. The server's address is in the panel.",
+    ],
+    push: "Nobody has played on {server} for {days} days. Come back and play!",
+    button: "Go to the server",
+    footer: "This is a reminder about your server at {brand}.",
+    unsubscribe: "I don't want these reminders",
+  },
+  comebackPage: {
+    title: "Play reminders",
+    off: "We won't remind you to come back and play anymore. Emails about payments and server deletion still come.",
+    on: "When nobody plays on your server for {days} days, we remind you by email and notification.",
+    turnOff: "Turn reminders off",
+    turnOn: "Turn them back on",
+    invalid: "This link isn't valid. Copy the whole link from the email.",
+  },
   testPaymentMail: {
     server: {
       subject: "The payment for server {server} was not taken",

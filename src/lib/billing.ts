@@ -17,6 +17,7 @@ import {
   WARN_BEFORE_IDLE_DELETE_DAYS,
   sendPlanMail,
 } from "./planMail";
+import { sendComebackReminders } from "./comeback";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import type { Currency, Locale } from "@/i18n/config";
 
@@ -175,8 +176,9 @@ export function idleDeletionDate(server: Pick<Server, "lastPlayedAt" | "deletion
  * Notes when players were last on each server (from the machines' stats), then
  * warns about and later deletes free servers nobody has played on for
  * FREE_IDLE_DAYS, so they don't hold disk, ports and free slots for good.
+ * Owners are first asked to come back after COMEBACK_DAYS (comeback.ts).
  */
-async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; idleDeleted: number }) {
+async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; idleDeleted: number; comeback: number }) {
   const stats = await agent.getStats().catch((err) => {
     console.error("idle free servers: no stats", err);
     return null;
@@ -185,9 +187,14 @@ async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; id
   if (!stats) return;
   const playing = stats.servers.filter((s) => (s.players ?? 0) > 0).map((s) => s.id);
   if (playing.length > 0) {
-    await db.server.updateMany({ where: { id: { in: playing } }, data: { lastPlayedAt: now } });
+    await db.server.updateMany({ where: { id: { in: playing } }, data: { lastPlayedAt: now, comebackSentAt: null } });
     await db.server.updateMany({ where: { id: { in: playing }, plan: "FREE" }, data: { deletionWarnedAt: null } });
   }
+  // A few days with nobody playing: ask the owner to come back (paid servers too).
+  result.comeback += await sendComebackReminders(now, stats.unreachable).catch((err) => {
+    console.error("comeback reminders failed", err);
+    return 0;
+  });
   // Warnings go out WARN_BEFORE_IDLE_DELETE_DAYS before the terms allow deleting.
   if (now.getTime() < FREE_IDLE_FROM.getTime() - WARN_BEFORE_IDLE_DELETE_DAYS * DAY) return;
   const idle = await db.server.findMany({
@@ -284,7 +291,7 @@ export function isRemovablePayment(p: Pick<Payment, "stripeSessionId" | "status"
 
 /** Periodic housekeeping, run by /api/cron/billing. */
 export async function runBillingJob(now = new Date()) {
-  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, abandoned: 0, provisioned: 0 };
+  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, abandoned: 0, provisioned: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Paid period over: stop the server but keep its world.

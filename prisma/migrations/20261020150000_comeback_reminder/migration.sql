@@ -1,0 +1,2 @@
+ALTER TABLE "User" ADD COLUMN "comebackOff" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Server" ADD COLUMN "comebackSentAt" TIMESTAMP(3);
