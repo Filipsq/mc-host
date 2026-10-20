@@ -146,6 +146,15 @@ export type HostStats = {
   };
   servers: ServerStats[];
   unreachable: string[]; // extra machines that didn't answer; their servers' states are unknown
+  machines: MachineStats[]; // each machine on its own, in NODES order (the fields above add them up)
+};
+
+export type MachineStats = {
+  id: string;
+  arch?: string;
+  memoryLimitMb: number;
+  memoryHeldMb: number;
+  host: HostStats["host"] | null; // null when the machine didn't answer
 };
 
 /** Tells the agents every server's disk limit (MB), replacing what they had; each only uses its own servers'. */
@@ -167,17 +176,31 @@ export async function setPeerRoutes(routes: Record<string, string>) {
 export async function getStats(): Promise<HostStats> {
   const all = nodes();
   const results = await Promise.allSettled(
-    all.map((node) => agentFetch("/stats", { timeoutMs: 20_000, node }).then((res) => res.json() as Promise<Omit<HostStats, "unreachable">>)),
+    all.map((node) =>
+      agentFetch("/stats", { timeoutMs: 20_000, node }).then(
+        (res) => res.json() as Promise<Omit<HostStats, "unreachable" | "machines"> & { arch?: string }>,
+      ),
+    ),
   );
   if (results[0].status === "rejected") throw results[0].reason;
-  const total: HostStats = { ...results[0].value, unreachable: [] };
+  const machine = (id: string, s: Omit<HostStats, "unreachable" | "machines"> & { arch?: string }): MachineStats => ({
+    id,
+    arch: s.arch,
+    memoryLimitMb: s.memoryLimitMb,
+    memoryHeldMb: s.memoryHeldMb,
+    host: s.host,
+  });
+  const first = results[0].value;
+  const total: HostStats = { ...first, unreachable: [], machines: [machine(all[0].id, first)] };
   results.slice(1).forEach((r, i) => {
     if (r.status === "rejected") {
       console.error(`stats: machine ${all[i + 1].id} unreachable`, r.reason);
       total.unreachable.push(all[i + 1].id);
+      total.machines.push({ id: all[i + 1].id, memoryLimitMb: 0, memoryHeldMb: 0, host: null });
       return;
     }
     const s = r.value;
+    total.machines.push(machine(all[i + 1].id, s));
     total.memoryLimitMb += s.memoryLimitMb;
     total.memoryHeldMb += s.memoryHeldMb;
     total.host = {

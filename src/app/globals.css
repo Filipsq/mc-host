@@ -800,6 +800,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .details dd { margin: 2px 0 0; word-break: break-word; }
 .pay-status { font-weight: 600; white-space: nowrap; }
 .admin-table td.over { color: var(--error); font-weight: 600; }
+.machine-cell { display: flex; flex-direction: column; gap: 6px; min-width: 130px; white-space: nowrap; }
 .disk-line { display: block; margin-top: 2px; }
 .pay-status.paid { color: var(--accent-strong); }
 .pay-status.pending { color: var(--amber); }
