@@ -42,6 +42,11 @@ export default function PrivacyPl({ site }: { site: string }) {
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
             </tr>
             <tr>
+              <td>Adres e-mail, adres powiadomień urządzenia, data ostatniej gry na Serwerze</td>
+              <td>Przypomnienie, gdy przez kilka dni nikt nie gra na Twoim Serwerze; wyłączysz je linkiem w tym e-mailu</td>
+              <td>art. 6 ust. 1 lit. f – prawnie uzasadniony interes (informacja o usłudze, z której korzystasz)</td>
+            </tr>
+            <tr>
               <td>Serwery: nazwa, adres, edycja, Plan, świat, kopie zapasowe, logi konsoli</td>
               <td>Świadczenie usługi hostingu serwerów</td>
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>

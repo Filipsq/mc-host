@@ -43,6 +43,11 @@ export default function PrivacyEn({ site }: { site: string }) {
               <td>art. 6(1)(b): performing the contract</td>
             </tr>
             <tr>
+              <td>Email address, device notification address, when your Server was last played on</td>
+              <td>A reminder when nobody has played on your Server for a few days; turn it off with the link in that email</td>
+              <td>art. 6(1)(f): legitimate interest (information about the service you use)</td>
+            </tr>
+            <tr>
               <td>Servers: name, address, edition, Plan, world, backups, console logs</td>
               <td>Providing server hosting</td>
               <td>art. 6(1)(b): performing the contract</td>

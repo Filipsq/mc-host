@@ -43,6 +43,8 @@ model User {
   apologyDays        Int                @default(0)
   // Phones and browsers that turned on notifications (src/lib/push.ts).
   pushSubscriptions  PushSubscription[]
+  // Turned off "come back and play" reminders with the link in that email (src/lib/comeback.ts).
+  comebackOff        Boolean            @default(false)
 
   @@index([referredById])
 }
@@ -237,6 +239,8 @@ model Server {
   deletionWarnedAt DateTime?
   // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
   lastPlayedAt     DateTime       @default(now())
+  // When its owner was asked to come back and play (src/lib/comeback.ts); cleared when someone plays.
+  comebackSentAt   DateTime?
   // Made by an admin to try things out, without paying: kept out of sales numbers.
   adminTest        Boolean        @default(false)
   payments         Payment[]

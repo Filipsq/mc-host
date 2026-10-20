@@ -908,6 +908,25 @@ const pl = {
       button: "Przejdź do serwera",
     },
   },
+  comebackMail: {
+    subject: "Hejka! Dawno nie grałeś na {server}",
+    paragraphs: [
+      "Hejka! Na Twoim serwerze {server} nikt nie grał od {days} dni. Twój świat na Ciebie czeka.",
+      "Wpadnij zagrać i zaproś znajomych. Adres serwera znajdziesz w panelu.",
+    ],
+    push: "Na {server} nikt nie grał od {days} dni. Wpadnij zagrać!",
+    button: "Przejdź do serwera",
+    footer: "To przypomnienie o Twoim serwerze w {brand}.",
+    unsubscribe: "Nie chcę takich przypomnień",
+  },
+  comebackPage: {
+    title: "Przypomnienia o graniu",
+    off: "Nie będziemy już przypominać, że dawno nie grałeś. Wiadomości o płatnościach i usunięciu serwera nadal przyjdą.",
+    on: "Gdy przez {days} dni nikt nie zagra na Twoim serwerze, przypomnimy Ci o nim e-mailem i powiadomieniem.",
+    turnOff: "Wyłącz przypomnienia",
+    turnOn: "Włącz je z powrotem",
+    invalid: "Ten link jest nieprawidłowy. Skopiuj go z e-maila w całości.",
+  },
   testPaymentMail: {
     server: {
       subject: "Płatność za serwer {server} nie została pobrana",
