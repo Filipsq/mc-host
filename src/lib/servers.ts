@@ -21,6 +21,7 @@ import { TMOD_ARCH } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
 import { isPreYearVersion, maxPlayersFor } from "./settings";
+import { isModLoader } from "./modpacks";
 
 export type LiveState =
   | "starting"
@@ -111,7 +112,9 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
     while (used.has(port) && port <= PORT_END) port++;
     if (port > PORT_END) return null;
     try {
-      return await db.server.create({ data: { ...data, port } });
+      // Mods' jetpacks and wings need flying, or the server kicks their players.
+      const allowFlight = data.allowFlight ?? (data.kind === "modpack" || isModLoader(data.kind));
+      return await db.server.create({ data: { ...data, allowFlight, port } });
     } catch (err) {
       if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
       const fields = (err.meta?.target as string[] | undefined) ?? [];
@@ -190,6 +193,10 @@ export function agentSpec(server: Server): CreateServerSpec {
     whitelistPlayers: server.whitelistPlayers,
     onlineMode: server.onlineMode || !canRunNonPremium(server),
     crossplay: server.crossplay && canCrossplay(server),
+    allowFlight: server.allowFlight,
+    hardcore: server.hardcore,
+    commandBlocks: server.commandBlocks,
+    spawnProtection: server.spawnProtection,
     level: server.level ?? "",
     seed: server.levelSeed ?? "",
     levelType: server.levelType ?? "",

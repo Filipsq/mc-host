@@ -333,6 +333,13 @@ type createRequest struct {
 	// Java on Paper only: Bedrock players (phones, consoles, Windows) join too,
 	// through the Geyser plugin on the server's port over UDP.
 	Crossplay bool `json:"crossplay"`
+	// Java only: players may fly (mods with jetpacks or wings need it), one life
+	// (hardcore), command blocks work, and how far from spawn only operators may
+	// build (16 if missing, as in Minecraft).
+	AllowFlight     bool `json:"allowFlight"`
+	Hardcore        bool `json:"hardcore"`
+	CommandBlocks   bool `json:"commandBlocks"`
+	SpawnProtection *int `json:"spawnProtection"`
 
 	// The world the server runs (a folder in its files; see worlds.go) and,
 	// for one it hasn't made yet, its seed and type. The image's default
@@ -707,6 +714,12 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		// Always set: the image only writes the properties it's given, so going back
 		// from non-premium has to say so.
 		env = append(env, fmt.Sprintf("ONLINE_MODE=%v", !req.offline()))
+		spawnProtection := 16
+		if req.SpawnProtection != nil {
+			spawnProtection = *req.SpawnProtection
+		}
+		env = append(env, fmt.Sprintf("ALLOW_FLIGHT=%v", req.AllowFlight), fmt.Sprintf("HARDCORE=%v", req.Hardcore),
+			fmt.Sprintf("ENABLE_COMMAND_BLOCK=%v", req.CommandBlocks), fmt.Sprintf("SPAWN_PROTECTION=%d", spawnProtection))
 		if req.Level != "" {
 			env = append(env, "LEVEL="+req.Level)
 		}

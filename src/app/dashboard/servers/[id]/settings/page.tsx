@@ -11,6 +11,7 @@ import { isModLoader } from "@/lib/modpacks";
 import { kindLabel } from "@/lib/serverType";
 import { format } from "@/i18n/messages";
 import { isWorldDifficulty, isWorldSize } from "@/lib/terraria";
+import IconForm from "./IconForm";
 import SettingsForm from "./SettingsForm";
 import TerrariaSettingsForm from "./TerrariaSettingsForm";
 
@@ -98,11 +99,16 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           motd: server.motd,
           pvp: server.pvp,
           maxPlayers: maxPlayersFor(server, planById(server.plan)) || playerLimit(planById(server.plan)),
+          allowFlight: server.allowFlight,
+          hardcore: server.hardcore,
+          commandBlocks: server.commandBlocks,
+          spawnProtection: server.spawnProtection,
           whitelist: server.whitelist,
           players: server.whitelistPlayers.join("\n"),
         }}
         t={t.settings}
       />
+      {server.edition === "JAVA" && <IconForm serverId={server.id} t={t.settings} />}
     </main>
   );
 }

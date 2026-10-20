@@ -42,6 +42,8 @@ export function versionsFor(kind: string): string[] {
 }
 
 export const MOTD_MAX = 60;
+export const SPAWN_PROTECTION_MAX = 64;
+export const ICON_SIZE = 64; // Minecraft shows only a 64×64 PNG
 // The most players an owner can pick on a plan with no player limit.
 export const PLAYERS_MAX = 1000;
 

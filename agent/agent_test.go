@@ -376,14 +376,16 @@ func TestKindEnv(t *testing.T) {
 
 func TestSettingsEnv(t *testing.T) {
 	a := &agent{idle: 5 * time.Minute}
-	off := false
+	off, zero := false, 0
 	java := createRequest{ID: "abc12345", Name: "Ekipa", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 25570, Hostname: "ekipa.mchost.pl",
-		Version: "1.20.1", GameMode: "creative", Difficulty: "hard", Motd: "Witaj!", PVP: &off, Whitelist: true, Players: []string{"Steve", "Alex_2"}}
+		Version: "1.20.1", GameMode: "creative", Difficulty: "hard", Motd: "Witaj!", PVP: &off, Whitelist: true, Players: []string{"Steve", "Alex_2"},
+		AllowFlight: true, Hardcore: true, CommandBlocks: true, SpawnProtection: &zero}
 	if err := java.validate(); err != nil {
 		t.Fatal(err)
 	}
 	env := strings.Join(a.containerSpec(java, imageFor("JAVA", java.Version, java.Kind))["Env"].([]string), "\n")
-	for _, want := range []string{"VERSION=1.20.1", "MODE=creative", "DIFFICULTY=hard", "MOTD=Witaj!", "PVP=false", "ENABLE_WHITELIST=true", "WHITELIST=Steve,Alex_2", "EXISTING_WHITELIST_FILE=SYNCHRONIZE"} {
+	for _, want := range []string{"VERSION=1.20.1", "MODE=creative", "DIFFICULTY=hard", "MOTD=Witaj!", "PVP=false", "ENABLE_WHITELIST=true", "WHITELIST=Steve,Alex_2", "EXISTING_WHITELIST_FILE=SYNCHRONIZE",
+		"ALLOW_FLIGHT=true", "HARDCORE=true", "ENABLE_COMMAND_BLOCK=true", "SPAWN_PROTECTION=0"} {
 		if !strings.Contains(env, want+"\n") && !strings.HasSuffix(env, want) {
 			t.Errorf("java env missing %s:\n%s", want, env)
 		}

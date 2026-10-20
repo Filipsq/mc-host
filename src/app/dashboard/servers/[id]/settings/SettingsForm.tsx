@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useState } from "react";
 import type { Edition } from "@prisma/client";
 import { saveSettingsAction } from "../../actions";
-import { DIFFICULTIES, GAME_MODES, MOTD_MAX, isDowngrade } from "@/lib/settings";
+import { DIFFICULTIES, GAME_MODES, MOTD_MAX, SPAWN_PROTECTION_MAX, isDowngrade } from "@/lib/settings";
 import { format, type Messages } from "@/i18n/messages";
 
 type Props = {
@@ -23,6 +23,10 @@ type Props = {
     motd: string;
     pvp: boolean;
     maxPlayers: number;
+    allowFlight: boolean;
+    hardcore: boolean;
+    commandBlocks: boolean;
+    spawnProtection: number;
     whitelist: boolean;
     players: string;
   };
@@ -106,6 +110,33 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
           <input type="checkbox" name="pvp" defaultChecked={initial.pvp} />
           <span>{t.pvp}</span>
         </label>
+      )}
+      {java && (
+        <>
+          <label className="check">
+            <input type="checkbox" name="allowFlight" defaultChecked={initial.allowFlight} />
+            <span className="stack-tight">
+              <span>{t.allowFlight}</span>
+              <span className="muted small">{t.allowFlightHint}</span>
+            </span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="hardcore" defaultChecked={initial.hardcore} />
+            <span className="stack-tight">
+              <span>{t.hardcore}</span>
+              <span className="muted small">{t.hardcoreHint}</span>
+            </span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="commandBlocks" defaultChecked={initial.commandBlocks} />
+            <span>{t.commandBlocks}</span>
+          </label>
+          <label>
+            {t.spawnProtection}
+            <input name="spawnProtection" type="number" min={0} max={SPAWN_PROTECTION_MAX} required defaultValue={initial.spawnProtection} />
+            <span className="muted small">{t.spawnProtectionHint}</span>
+          </label>
+        </>
       )}
       {nonPremium?.offered && (
         <label className="check">
