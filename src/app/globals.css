@@ -724,6 +724,15 @@ main.compare { max-width: 1080px; }
 }
 .command { flex-wrap: nowrap; }
 .command input { flex: 1; min-width: 0; font-family: var(--font-mono); }
+.console-layout { display: grid; gap: 16px; align-items: start; }
+@media (min-width: 900px) { .console-layout { grid-template-columns: minmax(0, 1fr) 280px; } }
+.quick-commands { display: flex; flex-direction: column; gap: 16px; }
+.quick-commands h3 { margin: 0; font-size: 1rem; }
+.quick-group { display: flex; flex-direction: column; gap: 8px; }
+.quick-group p { margin: 0; }
+.quick-label { color: var(--muted); font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.quick-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.quick-buttons button { padding: 6px 10px; font-size: 0.85rem; }
 
 /* Auth */
 .auth-head { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
