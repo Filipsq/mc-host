@@ -24,11 +24,28 @@ export async function createResetToken(email: string): Promise<string | null> {
   });
   if (recent >= MAX_LINKS_PER_HOUR) return null;
 
+  return issueToken(user.id, RESET_LINK_MINUTES);
+}
+
+/** How long a link made by an admin works: the customer may read the chat only later. */
+export const ADMIN_LINK_HOURS = 24;
+
+/**
+ * A reset link an admin hands to the account's owner, e.g. in the support chat
+ * when the email doesn't arrive. Not counted against the hourly limit.
+ */
+export async function createAdminResetLink(userId: string): Promise<string> {
+  const token = await issueToken(userId, ADMIN_LINK_HOURS * 60);
+  return `${process.env.APP_URL ?? "http://localhost:3000"}/nowe-haslo?token=${token}`;
+}
+
+async function issueToken(userId: string, minutes: number) {
+  const now = Date.now();
   const token = randomBytes(32).toString("base64url");
   await db.$transaction([
-    db.passwordReset.deleteMany({ where: { userId: user.id, createdAt: { lt: new Date(now - 24 * HOUR) } } }),
+    db.passwordReset.deleteMany({ where: { userId, createdAt: { lt: new Date(now - 24 * HOUR) }, expiresAt: { lt: new Date(now) } } }),
     db.passwordReset.create({
-      data: { userId: user.id, tokenHash: hash(token), expiresAt: new Date(now + RESET_LINK_MINUTES * 60 * 1000) },
+      data: { userId, tokenHash: hash(token), expiresAt: new Date(now + minutes * 60 * 1000) },
     }),
   ]);
   return token;
@@ -63,4 +80,20 @@ export async function resetPassword(token: string, password: string): Promise<st
     db.passwordReset.updateMany({ where: { userId: reset.userId, usedAt: null }, data: { usedAt: now } }),
   ]);
   return reset.user.email;
+}
+
+/**
+ * Changes the password of a signed-in account after checking the current one.
+ * Ends the account's other sessions, like a reset does.
+ */
+export async function changePassword(userId: string, current: string, next: string): Promise<"ok" | "wrongPassword"> {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
+  if (!user || !(await bcrypt.compare(current, user.passwordHash))) return "wrongPassword";
+  const passwordHash = await bcrypt.hash(next, 12);
+  const now = new Date();
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { passwordHash, passwordChangedAt: now } }),
+    db.passwordReset.updateMany({ where: { userId, usedAt: null }, data: { usedAt: now } }),
+  ]);
+  return "ok";
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { requestPasswordReset, setNewPassword } from "./actions";
+import { changePasswordAction, requestPasswordReset, setNewPassword } from "./actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -55,6 +55,32 @@ export function NewPasswordForm({ t, token, email }: { t: Messages["auth"]; toke
       )}
       <button type="submit" disabled={pending}>
         {pending ? t.wait : t.newPasswordSubmit}
+      </button>
+    </form>
+  );
+}
+
+/** Changes the password of the signed-in account; asks for the current one first. */
+export function ChangePasswordForm({ t, email }: { t: Messages["auth"]; email: string }) {
+  const [state, formAction, pending] = useActionState(changePasswordAction, {});
+  return (
+    <form action={formAction} className="card stack">
+      <input hidden readOnly type="text" name="username" autoComplete="username" value={email} />
+      <label>
+        {t.currentPassword}
+        <input name="current" type="password" required autoComplete="current-password" />
+      </label>
+      <label>
+        {t.newPassword}
+        <input name="password" type="password" required minLength={8} autoComplete="new-password" />
+      </label>
+      <label>
+        {t.confirmPassword}
+        <input name="confirm" type="password" required minLength={8} autoComplete="new-password" />
+      </label>
+      {state.error && <p className="error">{t.errors[state.error]}</p>}
+      <button type="submit" disabled={pending}>
+        {pending ? t.wait : t.changeSubmit}
       </button>
     </form>
   );
