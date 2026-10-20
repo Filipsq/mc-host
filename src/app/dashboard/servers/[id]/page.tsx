@@ -326,7 +326,13 @@ export default async function ServerPage({ params, searchParams }: Props) {
         />
       )}
 
-      {!unpaid && can("console") && <Console id={server.id} t={t} />}
+      {!unpaid && can("console") && (
+        <Console
+          id={server.id}
+          game={terraria ? (terrariaKind === "tshock" ? "tshock" : "terraria") : server.edition === "BEDROCK" ? "bedrock" : "java"}
+          t={t}
+        />
+      )}
 
       {live !== "awaitingPayment" && can("backups") && (
         <section className="stack">
