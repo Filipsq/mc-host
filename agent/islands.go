@@ -155,6 +155,9 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
     have+="$(jq -r '([.id] + (.provides // [])) | join(" ")' <<<"$meta" 2>/dev/null) "
     need+="$(jq -r '(.depends // {}) | keys | join(" ")' <<<"$meta" 2>/dev/null) "
   done
+  # FTB's mods need FTB Library, but a jar whose fabric.mod.json jq can't read
+  # hides that (Better MC: certain_questing_additions only names ftbquests).
+  [[ "$have$need" =~ " "ftb(quests|teams|chunks|essentials)" " ]] && need+="ftblibrary "
   for lib in ` + strings.Join(packLibs, " ") + `; do
     [[ "$need" == *" $lib "* && "$have" != *" $lib "* ]] || continue
     case $lib in

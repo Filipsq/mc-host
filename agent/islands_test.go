@@ -200,7 +200,9 @@ func TestPackScriptAddsMissingLibraries(t *testing.T) {
 	}
 	jar("waystones.jar", `{"id": "waystones", "depends": {"balm-fabric": "*", "fabricloader": ">=0.14"}}`)
 	jar("bop.jar", `{"id": "biomesoplenty", "depends": {"terrablender": "*", "minecraft": "1.20.1"}}`)
-	jar("ftbquests.jar", `{"id": "ftbquests", "depends": {"ftblibrary": "*", "architectury": "*"}}`)
+	jar("questing.jar", `{"id": "certain_questing_additions", "depends": {"ftbquests": "*", "architectury": "*"}}`)
+	jar("ftbquests.jar", `{"id": "ftbquests", // not quite JSON
+	}`)
 	jar("arch.jar", `{"id": "architectury", "provides": ["architectury-api"]}`)
 	jar("forge-only.jar", "")
 
