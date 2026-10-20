@@ -51,6 +51,7 @@ type serverMetrics struct {
 	rcon       *rconConn // Java: kept open between samples; only the sampler uses it
 	// Java: /list was taken over by a plugin, so the sampler asks minecraft:list.
 	namespacedList bool
+	pregen         string // mod packs: "running" or "paused" as last told to Chunky, "" since the start
 }
 
 func (m *serverMetrics) listCmd() string {
@@ -159,7 +160,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		// Started again: its CPU counters, TPS command and players start over.
 		started, _ := time.Parse(time.RFC3339Nano, info.State.StartedAt)
 		m.startedAt, m.cpuTotal, m.cpuSystem, m.tpsCmd, m.tpsTried = info.State.StartedAt, 0, 0, -1, time.Time{}
-		m.logsSince, m.online, m.players, m.count, m.maxPlayers = started.Unix(), map[string]bool{}, nil, 0, 0
+		m.logsSince, m.online, m.players, m.count, m.maxPlayers, m.pregen = started.Unix(), map[string]bool{}, nil, 0, 0, ""
 		m.closeRCON()
 	}
 	m.mu.Unlock()
@@ -214,6 +215,9 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 				}
 			}
 			tps = javaTPS(run, m)
+			if ok && info.Config.Labels["mchost.pregen"] == "true" {
+				a.pregen(ctx, name, m, run, len(players))
+			}
 		}
 	}
 	if count < 0 {

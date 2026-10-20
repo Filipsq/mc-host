@@ -129,6 +129,9 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // The names come from Forge's own crash report, so only mods that really
 // can't load go. The image puts them back on every start, so the list in
 // .mchost-pack-removed is kept until the pack's version changes.
+//
+// Last, it adds Chunky, which the agent uses to generate the map ahead
+// (pregen.go): big packs build new chunks slowly while people play.
 var packScript = `#!/bin/bash
 for jar in mods/{` + strings.Join(packExcludes, ",") + `}*.jar; do
   [ -f "$jar" ] && rm -f "$jar" && echo "[mchost] removed $jar (a player-side mod that stops servers)"
@@ -148,6 +151,16 @@ fi
 tail -n +2 $list | while read -r jar; do
   [ -f "mods/$jar" ] && rm -f "mods/$jar" && echo "[mchost] removed mods/$jar (it needs a mod the pack doesn't have)"
 done
+if [ -d libraries/net/neoforged ]; then loader=neoforge; elif [ -d libraries/net/minecraftforge ]; then loader=forge; else loader=fabric; fi
+if [ -d mods ] && ! ls mods | grep -qi '^chunky' && command -v jq >/dev/null && command -v curl >/dev/null; then
+  read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/chunky/version?loaders=%5B%22$loader%22%5D&game_versions=%5B%22$VERSION%22%5D" |
+    jq -r '[.[0].files[] | select(.primary)][0] | .url + " " + .filename' 2>/dev/null)
+  if [ -n "$url" ] && curl -fsSL -o "mods/$file" "$url"; then
+    echo "[mchost] added mods/$file (generates the map ahead while nobody plays)"
+  else
+    [ -n "$file" ] && rm -f "mods/$file"
+  fi
+fi
 if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/neoforged ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
   have=" " need=" "
   for jar in mods/*.jar; do

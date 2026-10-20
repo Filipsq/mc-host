@@ -162,8 +162,13 @@ func TestPackScriptRemovesExcludedMods(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	bin := t.TempDir() // offline: the Chunky download fails and is skipped
+	if err := os.WriteFile(filepath.Join(bin, "curl"), []byte("#!/bin/sh\nexit 22\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	cmd := exec.Command("bash", "-c", packScript)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("%v: %s", err, out)
 	}
@@ -216,6 +221,7 @@ case $url in
   *maven-metadata.xml) echo '<versions><version>2001.2.9</version><version>2001.2.13</version><version>2101.1.0</version></versions>' ;;
   *api.modrinth.com/v2/project/balm/*) echo '[{"files":[{"primary":true,"url":"https://cdn/balm-fabric-1.20.1-7.3.44.jar","filename":"balm-fabric-1.20.1-7.3.44.jar"}]}]' ;;
   *api.modrinth.com/v2/project/terrablender/*) echo '[]' ;;
+  *api.modrinth.com/v2/project/chunky/*) echo '[{"files":[{"primary":true,"url":"https://cdn/Chunky-Fabric-1.3.146.jar","filename":"Chunky-Fabric-1.3.146.jar"}]}]' ;;
   *) echo jar >"$out" ;;
 esac
 `
@@ -230,7 +236,7 @@ esac
 	if err != nil {
 		t.Fatalf("%v: %s", err, out)
 	}
-	for _, name := range []string{"balm-fabric-1.20.1-7.3.44.jar", "ftb-library-fabric-2001.2.13.jar"} {
+	for _, name := range []string{"balm-fabric-1.20.1-7.3.44.jar", "ftb-library-fabric-2001.2.13.jar", "Chunky-Fabric-1.3.146.jar"} {
 		if _, err := os.Stat(filepath.Join(mods, name)); err != nil {
 			t.Errorf("%s not added: %s", name, out)
 		}
@@ -282,10 +288,15 @@ func TestPackScriptRemovesModsForgeCouldNotLoad(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "crash-reports", "crash-2026-10-20_06.26.21-fml.txt"), []byte(report), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// Offline: the Chunky download fails and is skipped.
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "curl"), []byte("#!/bin/sh\nexit 22\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	run := func(version string) string {
 		cmd := exec.Command("bash", "-c", packScript)
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), "MODRINTH_VERSION="+version)
+		cmd.Env = append(os.Environ(), "MODRINTH_VERSION="+version, "PATH="+bin+":"+os.Getenv("PATH"))
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("%v: %s", err, out)
