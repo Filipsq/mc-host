@@ -186,6 +186,14 @@ model Server {
   difficulty       String         @default("easy") // Terraria: the world's classic, expert, master or journey
   motd             String         @default("") // empty: the server's name
   pvp              Boolean        @default(true) // Java only
+  // Most players at once, picked by the owner; null: the plan's limit. Never above the plan's.
+  maxPlayers       Int?
+  // Java only: players may fly (on by default for mods, whose jetpacks and wings need it),
+  // one life, command blocks, and how far from spawn only operators may build.
+  allowFlight      Boolean        @default(false)
+  hardcore         Boolean        @default(false)
+  commandBlocks    Boolean        @default(false)
+  spawnProtection  Int            @default(16)
   whitelist        Boolean        @default(false)
   whitelistPlayers String[]       @default([])
   // Java on Paper only: false lets in players without a bought Minecraft ("non-premium"),

@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useState } from "react";
 import type { Edition } from "@prisma/client";
 import { saveSettingsAction } from "../../actions";
-import { DIFFICULTIES, GAME_MODES, MOTD_MAX, isDowngrade } from "@/lib/settings";
+import { DIFFICULTIES, GAME_MODES, MOTD_MAX, SPAWN_PROTECTION_MAX, isDowngrade } from "@/lib/settings";
 import { format, type Messages } from "@/i18n/messages";
 
 type Props = {
@@ -13,6 +13,7 @@ type Props = {
   versions: string[];
   versionNote?: string; // shown instead of the version picker when the version isn't up to the owner
   versionHint?: string; // replaces the usual hint under the version picker
+  playerLimit: number; // the most the plan allows
   nonPremium?: { offered: boolean; on: boolean }; // Java only; offered on Paper servers
   crossplay?: { offered: boolean; on: boolean; host: string; port: number }; // the same, with where Bedrock players join
   initial: {
@@ -21,13 +22,18 @@ type Props = {
     difficulty: string;
     motd: string;
     pvp: boolean;
+    maxPlayers: number;
+    allowFlight: boolean;
+    hardcore: boolean;
+    commandBlocks: boolean;
+    spawnProtection: number;
     whitelist: boolean;
     players: string;
   };
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, nonPremium, crossplay, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, playerLimit, nonPremium, crossplay, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
@@ -94,11 +100,43 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
         <input name="motd" defaultValue={initial.motd} maxLength={MOTD_MAX} placeholder={name} />
         <span className="muted small">{t.motdHint}</span>
       </label>
+      <label>
+        {t.maxPlayers}
+        <input name="maxPlayers" type="number" min={1} max={playerLimit} required defaultValue={initial.maxPlayers} />
+        <span className="muted small">{format(t.maxPlayersHint, { n: playerLimit })}</span>
+      </label>
       {java && (
         <label className="check">
           <input type="checkbox" name="pvp" defaultChecked={initial.pvp} />
           <span>{t.pvp}</span>
         </label>
+      )}
+      {java && (
+        <>
+          <label className="check">
+            <input type="checkbox" name="allowFlight" defaultChecked={initial.allowFlight} />
+            <span className="stack-tight">
+              <span>{t.allowFlight}</span>
+              <span className="muted small">{t.allowFlightHint}</span>
+            </span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="hardcore" defaultChecked={initial.hardcore} />
+            <span className="stack-tight">
+              <span>{t.hardcore}</span>
+              <span className="muted small">{t.hardcoreHint}</span>
+            </span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="commandBlocks" defaultChecked={initial.commandBlocks} />
+            <span>{t.commandBlocks}</span>
+          </label>
+          <label>
+            {t.spawnProtection}
+            <input name="spawnProtection" type="number" min={0} max={SPAWN_PROTECTION_MAX} required defaultValue={initial.spawnProtection} />
+            <span className="muted small">{t.spawnProtectionHint}</span>
+          </label>
+        </>
       )}
       {nonPremium?.offered && (
         <label className="check">

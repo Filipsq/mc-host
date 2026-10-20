@@ -42,6 +42,19 @@ export function versionsFor(kind: string): string[] {
 }
 
 export const MOTD_MAX = 60;
+export const SPAWN_PROTECTION_MAX = 64;
+export const ICON_SIZE = 64; // Minecraft shows only a 64×64 PNG
+// The most players an owner can pick on a plan with no player limit.
+export const PLAYERS_MAX = 1000;
+
+/** The most players the plan lets the owner pick. */
+export const playerLimit = (plan: { maxPlayers: number | null }) => plan.maxPlayers ?? PLAYERS_MAX;
+
+/** Players at once on the server: the owner's pick, never more than the plan's limit (0: no limit). */
+export function maxPlayersFor(server: { maxPlayers: number | null }, plan: { maxPlayers: number | null }) {
+  if (!server.maxPlayers) return plan.maxPlayers ?? 0;
+  return Math.min(server.maxPlayers, playerLimit(plan));
+}
 export const WHITELIST_MAX = 100;
 
 // Java profile names, or Xbox gamertags for Bedrock (letters in any script, digits, spaces).

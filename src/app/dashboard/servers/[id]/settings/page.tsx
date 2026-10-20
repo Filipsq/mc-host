@@ -5,11 +5,13 @@ import { getMessages } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
 import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { bedrockHost } from "@/lib/servers";
-import { versionsFor } from "@/lib/settings";
+import { maxPlayersFor, playerLimit, versionsFor } from "@/lib/settings";
+import { planById } from "@/lib/plans";
 import { isModLoader } from "@/lib/modpacks";
 import { kindLabel } from "@/lib/serverType";
 import { format } from "@/i18n/messages";
 import { isWorldDifficulty, isWorldSize } from "@/lib/terraria";
+import IconForm from "./IconForm";
 import SettingsForm from "./SettingsForm";
 import TerrariaSettingsForm from "./TerrariaSettingsForm";
 
@@ -83,6 +85,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         versions={versions}
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
+        playerLimit={playerLimit(planById(server.plan))}
         nonPremium={server.edition === "JAVA" ? { offered: canRunNonPremium(server), on: !server.onlineMode } : undefined}
         crossplay={
           server.edition === "JAVA"
@@ -95,11 +98,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           difficulty: server.difficulty,
           motd: server.motd,
           pvp: server.pvp,
+          maxPlayers: maxPlayersFor(server, planById(server.plan)) || playerLimit(planById(server.plan)),
+          allowFlight: server.allowFlight,
+          hardcore: server.hardcore,
+          commandBlocks: server.commandBlocks,
+          spawnProtection: server.spawnProtection,
           whitelist: server.whitelist,
           players: server.whitelistPlayers.join("\n"),
         }}
         t={t.settings}
       />
+      {server.edition === "JAVA" && <IconForm serverId={server.id} t={t.settings} />}
     </main>
   );
 }

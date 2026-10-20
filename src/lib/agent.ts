@@ -89,6 +89,10 @@ export type CreateServerSpec = {
   whitelistPlayers: string[];
   onlineMode: boolean; // false: non-premium (Java on Paper only)
   crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
+  allowFlight: boolean; // Java only
+  hardcore: boolean; // Java only
+  commandBlocks: boolean; // Java only
+  spawnProtection: number; // Java only: blocks around spawn only operators may change
   level: string; // the world folder it runs; empty for the image's default
   seed: string; // for a world it hasn't made yet
   levelType: string; // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria); empty if not chosen

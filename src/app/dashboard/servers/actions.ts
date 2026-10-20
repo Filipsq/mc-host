@@ -30,7 +30,10 @@ import {
   GAME_MODES,
   LOADER_VERSIONS,
   MOD_DEFAULT_VERSION,
+  ICON_SIZE,
   MOTD_MAX,
+  SPAWN_PROTECTION_MAX,
+  playerLimit,
   WHITELIST_MAX,
   isValidPlayerName,
   parsePlayers,
@@ -38,6 +41,7 @@ import {
 } from "@/lib/settings";
 import { activeLevel } from "@/lib/worlds";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
+import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
@@ -380,6 +384,11 @@ const settingsSchema = z.object({
   difficulty: z.enum(DIFFICULTIES),
   motd: z.string().trim(),
   pvp: z.literal("on").optional(),
+  maxPlayers: z.coerce.number().int().optional(),
+  allowFlight: z.literal("on").optional(),
+  hardcore: z.literal("on").optional(),
+  commandBlocks: z.literal("on").optional(),
+  spawnProtection: z.coerce.number().int().min(0).max(SPAWN_PROTECTION_MAX).optional(),
   whitelist: z.literal("on").optional(),
   players: z.string().default(""),
   nonPremium: z.literal("on").optional(),
@@ -399,6 +408,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   const offered = java ? versionsFor(server.kind) : [];
   const version = s.version && (offered.includes(s.version) || s.version === server.version) ? s.version : server.version;
   if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
+  const limit = playerLimit(planById(server.plan));
+  if (s.maxPlayers !== undefined && (s.maxPlayers < 1 || s.maxPlayers > limit)) return { error: "maxPlayersRange" };
   const players = parsePlayers(s.players);
   const bad = players.find((p) => !isValidPlayerName(server.edition, p));
   if (bad) return { error: "invalidPlayer", player: bad };
@@ -415,6 +426,12 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       difficulty: s.difficulty,
       motd: s.motd,
       pvp: java ? s.pvp === "on" : server.pvp,
+      // The plan's limit is kept as no pick, so a bigger plan raises it.
+      maxPlayers: s.maxPlayers === undefined || s.maxPlayers === limit ? null : s.maxPlayers,
+      allowFlight: java ? s.allowFlight === "on" : server.allowFlight,
+      hardcore: java ? s.hardcore === "on" : server.hardcore,
+      commandBlocks: java ? s.commandBlocks === "on" : server.commandBlocks,
+      spawnProtection: java ? (s.spawnProtection ?? server.spawnProtection) : server.spawnProtection,
       whitelist,
       whitelistPlayers: players,
       onlineMode: !(canRunNonPremium(server) && s.nonPremium === "on"),
@@ -434,6 +451,28 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   }
   revalidatePath(`/dashboard/servers/${id}`);
   redirect(`/dashboard/servers/${id}?settings=saved`);
+}
+
+export type IconState = { error?: "iconInvalid" | "applyFailed"; saved?: boolean };
+
+/** Saves the picture in the server list (the browser already made it a 64×64 PNG). */
+export async function saveIconAction(id: string, _: IconState, form: FormData): Promise<IconState> {
+  const server = await serverOrThrow(id, "settings");
+  const file = form.get("icon");
+  if (server.edition !== "JAVA" || !(file instanceof Blob) || file.size > 64 * 1024) return { error: "iconInvalid" };
+  const png = new Uint8Array(await file.arrayBuffer());
+  // The PNG signature, then the image header's width and height.
+  const view = new DataView(png.buffer);
+  const isPng = png.length > 24 && [0x89, 0x50, 0x4e, 0x47].every((b, i) => png[i] === b);
+  if (!isPng || view.getUint32(16) !== ICON_SIZE || view.getUint32(20) !== ICON_SIZE) return { error: "iconInvalid" };
+  if (!canChangeFiles(server)) return { error: "applyFailed" };
+  try {
+    await agent.writeFile(server.id, "server-icon.png", new Blob([png]).stream(), png.length);
+  } catch (err) {
+    console.error("save icon failed", server.id, err);
+    return { error: "applyFailed" };
+  }
+  return { saved: true };
 }
 
 const terrariaSettingsSchema = z.object({ motd: z.string().trim(), password: z.string().default("") });
