@@ -272,6 +272,8 @@ func TestPluginEnv(t *testing.T) {
 		{createRequest{}, "MODRINTH_PROJECTS=\n"}, // still set, so removed plugins are deleted
 		{createRequest{Plugins: []string{"luckperms", "hXiIvTyT"}}, "MODRINTH_PROJECTS=luckperms?,hXiIvTyT?\n"},
 		{createRequest{Kind: "skyblock", Plugins: []string{"luckperms"}}, "MODRINTH_PROJECTS=bentobox,bskyblock,luckperms?\n"},
+		// AuthMe from non-premium and from the owner's list: listed once, required.
+		{createRequest{OnlineMode: new(bool), Plugins: []string{"9js4IEHC", "luckperms"}}, "MODRINTH_PROJECTS=9js4IEHC,luckperms?\n"},
 	} {
 		env := envOf(tc.req)
 		if !strings.Contains(env, tc.want) || !strings.Contains(env, "MODRINTH_DOWNLOAD_DEPENDENCIES=required\n") {
