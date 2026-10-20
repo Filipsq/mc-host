@@ -3,6 +3,7 @@ import type { Server, ServerStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { heldMemoryMb, memoryLimitMb, overbook, salesLimitMb } from "@/lib/capacity";
+import { nodeById } from "@/lib/nodes";
 import { diskLimitMb } from "@/lib/disk";
 import { deletionDate, isTestPayment } from "@/lib/billing";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -142,6 +143,70 @@ export default async function AdminOverview() {
             />
           </div>
         )}
+        {stats && stats.machines.length > 1 && (
+          <div className="table-scroll card flush">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>{t.machine}</th>
+                  <th>{t.soldLabel}</th>
+                  <th>{t.hostMemory}</th>
+                  <th>{t.disk}</th>
+                  <th>{t.load}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.machines.map((m) => {
+                  const node = nodeById(m.id);
+                  const soldHere = servers.filter((s) => nodeById(s.node).id === m.id).reduce((sum, s) => sum + heldMemoryMb(s), 0);
+                  const limit = Math.floor(node.memoryLimitMb * overbook());
+                  const h = m.host;
+                  return (
+                    <tr key={m.id}>
+                      <td>
+                        <strong>{m.id}</strong>
+                        {node.arch && <span className="muted small"> · {node.arch === "arm64" ? "Arm" : "x86"}</span>}
+                        {h && <div className="muted small">{format(t.machineCores, { cpus: h.cpus, ram: f.gb(h.memoryTotalMb) })}</div>}
+                      </td>
+                      <td>
+                        <Cell
+                          value={limit > 0 ? format(t.machineOf, { used: f.gb(soldHere), total: f.gb(limit) }) : f.gb(soldHere)}
+                          share={limit > 0 ? soldHere / limit : undefined}
+                        />
+                      </td>
+                      {h ? (
+                        <>
+                          <td>
+                            <Cell
+                              value={format(t.machineOf, { used: f.gb(h.memoryTotalMb - h.memoryAvailableMb), total: f.gb(h.memoryTotalMb) })}
+                              share={1 - h.memoryAvailableMb / h.memoryTotalMb}
+                            />
+                          </td>
+                          <td>
+                            <Cell
+                              value={format(t.machineOf, { used: f.gb(h.diskTotalMb - h.diskFreeMb), total: f.gb(h.diskTotalMb) })}
+                              share={h.diskTotalMb > 0 ? 1 - h.diskFreeMb / h.diskTotalMb : undefined}
+                            />
+                          </td>
+                          <td>
+                            <Cell
+                              value={format(t.loadValue, { load: h.load.map(f.number).join(" · "), cpus: h.cpus })}
+                              share={h.load[1] / h.cpus}
+                            />
+                          </td>
+                        </>
+                      ) : (
+                        <td colSpan={3} className="over">
+                          {t.machineDown}
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="stack">
@@ -230,17 +295,30 @@ export default async function AdminOverview() {
 }
 
 function Tile({ label, value, hint, share, href }: { label: string; value: string; hint?: string; share?: number; href?: string }) {
-  const level = share === undefined ? "" : share >= 0.9 ? "high" : share >= 0.75 ? "mid" : "";
   return (
     <div className="card stat">
       <p className="stat-label">{href ? <Link href={href}>{label}</Link> : label}</p>
       <p className="stat-value">{value}</p>
-      {share !== undefined && (
-        <div className={`meter ${level}`} aria-hidden>
-          <span style={{ width: `${Math.min(100, Math.max(0, share * 100))}%` }} />
-        </div>
-      )}
+      {share !== undefined && <Meter share={share} />}
       {hint && <p className="muted small">{hint}</p>}
+    </div>
+  );
+}
+
+function Cell({ value, share }: { value: string; share?: number }) {
+  return (
+    <div className="machine-cell">
+      <span>{value}</span>
+      {share !== undefined && <Meter share={share} />}
+    </div>
+  );
+}
+
+function Meter({ share }: { share: number }) {
+  const level = share >= 0.9 ? "high" : share >= 0.75 ? "mid" : "";
+  return (
+    <div className={`meter ${level}`} aria-hidden>
+      <span style={{ width: `${Math.min(100, Math.max(0, share * 100))}%` }} />
     </div>
   );
 }
