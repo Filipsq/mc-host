@@ -122,11 +122,33 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // provides. Some packs don't list them for servers at all, so
 // MODRINTH_FORCE_INCLUDE_FILES can't bring them in (Better MC: TerraBlender,
 // Balm and FTB Library, the last of which isn't on Modrinth).
+//
+// On Forge it also takes out the mods Forge last refused to load because a mod
+// they require isn't installed: a pack can leave the required mod out
+// altogether (Better MC Forge has Twilight Cave Fix but no Twilight Forest).
+// The names come from Forge's own crash report, so only mods that really
+// can't load go. The image puts them back on every start, so the list in
+// .mchost-pack-removed is kept until the pack's version changes.
 var packScript = `#!/bin/bash
 for jar in mods/{` + strings.Join(packExcludes, ",") + `}*.jar; do
   [ -f "$jar" ] && rm -f "$jar" && echo "[mchost] removed $jar (a player-side mod that stops servers)"
 done
-if [ -d mods ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
+list=.mchost-pack-removed
+if [ ! -f $list ]; then
+  echo "version $MODRINTH_VERSION" >$list && touch -d @0 $list # crash reports from before count too
+elif [ "$(head -1 $list)" != "version $MODRINTH_VERSION" ]; then
+  echo "version $MODRINTH_VERSION" >$list
+fi
+if [ -d crash-reports ]; then
+  found=$(find crash-reports -name 'crash-*-fml.txt' -newer $list -exec awk '
+    /Mod File:/ { f = $0; sub(/.*Mod File:[ \t]*/, "", f); sub(/#.*/, "", f); sub(/.*\//, "", f) }
+    /Failure message:.* requires / { getline n; if (n ~ /is not installed/ && f != "") print f }' {} +)
+  [ -n "$found" ] && sort -u <(tail -n +2 $list) <(echo "$found") | { read -r v <$list; echo "$v"; cat; } >$list.new && mv $list.new $list
+fi
+tail -n +2 $list | while read -r jar; do
+  [ -f "mods/$jar" ] && rm -f "mods/$jar" && echo "[mchost] removed mods/$jar (it needs a mod the pack doesn't have)"
+done
+if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/neoforged ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
   have=" " need=" "
   for jar in mods/*.jar; do
     meta=$(unzip -p "$jar" fabric.mod.json 2>/dev/null) || continue
