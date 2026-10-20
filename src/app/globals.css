@@ -717,15 +717,21 @@ main.compare { max-width: 1080px; }
 }
 .console-bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a4656; }
 .console-bar span { margin-left: 8px; font-family: var(--font-mono); }
+.console-body { position: relative; height: 380px; }
 .console {
-  margin: 0; height: 380px; overflow: auto; padding: 14px 16px;
+  position: absolute; inset: 0; margin: 0; overflow: auto; padding: 14px 16px;
   background: #07090c; color: #cfe3c9; font: 13px/1.55 var(--font-mono);
   white-space: pre-wrap; word-break: break-word;
 }
 .command { flex-wrap: nowrap; }
 .command input { flex: 1; min-width: 0; font-family: var(--font-mono); }
 .console-layout { display: grid; gap: 16px; align-items: start; }
-@media (min-width: 900px) { .console-layout { grid-template-columns: minmax(0, 1fr) 280px; } }
+@media (min-width: 900px) {
+  .console-layout { grid-template-columns: minmax(0, 1fr) 280px; align-items: stretch; }
+  /* The log grows to end where the commands card ends. */
+  .console-main .console-frame { flex: 1; display: flex; flex-direction: column; }
+  .console-main .console-body { flex: 1; height: auto; min-height: 380px; }
+}
 .quick-commands { display: flex; flex-direction: column; gap: 16px; }
 .quick-commands h3 { margin: 0; font-size: 1rem; }
 .quick-group { display: flex; flex-direction: column; gap: 8px; }

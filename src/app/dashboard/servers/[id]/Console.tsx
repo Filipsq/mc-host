@@ -6,6 +6,9 @@ import type { Messages } from "@/i18n/messages";
 import { PLAYER_COMMANDS, WORLD_COMMANDS, cleanNick, type ConsoleGame } from "./quickCommands";
 
 const MAX_LINES = 500;
+// Colour codes some plugins print (often without the escape character), which a browser shows as "[0;39m".
+const ANSI = /\u001b?\[[0-9;]*m/g;
+const plain = (line: string) => line.replace(ANSI, "");
 
 export default function Console({ id, game, t }: { id: string; game: ConsoleGame; t: Messages["server"] }) {
   const [lines, setLines] = useState<string[]>([]);
@@ -19,7 +22,7 @@ export default function Console({ id, game, t }: { id: string; game: ConsoleGame
   useEffect(() => {
     const source = new EventSource(`/api/servers/${id}/console`);
     source.onmessage = (e) => {
-      setLines((prev) => [...prev, JSON.parse(e.data) as string].slice(-MAX_LINES));
+      setLines((prev) => [...prev, plain(JSON.parse(e.data) as string)].slice(-MAX_LINES));
     };
     // Each reconnect replays the last 200 lines, so start fresh instead of duplicating them.
     source.onopen = () => setLines([]);
@@ -41,7 +44,7 @@ export default function Console({ id, game, t }: { id: string; game: ConsoleGame
       setError(t.errors[res.error]);
       return false;
     }
-    if (res.output) setLines((prev) => [...prev, `> ${line}`, res.output!].slice(-MAX_LINES));
+    if (res.output) setLines((prev) => [...prev, `> ${line}`, plain(res.output!)].slice(-MAX_LINES));
     return true;
   }
 
@@ -65,14 +68,16 @@ export default function Console({ id, game, t }: { id: string; game: ConsoleGame
     <section className="stack">
       <h2>{t.console}</h2>
       <div className="console-layout">
-        <div className="stack">
+        <div className="stack console-main">
           <div className="console-frame">
             <div className="console-bar" aria-hidden>
               <i /><i /><i /><span>latest.log</span>
             </div>
-            <pre ref={logRef} className="console" aria-live="polite">
-              {lines.length ? lines.join("\n") : t.consoleEmpty}
-            </pre>
+            <div className="console-body">
+              <pre ref={logRef} className="console" aria-live="polite">
+                {lines.length ? lines.join("\n") : t.consoleEmpty}
+              </pre>
+            </div>
           </div>
           <form onSubmit={submit} className="row command">
             <input
