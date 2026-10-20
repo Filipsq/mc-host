@@ -693,6 +693,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 					"MODRINTH_EXCLUDE_FILES="+strings.Join(packExcludes, ","), "MODRINTH_FORCE_INCLUDE_FILES="+strings.Join(packIncludes, ","),
 					"PRE_START_SCRIPT="+packScriptPath)
 				entrypoint = packEntrypoint
+				labels["mchost.pregen"] = "true" // packScript adds Chunky; see pregen.go
 			}
 		case "fabric", "forge", "neoforge":
 			// The image installs the loader for the version; pluginEnv adds the mods.
