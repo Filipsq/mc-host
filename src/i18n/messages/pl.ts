@@ -511,6 +511,8 @@ const pl = {
     difficulties: { peaceful: "Pokojowy", easy: "Łatwy", normal: "Normalny", hard: "Trudny" },
     motd: "Opis na liście serwerów",
     motdHint: "Puste pole: nazwa serwera.",
+    maxPlayers: "Maksymalna liczba graczy naraz",
+    maxPlayersHint: "Najwięcej {n} na tym planie. Mniejsza liczba nie zmienia RAM-u serwera.",
     pvp: "Gracze mogą walczyć ze sobą (PvP)",
     whitelist: "Tylko gracze z listy mogą dołączyć",
     whitelistOn: "biała lista",
@@ -539,6 +541,7 @@ const pl = {
       invalidPassword: "Hasło może mieć do 32 znaków, bez spacji",
       whitelistEmpty: "Dopisz co najmniej jednego gracza albo wyłącz listę",
       invalidPlayer: "Niepoprawny nick: {player}",
+      maxPlayersRange: "Liczba graczy musi być od 1 do limitu planu",
       tooManyPlayers: "Lista może mieć najwyżej 100 graczy",
       applyFailed: "Zapisaliśmy ustawienia, ale nie udało się ich zastosować na serwerze. Spróbuj ponownie za chwilę.",
       worldTooNew:

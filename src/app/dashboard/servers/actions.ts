@@ -31,6 +31,7 @@ import {
   LOADER_VERSIONS,
   MOD_DEFAULT_VERSION,
   MOTD_MAX,
+  playerLimit,
   WHITELIST_MAX,
   isValidPlayerName,
   parsePlayers,
@@ -380,6 +381,7 @@ const settingsSchema = z.object({
   difficulty: z.enum(DIFFICULTIES),
   motd: z.string().trim(),
   pvp: z.literal("on").optional(),
+  maxPlayers: z.coerce.number().int().optional(),
   whitelist: z.literal("on").optional(),
   players: z.string().default(""),
   nonPremium: z.literal("on").optional(),
@@ -399,6 +401,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   const offered = java ? versionsFor(server.kind) : [];
   const version = s.version && (offered.includes(s.version) || s.version === server.version) ? s.version : server.version;
   if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
+  const limit = playerLimit(planById(server.plan));
+  if (s.maxPlayers !== undefined && (s.maxPlayers < 1 || s.maxPlayers > limit)) return { error: "maxPlayersRange" };
   const players = parsePlayers(s.players);
   const bad = players.find((p) => !isValidPlayerName(server.edition, p));
   if (bad) return { error: "invalidPlayer", player: bad };
@@ -415,6 +419,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       difficulty: s.difficulty,
       motd: s.motd,
       pvp: java ? s.pvp === "on" : server.pvp,
+      // The plan's limit is kept as no pick, so a bigger plan raises it.
+      maxPlayers: s.maxPlayers === undefined || s.maxPlayers === limit ? null : s.maxPlayers,
       whitelist,
       whitelistPlayers: players,
       onlineMode: !(canRunNonPremium(server) && s.nonPremium === "on"),

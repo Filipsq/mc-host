@@ -512,6 +512,8 @@ const en: Messages = {
     difficulties: { peaceful: "Peaceful", easy: "Easy", normal: "Normal", hard: "Hard" },
     motd: "Description in the server list",
     motdHint: "Leave empty to use the server's name.",
+    maxPlayers: "Most players at once",
+    maxPlayersHint: "At most {n} on this plan. A lower number doesn't change the server's RAM.",
     pvp: "Players can fight each other (PvP)",
     whitelist: "Only players on the list can join",
     whitelistOn: "whitelist",
@@ -540,6 +542,7 @@ const en: Messages = {
       invalidPassword: "The password can have up to 32 characters, no spaces",
       whitelistEmpty: "Add at least one player or turn the list off",
       invalidPlayer: "Invalid name: {player}",
+      maxPlayersRange: "The player count must be between 1 and the plan's limit",
       tooManyPlayers: "The list can have at most 100 players",
       applyFailed: "We saved the settings but couldn't apply them on the server. Try again in a moment.",
       worldTooNew:

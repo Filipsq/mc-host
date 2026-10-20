@@ -20,7 +20,7 @@ import { planById } from "./plans";
 import { TMOD_ARCH } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
-import { isPreYearVersion } from "./settings";
+import { isPreYearVersion, maxPlayersFor } from "./settings";
 
 export type LiveState =
   | "starting"
@@ -175,7 +175,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     memoryMb: plan.ramGb * 1024,
     cpus: plan.cpus,
     port: server.port!,
-    maxPlayers: plan.maxPlayers ?? 0,
+    maxPlayers: maxPlayersFor(server, plan),
     version: server.version,
     hostname: server.edition === "JAVA" ? javaHost(server) : "",
     password: server.edition === "TERRARIA" ? (server.serverPassword ?? "") : undefined,
