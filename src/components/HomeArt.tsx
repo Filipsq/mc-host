@@ -25,12 +25,16 @@ export function FeatureArt({ kind, art, domain, online, zero }: { kind: FeatureK
     case "editions":
       return (
         <div className="art art-editions" aria-hidden>
-          <span className="device d-java"><Monitor size={20} /><b>Java</b></span>
-          <svg className="links" viewBox="0 0 200 100" preserveAspectRatio="none">
-            <path d="M40 50 H85" /><path d="M115 50 H160" />
-          </svg>
-          <img className="art-server" src="/art/block-server.svg" alt="" width={46} height={52} />
-          <span className="device d-bedrock"><Smartphone size={18} /><Gamepad2 size={18} /><b>Bedrock</b></span>
+          {/* Both editions connect to the one server: a line from each chip up into it. */}
+          <div className="xplay">
+            <svg className="links" viewBox="0 0 240 120">
+              <path className="l-java" d="M38 84 C38 58 70 46 102 44" />
+              <path className="l-bedrock" d="M200 84 C200 58 170 46 138 44" />
+            </svg>
+            <img className="art-server" src="/art/block-server.svg" alt="" width={48} height={54} />
+            <span className="device d-java"><Monitor size={18} /><b>Java</b></span>
+            <span className="device d-bedrock"><Smartphone size={16} /><Gamepad2 size={16} /><b>Bedrock</b></span>
+          </div>
         </div>
       );
     case "sleep":
