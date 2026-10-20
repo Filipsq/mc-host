@@ -121,7 +121,17 @@ func pluginEnv(kind string, plugins []string, offline, crossplay bool) []string 
 	for _, p := range plugins {
 		projects = append(projects, p+"?")
 	}
-	env := []string{"MODRINTH_PROJECTS=" + strings.Join(projects, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
+	// The image refuses a project listed twice ("Duplicate key"), e.g. AuthMe from
+	// non-premium and from the owner's plugins; the first, required one stays.
+	seen := map[string]bool{}
+	unique := projects[:0]
+	for _, p := range projects {
+		if id := strings.TrimSuffix(p, "?"); !seen[id] {
+			seen[id] = true
+			unique = append(unique, p)
+		}
+	}
+	env := []string{"MODRINTH_PROJECTS=" + strings.Join(unique, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
 	if paperKinds[kind] {
 		// Always set on Paper, so turning crossplay off removes the two plugins (and only them).
 		var urls []string
