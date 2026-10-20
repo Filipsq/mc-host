@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Gift, MessageCircle, Plus, Shield } from "lucide-react";
+import { Gift, KeyRound, MessageCircle, Plus, Shield } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
@@ -45,7 +45,10 @@ export default async function DashboardPage({ searchParams }: Props) {
       <header className="page-head">
         <div>
           <h1>{t.title}</h1>
-          <p className="muted">{format(t.signedInAs, { email: session.user.email ?? "" })}</p>
+          <p className="muted">
+            {format(t.signedInAs, { email: session.user.email ?? "" })} ·{" "}
+            <Link href="/dashboard/haslo"><KeyRound size={14} aria-hidden /> {all.auth.changeTitle}</Link>
+          </p>
         </div>
         <div className="row">
           {admin && <Link className="button secondary" href="/admin"><Shield size={18} aria-hidden /> {all.admin.title}</Link>}

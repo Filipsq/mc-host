@@ -2,6 +2,7 @@
 
 import bcrypt from "bcryptjs";
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { AuthError } from "next-auth";
 import { db } from "@/lib/db";
@@ -12,11 +13,12 @@ import { format, type Messages } from "@/i18n/messages";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { buttonMail, sendMail } from "@/lib/mail";
-import { RESET_LINK_MINUTES, createResetToken, resetPassword } from "@/lib/passwordReset";
+import { RESET_LINK_MINUTES, changePassword, createResetToken, resetPassword } from "@/lib/passwordReset";
+import { getSession } from "@/lib/session";
 import { linkInvites } from "@/lib/access";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 import { PUSH_COOKIE } from "@/lib/pushEndpoint";
-import { RESETS_PER_IP, SIGNUPS_PER_IP, clientIp, hit, isLimited, loginLimited } from "@/lib/rateLimit";
+import { LOGIN_PER_EMAIL, RESETS_PER_IP, SIGNUPS_PER_IP, clientIp, hit, isLimited, loginLimited } from "@/lib/rateLimit";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
 
@@ -126,6 +128,27 @@ export async function setNewPassword(_: FormState, form: FormData): Promise<Form
 
   const email = await resetPassword(String(form.get("token") ?? ""), password);
   if (!email) return { error: "linkInvalid" };
+  await signIn("credentials", { email, password, redirectTo: "/dashboard?haslo=zmienione" });
+  return {};
+}
+
+/** "Change password" in the dashboard: the current password, then the new one twice. */
+export async function changePasswordAction(_: FormState, form: FormData): Promise<FormState> {
+  const session = await getSession();
+  const userId = session?.user?.id;
+  const email = session?.user?.email;
+  if (!userId || !email) redirect("/login");
+  const password = String(form.get("password") ?? "");
+  if (!credentialsSchema.shape.password.safeParse(password).success) return { error: "passwordTooShort" };
+  if (password !== form.get("confirm")) return { error: "passwordsDiffer" };
+  // Same limit as wrong passwords at sign-in, so a left-open session can't be used to guess it.
+  const key = `pwchange:${userId}`;
+  if (isLimited(key, LOGIN_PER_EMAIL.max, LOGIN_PER_EMAIL.windowMs)) return { error: "tooManyAttempts" };
+  if ((await changePassword(userId, String(form.get("current") ?? ""), password)) !== "ok") {
+    hit(key);
+    return { error: "wrongPassword" };
+  }
+  // Signs this device in again, so only the other devices are logged out.
   await signIn("credentials", { email, password, redirectTo: "/dashboard?haslo=zmienione" });
   return {};
 }

@@ -12,6 +12,7 @@ import { TMOD_ARCH } from "@/lib/terraria";
 import { stripeTestMode } from "@/lib/stripe";
 import { makeUpForTestPayment, untoldCustomers } from "@/lib/testPayments";
 import { getPreferences } from "@/i18n/server";
+import { createAdminResetLink } from "@/lib/passwordReset";
 
 export type GiftState = { error?: "invalid" | "free" | "soldOut" | "failed"; days?: number; date?: string };
 
@@ -107,4 +108,14 @@ export async function saveAnnouncementAction(_: AnnouncementState, form: FormDat
   if (!text) return { cleared: true };
   const sent = form.get("inGame") === "on" ? await sayOnAllServers(text) : undefined;
   return { saved: true, sent };
+}
+
+/** A one-time link to set a new password, for the admin to send the customer when the email doesn't arrive. */
+export async function resetLinkAdminAction(userId: string): Promise<{ url?: string; error?: "failed" }> {
+  await requireAdmin();
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true } });
+  if (!user) return { error: "failed" };
+  const url = await createAdminResetLink(user.id);
+  console.log(`[admin] password link created for ${user.email}`);
+  return { url };
 }

@@ -8,6 +8,9 @@ import { liveStates, machineStats } from "../../data";
 import { formats } from "../../format";
 import PaymentTable from "../../PaymentTable";
 import ServerTable from "../../ServerTable";
+import ResetLink from "./ResetLink";
+import { format } from "@/i18n/messages";
+import { ADMIN_LINK_HOURS } from "@/lib/passwordReset";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -64,6 +67,11 @@ export default async function AdminUser({ params }: Props) {
             </div>
           ))}
         </dl>
+      </section>
+      <section className="card stack">
+        <h3>{t.resetLink.title}</h3>
+        <p className="muted">{format(t.resetLink.hint, { hours: ADMIN_LINK_HOURS })}</p>
+        <ResetLink userId={user.id} t={t.resetLink} />
       </section>
       <section className="stack">
         <h3>{t.nav.servers}</h3>
