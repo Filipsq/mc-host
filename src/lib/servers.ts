@@ -12,7 +12,6 @@ import {
   setPeerRoutes,
   type AgentState,
   type CreateServerSpec,
-  type World,
 } from "./agent";
 import { getServerFor } from "./access";
 import { oversold, pickNode } from "./capacity";
@@ -210,13 +209,16 @@ export function agentSpec(server: Server): CreateServerSpec {
 
 /**
  * Whether `version` can't open the world `level` because Minecraft 26.1 or newer
- * saved it (the server would stop at once with "No key dimensions"). If the
- * agent can't say, it lets the change through.
+ * saved it (the server would stop at once with "No key dimensions"). A world not
+ * saved yet, or one the agent can't list, counts as too new while the server runs
+ * 26.1+: it saves the world as it stops, before the new version starts.
  */
-export async function worldTooNew(server: Pick<Server, "id" | "edition">, level: string, version: string) {
+export async function worldTooNew(server: Pick<Server, "id" | "edition" | "version" | "status">, level: string, version: string) {
   if (server.edition !== "JAVA" || !isPreYearVersion(version)) return false;
-  const { worlds } = await listWorlds(server.id, "JAVA").catch(() => ({ worlds: [] as World[] }));
-  return worlds.some((w) => w.name === level && w.newGame);
+  const listed = await listWorlds(server.id, "JAVA").catch(() => null);
+  const world = listed?.worlds.find((w) => w.name === level);
+  if (world) return !!world.newGame;
+  return !isPreYearVersion(server.version) && server.status === "RUNNING";
 }
 
 /** Whether the server is on the game host: paid for (or free) and not suspended. */
