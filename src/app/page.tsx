@@ -15,8 +15,8 @@ import PackCarousel from "@/components/PackCarousel";
 import CurseforgeTop from "@/components/CurseforgeTop";
 import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
-import { GAME_ICONS } from "@/components/gameIcons";
 import EditionIcon from "@/components/EditionIcon";
+import { FeatureArt, GameArt, StepArt } from "@/components/HomeArt";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
 import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
@@ -114,8 +114,8 @@ export default async function Home() {
               const Icon = featureIcons[key];
               return (
                 <li key={key} className={`feature feature-${key}`}>
-                  <span className="feature-icon"><Icon size={22} aria-hidden /></span>
-                  <h3>{h.features[key].title}</h3>
+                  <FeatureArt kind={key} art={h.art} domain={domain} online={t.server.live.online} zero={formatPrice(0, currency, locale)} />
+                  <h3><span className="feature-icon"><Icon size={18} aria-hidden /></span> {h.features[key].title}</h3>
                   <p className="muted">{format(h.features[key].text, { domain })}</p>
                 </li>
               );
@@ -132,6 +132,7 @@ export default async function Home() {
           <ol className="steps">
             {h.steps.map((step, i) => (
               <li key={step.title} className="step">
+                <StepArt step={i} art={h.art} signUp={t.nav.signUp} domain={domain} />
                 <span className="step-number">{i + 1}</span>
                 <h3>{step.title}</h3>
                 <p className="muted">{step.text}</p>
@@ -147,16 +148,19 @@ export default async function Home() {
             <h2 className="display">{h.gamesTitle}</h2>
             <p className="muted">{h.gamesSubtitle}</p>
           </header>
-          <ul className="feature-grid">
+          <ul className="game-grid">
             {GAMES.map((g) => {
-              const Icon = GAME_ICONS[g.id];
               const extras = gamePluginTitles(g.id);
               return (
                 <li key={g.id} className="feature game-card">
-                  <span className="feature-icon"><Icon size={22} aria-hidden /></span>
+                  <GameArt id={g.id} />
                   <h3>{t.server.games[g.id]}</h3>
-                  <p className="muted">{t.server.gameHints[g.id]}</p>
-                  {extras.length > 0 && <p className="muted small">{format(t.server.withPlugins, { list: extras.join(", ") })}</p>}
+                  <p className="muted">{h.gameShort[g.id]}</p>
+                  {extras.length > 0 && (
+                    <ul className="plugin-chips" aria-label={t.server.withPlugins.split(":")[0]}>
+                      {extras.map((name) => <li key={name}>{name}</li>)}
+                    </ul>
+                  )}
                   <span className="ram-pill">{format(t.server.ramFrom, { gb: g.ramGb })}</span>
                 </li>
               );

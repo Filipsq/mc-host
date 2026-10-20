@@ -25,6 +25,10 @@ const P = {
   server: ["#1f252d", "#232a33", "#1b2027"],
   diamond: ["#4dd0e1", "#80deea"],
   led: ["#5bc236", "#4dd0e1", "#f2c14e"],
+  planks: ["#b8894f", "#a87a44", "#c29458"],
+  cobble: ["#8a8f95", "#6b7076", "#9aa0a6", "#5c6066"],
+  nether: ["#7a2a2a", "#8c3232", "#6a2222", "#9a3b36"],
+  brass: ["#d9a441", "#c8922f", "#e6b65a", "#b07e26"],
 };
 
 const shade = { top: 1, left: 0.86, right: 0.7 };
@@ -66,6 +70,16 @@ function pixel(type, face, i, j, r) {
       return pick(P.log);
     case "leaves":
       return r() < 0.12 ? "#1f5a22" : pick(P.leaves);
+    case "planks":
+      // Boards run across, with a darker seam every other row.
+      return j % 2 === 1 && i % 2 === 0 ? "#8d6537" : pick(P.planks);
+    case "cobble":
+      return pick(P.cobble);
+    case "nether":
+      return pick(P.nether);
+    case "brass":
+      if (face !== "top" && (i === 0 || i === N - 1 || j === 0 || j === N - 1)) return "#8a6420";
+      return pick(P.brass);
     case "server":
       // Side faces look like rack units: a column of status lights and dark vent slots.
       if (face === "top") return j % 2 ? "#14181d" : pick(P.server);
@@ -178,6 +192,96 @@ function pixelArt(rows, colors) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${rows[0].length} ${rows.length}" shape-rendering="crispEdges">${rects}</svg>`;
 }
 
+// Little scenes for the ready-game cards on the home page.
+function plot(n, top = "grass", under = "dirt") {
+  const b = [];
+  for (let x = 0; x < n; x++) for (let y = 0; y < n; y++) b.push({ x, y, z: 1, type: top }, { x, y, z: 0, type: under });
+  return b;
+}
+function tree(x, y, z, b) {
+  for (let k = 0; k < 3; k++) b.push({ x, y, z: z + k, type: "log" });
+  for (let dx = -1; dx <= 1; dx++)
+    for (let dy = -1; dy <= 1; dy++) {
+      if (dx || dy) b.push({ x: x + dx, y: y + dy, z: z + 2, type: "leaves" });
+      if (!dx || !dy) b.push({ x: x + dx, y: y + dy, z: z + 3, type: "leaves" });
+    }
+}
+const GAME_SCENES = {
+  survival() {
+    const b = plot(3);
+    b.push({ x: 0, y: 0, z: 2, type: "stone" }, { x: 0, y: 0, z: 3, type: "stone" }, { x: 1, y: 0, z: 2, type: "ore" }, { x: 0, y: 1, z: 2, type: "stone" });
+    b.push({ x: 2, y: 0, z: 2, type: "log" }, { x: 2, y: 0, z: 3, type: "leaves" }, { x: 0, y: 2, z: 2, type: "leaves" });
+    return b;
+  },
+  "survival-plus"() {
+    const b = plot(3);
+    for (let x = 0; x < 2; x++)
+      for (let y = 0; y < 2; y++) {
+        b.push({ x, y, z: 2, type: "cobble" }, { x, y, z: 3, type: "planks" });
+      }
+    b.push({ x: 0, y: 0, z: 4, type: "planks" }, { x: 2, y: 2, z: 2, type: "log" });
+    return b;
+  },
+  lifesteal() {
+    const b = plot(3, "nether", "nether");
+    b.push({ x: 1, y: 1, z: 2, type: "nether" }, { x: 1, y: 1, z: 3, type: "nether" }, { x: 0, y: 2, z: 2, type: "stone" });
+    return b;
+  },
+  skyblock() {
+    const b = plot(3).filter((k) => !(k.x === 2 && k.y === 2));
+    b.push({ x: 1, y: 1, z: -1, type: "stone" }, { x: 0, y: 1, z: -1, type: "dirt" }, { x: 1, y: 0, z: -1, type: "dirt" }, { x: 1, y: 1, z: -2, type: "stone" });
+    tree(0, 0, 2, b);
+    return b;
+  },
+  modpack() {
+    const b = plot(3, "stone", "deep");
+    b.push({ x: 0, y: 0, z: 2, type: "brass" }, { x: 1, y: 0, z: 2, type: "brass" }, { x: 0, y: 1, z: 2, type: "brass" }, { x: 0, y: 0, z: 3, type: "brass" }, { x: 2, y: 2, z: 2, type: "server" });
+    return b;
+  },
+  mods() {
+    const b = plot(3);
+    b.push({ x: 1, y: 1, z: 2, type: "planks" }, { x: 0, y: 2, z: 2, type: "cobble" }, { x: 2, y: 0, z: 2, type: "log" });
+    return b;
+  },
+};
+
+// Pixel badges that float over some scenes.
+const HEART = [
+  ".OO...OO.",
+  "ORRO.ORRO",
+  "ORWRORRRO",
+  "ORRRRRRRO",
+  ".ORRRRRO.",
+  "..ORRRO..",
+  "...ORO...",
+  "....O....",
+];
+const GEAR = [
+  "....OO....",
+  ".OO.YY.OO.",
+  ".OYYYYYYO.",
+  "..YYOOYY..",
+  "OYYO..OYYO",
+  "OYYO..OYYO",
+  "..YYOOYY..",
+  ".OYYYYYYO.",
+  ".OO.YY.OO.",
+  "....OO....",
+];
+const WRENCH = [
+  "......O.O.",
+  ".....OWOWO",
+  ".....OWWWO",
+  "....OWWWO.",
+  "...OWWO...",
+  "..OWWO....",
+  ".OWWO.....",
+  "OWWO......",
+  "OWO.......",
+  ".O........",
+];
+const BADGE_COLORS = { O: "#1b2430", R: "#e5484d", W: "#e6f1f5", Y: "#d9a441" };
+
 const dir = new URL("../public/art/", import.meta.url);
 fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(new URL("island.svg", dir), svg(render(island(), 11), 4));
@@ -185,5 +289,12 @@ fs.writeFileSync(new URL("block-grass.svg", dir), svg(render([{ x: 0, y: 0, z: 0
 fs.writeFileSync(new URL("block-stone.svg", dir), svg(render([{ x: 0, y: 0, z: 0, type: "deep" }], 5), 1));
 fs.writeFileSync(new URL("block-server.svg", dir), svg(render([{ x: 0, y: 0, z: 0, type: "server" }], 5), 1));
 fs.writeFileSync(new URL("sword.svg", dir), pixelArt(SWORD, SWORD_COLORS));
+fs.mkdirSync(new URL("games/", dir), { recursive: true });
+for (const [id, scene] of Object.entries(GAME_SCENES)) fs.writeFileSync(new URL(`games/${id}.svg`, dir), svg(render(scene(), 21), 2));
+// OneBlock's one block changes: the card fades between these.
+for (const type of ["grass", "stone", "log", "ore"]) fs.writeFileSync(new URL(`games/oneblock-${type}.svg`, dir), svg(render([{ x: 0, y: 0, z: 0, type }], 9), 1));
+fs.writeFileSync(new URL("heart.svg", dir), pixelArt(HEART, BADGE_COLORS));
+fs.writeFileSync(new URL("gear.svg", dir), pixelArt(GEAR, BADGE_COLORS));
+fs.writeFileSync(new URL("wrench.svg", dir), pixelArt(WRENCH, BADGE_COLORS));
 fs.copyFileSync(new URL("block-grass.svg", dir), new URL("../src/app/icon.svg", import.meta.url));
 console.log("wrote", fs.readdirSync(dir).join(", "));
