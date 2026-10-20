@@ -48,8 +48,10 @@ type worldInfo struct {
 // newer. 26.1 moved the world's seed and dimensions out of level.dat (into
 // data/minecraft/world_gen_settings.dat) and its dimensions into dimensions/,
 // so 1.21.11 and older can't open it at all ("No key dimensions in MapLike").
+// It also keeps players in players/ (older versions use playerdata/), and
+// 1.21.11 stops at start on that folder even when the world has no level.dat.
 func (s *serverFiles) savedByNewGame(dir string) bool {
-	for _, p := range []string{dir + "/data/minecraft/world_gen_settings.dat", dir + "/dimensions/minecraft/overworld"} {
+	for _, p := range []string{dir + "/data/minecraft/world_gen_settings.dat", dir + "/dimensions/minecraft/overworld", dir + "/players"} {
 		if _, err := s.root.Lstat(p); err == nil {
 			return true
 		}
@@ -101,6 +103,12 @@ func (s *serverFiles) isWorld(dir string) bool {
 	return err == nil && fi.Mode().IsRegular()
 }
 
+// isDir reports whether the path is a folder.
+func (s *serverFiles) isDir(dir string) bool {
+	fi, err := s.root.Lstat(dir)
+	return err == nil && fi.IsDir()
+}
+
 // size adds up the files in a folder; 0 if it isn't there.
 func (s *serverFiles) size(dir string) int64 {
 	var total int64
@@ -134,7 +142,9 @@ func (s *serverFiles) worlds(bedrock bool) ([]worldInfo, error) {
 	}
 	found := map[string]bool{}
 	for _, n := range names {
-		if validWorldName.MatchString(n) && s.isWorld(path.Join(dir, n)) {
+		// A folder 26.1+ left without a level.dat still stops 1.21.11, so it is
+		// listed too and the version guard sees it.
+		if validWorldName.MatchString(n) && (s.isWorld(path.Join(dir, n)) || !bedrock && s.isDir(n) && s.savedByNewGame(n)) {
 			found[n] = true
 		}
 	}
