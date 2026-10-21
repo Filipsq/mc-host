@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
-import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
+import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { bedrockHost } from "@/lib/servers";
 import { maxPlayersFor, playerLimit, versionsFor } from "@/lib/settings";
 import { planById } from "@/lib/plans";
@@ -86,7 +86,15 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
         playerLimit={playerLimit(planById(server.plan))}
-        nonPremium={server.edition === "JAVA" ? { offered: canRunNonPremium(server), on: !server.onlineMode } : undefined}
+        nonPremium={
+          server.edition === "JAVA"
+            ? {
+                offered: canRunNonPremium(server),
+                on: !server.onlineMode,
+                ...(isModLoader(server.kind) && { versions: LOGIN_MODS[server.kind].versions }),
+              }
+            : undefined
+        }
         crossplay={
           server.edition === "JAVA"
             ? { offered: canCrossplay(server), on: server.crossplay, host: bedrockHost(server), port: server.port ?? 0 }

@@ -613,9 +613,11 @@ const pl = {
     opHint: "Uprawnienia operatora (OP) nadasz w konsoli komendą: op nick",
     nonPremium: "Non-premium: wpuszczaj graczy bez kupionego Minecrafta",
     nonPremiumHint:
-      "Przy pierwszym wejściu każdy gracz ustawi hasło komendą /register, a potem loguje się przez /login (plugin AuthMe), więc nikt nie zagra pod cudzym nickiem. Po zmianie trybu gracze zaczynają z pustym ekwipunkiem, bo zmieniają się ich identyfikatory. Świat zostaje.",
+      "Przy pierwszym wejściu każdy gracz ustawi hasło komendą /register, a potem loguje się przez /login, więc nikt nie zagra pod cudzym nickiem. Po zmianie trybu gracze zaczynają z pustym ekwipunkiem, bo zmieniają się ich identyfikatory. Świat zostaje.",
     nonPremiumPaperOnly:
-      "Non-premium działa na serwerach bez modów. Serwer z modami nie ma logowania hasłem, więc ktoś mógłby wejść pod cudzym nickiem.",
+      "Non-premium nie działa na paczkach modów: nie mają logowania hasłem, więc ktoś mógłby wejść pod cudzym nickiem. Działa na serwerach bez modów i na Własnych modach (Fabric, Forge, NeoForge) w niektórych wersjach.",
+    nonPremiumModVersions:
+      "Non-premium działa na tym silniku tylko w wersjach Minecrafta: {versions}. Tylko tam jest sprawdzony mod z logowaniem hasłem; bez niego ktoś mógłby wejść pod cudzym nickiem.",
     nonPremiumOn: "non-premium",
     crossplay: "Crossplay: wpuszczaj też graczy z telefonów i konsol (Bedrock)",
     crossplayHint:
@@ -1376,7 +1378,7 @@ const pl = {
       bigPacks: "Better MC i Prominence II potrzebują 8 GB, czyli planu Pro.",
       tooBig: "To więcej, niż ma nasz największy plan. Weź Pro i napisz do nas na czacie.",
       noCrossplay: "Crossplay z telefonami działa tylko na serwerze bez modów.",
-      noNonPremium: "Gracze bez premium mogą wejść tylko na serwer bez modów.",
+      noNonPremium: "Gracze bez premium nie wejdą na paczkę modów. Mogą na serwer bez modów albo na Własne mody w niektórych wersjach.",
       group: "Przy 6 i więcej graczach naraz polecamy co najmniej plan {plan}, żeby serwer nie lagował.",
       addonsPaid: "Dodatki są w płatnych planach, więc polecamy co najmniej Starter.",
     },

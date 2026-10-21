@@ -274,6 +274,10 @@ func TestPluginEnv(t *testing.T) {
 		{createRequest{Kind: "skyblock", Plugins: []string{"luckperms"}}, "MODRINTH_PROJECTS=bentobox,bskyblock,luckperms?\n"},
 		// AuthMe from non-premium and from the owner's list: listed once, required.
 		{createRequest{OnlineMode: new(bool), Plugins: []string{"9js4IEHC", "luckperms"}}, "MODRINTH_PROJECTS=9js4IEHC,luckperms?\n"},
+		// Non-premium mod servers get their loader's login mod.
+		{createRequest{Kind: "fabric", Version: "1.21.1", OnlineMode: new(bool), Plugins: []string{"AANobbMI"}}, "MODRINTH_PROJECTS=aZj58GfX,AANobbMI?\n"},
+		{createRequest{Kind: "forge", Version: "1.21.1", OnlineMode: new(bool)}, "MODRINTH_PROJECTS=VYmP7iH5\n"},
+		{createRequest{Kind: "neoforge", Version: "1.21.11", OnlineMode: new(bool)}, "MODRINTH_PROJECTS=VYmP7iH5\n"},
 	} {
 		env := envOf(tc.req)
 		if !strings.Contains(env, tc.want) || !strings.Contains(env, "MODRINTH_DOWNLOAD_DEPENDENCIES=required\n") {

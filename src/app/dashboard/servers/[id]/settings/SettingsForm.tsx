@@ -14,7 +14,8 @@ type Props = {
   versionNote?: string; // shown instead of the version picker when the version isn't up to the owner
   versionHint?: string; // replaces the usual hint under the version picker
   playerLimit: number; // the most the plan allows
-  nonPremium?: { offered: boolean; on: boolean }; // Java only; offered on Paper servers
+  // Java only; offered on Paper servers, and on mod loaders only on the versions their login mod runs on
+  nonPremium?: { offered: boolean; on: boolean; versions?: readonly string[] };
   crossplay?: { offered: boolean; on: boolean; host: string; port: number }; // the same, with where Bedrock players join
   initial: {
     version: string;
@@ -38,6 +39,7 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
   const java = edition === "JAVA";
+  const nonPremiumOffered = nonPremium?.versions ? nonPremium.versions.includes(version) : nonPremium?.offered;
   const label = (v: string) => (v === "LATEST" ? t.latest : v);
 
   return (
@@ -138,7 +140,7 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
           </label>
         </>
       )}
-      {nonPremium?.offered && (
+      {nonPremium && nonPremiumOffered && (
         <label className="check">
           <input type="checkbox" name="nonPremium" defaultChecked={nonPremium.on} />
           <span className="stack-tight">
@@ -147,7 +149,13 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
           </span>
         </label>
       )}
-      {nonPremium && !nonPremium.offered && <p className="muted small">{t.nonPremiumPaperOnly}</p>}
+      {nonPremium && !nonPremiumOffered && (
+        <p className="muted small">
+          {nonPremium.versions?.length
+            ? format(t.nonPremiumModVersions, { versions: nonPremium.versions.join(", ") })
+            : t.nonPremiumPaperOnly}
+        </p>
+      )}
       {crossplay?.offered && (
         <label className="check">
           <input type="checkbox" name="crossplay" defaultChecked={crossplay.on} />

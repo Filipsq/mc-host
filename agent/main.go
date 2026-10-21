@@ -70,7 +70,7 @@ var (
 	loaderTypes = map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"}
 	// The plugins (from Modrinth) each game mode needs on Paper.
 	gameModePlugins = map[string]string{"skyblock": "bentobox,bskyblock", "oneblock": "bentobox,aoneblock"}
-	// Kinds that run on Paper, so they take plugins; only these may run non-premium.
+	// Kinds that run on Paper, so they take plugins (AuthMe among them, for non-premium).
 	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "oneblock": true}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
@@ -98,21 +98,21 @@ const viaVersion = "viaversion"
 const geyserPort = "19132/udp"
 
 // pluginEnv has the image install a Paper server's plugins, or a mod loader's
-// mods, from Modrinth: the game mode's own, the login plugin a non-premium
-// server needs, then the owner's. The owner's are optional, so one without a
+// mods, from Modrinth: the game mode's own, the login plugin or mod a
+// non-premium server needs (loginAddon), then the owner's. The owner's are optional, so one without a
 // build for the server's version is skipped (with a warning in the console)
 // instead of keeping the server down, and doesn't hold back the version a game
 // mode picks; the login plugin isn't, so a non-premium server never runs
 // without it. Crossplay adds Geyser and Floodgate. The lists are always set,
 // even empty, because the image removes the plugins and mods it installed
 // that are no longer listed.
-func pluginEnv(kind string, plugins []string, offline, crossplay bool) []string {
+func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) []string {
 	var projects []string
 	if base := gameModePlugins[kind]; base != "" {
 		projects = strings.Split(base, ",")
 	}
 	if offline {
-		projects = append(projects, authMe)
+		projects = append(projects, loginAddon(kind, version))
 	}
 	if crossplay {
 		// Optional: a server already on the newest version doesn't need it.
@@ -452,8 +452,8 @@ func (req *createRequest) validate() error {
 		levelTypes = bedrockLevelTypes
 	}
 	switch {
-	case req.OnlineMode != nil && !*req.OnlineMode && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
-		return errors.New("only Java servers on Paper can run non-premium")
+	case req.offline() && (req.Edition != "JAVA" || loginAddon(req.Kind, req.Version) == ""):
+		return errors.New("non-premium needs a login addon: Paper, or a mod loader on a version its login mod runs on")
 	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run crossplay")
 	case req.Level != "" && !validWorldName.MatchString(req.Level):
@@ -621,7 +621,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 		return err
 	}
 	if req.offline() {
-		a.prepareLogin(ctx, req.ID)
+		a.prepareLogin(ctx, req.ID, loginAddon(req.Kind, req.Version))
 	}
 	if req.Edition == "JAVA" {
 		a.prepareIslands(ctx, req.ID, req.Kind)
@@ -727,7 +727,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}
 		if req.Kind != "modpack" {
-			env = append(env, pluginEnv(req.Kind, req.Plugins, req.offline(), req.Crossplay)...)
+			env = append(env, pluginEnv(req.Kind, req.Version, req.Plugins, req.offline(), req.Crossplay)...)
 		}
 		// Always set: the image only writes the properties it's given, so going back
 		// from non-premium has to say so.
