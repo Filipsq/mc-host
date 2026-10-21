@@ -8,6 +8,8 @@ export const GAMES = [
   { id: "survival", kind: "vanilla", plugins: [], ramGb: 2 },
   { id: "survival-plus", kind: "vanilla", plugins: ["essentialsx", "luckperms", "coreprotect", "griefprevention"], ramGb: 3 },
   { id: "lifesteal", kind: "vanilla", plugins: ["lifestealz"], ramGb: 3 },
+  // Classic Skyblock: one shared map with a starting island and a sand island (agent/skymap.go).
+  { id: "skymap", kind: "skymap", plugins: [], ramGb: 2 },
   { id: "skyblock", kind: "skyblock", plugins: ["level", "challenges-for-bentobox", "warps-for-bentobox"], ramGb: 2 },
   { id: "oneblock", kind: "oneblock", plugins: ["level", "challenges-for-bentobox", "warps-for-bentobox"], ramGb: 2 },
   { id: "modpack", kind: "modpack", plugins: [], ramGb: 3 },

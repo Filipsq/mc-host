@@ -62,16 +62,16 @@ func imageFor(edition, version, kind string) string {
 	return images["JAVA"]
 }
 
-// What a Java server runs: plain Paper, a BentoBox game mode, a Modrinth mod
+// What a Java server runs: plain Paper, a BentoBox game mode, classic Skyblock (skymap.go), a Modrinth mod
 // pack, or a mod loader with the mods its owner picked.
 var (
-	kinds = map[string]bool{"vanilla": true, "skyblock": true, "oneblock": true, "modpack": true, "fabric": true, "forge": true, "neoforge": true}
+	kinds = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "oneblock": true, "modpack": true, "fabric": true, "forge": true, "neoforge": true}
 	// The image's TYPE for each mod loader.
 	loaderTypes = map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"}
 	// The plugins (from Modrinth) each game mode needs on Paper.
 	gameModePlugins = map[string]string{"skyblock": "bentobox,bskyblock", "oneblock": "bentobox,aoneblock"}
 	// Kinds that run on Paper, so they take plugins; only these may run non-premium.
-	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "oneblock": true}
+	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "oneblock": true}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
 	validCurseFile  = regexp.MustCompile(`^[0-9]{1,12}$`)         // CurseForge file ID
@@ -415,7 +415,7 @@ func (req *createRequest) validate() error {
 	}
 	switch {
 	case !kinds[req.Kind] || (req.Kind != "vanilla" && req.Edition != "JAVA"):
-		return errors.New("kind must be vanilla, skyblock, oneblock, modpack, fabric, forge or neoforge (Java only)")
+		return errors.New("kind must be vanilla, skyblock, skymap, oneblock, modpack, fabric, forge or neoforge (Java only)")
 	case req.Kind == "modpack" && req.ModpackSource == "curseforge" && (!validModpack.MatchString(req.Modpack) || !validCurseFile.MatchString(req.ModpackVersion)):
 		return errors.New("a CurseForge modpack server needs the pack's slug and a file ID as modpackVersion")
 	case req.Kind == "modpack" && req.ModpackSource != "curseforge" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
@@ -701,6 +701,10 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			// The image picks the newest Minecraft version all the game mode's plugins support.
 			env = append(env, "TYPE=PAPER", "VERSION_FROM_MODRINTH_PROJECTS=TRUE", "PRE_START_SCRIPT="+addonsScriptPath)
 			entrypoint = islandsEntrypoint // puts the game mode where BentoBox loads it
+		case "skymap":
+			// Classic Skyblock: an empty world, where the agent builds the islands (skymap.go).
+			env = append(env, "TYPE=PAPER", "VERSION="+req.Version, "LEVEL_TYPE=flat", "GENERATOR_SETTINGS="+skyMapGenerator)
+			labels["mchost.skymap"] = "true"
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
 			if req.ModpackSource == "curseforge" {
@@ -740,7 +744,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		if req.Seed != "" {
 			env = append(env, "SEED="+req.Seed)
 		}
-		if req.LevelType != "" {
+		if req.LevelType != "" && req.Kind != "skymap" {
 			env = append(env, "LEVEL_TYPE="+javaLevelTypes[req.LevelType])
 		}
 		// Java starts with a small heap and grows it only as far as the players

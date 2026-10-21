@@ -23,9 +23,9 @@ export const GAME_MODE_PLUGINS: Record<string, { slug: string; title: string }[]
   ],
 };
 
-/** Plugins run on Paper: plain Java servers and the island game modes. */
+/** Plugins run on Paper: plain Java servers, classic Skyblock and the island game modes. */
 export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) =>
-  s.edition === "JAVA" && ["vanilla", "skyblock", "oneblock"].includes(s.kind);
+  s.edition === "JAVA" && ["vanilla", "skymap", "skyblock", "oneblock"].includes(s.kind);
 
 /** Non-premium needs the AuthMe login plugin, so only Paper servers can run it. */
 export const canRunNonPremium = supportsPlugins;

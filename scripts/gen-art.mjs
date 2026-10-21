@@ -29,6 +29,8 @@ const P = {
   cobble: ["#8a8f95", "#6b7076", "#9aa0a6", "#5c6066"],
   nether: ["#7a2a2a", "#8c3232", "#6a2222", "#9a3b36"],
   brass: ["#d9a441", "#c8922f", "#e6b65a", "#b07e26"],
+  sand: ["#dbcf8e", "#e3d89b", "#d2c47f", "#e8dfa8"],
+  cactus: ["#3f8f3a", "#357e31", "#4a9c43"],
 };
 
 const shade = { top: 1, left: 0.86, right: 0.7 };
@@ -77,6 +79,12 @@ function pixel(type, face, i, j, r) {
       return pick(P.cobble);
     case "nether":
       return pick(P.nether);
+    case "sand":
+      return pick(P.sand);
+    case "cactus":
+      // Pale spines in a grid on the sides.
+      if (face !== "top" && i % 2 === 1 && j % 2 === 0) return "#c9d98a";
+      return pick(P.cactus);
     case "brass":
       if (face !== "top" && (i === 0 || i === N - 1 || j === 0 || j === N - 1)) return "#8a6420";
       return pick(P.brass);
@@ -225,6 +233,14 @@ const GAME_SCENES = {
   lifesteal() {
     const b = plot(3, "nether", "nether");
     b.push({ x: 1, y: 1, z: 2, type: "nether" }, { x: 1, y: 1, z: 3, type: "nether" }, { x: 0, y: 2, z: 2, type: "stone" });
+    return b;
+  },
+  // Classic map: the L-shaped starting island with its tree, and the sand island with a cactus further off.
+  skymap() {
+    const b = plot(3).filter((k) => !(k.x === 2 && k.y >= 1));
+    tree(0, 0, 2, b);
+    b.push({ x: 4, y: -2, z: 0, type: "sand" }, { x: 5, y: -2, z: 0, type: "sand" }, { x: 4, y: -1, z: 0, type: "sand" }, { x: 5, y: -1, z: 0, type: "sand" });
+    b.push({ x: 4, y: -2, z: 1, type: "cactus" }, { x: 4, y: -2, z: 2, type: "cactus" });
     return b;
   },
   skyblock() {
