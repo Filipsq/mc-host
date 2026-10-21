@@ -214,7 +214,7 @@ model Server {
   level            String?
   levelSeed        String?
   levelType        String?
-  // What the server runs: on Java vanilla (Paper), skyblock, oneblock, modpack, fabric, forge or neoforge
+  // What the server runs: on Java vanilla (Paper), skyblock, skymap, oneblock, modpack, fabric, forge or neoforge
   // (src/lib/modpacks.ts); on Terraria vanilla, tshock or tmodloader (src/lib/terraria.ts).
   kind             String         @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.

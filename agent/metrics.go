@@ -52,6 +52,8 @@ type serverMetrics struct {
 	// Java: /list was taken over by a plugin, so the sampler asks minecraft:list.
 	namespacedList bool
 	pregen         string // mod packs: "running" or "paused" as last told to Chunky, "" since the start
+	skyMap         bool   // classic Skyblock: the islands are there (or the world wasn't empty); see skymap.go
+	skyMapBuilding bool   // classic Skyblock: the world was found empty, so the islands go in
 }
 
 func (m *serverMetrics) listCmd() string {
@@ -161,6 +163,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		started, _ := time.Parse(time.RFC3339Nano, info.State.StartedAt)
 		m.startedAt, m.cpuTotal, m.cpuSystem, m.tpsCmd, m.tpsTried = info.State.StartedAt, 0, 0, -1, time.Time{}
 		m.logsSince, m.online, m.players, m.count, m.maxPlayers, m.pregen = started.Unix(), map[string]bool{}, nil, 0, 0, ""
+		m.skyMap, m.skyMapBuilding = false, false
 		m.closeRCON()
 	}
 	m.mu.Unlock()
@@ -217,6 +220,9 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 			tps = javaTPS(run, m)
 			if ok && info.Config.Labels["mchost.pregen"] == "true" {
 				a.pregen(ctx, name, m, run, len(players))
+			}
+			if ok && info.Config.Labels["mchost.skymap"] == "true" {
+				a.skyMap(ctx, name, info.Config.Labels["mchost.level"], m, run)
 			}
 		}
 	}

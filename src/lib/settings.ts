@@ -38,6 +38,8 @@ export const MOD_DEFAULT_VERSION = "1.21.1";
 /** Versions the owner may pick for a server of this kind (none: the game mode or pack decides). */
 export function versionsFor(kind: string): string[] {
   if (kind === "vanilla") return JAVA_VERSIONS;
+  // Its empty world is set up the way Minecraft 1.18.2 and newer read it.
+  if (kind === "skymap") return JAVA_VERSIONS.filter((v) => v !== "1.17.1");
   return isModLoader(kind) ? LOADER_VERSIONS[kind] : [];
 }
 
