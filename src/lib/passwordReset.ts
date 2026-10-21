@@ -83,12 +83,14 @@ export async function resetPassword(token: string, password: string): Promise<st
 }
 
 /**
- * Changes the password of a signed-in account after checking the current one.
- * Ends the account's other sessions, like a reset does.
+ * Changes the password of a signed-in account after checking the current one
+ * (an account made with Google that has none yet just sets it). Ends the
+ * account's other sessions, like a reset does.
  */
 export async function changePassword(userId: string, current: string, next: string): Promise<"ok" | "wrongPassword"> {
   const user = await db.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
-  if (!user || !(await bcrypt.compare(current, user.passwordHash))) return "wrongPassword";
+  if (!user) return "wrongPassword";
+  if (user.passwordHash && !(await bcrypt.compare(current, user.passwordHash))) return "wrongPassword";
   const passwordHash = await bcrypt.hash(next, 12);
   const now = new Date();
   await db.$transaction([

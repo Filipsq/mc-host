@@ -70,6 +70,11 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   return {};
 }
 
+/** "Sign in with Google" on both log-in and sign-up: the account is found, linked or made on the way back. */
+export async function googleSignIn(form: FormData) {
+  await signIn("google", { redirectTo: afterSignIn(form) });
+}
+
 export async function logIn(_: FormState, form: FormData): Promise<FormState> {
   const email = credentialsSchema.shape.email.safeParse(String(form.get("email") ?? "").trim());
   if (email.success && loginLimited(email.data, clientIp(await headers()))) {

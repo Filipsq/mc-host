@@ -33,7 +33,7 @@ export default function PrivacyEn({ site }: { site: string }) {
           </thead>
           <tbody>
             <tr>
-              <td>Email address, password (stored as a hash, never in plain text), chosen language, date you accepted the Terms</td>
+              <td>Email address, password (stored as a hash, never in plain text), chosen language, date you accepted the Terms, and your Google account ID when you log in with Google</td>
               <td>Creating and running your Account, including sending password reset links and emails about payments and the end of a paid Period</td>
               <td>art. 6(1)(b): performing the contract</td>
             </tr>
@@ -112,6 +112,10 @@ export default function PrivacyEn({ site }: { site: string }) {
           stored in the European Union.
         </li>
         <li>
+          <strong>Google Ireland Limited</strong> (Ireland): only when you log in with Google. Google confirms who you
+          are and gives us your email address and Google account ID; we never see your Google password.
+        </li>
+        <li>
           <strong>Anthropic</strong> (USA): the Claude AI model that picks server settings in the AI creator. It only
           receives the description typed into the creator, not the email address or other Account data. Data is
           transferred to the USA under standard contractual clauses.
@@ -154,7 +158,7 @@ export default function PrivacyEn({ site }: { site: string }) {
       <p>We only use cookies the Service needs to work:</p>
       <ul>
         <li><code>authjs.session-token</code>: keeps you logged in (up to 30 days);</li>
-        <li><code>authjs.csrf-token</code>, <code>authjs.callback-url</code>: protect logging in;</li>
+        <li><code>authjs.csrf-token</code>, <code>authjs.callback-url</code>, <code>authjs.pkce.code_verifier</code>: protect logging in (also with Google);</li>
         <li><code>locale</code>, <code>currency</code>: remember your language and currency (1 year);</li>
         <li><code>push</code>: once you turn on notifications, tells which device stops getting them when you log out (1 year).</li>
       </ul>

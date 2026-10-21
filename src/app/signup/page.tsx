@@ -1,5 +1,7 @@
 import Link from "next/link";
 import AuthForm from "../AuthForm";
+import GoogleButton from "../GoogleButton";
+import { googleEnabled } from "@/lib/googleAuth";
 import { signUp } from "../actions";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -33,6 +35,7 @@ export default async function SignUpPage({ searchParams }: Props) {
           <Sparkles size={16} aria-hidden /> {format(all.ai.signupNote, { text: opis })}
         </p>
       )}
+      {googleEnabled && <GoogleButton t={t} legal={all.legal} opis={opis} signUp />}
       <AuthForm action={signUp} submitLabel={t.signUpSubmit} t={t} legal={all.legal} opis={opis} />
       <p className="auth-switch muted">
         {t.haveAccount} <Link href={opis ? `/login?opis=${encodeURIComponent(opis)}` : "/login"}>{t.logInSubmit}</Link>
