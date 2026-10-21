@@ -32,7 +32,7 @@ export default function PrivacyPl({ site }: { site: string }) {
           </thead>
           <tbody>
             <tr>
-              <td>Adres e-mail, hasło (zapisane jako skrót, nie jawnym tekstem), wybrany język, data akceptacji Regulaminu</td>
+              <td>Adres e-mail, hasło (zapisane jako skrót, nie jawnym tekstem), wybrany język, data akceptacji Regulaminu, a gdy logujesz się przez Google – identyfikator Twojego konta Google</td>
               <td>Założenie i prowadzenie Konta, w tym wysyłka linku do zmiany hasła oraz wiadomości o płatnościach i końcu opłaconego Okresu</td>
               <td>art. 6 ust. 1 lit. b – wykonanie umowy</td>
             </tr>
@@ -111,6 +111,11 @@ export default function PrivacyPl({ site }: { site: string }) {
           są przechowywane w Unii Europejskiej.
         </li>
         <li>
+          <strong>Google Ireland Limited</strong> (Irlandia) – tylko gdy logujesz się przez Google. Google potwierdza
+          Twoją tożsamość i przekazuje nam Twój adres e-mail i identyfikator konta Google; hasła do Google nie
+          poznajemy.
+        </li>
+        <li>
           <strong>Anthropic</strong> (USA) – model AI Claude, który w kreatorze AI dobiera ustawienia serwera. Dostaje
           tylko opis wpisany do kreatora, bez adresu e-mail ani innych danych Konta. Przekazanie danych do USA odbywa
           się na podstawie standardowych klauzul umownych.
@@ -152,7 +157,7 @@ export default function PrivacyPl({ site }: { site: string }) {
       <p>Używamy wyłącznie plików cookies niezbędnych do działania Serwisu:</p>
       <ul>
         <li><code>authjs.session-token</code> – utrzymuje zalogowanie (do 30 dni);</li>
-        <li><code>authjs.csrf-token</code>, <code>authjs.callback-url</code> – zabezpieczają logowanie;</li>
+        <li><code>authjs.csrf-token</code>, <code>authjs.callback-url</code>, <code>authjs.pkce.code_verifier</code> – zabezpieczają logowanie (także przez Google);</li>
         <li><code>locale</code>, <code>currency</code> – zapamiętują wybrany język i walutę (1 rok);</li>
         <li><code>push</code> – gdy włączysz powiadomienia: wskazuje, które urządzenie przestaje je dostawać po wylogowaniu (1 rok).</li>
       </ul>

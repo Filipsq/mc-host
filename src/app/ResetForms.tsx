@@ -60,16 +60,18 @@ export function NewPasswordForm({ t, token, email }: { t: Messages["auth"]; toke
   );
 }
 
-/** Changes the password of the signed-in account; asks for the current one first. */
-export function ChangePasswordForm({ t, email }: { t: Messages["auth"]; email: string }) {
+/** Changes the password of the signed-in account; asks for the current one first, if it has one. */
+export function ChangePasswordForm({ t, email, hasPassword }: { t: Messages["auth"]; email: string; hasPassword: boolean }) {
   const [state, formAction, pending] = useActionState(changePasswordAction, {});
   return (
     <form action={formAction} className="card stack">
       <input hidden readOnly type="text" name="username" autoComplete="username" value={email} />
-      <label>
-        {t.currentPassword}
-        <input name="current" type="password" required autoComplete="current-password" />
-      </label>
+      {hasPassword && (
+        <label>
+          {t.currentPassword}
+          <input name="current" type="password" required autoComplete="current-password" />
+        </label>
+      )}
       <label>
         {t.newPassword}
         <input name="password" type="password" required minLength={8} autoComplete="new-password" />
@@ -80,7 +82,7 @@ export function ChangePasswordForm({ t, email }: { t: Messages["auth"]; email: s
       </label>
       {state.error && <p className="error">{t.errors[state.error]}</p>}
       <button type="submit" disabled={pending}>
-        {pending ? t.wait : t.changeSubmit}
+        {pending ? t.wait : hasPassword ? t.changeSubmit : t.setSubmit}
       </button>
     </form>
   );

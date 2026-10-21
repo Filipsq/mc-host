@@ -41,6 +41,9 @@ CRON_SECRET=$(secret)
 # From Stripe Dashboard → Developers. Leave empty until you're ready to take payments.
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+# "Zaloguj przez Google": the OAuth client from Google Cloud. Leave empty to hide the button.
+AUTH_GOOGLE_ID=
+AUTH_GOOGLE_SECRET=
 PORT_RANGE_START=30000
 PORT_RANGE_END=30999
 ENV
