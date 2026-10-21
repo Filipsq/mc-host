@@ -13,7 +13,7 @@ import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, 
 import { MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
 import { planById } from "@/lib/plans";
-import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
+import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { EDITION_NAMES } from "@/lib/editions";
 import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SIZES, isTerrariaKind, type TerrariaKind } from "@/lib/terraria";
 import type { Suggestion } from "@/lib/ai";
@@ -131,6 +131,10 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   }
   const modded = edition === "JAVA" && game === "modpack";
   const mods = edition === "JAVA" && game === "mods";
+  // On mods, only the loader versions a login mod runs on (see LOGIN_MODS).
+  const nonPremiumOffered = mods
+    ? canRunNonPremium({ edition: "JAVA", kind: loader, version: modVersion })
+    : canRunNonPremium({ edition: "JAVA", kind: gameById(game).kind, version: "LATEST" });
   // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
   const packPlan = (slug: string) => {
     const gb = slug === "curseforge" ? cfPack?.ramGb : CURATED_PACKS.find((p) => p.slug === slug)?.ramGb;
@@ -323,7 +327,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         />
       )}
       {mods && <LoaderFields t={t} loader={loader} version={modVersion} onLoader={setLoader} onVersion={setModVersion} />}
-      {edition === "JAVA" && canRunNonPremium({ edition, kind: gameById(game).kind }) && (
+      {edition === "JAVA" && nonPremiumOffered && (
         <label className="check">
           <input type="checkbox" name="nonPremium" checked={nonPremium} onChange={(e) => setNonPremium(e.target.checked)} />
           <span className="stack-tight">
@@ -331,6 +335,9 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             <span className="muted small">{t.nonPremiumHint}</span>
           </span>
         </label>
+      )}
+      {mods && !nonPremiumOffered && (
+        <p className="muted small">{format(settings.nonPremiumModVersions, { versions: LOGIN_MODS[loader].versions.join(", ") })}</p>
       )}
       {edition === "JAVA" && canCrossplay({ edition, kind: gameById(game).kind }) && (
         <label className="check">

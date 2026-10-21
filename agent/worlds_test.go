@@ -77,7 +77,8 @@ func TestNonPremiumAndWorldEnv(t *testing.T) {
 	}
 
 	for _, bad := range []createRequest{
-		{Kind: "fabric", OnlineMode: &off},  // no login plugin for mods
+		{Kind: "fabric", Version: "LATEST", OnlineMode: &off}, // no login mod made for it yet
+		{Kind: "forge", Version: "1.20.1", OnlineMode: &off},
 		{Kind: "modpack", OnlineMode: &off}, // nor for packs
 		{Level: "../plugins"},
 		{Level: ".hidden"},
@@ -303,13 +304,13 @@ func TestWorldImport(t *testing.T) {
 
 func TestPrepareLogin(t *testing.T) {
 	_, a, data := filesAgent(t)
-	a.prepareLogin(context.Background(), "abc12345")
+	a.prepareLogin(context.Background(), "abc12345", authMe)
 	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != authMeConfig {
 		t.Fatalf("config = %q", b)
 	}
 	// The owner's own settings stay.
 	os.WriteFile(filepath.Join(data, "plugins", "AuthMe", "config.yml"), []byte("mine"), 0o644)
-	a.prepareLogin(context.Background(), "abc12345")
+	a.prepareLogin(context.Background(), "abc12345", authMe)
 	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != "mine" {
 		t.Fatalf("config overwritten: %q", b)
 	}
@@ -326,5 +327,37 @@ func TestPrepareLogin(t *testing.T) {
 	a.fixLogin(context.Background(), "abc12345")
 	if b, _ := os.ReadFile(filepath.Join(data, "plugins", "AuthMe", "config.yml")); string(b) != want {
 		t.Fatalf("fixed config = %q", b)
+	}
+}
+
+func TestPrepareLoginMods(t *testing.T) {
+	_, a, data := filesAgent(t)
+	easyAuthFile := filepath.Join(data, "config", "EasyAuth", "main.conf")
+	a.prepareLogin(context.Background(), "abc12345", loginAddon("fabric", "1.21.1"))
+	if b, _ := os.ReadFile(easyAuthFile); string(b) != easyAuthConfig {
+		t.Fatalf("EasyAuth config = %q", b)
+	}
+	// EasyAuth's own full config gets its sessions turned off, nothing else.
+	os.WriteFile(easyAuthFile, []byte("# How long to keep session\nsession-timeout=86400\nmax-login-tries=3\n"), 0o644)
+	a.fixLogin(context.Background(), "abc12345")
+	if b, _ := os.ReadFile(easyAuthFile); string(b) != "# How long to keep session\nsession-timeout= -1\nmax-login-tries=3\n" {
+		t.Fatalf("fixed EasyAuth config = %q", b)
+	}
+
+	easyLoginFile := filepath.Join(data, "config", "easylogin", "config.toml")
+	a.prepareLogin(context.Background(), "abc12345", loginAddon("forge", "1.21.1"))
+	b, _ := os.ReadFile(easyLoginFile)
+	if string(b) != easyLoginConfig {
+		t.Fatalf("EasyLogin config = %q", b)
+	}
+	full := "[security]\nbcryptCost = 12\n# Max login attempts before lockout\nmaxAttempts = 5\nattemptWindow = 5\nlockoutDuration = 10\n"
+	os.WriteFile(easyLoginFile, []byte(full), 0o644)
+	a.fixLogin(context.Background(), "abc12345")
+	want := "[security]\nbcryptCost = 12\n# Max login attempts before lockout\nmaxAttempts = 1000\nattemptWindow = 1\nlockoutDuration = 1\n"
+	if b, _ := os.ReadFile(easyLoginFile); string(b) != want {
+		t.Fatalf("fixed EasyLogin config = %q", b)
+	}
+	if loginAddon("forge", "1.20.1") != "" || loginAddon("modpack", "1.21.1") != "" || loginAddon("vanilla", "1.8") != authMe {
+		t.Fatal("loginAddon picks the wrong addon")
 	}
 }

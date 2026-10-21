@@ -614,9 +614,11 @@ const en: Messages = {
     opHint: "Make someone an operator (OP) in the console with: op name",
     nonPremium: "Non-premium: let in players who haven't bought Minecraft",
     nonPremiumHint:
-      "On first join every player sets a password with /register, then logs in with /login (the AuthMe plugin), so nobody can play under someone else's name. After switching, players start with an empty inventory because their IDs change. The world stays.",
+      "On first join every player sets a password with /register, then logs in with /login, so nobody can play under someone else's name. After switching, players start with an empty inventory because their IDs change. The world stays.",
     nonPremiumPaperOnly:
-      "Non-premium works on servers without mods. A modded server has no password login, so someone could join under another player's name.",
+      "Non-premium doesn't work on mod packs: they have no password login, so someone could join under another player's name. It works on servers without mods and on “Your own mods” (Fabric, Forge, NeoForge) on some versions.",
+    nonPremiumModVersions:
+      "On this loader non-premium works only on Minecraft {versions}. Only there is a tested password login mod; without it someone could join under another player's name.",
     nonPremiumOn: "non-premium",
     crossplay: "Crossplay: let in players on phones and consoles too (Bedrock)",
     crossplayHint:
@@ -1377,7 +1379,7 @@ const en: Messages = {
       bigPacks: "Better MC and Prominence II need 8 GB, which is the Pro plan.",
       tooBig: "That's more than our biggest plan. Take Pro and message us in the chat.",
       noCrossplay: "Crossplay with phones only works on a server without mods.",
-      noNonPremium: "Non-premium players can only join a server without mods.",
+      noNonPremium: "Non-premium players can't join a mod pack. They can join a server without mods, or “Your own mods” on some versions.",
       group: "With 6 or more players at once we suggest at least {plan}, so the server doesn't lag.",
       addonsPaid: "Add-ons come with paid plans, so we suggest at least Starter.",
     },

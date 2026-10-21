@@ -227,7 +227,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     }),
     ...(parsed.data.motd && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
-    onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind })),
+    onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind, version: modVersion ?? "LATEST" })),
     crossplay: parsed.data.crossplay === "on" && canCrossplay({ edition, kind }),
     ...("version" in game && { version: game.version }),
     ...(modVersion && { version: modVersion }),
@@ -572,7 +572,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       spawnProtection: java ? (s.spawnProtection ?? server.spawnProtection) : server.spawnProtection,
       whitelist,
       whitelistPlayers: players,
-      onlineMode: !(canRunNonPremium(server) && s.nonPremium === "on"),
+      // On the version saved now: a mod server's login mod runs only on some.
+      onlineMode: !(canRunNonPremium({ ...server, version }) && s.nonPremium === "on"),
       // Kept as it was on a mod server, which has no checkbox for it.
       crossplay: canCrossplay(server) ? s.crossplay === "on" : server.crossplay,
     },

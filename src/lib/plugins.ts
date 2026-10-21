@@ -1,5 +1,5 @@
 import type { Server } from "@prisma/client";
-import { isModLoader } from "./modpacks";
+import { isModLoader, type ModLoader } from "./modpacks";
 import { isTmodloader } from "./terraria";
 
 // Plugins come from Modrinth. The panel only keeps the list; the server's
@@ -27,8 +27,20 @@ export const GAME_MODE_PLUGINS: Record<string, { slug: string; title: string }[]
 export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) =>
   s.edition === "JAVA" && ["vanilla", "skymap", "skyblock", "oneblock"].includes(s.kind);
 
-/** Non-premium needs the AuthMe login plugin, so only Paper servers can run it. */
-export const canRunNonPremium = supportsPlugins;
+/**
+ * Non-premium needs a login addon, so nobody plays under someone else's name:
+ * AuthMe on Paper, or a server-side login mod on a mod loader, only on the
+ * Minecraft versions it's made for (newest versions and mod packs have none we
+ * trust yet). The agent keeps the same list (agent/login.go loginMods).
+ */
+export const LOGIN_MODS: Record<ModLoader, { id: string; title: string; versions: readonly string[] }> = {
+  fabric: { id: "aZj58GfX", title: "EasyAuth", versions: ["1.21.11", "1.21.8", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4"] },
+  forge: { id: "VYmP7iH5", title: "EasyLogin", versions: ["1.21.1"] },
+  neoforge: { id: "VYmP7iH5", title: "EasyLogin", versions: ["1.21.11", "1.21.1"] },
+};
+
+export const canRunNonPremium = (s: Pick<Server, "edition" | "kind" | "version">) =>
+  supportsPlugins(s) || (s.edition === "JAVA" && isModLoader(s.kind) && LOGIN_MODS[s.kind].versions.includes(s.version));
 
 /** Bedrock players get in through the Geyser plugin, so crossplay is for Paper servers too. */
 export const canCrossplay = supportsPlugins;
