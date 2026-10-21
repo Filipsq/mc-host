@@ -108,7 +108,14 @@ export function DomainForm({ serverId, current, target, address, t }: DomainProp
     <div className="stack">
       {current && <p className="notice success small">{format(t.active, { domain: current, address })}</p>}
       <p className="small">{t.steps}</p>
-      <p className="mono small dns-record">{format(t.record, { name, target })}</p>
+      <p className="mono small dns-record">
+        {/* One field per line, so a phone doesn't break the address in the middle. */}
+        {format(t.record, { name, target })
+          .split(" · ")
+          .map((part) => (
+            <span key={part}>{part}</span>
+          ))}
+      </p>
       <p className="muted small">{t.wait}</p>
       <form action={action} className="stack">
         <label>
