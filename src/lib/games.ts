@@ -6,7 +6,9 @@ import type { ServerKind } from "./modpacks";
 // page), and the memory it's comfortable with for a group of friends.
 export const GAMES = [
   { id: "survival", kind: "vanilla", plugins: [], ramGb: 2 },
-  { id: "survival-plus", kind: "vanilla", plugins: ["essentialsx", "luckperms", "coreprotect", "griefprevention"], ramGb: 3 },
+  // EssentialsX and CoreProtect have no build for 26.x yet, so on Najnowsza the image skips them
+  // (no /home, /spawn or rollbacks); it starts on the newest version they all run on.
+  { id: "survival-plus", kind: "vanilla", plugins: ["essentialsx", "luckperms", "coreprotect", "griefprevention"], ramGb: 3, version: "1.21.11" },
   { id: "lifesteal", kind: "vanilla", plugins: ["lifestealz"], ramGb: 3 },
   // Classic Skyblock: one shared map with a starting island and a sand island (agent/skymap.go).
   { id: "skymap", kind: "skymap", plugins: [], ramGb: 2 },
@@ -15,7 +17,7 @@ export const GAMES = [
   { id: "modpack", kind: "modpack", plugins: [], ramGb: 3 },
   // The owner picks Fabric, Forge or NeoForge when creating it; Fabric unless they do.
   { id: "mods", kind: "fabric", plugins: [], ramGb: 3 },
-] as const satisfies readonly { id: string; kind: ServerKind; plugins: readonly KnownPlugin[]; ramGb: number }[];
+] as const satisfies readonly { id: string; kind: ServerKind; plugins: readonly KnownPlugin[]; ramGb: number; version?: string }[];
 
 export type GameId = (typeof GAMES)[number]["id"];
 export const GAME_IDS = GAMES.map((g) => g.id) as [GameId, ...GameId[]];

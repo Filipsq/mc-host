@@ -229,6 +229,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
     onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind })),
     crossplay: parsed.data.crossplay === "on" && canCrossplay({ edition, kind }),
+    ...("version" in game && { version: game.version }),
     ...(modVersion && { version: modVersion }),
     ...(pack && { version: pack.gameVersion, ...packFields(pack) }),
     // Paid servers are only created on the game host once Stripe confirms payment.
