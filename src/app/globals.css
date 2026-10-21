@@ -1097,6 +1097,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 }
 .art img { display: block; height: auto; }
 .art, .game-art { contain: paint; }
+.art.paused *, .art.paused::after, .game-art.paused * { animation-play-state: paused !important; }
 .feature h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
 .feature h3 .feature-icon { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; }
 .art-bob { animation: bob 5s ease-in-out infinite; will-change: transform; backface-visibility: hidden; }
@@ -1119,11 +1120,16 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 /* A fixed 240x120 stage, so the lines always meet the chips and the server. */
 .xplay { position: relative; width: 240px; height: 120px; }
 .xplay .links { position: absolute; inset: 0; width: 240px; height: 120px; }
-.xplay .links path { fill: none; stroke-width: 2; stroke-dasharray: 4 6; stroke-linecap: round; animation: flow 0.9s linear infinite; }
+.xplay .links path { fill: none; stroke-width: 2; stroke-dasharray: 4 6; stroke-linecap: round; opacity: 0.7; }
 .xplay .links .l-java { stroke: var(--accent-strong); }
 .xplay .links .l-bedrock { stroke: var(--diamond); }
-@keyframes flow { to { stroke-dashoffset: -10; } }
-.art-server { position: absolute; left: 96px; top: 4px; width: 48px; }
+.packet { position: absolute; width: 6px; height: 6px; border-radius: 1px; opacity: 0; will-change: transform, opacity; }
+.p-java { left: 37px; top: 79px; background: var(--accent-strong); animation: to-server-java 1.8s linear infinite; }
+.p-bedrock { left: 197px; top: 79px; background: var(--diamond); animation: to-server-bedrock 1.8s linear infinite; }
+.packet.late { animation-delay: -0.9s; }
+@keyframes to-server-java { 0% { opacity: 0; transform: translate3d(0, 0, 0); } 15%, 80% { opacity: 1; } 100% { opacity: 0; transform: translate3d(62px, -34px, 0); } }
+@keyframes to-server-bedrock { 0% { opacity: 0; transform: translate3d(0, 0, 0); } 15%, 80% { opacity: 1; } 100% { opacity: 0; transform: translate3d(-62px, -34px, 0); } }
+.art-server { position: absolute; z-index: 1; left: 96px; top: 4px; width: 48px; }
 .xplay .device { position: absolute; bottom: 4px; }
 .xplay .d-java { left: 0; }
 .xplay .d-bedrock { right: 0; }
