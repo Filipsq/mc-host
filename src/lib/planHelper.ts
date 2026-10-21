@@ -42,7 +42,8 @@ export type HelperReason =
   | { code: "tooBig" }
   | { code: "noCrossplay" }
   | { code: "noNonPremium" }
-  | { code: "addonsPaid" };
+  | { code: "addonsPaid" }
+  | { code: "group"; plan: Plan };
 
 export type HelperPick = {
   plan: Plan;
@@ -54,6 +55,11 @@ export type HelperPick = {
   addons: AddonId[];
   reasons: HelperReason[];
 };
+
+// From a group of 6 or more players at once, at least Standard, so the
+// server doesn't lag with everyone on (Fiq's call, 2026-10-21).
+const GROUP_PLAYERS = 10; // the "6–10" answer
+const GROUP_PLAN: Plan = "STANDARD";
 
 const maxPlan = (a: Plan, b: Plan) => (planAtLeast(a, b) ? a : b);
 
@@ -74,7 +80,10 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
   const fits = planFor(use, a.players);
   let plan: Plan = fits ?? "PRO";
   if (!fits) reasons.push({ code: "tooBig" });
-  else if (plan === "FREE") reasons.push({ code: "free" });
+  else if (a.players >= GROUP_PLAYERS && !planAtLeast(fits, GROUP_PLAN)) {
+    plan = GROUP_PLAN;
+    reasons.push({ code: "group", plan });
+  } else if (plan === "FREE") reasons.push({ code: "free" });
   else {
     const spec = plans.find((p) => p.id === plan)!;
     // Say whichever made the plan this big: the players or the memory.

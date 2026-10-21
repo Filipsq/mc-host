@@ -1378,6 +1378,7 @@ const en: Messages = {
       tooBig: "That's more than our biggest plan. Take Pro and message us in the chat.",
       noCrossplay: "Crossplay with phones only works on a server without mods.",
       noNonPremium: "Non-premium players can only join a server without mods.",
+      group: "With 6 or more players at once we suggest at least {plan}, so the server doesn't lag.",
       addonsPaid: "Add-ons come with paid plans, so we suggest at least Starter.",
     },
     chipCrossplay: "Crossplay with phones",
