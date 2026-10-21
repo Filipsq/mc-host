@@ -809,6 +809,9 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		tty = true // send-command writes to the server's stdin
 	}
 	bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
+	if req.Edition == "JAVA" {
+		entrypoint = withUnfinishedWorldCheck(entrypoint)
+	}
 	return serverSpec(req, image, env, labels, bindings, tty, limitMb, entrypoint)
 }
 

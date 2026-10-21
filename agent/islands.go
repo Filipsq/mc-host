@@ -198,6 +198,30 @@ exit 0
 
 const packScriptPath = "/tmp/mchost-pack"
 
+// unfinishedWorldScript runs before every Java start. Minecraft 26.1+ writes a
+// new world's dimensions/ before its level.dat, so a first start cut short (a
+// plugin added or a setting saved while the world is being made) leaves a
+// folder Paper then always stops on ("Unable to read or access the world gen
+// settings file"). Nobody has played in it, so it's moved aside and the server
+// makes the world again; a folder with players in it is left alone.
+const unfinishedWorldScript = `(
+  cd /data 2>/dev/null || exit 0
+  w=${LEVEL:-world}
+  if [ -d "$w/dimensions" ] && [ ! -e "$w/level.dat" ] && [ ! -e "$w/players" ] && [ ! -e "$w/playerdata" ]; then
+    to="$w-przerwany-$(date +%Y%m%d-%H%M%S)"
+    mv "$w" "$to" && echo "[mchost] $w was never finished; moved it to $to so a new one is made"
+  fi
+)
+`
+
+// withUnfinishedWorldCheck runs unfinishedWorldScript first in a Java entrypoint (the image's own if none).
+func withUnfinishedWorldCheck(entrypoint []string) []string {
+	if entrypoint == nil {
+		return []string{"/bin/bash", "-c", unfinishedWorldScript + "exec /image/scripts/start\n"}
+	}
+	return []string{entrypoint[0], entrypoint[1], unfinishedWorldScript + entrypoint[2]}
+}
+
 // packEntrypoint puts packScript where PRE_START_SCRIPT points, then starts the image as usual.
 var packEntrypoint = []string{"/bin/bash", "-c", "cat >" + packScriptPath + " <<'MCHOST'\n" + packScript +
 	"MCHOST\nchmod 755 " + packScriptPath + "\nexec /image/scripts/start\n"}
