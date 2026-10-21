@@ -110,12 +110,24 @@ export default function TermsPl({ site }: { site: string }) {
           operatora płatności. Serwer jest uruchamiany automatycznie po potwierdzeniu płatności.
         </li>
         <li>
-          Plan nie odnawia się automatycznie. Opłacenie kolejnego Okresu przed końcem obecnego wydłuża go o nowy
-          Okres.
+          Plan nie odnawia się automatycznie, chyba że Użytkownik włączy automatyczne odnawianie. Opłacenie kolejnego
+          Okresu przed końcem obecnego wydłuża go o nowy Okres.
+        </li>
+        <li>
+          Automatyczne odnawianie Użytkownik może włączyć przy płatności kartą płatniczą. Kartę przechowuje operator
+          płatności. Na dobę przed końcem Okresu Usługodawca obciąża kartę ceną kolejnego Okresu tej samej długości w
+          obecnym Planie, według Cennika z tego dnia, i wydłuża Okres. Użytkownik może wyłączyć automatyczne
+          odnawianie w każdej chwili w panelu; nie wpływa to na Okres już opłacony. Gdy obciążenie się nie uda,
+          automatyczne odnawianie zostaje wyłączone, a Użytkownik dostaje o tym e-mail.
         </li>
         <li>
           Przy zmianie Planu niewykorzystane dni obecnego Planu są przeliczane na dni nowego Planu w proporcji cen
           obu Planów i doliczane do opłaconego Okresu.
+        </li>
+        <li>
+          W trakcie opłaconego Okresu Użytkownik może też ulepszyć Plan do wyższego bez zmiany daty końca Okresu,
+          płacąc różnicę cen obu Planów za czas pozostały do końca Okresu (nie mniej niż najniższa kwota przyjmowana
+          przez operatora płatności). Kolejne Okresy kosztują według ceny nowego Planu.
         </li>
         <li>
           Po upływie Okresu Serwer zostaje zawieszony: przestaje działać, ale jego świat i kopie zapasowe są

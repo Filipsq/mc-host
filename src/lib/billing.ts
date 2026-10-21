@@ -18,6 +18,7 @@ import {
   sendPlanMail,
 } from "./planMail";
 import { sendComebackReminders } from "./comeback";
+import { renewDueServers } from "./renewal";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import type { Currency, Locale } from "@/i18n/config";
 
@@ -37,20 +38,23 @@ export async function startCheckout(opts: {
   user: Pick<User, "id" | "email">;
   server: Pick<Server, "id" | "name">;
   plan: Plan;
-  days: PeriodDays;
+  days: PeriodDays | 0; // 0 for an upgrade
   currency: Currency;
   locale: Locale;
   productName: string;
   startConsent: boolean; // asked for the server to start before the withdrawal period ends
+  autoRenew?: boolean; // save the card and renew automatically (renewal.ts)
+  upgrade?: { from: Plan; amount: number }; // the price difference for the time left (upgrade.ts); days is 0
 }) {
-  const { user, server, plan, days, currency, locale, startConsent } = opts;
+  const { user, server, plan, days, currency, locale, startConsent, upgrade } = opts;
+  const autoRenew = !!opts.autoRenew && !upgrade;
   // Test keys take no money, so only admins may check out with them (to try the site).
   if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
-  const amount = Math.round(priceFor(plan, days, currency) * 100);
+  const amount = Math.round((upgrade || !days ? (upgrade?.amount ?? 0) : priceFor(plan, days, currency)) * 100);
   const payment = await db.payment.create({
-    data: { userId: user.id, serverId: server.id, plan, days, amount, currency, startConsent },
+    data: { userId: user.id, serverId: server.id, plan, days, amount, currency, startConsent, autoRenew, upgradeFrom: upgrade?.from },
   });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
@@ -69,7 +73,10 @@ export async function startCheckout(opts: {
         },
       },
     ],
-    customer_email: user.email,
+    // A card paid with is kept for automatic renewal; BLIK and Przelewy24 can't be charged again.
+    ...(autoRenew
+      ? { customer: await stripeCustomer(user), payment_method_options: { card: { setup_future_usage: "off_session" as const } } }
+      : { customer_email: user.email }),
     client_reference_id: payment.id,
     metadata: { paymentId: payment.id, serverId: server.id },
     locale,
@@ -79,6 +86,15 @@ export async function startCheckout(opts: {
 
   await db.payment.update({ where: { id: payment.id }, data: { stripeSessionId: session.id } });
   return session.url!;
+}
+
+/** The user's Stripe customer, made the first time they save a card. */
+export async function stripeCustomer(user: Pick<User, "id" | "email">) {
+  const { stripeCustomerId } = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { stripeCustomerId: true } });
+  if (stripeCustomerId) return stripeCustomerId;
+  const customer = await stripe().customers.create({ email: user.email, metadata: { userId: user.id } });
+  await db.user.update({ where: { id: user.id }, data: { stripeCustomerId: customer.id } });
+  return customer.id;
 }
 
 /**
@@ -102,7 +118,7 @@ export async function fulfillPayment(paymentId: string) {
     // A friend's invite: the first long enough payment gets extra days, and so does whoever invited them.
     inviter = await claimReferral(tx, payment.userId, payment.days);
     const days = payment.days + (inviter ? REFERRAL_DAYS : 0) + (await claimApologyDays(tx, payment.userId));
-    const paidUntil = new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
+    const paidUntil = upgradedUntil(server, payment, now) ?? new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
     const planChanged = server.plan !== payment.plan;
     const needsHost = planChanged || server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED";
     return tx.server.update({
@@ -119,10 +135,56 @@ export async function fulfillPayment(paymentId: string) {
   });
   if (!server) return;
 
+  // The card paid with, kept for automatic renewal if the buyer asked for it.
+  const saved = await saveRenewalCard(paymentId);
   // Before provisioning, which may wait for an image download.
-  await sendPlanMail("paid", server);
+  await sendPlanMail("paid", saved ?? server);
   if (inviter) await sendReferralMail(inviter);
   if (server.status === "PROVISIONING") await provision(server);
+}
+
+/**
+ * Where an upgrade leaves the paid period: where it was, since only the
+ * difference was paid. If the period changed since the checkout began (it ran
+ * out, or the plan changed), what was paid becomes days of the new plan instead.
+ */
+function upgradedUntil(server: Server, payment: Payment, now: Date): Date | null {
+  if (!payment.upgradeFrom) return null;
+  if (server.plan === payment.upgradeFrom && server.paidUntil && server.paidUntil > now) return server.paidUntil;
+  const perDay = planById(payment.plan).price[payment.currency as Currency] / 30;
+  const days = perDay > 0 ? payment.amount / 100 / perDay : 0;
+  return new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
+}
+
+/**
+ * After a Checkout payment where the buyer asked for automatic renewal: keeps
+ * the card it was paid with on the server. Paid with BLIK or Przelewy24, there
+ * is nothing to keep. Returns the server when it changed; never throws.
+ */
+async function saveRenewalCard(paymentId: string) {
+  try {
+    const payment = await db.payment.findUniqueOrThrow({ where: { id: paymentId } });
+    if (!payment.autoRenew || !payment.serverId || !payment.stripeSessionId) return null;
+    const session = await stripe().checkout.sessions.retrieve(payment.stripeSessionId, { expand: ["payment_intent.payment_method"] });
+    const intent = session.payment_intent;
+    const method = intent && typeof intent !== "string" ? intent.payment_method : null;
+    if (!method || typeof method === "string" || method.type !== "card" || !method.card) return null;
+    const brand = method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1);
+    return await db.server.update({
+      where: { id: payment.serverId },
+      data: {
+        autoRenew: true,
+        renewDays: payment.days,
+        renewCurrency: payment.currency,
+        renewCard: method.id,
+        renewCardLabel: `${brand} •••• ${method.card.last4}`,
+      },
+      include: OWNER,
+    });
+  } catch (err) {
+    console.error("saving the renewal card failed", paymentId, err);
+    return null;
+  }
 }
 
 /** Days the payer gets on top to make up for a payment of theirs that didn't go through (testPayments.ts), once. */
@@ -291,8 +353,14 @@ export function isRemovablePayment(p: Pick<Payment, "stripeSessionId" | "status"
 
 /** Periodic housekeeping, run by /api/cron/billing. */
 export async function runBillingJob(now = new Date()) {
-  const result = { suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, abandoned: 0, provisioned: 0 };
+  const result = { renewed: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, abandoned: 0, provisioned: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
+
+  // Auto-renewing servers whose period ends within a day: charge the saved card.
+  result.renewed = await renewDueServers(now).catch((err) => {
+    console.error("automatic renewals failed", err);
+    return 0;
+  });
 
   // Paid period over: stop the server but keep its world.
   const expired = await db.server.findMany({
@@ -314,9 +382,11 @@ export async function runBillingJob(now = new Date()) {
   }
 
   // A paid period ends in a few days: remind the owner, once per period.
+  // Servers that renew by themselves are only told if the charge fails (renewal.ts).
   const ending = await db.server.findMany({
     where: {
       plan: { not: "FREE" },
+      autoRenew: false,
       status: { in: onHost },
       paidUntil: { gt: now, lte: new Date(now.getTime() + REMIND_BEFORE_DAYS * DAY) },
     },
@@ -324,6 +394,8 @@ export async function runBillingJob(now = new Date()) {
   });
   for (const s of ending) {
     if (s.reminderSentFor?.getTime() === s.paidUntil!.getTime()) continue;
+    // Its automatic renewal just failed: that email already said the same.
+    if (s.renewTriedFor?.getTime() === s.paidUntil!.getTime()) continue;
     // Claim it first, so overlapping runs don't both send; give it back if sending fails.
     const claim = await db.server.updateMany({
       where: { id: s.id, paidUntil: s.paidUntil, OR: [{ reminderSentFor: null }, { reminderSentFor: { not: s.paidUntil } }] },

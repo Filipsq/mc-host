@@ -86,7 +86,7 @@ export default function PrivacyEn({ site }: { site: string }) {
         </table>
       </div>
       <p>
-        We never see your card details: you enter them on Stripe’s payment page. We do not profile you or make
+        We never see your card details: you enter them on Stripe’s payment page. If you turn on automatic renewal, Stripe keeps the card and we store only its brand and last four digits. We do not profile you or make
         automated decisions about you.
       </p>
 

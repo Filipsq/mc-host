@@ -48,9 +48,10 @@ export default async function NewServerPage({ searchParams }: Props) {
   return (
     <main className="wide-form stack">
       <Link className="back" href="/dashboard">{t.server.back}</Link>
-      <h1>{t.server.newTitle}</h1>
       <CreateServerForm
+        title={t.server.newTitle}
         t={t.server}
+        helper={t.helper}
         terraria={t.terraria}
         initialEdition={game === "terraria" ? "TERRARIA" : undefined}
         settings={t.settings}
