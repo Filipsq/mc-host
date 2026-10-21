@@ -58,3 +58,24 @@ func TestPutPeerRoutes(t *testing.T) {
 		t.Fatalf("routes after restart = %v", b.peerRoutes)
 	}
 }
+
+func TestHostAliases(t *testing.T) {
+	a := &agent{stateDir: t.TempDir()}
+	put := func(body string) int {
+		rec := httptest.NewRecorder()
+		a.putHostAliases(rec, httptest.NewRequest(http.MethodPut, "/host-aliases", strings.NewReader(body)))
+		return rec.Code
+	}
+	if code := put(`{"aliases":{"Graj.MojSerwer.pl.":"ekipa.mchost.pl"}}`); code != http.StatusOK {
+		t.Fatalf("code = %d", code)
+	}
+	if code := put(`{"aliases":{"bad host":"ekipa.mchost.pl"}}`); code != http.StatusBadRequest {
+		t.Fatalf("bad alias code = %d", code)
+	}
+	// A rejected list leaves the old one; a restarted agent reads it back.
+	b := &agent{stateDir: a.stateDir}
+	b.loadHostAliases()
+	if b.canonicalHost("graj.mojserwer.pl") != "ekipa.mchost.pl" || b.canonicalHost("other.pl") != "other.pl" {
+		t.Fatalf("aliases after restart = %v", b.hostAliases)
+	}
+}

@@ -172,8 +172,10 @@ type agent struct {
 	diskUsage     sync.Map         // server id -> diskUse, the last measurement
 	diskMeasuring sync.Map         // server id -> true while a measurement runs in the background
 
-	peerMu     sync.RWMutex
-	peerRoutes map[string]string // Java address -> router of the machine it's on (see peers.go)
+	peerMu      sync.RWMutex
+	peerRoutes  map[string]string // Java address -> router of the machine it's on (see peers.go)
+	aliasMu     sync.RWMutex
+	hostAliases map[string]string // a server's own domain -> its Java address (see aliases.go)
 
 	metrics    sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
 	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
@@ -236,6 +238,7 @@ func main() {
 	}
 	a.loadDiskLimits()
 	a.loadPeerRoutes()
+	a.loadHostAliases()
 
 	// Pull images up front so the first server creation isn't slow.
 	go func() {
@@ -274,6 +277,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("GET /stats", a.stats)
 	mux.HandleFunc("PUT /disk-limits", a.putDiskLimits)
 	mux.HandleFunc("PUT /peer-routes", a.putPeerRoutes)
+	mux.HandleFunc("PUT /host-aliases", a.putHostAliases)
 	mux.HandleFunc("POST /servers", a.create)
 	mux.HandleFunc("PUT /servers/{id}", a.recreate)
 	mux.HandleFunc("GET /servers/{id}", a.status)
