@@ -64,7 +64,7 @@ export default async function AdminServer({ params }: Props) {
     [t.columns.type, [EDITION_NAMES[server.edition], kind && kind !== "vanilla" && (kind === "modpack" ? (server.modpackTitle ?? server.modpack) : all.server.kinds[kind])].filter(Boolean).join(" · ")],
     [t.version, server.modpackVersion ? `${server.version} (${server.modpackVersion})` : server.version],
     [t.columns.plan, `${all.plans[server.plan]} · ${f.gb(server.memoryMb)}${server.adminTest ? ` · ${t.testServer}` : ""}`],
-    [t.columns.disk, typeof state === "object" && state.diskMb !== undefined ? `${f.size(state.diskMb)} / ${f.size(diskLimitMb(server.plan))}` : "–"],
+    [t.columns.disk, typeof state === "object" && state.diskMb !== undefined ? `${f.size(state.diskMb)} / ${f.size(diskLimitMb(server))}` : "–"],
     [t.status, t.statuses[server.status]],
     [t.columns.paidUntil, server.plan !== "FREE" && server.paidUntil ? f.dateTime(server.paidUntil) : "–"],
     [t.reminderSent, server.reminderSentFor ? f.dateTime(server.reminderSentFor) : "–"],

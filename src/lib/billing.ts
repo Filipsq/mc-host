@@ -3,11 +3,12 @@ import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
 import * as agent from "./agent";
-import { agentSpec, destroyServer, moveIfFull, syncPeerRoutes } from "./servers";
+import { agentSpec, destroyServer, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
+import { addonList, monthlyWithAddons, type AddonId } from "./addons";
 import {
   FREE_IDLE_DAYS,
   FREE_IDLE_FROM,
@@ -29,8 +30,9 @@ import type { Currency, Locale } from "@/i18n/config";
 const DAY = 24 * 60 * 60 * 1000;
 // What the plan emails need to know about the server's owner.
 const OWNER = { owner: { select: { email: true, locale: true } } } as const;
-export function priceFor(plan: Plan, days: PeriodDays, currency: Currency) {
-  return periodPrice(planById(plan).price[currency], days);
+/** What `days` of the plan cost, with the add-ons (addons.ts). */
+export function priceFor(plan: Plan, days: PeriodDays, currency: Currency, addons: readonly AddonId[] = []) {
+  return periodPrice(monthlyWithAddons(plan, addons, currency), days);
 }
 
 /** Creates a pending payment and a Stripe Checkout page for it; returns the page URL. */
@@ -45,16 +47,31 @@ export async function startCheckout(opts: {
   startConsent: boolean; // asked for the server to start before the withdrawal period ends
   autoRenew?: boolean; // save the card and renew automatically (renewal.ts)
   upgrade?: { from: Plan; amount: number }; // the price difference for the time left (upgrade.ts); days is 0
+  addons?: readonly AddonId[]; // every add-on the server has once paid (addons.ts)
+  addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
 }) {
-  const { user, server, plan, days, currency, locale, startConsent, upgrade } = opts;
-  const autoRenew = !!opts.autoRenew && !upgrade;
+  const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly } = opts;
+  const addons = addonList(opts.addons);
+  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly;
   // Test keys take no money, so only admins may check out with them (to try the site).
   if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
-  const amount = Math.round((upgrade || !days ? (upgrade?.amount ?? 0) : priceFor(plan, days, currency)) * 100);
+  const amount = Math.round((upgrade || addonsOnly || !days ? (upgrade?.amount ?? addonsOnly?.amount ?? 0) : priceFor(plan, days, currency, addons)) * 100);
   const payment = await db.payment.create({
-    data: { userId: user.id, serverId: server.id, plan, days, amount, currency, startConsent, autoRenew, upgradeFrom: upgrade?.from },
+    data: {
+      userId: user.id,
+      serverId: server.id,
+      plan,
+      days,
+      amount,
+      currency,
+      startConsent,
+      autoRenew,
+      upgradeFrom: upgrade?.from,
+      addons,
+      addonsOnly: !!addonsOnly,
+    },
   });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
@@ -104,6 +121,7 @@ export async function stripeCustomer(user: Pick<User, "id" | "email">) {
 export async function fulfillPayment(paymentId: string) {
   const now = new Date();
   let inviter: Inviter | null = null;
+  let addonsChanged = false;
   const server = await db.$transaction(async (tx) => {
     // Claim the payment first so a retried webhook can't apply it twice.
     const claimed = await tx.payment.updateMany({
@@ -120,11 +138,17 @@ export async function fulfillPayment(paymentId: string) {
     const days = payment.days + (inviter ? REFERRAL_DAYS : 0) + (await claimApologyDays(tx, payment.userId));
     const paidUntil = upgradedUntil(server, payment, now) ?? new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
     const planChanged = server.plan !== payment.plan;
-    const needsHost = planChanged || server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED";
+    // More backups are kept by the container, so it's rebuilt for them; disk and domain are sent below.
+    const backupsChanged = server.addons.includes("backups") !== payment.addons.includes("backups");
+    addonsChanged = addonList(server.addons).join() !== addonList(payment.addons).join();
+    const needsHost = planChanged || backupsChanged || server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED";
     return tx.server.update({
       where: { id: server.id },
       data: {
         plan: payment.plan,
+        addons: addonList(payment.addons),
+        // Without the domain add-on any more, players use the mchosting.pl address again.
+        ...(!payment.addons.includes("domain") && { customDomain: null }),
         memoryMb: planById(payment.plan).ramGb * 1024,
         paidUntil,
         deletionWarnedAt: null,
@@ -140,7 +164,20 @@ export async function fulfillPayment(paymentId: string) {
   // Before provisioning, which may wait for an image download.
   await sendPlanMail("paid", saved ?? server);
   if (inviter) await sendReferralMail(inviter);
+  if (addonsChanged) {
+    await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
+    await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
+  }
   if (server.status === "PROVISIONING") await provision(server);
+}
+
+/** Tells the machines every server's disk limit (also servers made before there were limits, and after an agent lost its state). */
+export async function syncDiskLimits() {
+  const onAgent = await db.server.findMany({
+    where: { status: { not: "AWAITING_PAYMENT" } },
+    select: { id: true, plan: true, addons: true },
+  });
+  await agent.setDiskLimits(Object.fromEntries(onAgent.map((s) => [s.id, diskLimitMb(s)])));
 }
 
 /**
@@ -149,9 +186,10 @@ export async function fulfillPayment(paymentId: string) {
  * out, or the plan changed), what was paid becomes days of the new plan instead.
  */
 function upgradedUntil(server: Server, payment: Payment, now: Date): Date | null {
-  if (!payment.upgradeFrom) return null;
-  if (server.plan === payment.upgradeFrom && server.paidUntil && server.paidUntil > now) return server.paidUntil;
-  const perDay = planById(payment.plan).price[payment.currency as Currency] / 30;
+  if (!payment.upgradeFrom && !payment.addonsOnly) return null;
+  const from = payment.upgradeFrom ?? payment.plan;
+  if (server.plan === from && server.paidUntil && server.paidUntil > now) return server.paidUntil;
+  const perDay = monthlyWithAddons(payment.plan, addonList(payment.addons), payment.currency as Currency) / 30;
   const days = perDay > 0 ? payment.amount / 100 / perDay : 0;
   return new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
 }
@@ -462,15 +500,9 @@ export async function runBillingJob(now = new Date()) {
     data: { status: "EXPIRED" },
   });
 
-  // Every server's disk limit, so the agent has them all (also servers made before
-  // there were limits, and after its state was lost).
-  const onAgent = await db.server.findMany({
-    where: { status: { not: "AWAITING_PAYMENT" } },
-    select: { id: true, plan: true },
-  });
-  await agent
-    .setDiskLimits(Object.fromEntries(onAgent.map((s) => [s.id, diskLimitMb(s.plan)])))
-    .catch((err) => console.error("disk limits not sent", err));
+  // Every server's disk limit and own domain, so the agents have them all.
+  await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
   await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
+  await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
   return result;
 }

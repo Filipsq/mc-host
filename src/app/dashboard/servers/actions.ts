@@ -15,14 +15,16 @@ import {
   getOwnedServer,
   isValidSubdomain,
   onHost,
+  syncHostAliases,
   syncPeerRoutes,
   worldTooNew,
 } from "@/lib/servers";
 import { MAIN_NODE } from "@/lib/nodes";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
-import { startCheckout } from "@/lib/billing";
+import { startCheckout, syncDiskLimits } from "@/lib/billing";
 import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
+import { addonCost, addonList, canBuyAddons, serverAddons, type AddonId } from "@/lib/addons";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
@@ -114,6 +116,7 @@ async function checkoutUrl(
   plan: z.infer<typeof planField>,
   days: PeriodDays,
   autoRenew = false,
+  addons: AddonId[] = [],
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -129,12 +132,21 @@ async function checkoutUrl(
     // Both checkout forms require the start-now consent before getting here.
     startConsent: true,
     autoRenew,
+    addons,
   });
+}
+
+/** Add-ons ticked in a form: none on the free plan, and the own domain only for Java (players of other games join by IP and port). */
+function formAddons(form: FormData, plan: Plan, edition: string) {
+  if (plan === "FREE") return [];
+  return addonList(form.getAll("addons").map(String)).filter((a) => a !== "domain" || edition === "JAVA");
 }
 
 export async function createServerAction(_: CreateServerState, form: FormData): Promise<CreateServerState> {
   const user = await requireUser();
   const values = Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
+  // Several ticked add-ons share a name; kept together so the form can come back with them.
+  values.addons = form.getAll("addons").map(String).join(",");
   const parsed = createSchema.safeParse(values);
   if (!parsed.success) {
     const field = parsed.error.issues[0].path[0];
@@ -143,6 +155,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     return { error, values };
   }
   const { name, edition, plan, days } = parsed.data;
+  const addons = formAddons(form, plan, edition);
   // A hyphen left at the end when someone pressed Enter mid-typing.
   const subdomain = edition === "JAVA" ? (parsed.data.subdomain ?? "").replace(/-+$/, "") : null;
   if (subdomain !== null && !isValidSubdomain(subdomain)) return { error: "invalidSubdomain", values };
@@ -220,7 +233,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(pack && { version: pack.gameVersion, ...packFields(pack) }),
     // Paid servers are only created on the game host once Stripe confirms payment.
     status: plan === "FREE" || adminTest ? "PROVISIONING" : "AWAITING_PAYMENT",
-    ...(adminTest && { adminTest, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
+    ...(adminTest && { adminTest, addons, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
   });
   if (server === "subdomainTaken") return { error: "subdomainTaken", values };
   if (!server) return { error: "noPorts", values };
@@ -230,7 +243,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (plan !== "FREE" && !adminTest) {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, days);
+      url = await checkoutUrl(user, server, plan, days, false, addons);
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -297,7 +310,14 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
 
   let url: string;
   try {
-    url = await checkoutUrl(user, server, parsed.data.plan, parsed.data.days, form.get("autoRenew") === "on");
+    url = await checkoutUrl(
+      user,
+      server,
+      parsed.data.plan,
+      parsed.data.days,
+      form.get("autoRenew") === "on",
+      formAddons(form, parsed.data.plan, server.edition),
+    );
   } catch (err) {
     console.error("checkout failed", server.id, err);
     return { error: "paymentsUnavailable" };
@@ -339,12 +359,68 @@ export async function upgradeAction(id: string, _: CheckoutState, form: FormData
       productName: format(t.upgrade.productName, { from: t.plans[server.plan], to: t.plans[parsed.data.plan], server: server.name }),
       startConsent: true,
       upgrade: { from: server.plan, amount },
+      // The add-ons stay; only the plan's difference is paid.
+      addons: serverAddons(server),
     });
   } catch (err) {
     console.error("upgrade checkout failed", server.id, err);
     return { error: "paymentsUnavailable" };
   }
   redirect(url);
+}
+
+/** Buys add-ons for the rest of the paid period, paying their share of the time left (addonCost in addons.ts). */
+export async function buyAddonsAction(id: string, _: CheckoutState, form: FormData): Promise<CheckoutState> {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server) redirect("/dashboard");
+  if (!canBuyAddons(server)) redirect(`/dashboard/servers/${server.id}/billing`);
+  const have = serverAddons(server);
+  const added = formAddons(form, server.plan, server.edition).filter((a) => !have.includes(a));
+  if (added.length === 0) return { error: "noAddons" };
+  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+
+  const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
+  const { amount } = addonCost(added, server.paidUntil!, currency);
+  let url: string;
+  try {
+    await db.user.updateMany({ where: { id: user.id }, data: { locale } });
+    url = await startCheckout({
+      user,
+      server,
+      plan: server.plan,
+      days: 0,
+      currency,
+      locale,
+      productName: format(t.paidAddons.productName, { list: added.map((a) => t.paidAddons.names[a]).join(", "), server: server.name }),
+      startConsent: true,
+      addons: [...have, ...added],
+      addonsOnly: { amount },
+    });
+  } catch (err) {
+    console.error("add-ons checkout failed", server.id, err);
+    return { error: "paymentsUnavailable" };
+  }
+  redirect(url);
+}
+
+/** Drops an add-on now (what's paid isn't given back); the next payment no longer includes it. */
+export async function removeAddonAction(id: string, addon: AddonId) {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server || !server.addons.includes(addon)) return;
+  await db.server.update({
+    where: { id: server.id },
+    data: {
+      addons: server.addons.filter((a) => a !== addon),
+      ...(addon === "domain" && { customDomain: null }),
+      // The container keeps the backups count it was made with until it's rebuilt, on its next start.
+      ...(addon === "backups" && server.status === "RUNNING" && { pluginsPending: true }),
+    },
+  });
+  if (addon === "domain") await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
+  if (addon === "disk") await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
+  revalidatePath(`/dashboard/servers/${id}/addons`);
 }
 
 /** Turns automatic renewal on (with the card already saved for this server) or off. */

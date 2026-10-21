@@ -1359,3 +1359,11 @@ button.helper-close:hover:not(:disabled) { background: var(--surface-2); color: 
   .new-head .helper-toggle { width: 100%; justify-content: center; }
   .helper-options label.choice { padding: 10px 11px; gap: 9px; }
 }
+.helper-subtitle { margin: 4px 0 0; font-weight: 600; }
+.addon-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; }
+label.addon-choice { align-items: flex-start; }
+.addon-price { font-weight: 700; color: var(--accent-strong); }
+.addon-list { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.addon-list li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--accent); background: var(--accent-soft); }
+.addon-confirm { align-items: flex-end; }
+.dns-record { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--bg); border: 1px dashed var(--border-strong); word-break: break-all; }

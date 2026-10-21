@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Check, Lightbulb, X } from "lucide-react";
 import type { Plan } from "@prisma/client";
 import { format, type Messages } from "@/i18n/messages";
-import type { PlanOption } from "@/components/PlanPicker";
+import type { AddonOption, PlanOption } from "@/components/PlanPicker";
+import type { AddonId } from "@/lib/addons";
 import { formatPrice } from "@/lib/plans";
 import type { Currency } from "@/i18n/config";
 import { PLAYER_GROUPS, type PlayerGroup } from "@/lib/ram";
@@ -25,6 +26,8 @@ type Props = {
   server: Messages["server"];
   terraria: Messages["terraria"];
   plans: PlanOption[];
+  addons: AddonOption[];
+  addonNames: Record<AddonId, string>;
   money: { locale: string; currency: string };
   freeTaken: boolean;
   open: boolean;
@@ -33,19 +36,22 @@ type Props = {
 };
 
 /** "Pomóż mi zdecydować": four questions, a plan and game to start from, and a button that fills the form in. */
-export default function PlanHelper({ t, server, terraria, plans, money, freeTaken, open, onClose, onApply }: Props) {
+export default function PlanHelper({ t, server, terraria, plans, addons, addonNames, money, freeTaken, open, onClose, onApply }: Props) {
   const [platform, setPlatform] = useState<HelperPlatform>("java");
   const [players, setPlayers] = useState<PlayerGroup>(5);
   const [content, setContent] = useState<HelperContent>("vanilla");
   const [extras, setExtras] = useState<HelperExtra[]>([]);
+  const [picked, setPicked] = useState<AddonId[]>([]);
   const [applied, setApplied] = useState(false);
   if (!open) return null;
 
   const contents = contentFor(platform);
-  const pick = recommend({ platform, players, content, extras }, freeTaken);
+  const pick = recommend({ platform, players, content, extras, addons: picked }, freeTaken);
   const plan = plans.find((p) => p.id === pick.plan)!;
   const planName = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
   const price = (n: number) => formatPrice(n, money.currency as Currency, money.locale);
+  const addonsHere = addons.filter((o) => o.id !== "domain" || platform === "java" || platform === "both");
+  const monthly = plan.monthly + (pick.plan === "FREE" ? 0 : addons.filter((o) => pick.addons.includes(o.id)).reduce((sum, o) => sum + o.monthly, 0));
   const extrasHere = HELPER_EXTRAS.filter((e) => e !== "nonPremium" || platform === "java" || platform === "both");
   // Any change after "fill in" means the form no longer matches what's shown.
   const changed = <T,>(set: (v: T) => void) => (v: T) => {
@@ -137,6 +143,28 @@ export default function PlanHelper({ t, server, terraria, plans, money, freeTake
                 </label>
               ))}
             </div>
+            {addonsHere.length > 0 && (
+              <div className="stack-tight">
+                <p className="small helper-subtitle">{t.addonsTitle}</p>
+                <div className="helper-extras">
+                  {addonsHere.map((o) => (
+                    <label key={o.id} className="check">
+                      <input
+                        type="checkbox"
+                        checked={picked.includes(o.id)}
+                        onChange={(ev) => changed(setPicked)(ev.target.checked ? [...picked, o.id] : picked.filter((x) => x !== o.id))}
+                      />
+                      <span className="stack-tight">
+                        <span>
+                          {o.name} <span className="addon-price small">+{price(o.monthly)}</span>
+                        </span>
+                        <span className="muted small">{o.hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="helper-included">
               <p className="small">{t.included}</p>
               <ul>
@@ -153,13 +181,18 @@ export default function PlanHelper({ t, server, terraria, plans, money, freeTake
           <p className="helper-result-label">{t.result}</p>
           <p className="helper-plan">
             <strong>{plan.name}</strong>{" "}
-            <span>{plan.monthly === 0 ? t.free : `${price(plan.monthly)} ${t.perMonth}`}</span>
+            <span>{monthly === 0 ? t.free : `${price(Math.round(monthly * 100) / 100)} ${t.perMonth}`}</span>
           </p>
           <p className="muted small">{plan.summary}</p>
           <ul className="ai-picks">
             <li className="chip">{gameName}</li>
             {pick.crossplay && <li className="chip">{t.chipCrossplay}</li>}
             {pick.nonPremium && <li className="chip">{t.chipNonPremium}</li>}
+            {pick.addons.map((a) => (
+              <li key={a} className="chip">
+                {addonNames[a]}
+              </li>
+            ))}
           </ul>
           <ul className="helper-reasons">
             {pick.reasons.map((r) => (

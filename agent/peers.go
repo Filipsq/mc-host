@@ -61,8 +61,9 @@ func (a *agent) loadPeerRoutes() {
 	a.peerMu.Unlock()
 }
 
-// lookupRoute finds the server for a Java address here, or else the machine it's on.
+// lookupRoute finds the server for a Java address (or a server's own domain) here, or else the machine it's on.
 func (a *agent) lookupRoute(ctx context.Context, host string) (*routeTarget, error) {
+	host = a.canonicalHost(host)
 	t, err := a.lookupByHost(ctx, host)
 	if t != nil || err != nil {
 		return t, err

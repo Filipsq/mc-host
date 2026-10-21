@@ -9,6 +9,7 @@ import {
   getServerState,
   listWorlds,
   recreateServer,
+  setHostAliases,
   setPeerRoutes,
   type AgentState,
   type CreateServerSpec,
@@ -16,6 +17,7 @@ import {
 import { getServerFor } from "./access";
 import { oversold, pickNode } from "./capacity";
 import { planById } from "./plans";
+import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
 import { TMOD_ARCH } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
@@ -126,13 +128,14 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
 const GAME_DOMAIN = process.env.GAME_DOMAIN ?? "localhost";
 
 /** The Java address: every machine's servers are reached through the main machine's router. */
-function javaHost(server: Pick<Server, "subdomain">) {
+export function javaHost(server: Pick<Server, "subdomain">) {
   return `${server.subdomain}.${GAME_DOMAIN}`;
 }
 
 /** What players type in the game to join: a Java address, or a host and port (Bedrock, Terraria). */
-export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port" | "node">) {
-  if (server.edition === "JAVA") return { host: javaHost(server), port: null };
+export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port" | "node" | "plan" | "addons" | "customDomain">) {
+  // With the domain add-on and the owner's domain set, players type that instead.
+  if (server.edition === "JAVA") return { host: (hasOwnDomain(server) && server.customDomain) || javaHost(server), port: null };
   return { host: nodeById(server.node).host, port: server.port };
 }
 
@@ -161,8 +164,17 @@ export async function syncPeerRoutes() {
   await setPeerRoutes(Object.fromEntries(servers.map((s) => [javaHost(s), routerAddress(nodeById(s.node))])));
 }
 
+/** Tells every machine's router which own domains (the "domain" add-on) lead to which Java address (see agent/aliases.go). */
+export async function syncHostAliases() {
+  const servers = await db.server.findMany({
+    where: { customDomain: { not: null }, edition: "JAVA", plan: { not: "FREE" }, addons: { has: "domain" } },
+    select: { customDomain: true, subdomain: true, plan: true, addons: true, edition: true },
+  });
+  await setHostAliases(Object.fromEntries(servers.filter(hasOwnDomain).map((s) => [s.customDomain!, javaHost(s)])));
+}
+
 /** The address as players type it. */
-export function addressLabel(server: Pick<Server, "edition" | "subdomain" | "port" | "node">) {
+export function addressLabel(server: Parameters<typeof joinAddress>[0]) {
   const { host, port } = joinAddress(server);
   return server.edition === "JAVA" ? host : `${host}:${port}`;
 }
@@ -182,8 +194,8 @@ export function agentSpec(server: Server): CreateServerSpec {
     hostname: server.edition === "JAVA" ? javaHost(server) : "",
     password: server.edition === "TERRARIA" ? (server.serverPassword ?? "") : undefined,
     autostop: !plan.alwaysOn,
-    backupsKept: plan.backupsKept,
-    diskMb: plan.diskGb * 1024,
+    backupsKept: backupsFor(server),
+    diskMb: diskGbFor(server) * 1024,
     gameMode: server.gameMode,
     difficulty: server.difficulty,
     motd: server.motd,

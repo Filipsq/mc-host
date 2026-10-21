@@ -168,6 +168,11 @@ export async function setDiskLimits(limits: Record<string, number>) {
   );
 }
 
+/** Tells every machine's router which own domains stand for which Java addresses, replacing what it had. */
+export async function setHostAliases(aliases: Record<string, string>) {
+  await Promise.all(nodes().map((node) => agentFetch("/host-aliases", { method: "PUT", body: JSON.stringify({ aliases }), node })));
+}
+
 /** Tells the main machine's router which Java addresses live on other machines, and their routers. */
 export async function setPeerRoutes(routes: Record<string, string>) {
   await agentFetch("/peer-routes", { method: "PUT", body: JSON.stringify({ routes }), node: nodeById(MAIN_NODE) });

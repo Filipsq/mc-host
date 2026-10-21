@@ -4,7 +4,8 @@ import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
 import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
-import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
+import PlanPicker, { type AddonOption, type PlanOption } from "@/components/PlanPicker";
+import { addonList, type AddonId } from "@/lib/addons";
 import EditionIcon from "@/components/EditionIcon";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
@@ -26,12 +27,14 @@ type Props = {
   title: string;
   t: Messages["server"];
   helper: Messages["helper"];
+  paidAddons: Messages["paidAddons"];
   terraria: Messages["terraria"];
   initialEdition?: Edition; // Terraria, when picked on the home page
   settings: Messages["settings"];
   billing: Messages["billing"];
   legal: Messages["legal"];
   plans: PlanOption[];
+  addonOptions: AddonOption[];
   defaultPlan: Plan;
   domain: string;
   money: { locale: string; currency: string };
@@ -69,7 +72,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -91,6 +94,7 @@ export default function CreateServerForm({ title, t, helper, terraria, initialEd
   const [crossplay, setCrossplay] = useState(v.name === undefined || v.crossplay === "on");
   const [nonPremium, setNonPremium] = useState(v.nonPremium === "on");
   const [helperOpen, setHelperOpen] = useState(false);
+  const [addons, setAddons] = useState<AddonId[]>(addonList(v.addons?.split(",")));
 
   function applySuggestion(s: Suggestion) {
     setEdition(s.edition);
@@ -113,6 +117,7 @@ export default function CreateServerForm({ title, t, helper, terraria, initialEd
       const fits = CURATED_PACKS.find((c) => planAtLeast(p.plan, planForRam(c.ramGb)));
       if (fits) setPack(fits.slug);
     }
+    setAddons(p.addons);
     setCrossplay(p.crossplay);
     setNonPremium(p.nonPremium);
     setPlan(p.plan);
@@ -163,6 +168,8 @@ export default function CreateServerForm({ title, t, helper, terraria, initialEd
       server={t}
       terraria={terraria}
       plans={plans}
+      addons={addonOptions}
+      addonNames={paidAddons.names}
       money={money}
       freeTaken={plans.some((p) => p.id === "FREE" && p.disabledNote)}
       open={helperOpen}
@@ -343,6 +350,13 @@ export default function CreateServerForm({ title, t, helper, terraria, initialEd
         labels={{ plan: t.plan, period: t.period, total: billing.total }}
         formatMoney={money}
         onPlanChange={setPlan}
+        addons={{
+          // The own domain is for Java addresses only.
+          options: addonOptions.filter((o) => o.id !== "domain" || edition === "JAVA"),
+          initial: addons.filter((a) => a !== "domain" || edition === "JAVA"),
+          labels: { title: paidAddons.pickTitle, hint: paidAddons.pickHint, price: paidAddons.price },
+          onChange: setAddons,
+        }}
       />
       {ramLow && (
         <p className="notice warn">

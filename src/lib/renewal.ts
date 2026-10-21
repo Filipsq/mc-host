@@ -5,6 +5,7 @@ import { stripe } from "./stripe";
 import { fulfillPayment, priceFor } from "./billing";
 import { PERIOD_DAYS, type PeriodDays } from "./periods";
 import { sendPlanMail } from "./planMail";
+import { serverAddons } from "./addons";
 import type { Currency } from "@/i18n/config";
 
 // Automatic renewal: an owner who paid by card and asked for it has the card
@@ -45,9 +46,10 @@ export async function renewDueServers(now = new Date()) {
 async function renew(server: Server & { owner: { email: string; locale: string } }, customer: string | null) {
   const days = (PERIOD_DAYS as readonly number[]).includes(server.renewDays ?? 0) ? (server.renewDays as PeriodDays) : 30;
   const currency = (server.renewCurrency ?? "PLN") as Currency;
-  const amount = Math.round(priceFor(server.plan, days, currency) * 100);
+  const addons = serverAddons(server);
+  const amount = Math.round(priceFor(server.plan, days, currency, addons) * 100);
   const payment = await db.payment.create({
-    data: { userId: server.ownerId, serverId: server.id, plan: server.plan, days, amount, currency, startConsent: true, renewal: true },
+    data: { userId: server.ownerId, serverId: server.id, plan: server.plan, days, amount, currency, startConsent: true, renewal: true, addons },
   });
   let succeeded = false;
   try {
