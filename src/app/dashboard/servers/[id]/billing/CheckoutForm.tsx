@@ -17,9 +17,10 @@ type Props = {
   errors: Messages["server"]["errors"];
   legal: Messages["legal"];
   money: { locale: string; currency: string };
+  autoRenew: boolean; // ticked to start with
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -31,6 +32,13 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
         formatMoney={money}
       />
       {note && <p className="muted small">{note}</p>}
+      <label className="check">
+        <input name="autoRenew" type="checkbox" defaultChecked={autoRenew} />
+        <span className="stack-tight">
+          <span>{t.autoRenew}</span>
+          <span className="muted small">{t.autoRenewHint}</span>
+        </span>
+      </label>
       <p className="muted small">{t.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}

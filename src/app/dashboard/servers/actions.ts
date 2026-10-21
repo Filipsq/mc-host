@@ -22,6 +22,7 @@ import { MAIN_NODE } from "@/lib/nodes";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout } from "@/lib/billing";
+import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
@@ -107,7 +108,13 @@ async function requireUser() {
   return { id: session.user.id, email: session.user.email ?? "" };
 }
 
-async function checkoutUrl(user: { id: string; email: string }, server: { id: string; name: string }, plan: z.infer<typeof planField>, days: PeriodDays) {
+async function checkoutUrl(
+  user: { id: string; email: string },
+  server: { id: string; name: string },
+  plan: z.infer<typeof planField>,
+  days: PeriodDays,
+  autoRenew = false,
+) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
   await db.user.updateMany({ where: { id: user.id }, data: { locale } });
@@ -121,6 +128,7 @@ async function checkoutUrl(user: { id: string; email: string }, server: { id: st
     productName: format(t.billing.productName, { plan: t.plans[plan], server: server.name, days }),
     // Both checkout forms require the start-now consent before getting here.
     startConsent: true,
+    autoRenew,
   });
 }
 
@@ -289,12 +297,65 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
 
   let url: string;
   try {
-    url = await checkoutUrl(user, server, parsed.data.plan, parsed.data.days);
+    url = await checkoutUrl(user, server, parsed.data.plan, parsed.data.days, form.get("autoRenew") === "on");
   } catch (err) {
     console.error("checkout failed", server.id, err);
     return { error: "paymentsUnavailable" };
   }
   redirect(url);
+}
+
+const upgradeSchema = z.object({ plan: planField.exclude(["FREE"]) });
+
+/** Moves a paid server to a bigger plan for the rest of its period, paying only the difference (upgrade.ts). */
+export async function upgradeAction(id: string, _: CheckoutState, form: FormData): Promise<CheckoutState> {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server) redirect("/dashboard");
+  // Free, expired or unpaid: a whole period is bought on the billing page instead.
+  if (!canUpgrade(server)) redirect(`/dashboard/servers/${server.id}/billing`);
+  const parsed = upgradeSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success || !biggerPlans(server.plan).some((p) => p.id === parsed.data.plan)) return { error: "invalidPlan" };
+  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+  // As for a plan change: the extra memory here, or the whole plan on a machine it can move to.
+  const planMb = planById(parsed.data.plan).ramGb * 1024;
+  const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
+  if (!(await canSellMemory(extraMb, planMb, server.node)) && !(await canSellMemory(planMb))) {
+    return { error: "soldOut" };
+  }
+
+  const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
+  const { amount } = upgradeCost(server.plan, parsed.data.plan, server.paidUntil!, currency);
+  let url: string;
+  try {
+    await db.user.updateMany({ where: { id: user.id }, data: { locale } });
+    url = await startCheckout({
+      user,
+      server,
+      plan: parsed.data.plan,
+      days: 0,
+      currency,
+      locale,
+      productName: format(t.upgrade.productName, { from: t.plans[server.plan], to: t.plans[parsed.data.plan], server: server.name }),
+      startConsent: true,
+      upgrade: { from: server.plan, amount },
+    });
+  } catch (err) {
+    console.error("upgrade checkout failed", server.id, err);
+    return { error: "paymentsUnavailable" };
+  }
+  redirect(url);
+}
+
+/** Turns automatic renewal on (with the card already saved for this server) or off. */
+export async function setAutoRenewAction(id: string, on: boolean) {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server) return;
+  // On needs a card; a server without one gets it by paying once with the box ticked.
+  if (on && !server.renewCard) return;
+  await db.server.update({ where: { id: server.id }, data: { autoRenew: on } });
+  revalidatePath(`/dashboard/servers/${id}/billing`);
 }
 
 /** The server, if the signed-in user may do what's needed with it (see src/lib/access.ts). */
