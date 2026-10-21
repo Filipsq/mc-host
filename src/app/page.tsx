@@ -15,6 +15,7 @@ import PackCarousel from "@/components/PackCarousel";
 import CurseforgeTop from "@/components/CurseforgeTop";
 import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
+import PauseOffscreen from "@/components/PauseOffscreen";
 import EditionIcon from "@/components/EditionIcon";
 import { FeatureArt, GameArt, StepArt } from "@/components/HomeArt";
 import { getPackArt } from "@/lib/modrinth";
@@ -50,6 +51,7 @@ export default async function Home() {
 
   return (
     <main className="home">
+      <PauseOffscreen />
       <section className="hero">
         <Clouds />
         <div className="container hero-grid">

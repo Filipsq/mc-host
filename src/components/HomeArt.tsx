@@ -28,9 +28,13 @@ export function FeatureArt({ kind, art, domain, online, zero }: { kind: FeatureK
           {/* Both editions connect to the one server: a line from each chip up into it. */}
           <div className="xplay">
             <svg className="links" viewBox="0 0 240 120">
-              <path className="l-java" d="M38 84 C38 58 70 46 102 44" />
-              <path className="l-bedrock" d="M200 84 C200 58 170 46 138 44" />
+              <path className="l-java" d="M40 82 L102 48" />
+              <path className="l-bedrock" d="M200 82 L138 48" />
             </svg>
+            {/* Little packets ride the lines into the server. They move with transform only:
+                animating the dashes themselves repainted the whole page every frame. */}
+            <span className="packet p-java" /><span className="packet p-java late" />
+            <span className="packet p-bedrock" /><span className="packet p-bedrock late" />
             <img className="art-server" src="/art/block-server.svg" alt="" width={48} height={54} />
             <span className="device d-java"><Monitor size={18} /><b>Java</b></span>
             <span className="device d-bedrock"><Smartphone size={16} /><Gamepad2 size={16} /><b>Bedrock</b></span>
