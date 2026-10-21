@@ -1364,6 +1364,7 @@ const pl = {
       tooBig: "To więcej, niż ma nasz największy plan. Weź Pro i napisz do nas na czacie.",
       noCrossplay: "Crossplay z telefonami działa tylko na serwerze bez modów.",
       noNonPremium: "Gracze bez premium mogą wejść tylko na serwer bez modów.",
+      group: "Przy 6 i więcej graczach naraz polecamy co najmniej plan {plan}, żeby serwer nie lagował.",
       addonsPaid: "Dodatki są w płatnych planach, więc polecamy co najmniej Starter.",
     },
     chipCrossplay: "Crossplay z telefonami",

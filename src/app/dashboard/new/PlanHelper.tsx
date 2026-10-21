@@ -245,6 +245,8 @@ function reasonText(t: Messages["helper"], r: HelperReason, planName: (id: Plan)
       return r.max === null ? format(r2.playersUnlimited, { plan: planName(r.plan) }) : format(r2.players, { plan: planName(r.plan), max: r.max });
     case "ram":
       return format(r2.ram, { plan: planName(r.plan), gb: new Intl.NumberFormat(locale).format(r.gb), planGb: r.planGb });
+    case "group":
+      return format(r2.group, { plan: planName(r.plan) });
     case "backups":
       return format(r2.backups, { plan: planName(r.plan), n: r.kept });
     default:
