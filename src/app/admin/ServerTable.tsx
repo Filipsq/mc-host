@@ -110,8 +110,8 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
         cell: (s) => {
           const l = live[s.id];
           return (
-            <td className={`nowrap${l.diskMb !== undefined && l.diskMb > diskLimitMb(s.plan) ? " over" : ""}`}>
-              {l.diskMb !== undefined ? `${f.size(l.diskMb)} / ${f.size(diskLimitMb(s.plan))}` : "–"}
+            <td className={`nowrap${l.diskMb !== undefined && l.diskMb > diskLimitMb(s) ? " over" : ""}`}>
+              {l.diskMb !== undefined ? `${f.size(l.diskMb)} / ${f.size(diskLimitMb(s))}` : "–"}
             </td>
           );
         },

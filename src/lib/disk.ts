@@ -1,12 +1,12 @@
-import type { Plan } from "@prisma/client";
-import { planById } from "./plans";
+import type { Server } from "@prisma/client";
+import { diskGbFor } from "./addons";
 
 // A server's files may take its plan's disk space. The agent enforces it (see
 // agent/disk.go): uploads can't go over, and a server the game grows more than
 // a tenth past it is stopped until its owner makes room.
 
-/** The plan's disk space in MB, as the agent is told. */
-export const diskLimitMb = (plan: Plan) => planById(plan).diskGb * 1024;
+/** The server's disk space in MB (its plan's, plus the disk add-on), as the agent is told. */
+export const diskLimitMb = (s: Pick<Server, "plan" | "addons">) => diskGbFor(s) * 1024;
 
 /** Where the agent stops a server: a tenth over its limit (hardDiskLimit in the agent). */
 export const hardDiskLimitMb = (limitMb: number) => limitMb + Math.floor(limitMb / 10);

@@ -1,14 +1,13 @@
 import type { Plan, Server } from "@prisma/client";
 import type { Currency } from "@/i18n/config";
 import { planById, plans } from "./plans";
+import { STRIPE_MINIMUM } from "./addons";
 
 // Moving to a bigger plan in the middle of a paid period: the period keeps its
 // end date and the owner pays only the price difference for the time left.
 
 const DAY = 24 * 60 * 60 * 1000;
 
-// The smallest amount Stripe takes in each currency.
-const STRIPE_MINIMUM: Record<Currency, number> = { PLN: 2, EUR: 0.5, USD: 0.5, GBP: 0.3 };
 
 const rank = (plan: Plan) => plans.findIndex((p) => p.id === plan);
 

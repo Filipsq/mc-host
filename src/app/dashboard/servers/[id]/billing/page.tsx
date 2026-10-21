@@ -5,7 +5,8 @@ import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getOwnedServer } from "@/lib/servers";
-import { planOptions } from "@/lib/planOptions";
+import { addonOptions, planOptions } from "@/lib/planOptions";
+import { serverAddons } from "@/lib/addons";
 import { formatPrice } from "@/lib/plans";
 import { priceFor } from "@/lib/billing";
 import { canUpgrade } from "@/lib/upgrade";
@@ -52,7 +53,7 @@ export default async function BillingPage({ params }: { params: Promise<{ id: st
             ? format(b.autoRenewOn, {
                 card: server.renewCardLabel ?? "",
                 days: renewDays,
-                amount: formatPrice(priceFor(server.plan, renewDays, renewCurrency), renewCurrency, locale),
+                amount: formatPrice(priceFor(server.plan, renewDays, renewCurrency, serverAddons(server)), renewCurrency, locale),
                 date: server.paidUntil ? dateTime.format(new Date(server.paidUntil.getTime() - RENEW_BEFORE_MS)) : "",
               })
             : format(b.autoRenewOff, { card: server.renewCardLabel ?? "" }),
@@ -120,6 +121,12 @@ export default async function BillingPage({ params }: { params: Promise<{ id: st
         legal={t.legal}
         money={{ locale, currency }}
         autoRenew={server.autoRenew}
+        addons={{
+          // The own domain is for Java addresses only.
+          options: addonOptions(t, currency).filter((o) => o.id !== "domain" || server.edition === "JAVA"),
+          initial: serverAddons(server),
+          labels: { title: t.paidAddons.pickTitle, hint: t.paidAddons.pickHint, price: t.paidAddons.price },
+        }}
       />
     </main>
   );

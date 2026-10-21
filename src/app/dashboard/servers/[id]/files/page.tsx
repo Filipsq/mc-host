@@ -68,7 +68,7 @@ export default async function FilesPage({ params, searchParams }: Props) {
           </p>
           {agent?.diskMb !== undefined && (
             <p className="muted small">
-              {format(t.usage, { used: formatMb(agent.diskMb, locale), limit: formatMb(diskLimitMb(server.plan), locale) })}
+              {format(t.usage, { used: formatMb(agent.diskMb, locale), limit: formatMb(diskLimitMb(server), locale) })}
             </p>
           )}
         </>

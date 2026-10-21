@@ -130,6 +130,14 @@ export default function TermsPl({ site }: { site: string }) {
           przez operatora płatności). Kolejne Okresy kosztują według ceny nowego Planu.
         </li>
         <li>
+          Do płatnego Planu Użytkownik może dokupić dodatki (np. dodatkowe miejsce na dysku, więcej kopii
+          zapasowych, własną domenę). Cena dodatku jest podana za 30 dni i jest doliczana do ceny Planu za każdy
+          opłacany Okres. Dodatek dokupiony w trakcie Okresu kosztuje część tej ceny za czas pozostały do końca
+          Okresu (nie mniej niż najniższa kwota przyjmowana przez operatora płatności). Użytkownik może wyłączyć
+          dodatek w każdej chwili; opłata za czas już opłacony nie jest zwracana. Przy własnej domenie Użytkownik
+          odpowiada za to, że ma prawo jej używać, i sam ustawia jej rekordy DNS.
+        </li>
+        <li>
           Po upływie Okresu Serwer zostaje zawieszony: przestaje działać, ale jego świat i kopie zapasowe są
           zachowane. Usługodawca przechowuje dane zawieszonego Serwera przez co najmniej 14 dni od końca Okresu, a
           po tym czasie może je usunąć, uprzedzając o tym Użytkownika e-mailem co najmniej 3 dni wcześniej.

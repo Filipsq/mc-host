@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import type { Plan } from "@prisma/client";
 import { checkoutAction } from "../../actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
+import type { ComponentProps } from "react";
 import PaymentConsent from "@/components/PaymentConsent";
 import type { Messages } from "@/i18n/messages";
 
@@ -18,9 +19,10 @@ type Props = {
   legal: Messages["legal"];
   money: { locale: string; currency: string };
   autoRenew: boolean; // ticked to start with
+  addons: ComponentProps<typeof PlanPicker>["addons"];
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -30,6 +32,7 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
         periodLabels={{ days: t.periodDays, off: t.periodOff }}
         labels={{ ...labels, total: t.total }}
         formatMoney={money}
+        addons={addons}
       />
       {note && <p className="muted small">{note}</p>}
       <label className="check">

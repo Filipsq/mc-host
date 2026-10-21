@@ -61,7 +61,7 @@ export default async function AdminOverview() {
   const waiting = pending.filter((p) => !isTestPayment(p));
 
   const crashed = servers.filter((s) => live[s.id].state === "crashed");
-  const overDisk = servers.filter((s) => (live[s.id].diskMb ?? 0) > diskLimitMb(s.plan));
+  const overDisk = servers.filter((s) => (live[s.id].diskMb ?? 0) > diskLimitMb(s));
   const stuck = servers.filter((s) => s.status === "PROVISIONING" && s.updatedAt.getTime() < now.getTime() - 10 * 60_000);
   const ending = servers
     .filter((s) => s.plan !== "FREE" && ON_HOST.includes(s.status) && s.paidUntil && s.paidUntil.getTime() < now.getTime() + 3 * DAY)
@@ -74,7 +74,7 @@ export default async function AdminOverview() {
     {
       title: t.overDisk,
       rows: overDisk,
-      note: (s) => `${f.size(live[s.id].diskMb ?? 0)} / ${f.size(diskLimitMb(s.plan))}`,
+      note: (s) => `${f.size(live[s.id].diskMb ?? 0)} / ${f.size(diskLimitMb(s))}`,
       hint: t.overDiskHint,
     },
     { title: t.stuck, rows: stuck, hint: t.stuckHint },

@@ -118,6 +118,14 @@ export default function TermsEn({ site }: { site: string }) {
           smallest amount the payment provider accepts). Later Periods cost the new Plan’s price.
         </li>
         <li>
+          The User can add add-ons to a paid Plan (e.g. extra disk space, more backups, an own domain). An
+          add-on’s price is given per 30 days and is added to the Plan’s price for every Period paid for. An add-on
+          bought during a Period costs its share of that price for the time left in the Period (no less than the
+          smallest amount the payment provider accepts). The User can turn an add-on off at any time; time already
+          paid for is not refunded. With an own domain, the User is responsible for having the right to use it and
+          sets its DNS records themselves.
+        </li>
+        <li>
           When you change Plans, the unused days of your current Plan are converted into days of the new Plan by
           the ratio of their prices and added to the paid Period.
         </li>

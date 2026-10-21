@@ -11,11 +11,12 @@ import { deletionDate } from "@/lib/billing";
 import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import { canUpgrade } from "@/lib/upgrade";
+import { backupsFor, serverAddons } from "@/lib/addons";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
 import { addonType, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
-import { ArrowUpCircle, FolderOpen, Globe, Puzzle, Users } from "lucide-react";
+import { ArrowUpCircle, FolderOpen, Globe, PackagePlus, Puzzle, Users } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
 import { EDITION_NAMES } from "@/lib/editions";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
@@ -44,7 +45,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
   // Friends see what the owner let them use; the rest of the panel stays hidden.
   const can = (need: ServerNeed) => allows(access, need);
 
-  const keep = planById(server.plan).backupsKept;
+  const keep = backupsFor(server);
   const [all, { locale }, { live, agent }, backups, friends] = await Promise.all([
     getMessages(),
     getPreferences(),
@@ -72,7 +73,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const unpaid = live === "awaitingPayment" || live === "suspended";
   // What the server's files take, as the agent last measured, against what the plan gives.
   const diskUsed = agent?.diskMb;
-  const diskLimit = diskLimitMb(server.plan);
+  const diskLimit = diskLimitMb(server);
   const diskVars =
     diskUsed === undefined
       ? null
@@ -247,6 +248,20 @@ export default async function ServerPage({ params, searchParams }: Props) {
           </span>
         )}
       </div>
+
+      {can("owner") && server.plan !== "FREE" && (
+        <div className="card row">
+          <span>
+            <strong>{all.paidAddons.title}</strong>{" "}
+            <span className="muted">
+              · {serverAddons(server).map((a) => all.paidAddons.names[a]).join(", ") || all.paidAddons.cardNone}
+            </span>
+          </span>
+          <Link className="button secondary" href={`/dashboard/servers/${server.id}/addons`}>
+            <PackagePlus size={16} aria-hidden /> {all.paidAddons.manage}
+          </Link>
+        </div>
+      )}
 
       <div className="card row">
         <span>

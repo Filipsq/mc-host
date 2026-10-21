@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { planOptions } from "@/lib/planOptions";
+import { addonOptions, planOptions } from "@/lib/planOptions";
 import { getPackArt } from "@/lib/modrinth";
 import { curseforgeEnabled, resolveCurseforgePack } from "@/lib/curseforge";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
@@ -52,6 +52,8 @@ export default async function NewServerPage({ searchParams }: Props) {
         title={t.server.newTitle}
         t={t.server}
         helper={t.helper}
+        paidAddons={t.paidAddons}
+        addonOptions={addonOptions(t, currency)}
         terraria={t.terraria}
         initialEdition={game === "terraria" ? "TERRARIA" : undefined}
         settings={t.settings}

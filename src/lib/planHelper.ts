@@ -4,6 +4,7 @@ import { planFor, ramNeeded, type PlayerGroup, type RamUse } from "./ram";
 import { planAtLeast } from "./modpacks";
 import { TMOD_MIN_PLAN, type TerrariaKind } from "./terraria";
 import type { GameId } from "./games";
+import { addonList, type AddonId } from "./addons";
 
 // "Pomóż mi zdecydować" on the new server page: a few questions (what people
 // play on, how many at once, mods or not, what else matters), then the plan
@@ -25,6 +26,7 @@ export type HelperAnswers = {
   players: PlayerGroup;
   content: HelperContent;
   extras: HelperExtra[];
+  addons: AddonId[]; // paid add-ons (addons.ts)
 };
 
 /** Why the plan came out as it did, one line each in the helper. */
@@ -39,7 +41,8 @@ export type HelperReason =
   | { code: "bigPacks" }
   | { code: "tooBig" }
   | { code: "noCrossplay" }
-  | { code: "noNonPremium" };
+  | { code: "noNonPremium" }
+  | { code: "addonsPaid" };
 
 export type HelperPick = {
   plan: Plan;
@@ -48,6 +51,7 @@ export type HelperPick = {
   terrariaKind?: TerrariaKind;
   crossplay: boolean;
   nonPremium: boolean;
+  addons: AddonId[];
   reasons: HelperReason[];
 };
 
@@ -91,6 +95,12 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
     plan = maxPlan(plan, "STARTER");
     reasons.push({ code: "backups", plan, kept: plans.find((p) => p.id === plan)!.backupsKept });
   }
+  // The own domain is for Java addresses only.
+  const addons = addonList(a.addons).filter((x) => x !== "domain" || (a.platform !== "bedrock" && !terraria));
+  if (addons.length > 0 && plan === "FREE") {
+    plan = "STARTER";
+    reasons.push({ code: "addonsPaid" });
+  }
   if (freeTaken && plan === "FREE") {
     plan = "STARTER";
     reasons.push({ code: "freeTaken" });
@@ -100,10 +110,10 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
   const out = reasons.filter((r) => r.code !== "free" || final === "FREE");
 
   if (terraria) {
-    return { plan, edition: "TERRARIA", terrariaKind: content as TerrariaKind, crossplay: false, nonPremium: false, reasons: out };
+    return { plan, edition: "TERRARIA", terrariaKind: content as TerrariaKind, crossplay: false, nonPremium: false, addons, reasons: out };
   }
   if (a.platform === "bedrock") {
-    return { plan, edition: "BEDROCK", crossplay: false, nonPremium: false, reasons: out };
+    return { plan, edition: "BEDROCK", crossplay: false, nonPremium: false, addons, reasons: out };
   }
   // Crossplay and non-premium players come through plugins, so only on servers without mods.
   const crossplay = a.platform === "both" && !modded;
@@ -111,5 +121,5 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
   if (a.platform === "both" && modded) out.push({ code: "noCrossplay" });
   if (extras.has("nonPremium") && modded) out.push({ code: "noNonPremium" });
   const game: GameId = modded ? "modpack" : use === "plugins" ? "survival-plus" : "survival";
-  return { plan, edition: "JAVA", game, crossplay, nonPremium, reasons: out };
+  return { plan, edition: "JAVA", game, crossplay, nonPremium, addons, reasons: out };
 }
