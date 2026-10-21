@@ -38,7 +38,9 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
         value: (s) => s.owner.email,
         cell: (s) => (
           <td>
-            <Link href={`/admin/users/${s.owner.id}`}>{s.owner.email}</Link>
+            <Link href={`/admin/users/${s.owner.id}`} className="email">
+              <Email address={s.owner.email} />
+            </Link>
           </td>
         ),
       },
@@ -46,7 +48,7 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
         label: t.columns.type,
         value: (s) => `${EDITION_NAMES[s.edition]} ${s.kind}`,
         cell: (s) => (
-          <td>
+          <td className="type-cell">
             {EDITION_NAMES[s.edition]}
             {s.edition === "JAVA" && isServerKind(s.kind) && s.kind !== "vanilla" && (
               <div className="muted small">{s.kind === "modpack" ? (s.modpackTitle ?? s.modpack) : all.server.kinds[s.kind]}</div>
@@ -120,7 +122,19 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
         label: t.columns.paidUntil,
         desc: true,
         value: (s) => (s.plan !== "FREE" ? s.paidUntil : null),
-        cell: (s) => <td className="nowrap">{s.plan !== "FREE" && s.paidUntil ? f.dateTime(s.paidUntil) : "–"}</td>,
+        // Date and time on two lines keep this column narrow.
+        cell: (s) => (
+          <td className="nowrap">
+            {s.plan !== "FREE" && s.paidUntil ? (
+              <>
+                {f.date(s.paidUntil)}
+                <div className="muted small">{f.time(s.paidUntil)}</div>
+              </>
+            ) : (
+              "–"
+            )}
+          </td>
+        ),
       },
       {
         label: t.columns.created,
@@ -136,5 +150,18 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
     <div className="table-scroll card flush">
       <SortableTable id={showOwner ? "servers" : "servers-of-user"} locale={f.locale} {...table} />
     </div>
+  );
+}
+
+/** An e-mail that wraps only after the @, so it splits into two readable halves instead of mid-word. */
+function Email({ address }: { address: string }) {
+  const at = address.indexOf("@");
+  if (at < 0) return address;
+  return (
+    <>
+      {address.slice(0, at + 1)}
+      <wbr />
+      {address.slice(at + 1)}
+    </>
   );
 }
