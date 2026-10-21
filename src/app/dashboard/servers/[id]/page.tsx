@@ -10,11 +10,12 @@ import { diskLimitMb, formatMb, hardDiskLimitMb } from "@/lib/disk";
 import { deletionDate } from "@/lib/billing";
 import { listBackups } from "@/lib/agent";
 import { planById } from "@/lib/plans";
+import { canUpgrade } from "@/lib/upgrade";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
 import { addonType, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
-import { FolderOpen, Globe, Puzzle, Users } from "lucide-react";
+import { ArrowUpCircle, FolderOpen, Globe, Puzzle, Users } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
 import { EDITION_NAMES } from "@/lib/editions";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
@@ -234,9 +235,16 @@ export default async function ServerPage({ params, searchParams }: Props) {
           </span>
         </span>
         {can("owner") && (
-          <Link className={`button${unpaid ? "" : " secondary"}`} href={`/dashboard/servers/${server.id}/billing`}>
-            {unpaid ? b.pay : b.manage}
-          </Link>
+          <span className="row">
+            {canUpgrade(server) && (
+              <Link className="button" href={`/dashboard/servers/${server.id}/upgrade`}>
+                <ArrowUpCircle size={16} aria-hidden /> {all.upgrade.open}
+              </Link>
+            )}
+            <Link className={`button${unpaid ? "" : " secondary"}`} href={`/dashboard/servers/${server.id}/billing`}>
+              {unpaid ? b.pay : b.manage}
+            </Link>
+          </span>
         )}
       </div>
 

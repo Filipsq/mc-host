@@ -762,6 +762,32 @@ label.choice.disabled { opacity: 0.5; cursor: not-allowed; }
 .plan-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
 label.plan-choice { align-items: flex-start; }
 label.plan-choice input { margin-top: 3px; }
+/* Upgrading a plan */
+.card-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; font-size: 1.05rem; font-weight: 700; }
+fieldset.card > legend.card-title { float: left; width: 100%; padding: 0; }
+.upgrade-plans { display: flex; flex-direction: column; gap: 8px; }
+label.upgrade-plan { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "radio name price" "radio specs price"; column-gap: 12px; align-items: center; }
+label.upgrade-plan input { grid-area: radio; }
+.upgrade-plan-name { grid-area: name; display: flex; align-items: center; gap: 8px; }
+.upgrade-plan-specs { grid-area: specs; }
+.upgrade-plan-price { grid-area: price; font-weight: 600; white-space: nowrap; }
+.upgrade-changes { display: flex; flex-direction: column; }
+.upgrade-change { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.upgrade-change:first-child { border-top: 0; padding-top: 0; }
+.upgrade-change-values { display: flex; align-items: center; gap: 8px; font-family: var(--font-mono); }
+.upgrade-change-values .off, .upgrade-cost + .off { padding: 0.05rem 0.45rem; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.8rem; font-weight: 700; }
+.upgrade-new { color: var(--accent-strong); }
+.upgrade-cost { font-size: 1.6rem; color: var(--accent-strong); }
+.upgrade-after { padding-top: 10px; border-top: 1px solid var(--border); }
+.notice svg { vertical-align: -3px; }
+.plan-status { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+.plan-status dt { color: var(--muted); }
+.plan-status dd { margin: 0; text-align: right; }
+.chip.ok { color: var(--accent-strong); border-color: var(--accent); }
+.chip.bad { color: var(--error); border-color: var(--error); }
+@media (max-width: 560px) {
+  label.upgrade-plan { grid-template-areas: "radio name" "radio specs" "radio price"; grid-template-columns: auto 1fr; }
+}
 .total { margin: 0; font-size: 1.15rem; padding: 14px 16px; border-radius: var(--radius-sm); background: var(--bg); border: 1px dashed var(--border-strong); }
 .address-input { display: flex; align-items: center; gap: 8px; }
 .address-input input { flex: 1; min-width: 0; font-family: var(--font-mono); }

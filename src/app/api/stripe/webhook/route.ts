@@ -32,6 +32,10 @@ export async function POST(req: Request) {
     case "checkout.session.expired":
       await markPayment(session.id, "EXPIRED");
       break;
+    // An automatic renewal (renewal.ts) the card took a while to confirm.
+    case "payment_intent.succeeded":
+      if (paymentId && session.metadata?.renewal === "1") await fulfillPayment(paymentId);
+      break;
   }
   return Response.json({ received: true });
 }

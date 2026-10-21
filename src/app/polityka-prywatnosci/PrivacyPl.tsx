@@ -85,7 +85,7 @@ export default function PrivacyPl({ site }: { site: string }) {
         </table>
       </div>
       <p>
-        Danych karty płatniczej nie widzimy: wpisujesz je na stronie płatności Stripe. Nie profilujemy Cię i nie
+        Danych karty płatniczej nie widzimy: wpisujesz je na stronie płatności Stripe. Gdy włączysz automatyczne odnawianie, kartę przechowuje Stripe, a my zapisujemy tylko jej rodzaj i cztery ostatnie cyfry. Nie profilujemy Cię i nie
         podejmujemy wobec Ciebie zautomatyzowanych decyzji.
       </p>
 

@@ -45,7 +45,14 @@ export default function PaymentTable({ rows, all, f, showUser = true, showServer
       {
         label: t.columns.plan,
         value: (p) => `${all.plans[p.plan]} ${String(p.days).padStart(4, "0")}`,
-        cell: (p) => <td className="nowrap">{format(t.paidDays, { plan: all.plans[p.plan], n: p.days })}</td>,
+        cell: (p) => (
+          <td className="nowrap">
+            {p.upgradeFrom
+              ? format(t.upgradeRow, { from: all.plans[p.upgradeFrom], plan: all.plans[p.plan] })
+              : format(t.paidDays, { plan: all.plans[p.plan], n: p.days })}
+            {p.renewal && <span className="chip">{t.renewalTag}</span>}
+          </td>
+        ),
       },
       {
         // Different currencies only sort sensibly among themselves, so group by currency first.

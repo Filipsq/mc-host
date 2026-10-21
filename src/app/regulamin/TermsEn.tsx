@@ -101,7 +101,22 @@ export default function TermsEn({ site }: { site: string }) {
           The contract for a paid Plan is made when the payment provider confirms the payment. The Server starts
           automatically once the payment is confirmed.
         </li>
-        <li>Plans do not renew automatically. Paying for another Period before the current one ends extends it.</li>
+        <li>
+          Plans do not renew automatically unless the User turns on automatic renewal. Paying for another Period
+          before the current one ends extends it.
+        </li>
+        <li>
+          The User can turn on automatic renewal when paying by card. The payment provider keeps the card. A day
+          before the Period ends, the Provider charges the card the price of another Period of the same length on
+          the current Plan, per the Price List of that day, and extends the Period. The User can turn automatic
+          renewal off at any time in the panel; this does not affect a Period already paid for. If the charge
+          fails, automatic renewal is turned off and the User is told by email.
+        </li>
+        <li>
+          During a paid Period the User can also upgrade to a higher Plan without changing when the Period ends, by
+          paying the difference between the two Plans’ prices for the time left in the Period (no less than the
+          smallest amount the payment provider accepts). Later Periods cost the new Plan’s price.
+        </li>
         <li>
           When you change Plans, the unused days of your current Plan are converted into days of the new Plan by
           the ratio of their prices and added to the paid Period.

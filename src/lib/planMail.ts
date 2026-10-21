@@ -9,9 +9,9 @@ import { sendPush } from "./push";
 // Emails about a server's paid plan: when a payment arrives, a few days
 // before the paid period ends (plans don't renew by themselves), when the
 // server is suspended for it, and a few days before a suspended server is
-// deleted. Also before a free server nobody plays on is deleted.
+// deleted; when its automatic renewal fails (renewal.ts). Also before a free server nobody plays on is deleted.
 
-export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion" | "inactive";
+export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion" | "inactive" | "renewFailed";
 export type ServerWithOwner = Server & { owner: Pick<User, "email" | "locale"> };
 
 /** How long before the end of a paid period its owner is reminded. */
@@ -48,7 +48,10 @@ export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, 
   const mail = buttonMail({
     to: server.owner.email,
     subject: format(t.subject, vars),
-    paragraphs: t.paragraphs.map((p) => format(p, vars)),
+    // A server that renews by itself says so instead of "it won't renew".
+    paragraphs: (kind === "paid" && server.autoRenew ? [t.paragraphs[0], all.planMail.paidAutoRenew] : t.paragraphs).map((p) =>
+      format(p, { ...vars, card: server.renewCardLabel ?? "" }),
+    ),
     button: t.button,
     url: page,
     footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
