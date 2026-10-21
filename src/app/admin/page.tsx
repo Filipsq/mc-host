@@ -11,6 +11,7 @@ import { format } from "@/i18n/messages";
 import { liveStates, machineStats } from "./data";
 import { formats } from "./format";
 import { aiEnabled, aiUsageThisMonth } from "@/lib/ai";
+import { signupBuckets, signupsSince, type Bucket } from "./signups";
 
 const DAY = 24 * 60 * 60 * 1000;
 const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
@@ -18,12 +19,13 @@ const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 export default async function AdminOverview() {
   await requireAdmin();
   const now = new Date();
-  const [all, { locale }, stats, users, newUsers, servers, paid, pending, chats, ai] = await Promise.all([
+  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, chats, ai] = await Promise.all([
     getMessages(),
     getPreferences(),
     machineStats(),
     db.user.count(),
     db.user.count({ where: { createdAt: { gte: new Date(now.getTime() - 7 * DAY) } } }),
+    db.user.findMany({ where: { createdAt: { gte: signupsSince(now) } }, select: { createdAt: true } }),
     db.server.findMany({ orderBy: { createdAt: "desc" } }),
     db.payment.findMany({
       where: { status: "PAID", paidAt: { gte: new Date(now.getTime() - 31 * DAY) } },
@@ -89,6 +91,21 @@ export default async function AdminOverview() {
     },
   ];
   const attention = groups.filter((group) => group.rows.length > 0);
+  const signups = signupBuckets(joined.map((u) => u.createdAt), now);
+  const utc = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
+  const dayLabel = utc({ weekday: "short", day: "numeric", month: "short" });
+  const shortDay = utc({ day: "numeric", month: "short" });
+  const monthLabel = utc({ month: "long", year: "numeric" });
+  const signupTables = [
+    { title: t.signupsDaily, rows: signups.days, label: (b: Bucket, i: number) => (i === 0 ? t.signupsToday : dayLabel.format(b.start)) },
+    {
+      title: t.signupsWeekly,
+      rows: signups.weeks,
+      label: (b: Bucket, i: number) =>
+        i === 0 ? t.signupsThisWeek : `${shortDay.format(b.start)} – ${shortDay.format(new Date(b.start.getTime() + 6 * DAY))}`,
+    },
+    { title: t.signupsMonthly, rows: signups.months, label: (b: Bucket, i: number) => (i === 0 ? t.signupsThisMonth : monthLabel.format(b.start)) },
+  ];
 
   return (
     <>
@@ -247,6 +264,32 @@ export default async function AdminOverview() {
             share={aiEnabled() ? ai.calls / ai.limit : undefined}
             hint={format(t.aiCost, { usd: new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(ai.usd) })}
           />
+        </div>
+      </section>
+
+      <section className="stack">
+        <h2>{t.signups}</h2>
+        <div className="admin-grid">
+          {signupTables.map((table) => (
+            <div key={table.title} className="card flush">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>{table.title}</th>
+                    <th className="num">{t.signupsCount}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {table.rows.map((b, i) => (
+                    <tr key={b.start.getTime()}>
+                      <td className="nowrap">{table.label(b, i)}</td>
+                      <td className="num">{i === 0 ? <strong>{b.count}</strong> : b.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
         </div>
       </section>
 

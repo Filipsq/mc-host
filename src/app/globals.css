@@ -839,6 +839,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .admin-table tbody tr:hover td { background: var(--bg-alt); }
 .admin-table td a { word-break: break-all; }
 .admin-table td a.email { word-break: normal; }
+.admin-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .admin-table td.type-cell { min-width: 120px; }
 .nowrap { white-space: nowrap; }
 .break { word-break: break-all; }
