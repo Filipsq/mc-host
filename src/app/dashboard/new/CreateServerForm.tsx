@@ -16,11 +16,16 @@ import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { EDITION_NAMES } from "@/lib/editions";
 import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SIZES, isTerrariaKind, type TerrariaKind } from "@/lib/terraria";
 import type { Suggestion } from "@/lib/ai";
+import type { HelperPick } from "@/lib/planHelper";
+import { Lightbulb } from "lucide-react";
 import AiCreator from "./AiCreator";
+import PlanHelper from "./PlanHelper";
 import { LoaderFields, PackFields, type CurseforgeOption } from "./ModFields";
 
 type Props = {
+  title: string;
   t: Messages["server"];
+  helper: Messages["helper"];
   terraria: Messages["terraria"];
   initialEdition?: Edition; // Terraria, when picked on the home page
   settings: Messages["settings"];
@@ -64,7 +69,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ t, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, terraria, initialEdition, settings, billing, legal, plans, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -80,8 +85,12 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
   const [terrariaKind, setTerrariaKind] = useState<TerrariaKind>(isTerrariaKind(v.terrariaKind) ? v.terrariaKind : "vanilla");
   // What the AI creator picked beyond the form's own fields; sent as hidden fields.
   const [aiSettings, setAiSettings] = useState<Pick<Suggestion, "gameMode" | "difficulty" | "pvp" | "motd" | "plugins"> | null>(null);
-  // Bumped by each AI suggestion so the plan picker starts from the suggested plan.
+  // Bumped by each AI suggestion or helper pick so the plan picker starts from the suggested plan.
   const [aiRound, setAiRound] = useState(0);
+  // Controlled so "Pomóż mi zdecydować" can tick them. Crossplay is on unless the owner turned it off before an error sent the form back.
+  const [crossplay, setCrossplay] = useState(v.name === undefined || v.crossplay === "on");
+  const [nonPremium, setNonPremium] = useState(v.nonPremium === "on");
+  const [helperOpen, setHelperOpen] = useState(false);
 
   function applySuggestion(s: Suggestion) {
     setEdition(s.edition);
@@ -93,6 +102,27 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
     setPlan(s.plan);
     setAiSettings({ gameMode: s.gameMode, difficulty: s.difficulty, pvp: s.pvp, motd: s.motd, plugins: s.plugins });
     setAiRound((n) => n + 1);
+  }
+
+  function applyHelper(p: HelperPick) {
+    setEdition(p.edition);
+    if (p.game) setGame(p.game);
+    if (p.terrariaKind) setTerrariaKind(p.terrariaKind);
+    // A mod pack: keep the chosen one if the plan runs it, otherwise the first that fits.
+    if (p.game === "modpack" && !planAtLeast(p.plan, packPlan(pack))) {
+      const fits = CURATED_PACKS.find((c) => planAtLeast(p.plan, planForRam(c.ramGb)));
+      if (fits) setPack(fits.slug);
+    }
+    setCrossplay(p.crossplay);
+    setNonPremium(p.nonPremium);
+    setPlan(p.plan);
+    setAiRound((n) => n + 1);
+    // So the player sees the form that just filled in, starting with the name it still needs.
+    requestAnimationFrame(() => {
+      const nameInput = document.querySelector<HTMLInputElement>("#server-form input[name=name]");
+      nameInput?.scrollIntoView({ behavior: "smooth", block: "center" });
+      nameInput?.focus({ preventScroll: true });
+    });
   }
   const modded = edition === "JAVA" && game === "modpack";
   const mods = edition === "JAVA" && game === "mods";
@@ -116,6 +146,29 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
 
   return (
     <>
+    <div className="new-head">
+      <h1>{title}</h1>
+      <button
+        type="button"
+        className={`secondary helper-toggle${helperOpen ? " active" : ""}`}
+        aria-expanded={helperOpen}
+        aria-controls="pomoc-wybor"
+        onClick={() => setHelperOpen((o) => !o)}
+      >
+        <Lightbulb size={18} aria-hidden /> {helper.button}
+      </button>
+    </div>
+    <PlanHelper
+      t={helper}
+      server={t}
+      terraria={terraria}
+      plans={plans}
+      money={money}
+      freeTaken={plans.some((p) => p.id === "FREE" && p.disabledNote)}
+      open={helperOpen}
+      onClose={() => setHelperOpen(false)}
+      onApply={applyHelper}
+    />
     {ai && (
       <AiCreator
         t={ai.t}
@@ -129,6 +182,7 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
       />
     )}
     <form
+      id="server-form"
       className="card stack"
       // `action` only serves a submit made before the page's script has loaded.
       action={action}
@@ -264,7 +318,7 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
       {mods && <LoaderFields t={t} loader={loader} version={modVersion} onLoader={setLoader} onVersion={setModVersion} />}
       {edition === "JAVA" && canRunNonPremium({ edition, kind: gameById(game).kind }) && (
         <label className="check">
-          <input type="checkbox" name="nonPremium" defaultChecked={v.nonPremium === "on"} />
+          <input type="checkbox" name="nonPremium" checked={nonPremium} onChange={(e) => setNonPremium(e.target.checked)} />
           <span className="stack-tight">
             <span>{settings.nonPremium}</span>
             <span className="muted small">{t.nonPremiumHint}</span>
@@ -273,8 +327,7 @@ export default function CreateServerForm({ t, terraria, initialEdition, settings
       )}
       {edition === "JAVA" && canCrossplay({ edition, kind: gameById(game).kind }) && (
         <label className="check">
-          {/* On unless the owner turned it off before an error sent the form back. */}
-          <input type="checkbox" name="crossplay" defaultChecked={v.name === undefined || v.crossplay === "on"} />
+          <input type="checkbox" name="crossplay" checked={crossplay} onChange={(e) => setCrossplay(e.target.checked)} />
           <span className="stack-tight">
             <span>{settings.crossplay}</span>
             <span className="muted small">{t.crossplayHint}</span>
