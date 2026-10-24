@@ -69,29 +69,33 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
       },
       {
         label: t.columns.state,
-        value: (s) => all.server.live[live[s.id].state],
+        value: (s) => all.server.live[live[s.id]?.state ?? "unknown"],
         cell: (s) => (
           <td>
-            <span className={`badge ${live[s.id].state}`}>{all.server.live[live[s.id].state]}</span>
-            {severalMachines && <div className="muted small nowrap">{format(t.onMachine, { node: s.node })}</div>}
+            <span className={`badge ${live[s.id]?.state ?? "unknown"}`}>{all.server.live[live[s.id]?.state ?? "unknown"]}</span>
+            {severalMachines && (
+              <div className="muted small nowrap">
+                <Link href={`/admin/servers?node=${encodeURIComponent(s.node)}`}>{format(t.onMachine, { node: s.node })}</Link>
+              </div>
+            )}
           </td>
         ),
       },
       {
         label: t.columns.players,
         desc: true,
-        value: (s) => live[s.id].players,
+        value: (s) => live[s.id]?.players,
         cell: (s) => {
           const l = live[s.id];
-          return <td className="nowrap">{l.players !== undefined ? (l.maxPlayers ? `${l.players} / ${l.maxPlayers}` : l.players) : "–"}</td>;
+          return <td className="nowrap">{l?.players !== undefined ? (l.maxPlayers ? `${l.players} / ${l.maxPlayers}` : l.players) : "–"}</td>;
         },
       },
       {
         // Longest running first; started earlier means a smaller date.
         label: t.columns.startedAgo,
         desc: true,
-        value: (s) => (live[s.id].startedAt ? -live[s.id].startedAt!.getTime() : null),
-        cell: (s) => <td className="nowrap">{live[s.id].startedAt ? f.ago(live[s.id].startedAt!) : "–"}</td>,
+        value: (s) => (live[s.id]?.startedAt ? -live[s.id]!.startedAt!.getTime() : null),
+        cell: (s) => <td className="nowrap">{live[s.id]?.startedAt ? f.ago(live[s.id]!.startedAt!) : "–"}</td>,
       },
       {
         label: t.columns.lastPlayed,
@@ -102,18 +106,18 @@ export default function ServerTable({ rows, live, all, f, showOwner = true }: Pr
       {
         label: t.columns.ramNow,
         desc: true,
-        value: (s) => live[s.id].memoryUsedMb,
-        cell: (s) => <td className="nowrap">{live[s.id].memoryUsedMb !== undefined ? f.gb(live[s.id].memoryUsedMb!) : "–"}</td>,
+        value: (s) => live[s.id]?.memoryUsedMb,
+        cell: (s) => <td className="nowrap">{live[s.id]?.memoryUsedMb !== undefined ? f.gb(live[s.id]!.memoryUsedMb!) : "–"}</td>,
       },
       {
         label: t.columns.disk,
         desc: true,
-        value: (s) => live[s.id].diskMb,
+        value: (s) => live[s.id]?.diskMb,
         cell: (s) => {
           const l = live[s.id];
           return (
-            <td className={`nowrap${l.diskMb !== undefined && l.diskMb > diskLimitMb(s) ? " over" : ""}`}>
-              {l.diskMb !== undefined ? `${f.size(l.diskMb)} / ${f.size(diskLimitMb(s))}` : "–"}
+            <td className={`nowrap${l?.diskMb !== undefined && l.diskMb > diskLimitMb(s) ? " over" : ""}`}>
+              {l?.diskMb !== undefined ? `${f.size(l.diskMb)} / ${f.size(diskLimitMb(s))}` : "–"}
             </td>
           );
         },

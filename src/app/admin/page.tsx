@@ -181,7 +181,9 @@ export default async function AdminOverview() {
                   return (
                     <tr key={m.id}>
                       <td>
-                        <strong>{m.id}</strong>
+                        <Link href={`/admin/servers?node=${encodeURIComponent(m.id)}`}>
+                          <strong>{m.id}</strong>
+                        </Link>
                         {node.arch && <span className="muted small"> · {node.arch === "arm64" ? "Arm" : "x86"}</span>}
                         {h && <div className="muted small">{format(t.machineCores, { cpus: h.cpus, ram: f.gb(h.memoryTotalMb) })}</div>}
                       </td>

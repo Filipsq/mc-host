@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Plan, Prisma, ServerStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
@@ -6,40 +7,72 @@ import { format } from "@/i18n/messages";
 import { liveStates, machineStats } from "../data";
 import { formats } from "../format";
 import ServerTable from "../ServerTable";
+import { nodes } from "@/lib/nodes";
 
-const SHOWN = 200;
-
-type Props = { searchParams: Promise<{ q?: string; status?: string; plan?: string }> };
+type Props = {
+  searchParams: Promise<{
+    q?: string;
+    status?: string;
+    plan?: string;
+    node?: string;
+    page?: string;
+    limit?: string;
+  }>;
+};
 
 export default async function AdminServers({ searchParams }: Props) {
   await requireAdmin();
   const params = await searchParams;
-  const [search, status, plan] = [params.q, params.status, params.plan].map((v) => String(v ?? "").trim());
+  const [search, status, plan, nodeParam] = [params.q, params.status, params.plan, params.node].map((v) =>
+    String(v ?? "").trim()
+  );
+  const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
+  const pageSize = Math.min(200, Math.max(20, parseInt(params.limit ?? "100", 10) || 100));
+
+  const allNodes = nodes();
   const where: Prisma.ServerWhereInput = {
     ...(Object.hasOwn(ServerStatus, status) && { status: status as ServerStatus }),
     ...(Object.hasOwn(Plan, plan) && { plan: plan as Plan }),
+    ...(nodeParam && { node: nodeParam }),
     ...(search && {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
         { subdomain: { contains: search.toLowerCase().split(".")[0] } },
         { owner: { email: { contains: search, mode: "insensitive" } } },
         { id: search },
+        { node: { contains: search, mode: "insensitive" } },
       ],
     }),
   };
-  const [all, { locale }, stats, rows] = await Promise.all([
+
+  const [all, { locale }, stats, totalCount, rows] = await Promise.all([
     getMessages(),
     getPreferences(),
     machineStats(),
+    db.server.count({ where }),
     db.server.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      take: SHOWN + 1,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
       include: { owner: { select: { id: true, email: true } } },
     }),
   ]);
+
   const t = all.admin;
-  const shown = rows.slice(0, SHOWN);
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+  function pageLink(p: number) {
+    const qp = new URLSearchParams();
+    if (search) qp.set("q", search);
+    if (status) qp.set("status", status);
+    if (plan) qp.set("plan", plan);
+    if (nodeParam) qp.set("node", nodeParam);
+    if (pageSize !== 100) qp.set("limit", String(pageSize));
+    if (p > 1) qp.set("page", String(p));
+    const qs = qp.toString();
+    return `/admin/servers${qs ? `?${qs}` : ""}`;
+  }
 
   return (
     <>
@@ -65,13 +98,62 @@ export default async function AdminServers({ searchParams }: Props) {
             </option>
           ))}
         </select>
+        {allNodes.length > 1 && (
+          <select name="node" defaultValue={nodeParam} aria-label={t.machine}>
+            <option value="">
+              {t.machine}: {t.any}
+            </option>
+            {allNodes.map((n) => (
+              <option key={n.id} value={n.id}>
+                {n.id} {n.host && n.host !== "localhost" ? `(${n.host})` : ""}
+              </option>
+            ))}
+          </select>
+        )}
+        <select name="limit" defaultValue={String(pageSize)} aria-label="Limit">
+          <option value="50">{format(t.perPage, { n: 50 })}</option>
+          <option value="100">{format(t.perPage, { n: 100 })}</option>
+          <option value="200">{format(t.perPage, { n: 200 })}</option>
+        </select>
         <button type="submit" className="secondary">
           {t.filter}
         </button>
       </form>
       {!stats && <p className="notice warn">{t.agentDown}</p>}
-      <ServerTable rows={shown} live={liveStates(shown, stats)} all={all} f={formats(locale)} />
-      {rows.length > SHOWN && <p className="muted small">{format(t.shown, { n: SHOWN })}</p>}
+      <ServerTable rows={rows} live={liveStates(rows, stats)} all={all} f={formats(locale)} />
+      {totalPages > 1 && (
+        <nav className="admin-pagination card flush" aria-label="Pagination">
+          <span className="muted small">
+            {format(t.pageInfo, { page, total: totalPages, count: totalCount })}
+          </span>
+          <div className="admin-pagination-buttons">
+            {page > 1 ? (
+              <Link href={pageLink(page - 1)} className="button secondary small">
+                ← {t.pagePrev}
+              </Link>
+            ) : (
+              <span className="button secondary small disabled" aria-disabled="true">
+                ← {t.pagePrev}
+              </span>
+            )}
+            <span className="small muted mono" style={{ margin: "0 6px" }}>
+              {page} / {totalPages}
+            </span>
+            {page < totalPages ? (
+              <Link href={pageLink(page + 1)} className="button secondary small">
+                {t.pageNext} →
+              </Link>
+            ) : (
+              <span className="button secondary small disabled" aria-disabled="true">
+                {t.pageNext} →
+              </span>
+            )}
+          </div>
+        </nav>
+      )}
+      {totalPages <= 1 && totalCount > 0 && (
+        <p className="muted small">{format(t.totalServersCount, { count: totalCount })}</p>
+      )}
     </>
   );
 }
