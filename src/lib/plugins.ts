@@ -27,6 +27,27 @@ export const curseforgeEntry = (modId: number, fileId: number) => `cf:${modId}:$
 /** Whether the list already has a file of this CurseForge project. */
 export const hasCurseforgeMod = (plugins: string[], modId: number) => plugins.some((p) => curseforgeMod(p)?.modId === modId);
 
+// A plugin from Hangar or SpigotMC is stored as "hangar:<slug>" or
+// "spigot:<resource number>". The image can't install those, so the panel puts
+// the jar in the plugins folder itself (src/lib/sitePlugins.ts) and never
+// hands these entries to the agent.
+export type PluginSite = "hangar" | "spigot";
+const SITE_PLUGIN = /^(hangar):([A-Za-z0-9_-]{1,64})$|^(spigot):(\d{1,9})$/;
+
+/** The site and its reference of a stored plugin, or null for a Modrinth or CurseForge one. */
+export function sitePlugin(entry: string): { site: PluginSite; ref: string } | null {
+  const m = entry.match(SITE_PLUGIN);
+  return m ? { site: (m[1] ?? m[3]) as PluginSite, ref: m[2] ?? m[4] } : null;
+}
+
+export const sitePluginEntry = (site: PluginSite, ref: string) => `${site}:${ref}`;
+
+/** Where the panel puts a site plugin's jar in the server's files. */
+export function sitePluginFile(entry: string) {
+  const p = sitePlugin(entry);
+  return p && `plugins/mchost-${p.site}-${p.ref}.jar`;
+}
+
 /** Plugins every server of a game mode has; they can't be removed. */
 export const GAME_MODE_PLUGINS: Record<string, { slug: string; title: string }[]> = {
   skyblock: [
