@@ -1156,7 +1156,11 @@ func (a *agent) ensureImage(ctx context.Context, image string) error {
 		return err
 	}
 	log.Printf("pulling %s", image)
-	return a.docker.PullImage(ctx, image)
+	// A big image on a slow line can outlast the request asking for it; the pull
+	// carries on regardless, so the next try finds the image there.
+	pullCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Minute)
+	defer cancel()
+	return a.docker.PullImage(pullCtx, image)
 }
 
 func (a *agent) markerPath(id, kind string) string {
