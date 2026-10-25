@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { giftDays } from "@/lib/billing";
+import { freeStarterDaysFor, giveBackFreeStarter, takeFreeStarter } from "@/lib/creator";
 
 export type RedeemError = "noDays" | "free" | "soldOut" | "notFound";
 
@@ -31,12 +32,50 @@ async function redeemBonusDays(userId: string, serverId: string): Promise<{ erro
   return { days: bonusDays };
 }
 
+/** Where the form was sent from: the invite page, or the creator code page in a server's panel. */
+function backTo(form: FormData) {
+  const back = String(form.get("back") ?? "");
+  return /^\/dashboard\/(invite|servers\/[\w-]+\/creator)$/.test(back) ? back : "/dashboard/invite";
+}
+
 export async function redeemAction(form: FormData) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const serverId = String(form.get("server") ?? "");
+  const back = backTo(form);
   const result = await redeemBonusDays(session.user.id, serverId);
-  revalidatePath("/dashboard/invite");
-  if (result.error) redirect(`/dashboard/invite?blad=${result.error}`);
-  redirect(`/dashboard/invite?dodano=${result.days}&serwer=${encodeURIComponent(serverId)}`);
+  revalidatePath(back);
+  if (result.error) redirect(`${back}?blad=${result.error}`);
+  redirect(`${back}?dodano=${result.days}&serwer=${encodeURIComponent(serverId)}`);
+}
+
+export type FreeStarterError = "noReward" | "free" | "soldOut" | "notFound";
+
+/**
+ * Adds a free Starter earned with the creator code to one of the user's paid
+ * servers, as the days of its plan a Starter's are worth (creator.ts).
+ */
+async function redeemFreeStarter(userId: string, serverId: string): Promise<{ error?: FreeStarterError; days?: number }> {
+  const server = await db.server.findFirst({ where: { id: serverId, ownerId: userId }, select: { id: true, plan: true } });
+  if (!server) return { error: "notFound" };
+  if (server.plan === "FREE") return { error: "free" };
+  if (!(await takeFreeStarter(userId))) return { error: "noReward" };
+  const days = freeStarterDaysFor(server.plan);
+  const result = await giftDays(server.id, days, "creator code reward");
+  if (result.error === "soldOut" || result.error === "free") {
+    await giveBackFreeStarter(userId);
+    return { error: result.error };
+  }
+  return { days };
+}
+
+export async function redeemFreeStarterAction(form: FormData) {
+  const session = await getSession();
+  if (!session?.user?.id) redirect("/login");
+  const serverId = String(form.get("server") ?? "");
+  const back = backTo(form);
+  const result = await redeemFreeStarter(session.user.id, serverId);
+  revalidatePath(back);
+  if (result.error) redirect(`${back}?nagroda=${result.error}`);
+  redirect(`${back}?dodano=${result.days}&serwer=${encodeURIComponent(serverId)}`);
 }

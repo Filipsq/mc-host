@@ -10,6 +10,7 @@ import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
 import { isGameId } from "@/lib/games";
 import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
 import { isAdmin } from "@/lib/admin";
+import { CREATOR_DISCOUNT, FREE_STARTER_DAYS, suggestedCreatorCode } from "@/lib/creator";
 import CreateServerForm from "./CreateServerForm";
 
 type Props = { searchParams: Promise<{ pack?: string; cf?: string; game?: string; opis?: string }> };
@@ -21,7 +22,7 @@ export default async function NewServerPage({ searchParams }: Props) {
     const { opis } = await searchParams;
     redirect(opis ? `/login?opis=${encodeURIComponent(opis.slice(0, DESCRIPTION_MAX))}` : "/login");
   }
-  const [t, { locale, currency }, freeCount, packArt, { pack, cf, game, opis }, admin] = await Promise.all([
+  const [t, { locale, currency }, freeCount, packArt, { pack, cf, game, opis }, admin, code, { freeStarters }] = await Promise.all([
     getMessages(),
     getPreferences(),
     // An admin's test servers don't use up their own free one.
@@ -29,6 +30,8 @@ export default async function NewServerPage({ searchParams }: Props) {
     getPackArt(CURATED_PACKS.map((p) => p.slug)),
     searchParams,
     isAdmin(session.user.id),
+    suggestedCreatorCode(session.user.id),
+    db.user.findUniqueOrThrow({ where: { id: session.user.id }, select: { freeStarters: true } }),
   ]);
   const hasFree = freeCount > 0;
   const plans = planOptions(t, currency).map((p) =>
@@ -42,7 +45,11 @@ export default async function NewServerPage({ searchParams }: Props) {
   const cfPack = found && typeof found === "object" ? found : undefined;
   const initialGame = chosen || cfPack ? "modpack" : isGameId(game) ? game : undefined;
   const defaultPlan =
-    initialGame === "modpack" ? planForRam(cfPack?.ramGb ?? (chosen ?? CURATED_PACKS[0]).ramGb) : hasFree ? "STARTER" : "FREE";
+    initialGame === "modpack"
+      ? planForRam(cfPack?.ramGb ?? (chosen ?? CURATED_PACKS[0]).ramGb)
+      : hasFree || freeStarters > 0
+        ? "STARTER"
+        : "FREE";
   const packIcons = Object.fromEntries(CURATED_PACKS.map((p) => [p.slug, packArt.get(p.slug)?.icon]));
 
   return (
@@ -80,6 +87,7 @@ export default async function NewServerPage({ searchParams }: Props) {
         domain={process.env.GAME_DOMAIN ?? "localhost"}
         money={{ locale, currency }}
         admin={admin}
+        creator={{ t: t.creator, code, freeStarters, discount: CREATOR_DISCOUNT, days: FREE_STARTER_DAYS }}
         ai={
           aiEnabled()
             ? {

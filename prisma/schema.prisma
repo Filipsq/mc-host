@@ -39,6 +39,11 @@ model User {
   referrals          User[]             @relation("Referrals")
   referralRewardedAt DateTime?
   bonusDays          Int                @default(0)
+  // Creator code (src/lib/creator.ts), the same code as the invite link: servers
+  // bought with it count here, and every CREATOR_GOAL of them earns a free Starter.
+  creatorCount       Int                @default(0)
+  freeStarters       Int                @default(0)
+  creatorServers     Server[]           @relation("CreatorServers")
   // The site ran on Stripe test keys at first, so some checkouts took no money
   // (src/lib/testPayments.ts): when the user was told, and the days their first
   // real payment adds on top to make up for it.
@@ -181,6 +186,10 @@ enum ServerStatus {
 model Server {
   id               String         @id @default(cuid())
   name             String
+  // Whose creator code it was bought with (src/lib/creator.ts), and when it counted for them.
+  creator          User?          @relation("CreatorServers", fields: [creatorId], references: [id], onDelete: SetNull)
+  creatorId        String?
+  creatorCountedAt DateTime?
   edition          Edition        @default(JAVA)
   plan             Plan           @default(FREE)
   status           ServerStatus   @default(PROVISIONING)
@@ -270,6 +279,7 @@ model Server {
   updatedAt        DateTime       @updatedAt
 
   @@index([ownerId])
+  @@index([creatorId])
 }
 
 // A friend the owner let into a server's panel. Invited by email; linked to the
@@ -323,6 +333,8 @@ model Payment {
   addons          String[]      @default([])
   // Only add-ons bought for the time left of the period (addonCost in addons.ts): days is 0.
   addonsOnly      Boolean       @default(false)
+  // Bought with this user's creator code, so CREATOR_DISCOUNT percent cheaper (src/lib/creator.ts).
+  creatorId       String?
   createdAt       DateTime      @default(now())
   paidAt          DateTime?
 

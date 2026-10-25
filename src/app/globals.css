@@ -732,6 +732,14 @@ main.compare { max-width: 1080px; }
 
 /* Invites */
 .invite-link { font-size: 1.05rem; }
+.address-value.invite-link { overflow-wrap: anywhere; }
+.creator-code { font-size: 1.4rem; letter-spacing: 0.12em; }
+.creator-progress { flex: 1 1 auto; }
+.creator-meter { margin: 4px 0 2px; }
+.creator-table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 0.92rem; }
+.creator-table th, .creator-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.creator-table th { color: var(--muted); font-weight: 600; }
+.creator-table tbody tr:last-child td { border-bottom: 0; }
 .invite-days { gap: 14px; flex-wrap: nowrap; }
 .invite-days > svg { color: var(--accent); flex: none; }
 .invite-card { justify-content: space-between; }
