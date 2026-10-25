@@ -216,7 +216,7 @@ const unfinishedWorldScript = `(
   # them ("Overworld settings missing"). A world made on Paper gets a copy.
   o="$w/dimensions/minecraft/overworld/data"
   if [ "$TYPE" != PAPER ] && [ -d "$o/paper" ] && [ -e "$o/minecraft/world_gen_settings.dat" ] && [ ! -e "$w/data/minecraft/world_gen_settings.dat" ]; then
-    mkdir -p "$w/data/minecraft"
+    mkdir -p "$w/data/minecraft" && chown "$(stat -c %u:%g .)" "$w/data" "$w/data/minecraft"
     for f in world_gen_settings game_rules weather wandering_trader scheduled_events; do
       [ -e "$o/minecraft/$f.dat" ] && [ ! -e "$w/data/minecraft/$f.dat" ] && cp -p "$o/minecraft/$f.dat" "$w/data/minecraft/"
     done

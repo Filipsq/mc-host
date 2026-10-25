@@ -5,6 +5,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -78,6 +79,19 @@ func TestVoiceScript(t *testing.T) {
 	run(dir, req) // again: nothing doubled
 	if got := read(conf); strings.Count(got, "port=") != 1 {
 		t.Fatalf("doubled:\n%s", got)
+	}
+
+	// A new mod server with no config folder yet: what the script makes belongs
+	// to the server's user (the owner of /data), not root, or Forge can't write fml.toml.
+	if os.Geteuid() == 0 {
+		dir = t.TempDir()
+		os.Chown(dir, 1000, 1000)
+		run(dir, req)
+		for _, p := range []string{"config", "config/voicechat", "config/voicechat/voicechat-server.properties"} {
+			if fi, err := os.Stat(filepath.Join(dir, p)); err != nil || fi.Sys().(*syscall.Stat_t).Uid != 1000 {
+				t.Errorf("%s not owned by the server's user", p)
+			}
+		}
 	}
 
 	// Paper without the plugin: no folder made.
