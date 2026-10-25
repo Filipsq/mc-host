@@ -283,6 +283,23 @@ func TestWorldImport(t *testing.T) {
 		t.Errorf("leftovers: %v", entries)
 	}
 
+	// A world the server can't open is refused with the reason.
+	for _, tc := range []struct {
+		files   map[string]string
+		edition string
+		want    string
+	}{
+		{map[string]string{"Mapa/level.dat": "x", "Mapa/db/000001.ldb": "db"}, "", "bedrockMap"},
+		{map[string]string{"level.dat": "x", "region/r.0.0.mcr": "old"}, "", "oldMap"},
+		{map[string]string{"level.dat": "x", "region/r.0.0.mca": "java"}, "BEDROCK", "javaMap"},
+	} {
+		upload(zipOf(t, tc.files))
+		rec := call(t, h, "POST", "/servers/abc12345/worlds/import?edition="+tc.edition+"&path=upload.zip&name=zla", nil)
+		if rec.Code != 400 || !strings.Contains(rec.Body.String(), tc.want) {
+			t.Errorf("%s: %d %s", tc.want, rec.Code, rec.Body)
+		}
+	}
+
 	// A Bedrock .mcworld: the world at the zip's top, into worlds/.
 	upload(zipOf(t, map[string]string{"level.dat": "bedrock", "db/000001.ldb": "db", "levelname.txt": "Wyspa"}))
 	rec = call(t, h, "POST", "/servers/abc12345/worlds/import?edition=BEDROCK&path=upload.zip&name=Wyspa", nil)
