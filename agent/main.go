@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -118,7 +119,15 @@ func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) 
 		// Optional: a server already on the newest version doesn't need it.
 		projects = append(projects, viaVersion+"?")
 	}
+	var curseforge []string
 	for _, p := range plugins {
+		if ref, ok := strings.CutPrefix(p, "cf:"); ok {
+			// A CurseForge mod, pinned by the panel to its file for this version and loader.
+			if loaderTypes[kind] != "" && curseforgeRef.MatchString(ref) {
+				curseforge = append(curseforge, ref)
+			}
+			continue
+		}
 		projects = append(projects, p+"?")
 	}
 	// The image refuses a project listed twice ("Duplicate key"), e.g. AuthMe from
@@ -132,6 +141,10 @@ func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) 
 		}
 	}
 	env := []string{"MODRINTH_PROJECTS=" + strings.Join(unique, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
+	if loaderTypes[kind] != "" {
+		// Always set on a mod loader, so the mods removed in the panel leave the server.
+		env = append(env, "CURSEFORGE_FILES="+strings.Join(curseforge, ","))
+	}
 	if paperKinds[kind] {
 		// Always set on Paper, so turning crossplay off removes the two plugins (and only them).
 		var urls []string
@@ -142,6 +155,9 @@ func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) 
 	}
 	return env
 }
+
+// A CurseForge mod as the image takes it: project ID and file ID.
+var curseforgeRef = regexp.MustCompile(`^[0-9]{1,10}:[0-9]{1,12}$`)
 
 // Server IDs come from the panel (cuid); restrict them so they're safe in container names.
 var validID = regexp.MustCompile(`^[a-z0-9]{8,40}$`)
@@ -165,7 +181,7 @@ type agent struct {
 	diskReserve int64    // bytes of disk the file manager leaves free
 	uploadMax   int64    // the biggest file the file manager takes
 	unzipMax    int64    // the most an archive may unpack to
-	cfKey       string   // CurseForge API key, for servers that install a CurseForge mod pack
+	cfKey       string   // CurseForge API key, for servers that install a CurseForge mod pack or mods
 
 	diskMu        sync.Mutex
 	diskLimits    map[string]int64 // server id -> MB its files may take (see disk.go)
@@ -428,7 +444,11 @@ func (req *createRequest) validate() error {
 		return errors.New("at most 100 plugins")
 	}
 	for _, p := range req.Plugins {
-		if !validModpack.MatchString(p) {
+		ref, cf := strings.CutPrefix(p, "cf:")
+		switch {
+		case cf && loaderTypes[req.Kind] == "":
+			return fmt.Errorf("CurseForge mods need a mod loader: %q", p)
+		case cf && !curseforgeRef.MatchString(ref), !cf && !validModpack.MatchString(p):
 			return fmt.Errorf("invalid plugin %q", p)
 		}
 	}
@@ -723,6 +743,9 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		case "fabric", "forge", "neoforge":
 			// The image installs the loader for the version; pluginEnv adds the mods.
 			env = append(env, "TYPE="+loaderTypes[req.Kind], "VERSION="+req.Version)
+			if a.cfKey != "" && slices.ContainsFunc(req.Plugins, func(p string) bool { return strings.HasPrefix(p, "cf:") }) {
+				env = append(env, "CF_API_KEY="+a.cfKey) // for the CurseForge mods
+			}
 		default:
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}

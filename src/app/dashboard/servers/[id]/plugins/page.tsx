@@ -6,18 +6,32 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getServerFor } from "@/lib/access";
 import { getPluginInfos, searchAddons } from "@/lib/modrinth";
-import { GAME_MODE_PLUGINS, KNOWN_PLUGINS, PLUGIN_SETS, addonType, pluginIds, pluginPage, setFits } from "@/lib/plugins";
+import { curseforgeEnabled, getCurseforgeModInfos, searchCurseforgeMods } from "@/lib/curseforge";
+import {
+  GAME_MODE_PLUGINS,
+  KNOWN_PLUGINS,
+  PLUGIN_SETS,
+  addonType,
+  curseforgeMod,
+  curseforgeModPage,
+  hasCurseforgeMod,
+  pluginIds,
+  pluginPage,
+  setFits,
+} from "@/lib/plugins";
 import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
 import { getWorkshopTitles } from "@/lib/steam";
 import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> };
+const FABRIC_API = "P7dR8mSH"; // added for CurseForge mods that need it
+
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string; src?: string }> };
 
 export default async function PluginsPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const [{ id }, { q = "" }] = await Promise.all([params, searchParams]);
+  const [{ id }, { q = "", src }] = await Promise.all([params, searchParams]);
   const server = await getServerFor(id, session.user.id, "plugins");
   if (!server) notFound();
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
@@ -102,10 +116,18 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const query = q.trim().slice(0, 100);
   // Servers on a chosen version only see what's made for it; game modes run the newest version.
   const mc = (server.kind === "vanilla" || type === "mod") && server.version !== "LATEST" ? server.version : undefined;
-  const [infos, results] = await Promise.all([
-    getPluginInfos(server.plugins),
-    searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
+  // Mod servers can also take mods from CurseForge, when it's set up.
+  const cfOffered = type === "mod" && curseforgeEnabled();
+  const fromCf = cfOffered && src === "cf";
+  const cfIds = server.plugins.map((p) => curseforgeMod(p)?.modId).filter((m) => m !== undefined);
+  const [infos, cfInfos, results, cfResults] = await Promise.all([
+    getPluginInfos(server.plugins.filter((p) => !curseforgeMod(p))),
+    getCurseforgeModInfos(cfIds),
+    fromCf ? null : searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
+    // A CurseForge file is picked for one Minecraft version, so "newest" has none.
+    fromCf && mc ? searchCurseforgeMods(query, { gameVersion: mc, loader: server.kind }) : null,
   ]);
+  const searchHref = (cf: boolean) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(query && { q: query }), ...(cf && { src: "cf" }) })}#szukaj`;
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
   const included = GAME_MODE_PLUGINS[kind] ?? [];
   const numbers = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
@@ -113,7 +135,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const loader = LOADER_NAMES[server.kind] ?? server.kind;
   const forPlayers = <span className="chip small-chip">{all.mods.forPlayers}</span>;
   // Names for plugins from the sets, in case Modrinth doesn't answer.
-  const knownTitle = (pid: string) => Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title;
+  const knownTitle = (pid: string) => Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title ?? (pid === FABRIC_API ? "Fabric API" : undefined);
 
   return (
     <main className="stack">
@@ -137,6 +159,25 @@ export default async function PluginsPage({ params, searchParams }: Props) {
             </li>
           ))}
           {server.plugins.map((pid) => {
+            const cf = curseforgeMod(pid);
+            if (cf) {
+              const m = cfInfos.get(cf.modId);
+              const title = m?.title ?? `CurseForge ${cf.modId}`;
+              return (
+                <li key={pid}>
+                  <PluginIcon src={m?.icon} />
+                  <span className="plugin-main">
+                    <strong>{title}</strong>
+                    {m && (
+                      <a className="small" href={curseforgeModPage(m.slug)} target="_blank" rel="noreferrer">
+                        {all.mods.onCurseforge} <ExternalLink size={12} aria-hidden />
+                      </a>
+                    )}
+                  </span>
+                  <RemovePluginButton id={server.id} pluginId={pid} title={title} t={t} />
+                </li>
+              );
+            }
             const p = infos.get(pid);
             const title = p?.title ?? knownTitle(pid) ?? pid;
             return (
@@ -188,9 +229,16 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <section className="stack">
+      <section className="stack" id="szukaj">
         <h2>{t.search}</h2>
-        <form className="plugin-search" action={`/dashboard/servers/${server.id}/plugins`}>
+        {cfOffered && (
+          <nav className="tabs">
+            <Link className={fromCf ? undefined : "active"} href={searchHref(false)}>{all.mods.sourceModrinth}</Link>
+            <Link className={fromCf ? "active" : undefined} href={searchHref(true)}>{all.mods.sourceCurseforge}</Link>
+          </nav>
+        )}
+        <form className="plugin-search" action={`/dashboard/servers/${server.id}/plugins#szukaj`}>
+          {fromCf && <input type="hidden" name="src" value="cf" />}
           <input name="q" type="search" defaultValue={query} placeholder={t.searchPlaceholder} aria-label={t.search} maxLength={100} />
           <button>
             <Search size={16} aria-hidden /> {t.searchButton}
@@ -201,7 +249,41 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           {type === "mod" && ` · ${loader}`}
           {mc && ` · ${format(t.forVersion, { mc })}`}
         </p>
-        {results === "modrinthUnavailable" ? (
+        {fromCf ? (
+          cfResults === null ? (
+            <p className="notice">{all.mods.errors.cfNeedsVersion}</p>
+          ) : cfResults === "curseforgeUnavailable" ? (
+            <p className="notice warn">{all.mods.errors.curseforgeUnavailable}</p>
+          ) : (
+            <>
+              <p className="muted small">{format(all.mods.cfIntro, { loader, version: server.version })}</p>
+              {cfResults.length === 0 ? (
+                <p className="muted">{t.noResults}</p>
+              ) : (
+                <ul className="card plugin-list">
+                  {cfResults.map((m) => (
+                    <li key={m.modId}>
+                      <PluginIcon src={m.icon} />
+                      <span className="plugin-main">
+                        <a href={curseforgeModPage(m.slug)} target="_blank" rel="noreferrer">
+                          <strong>{m.title}</strong>
+                        </a>
+                        <span className="muted small">{m.description}</span>
+                        <span className="muted small">{format(t.downloads, { n: numbers.format(m.downloads) })}</span>
+                        {m.blocked && <span className="small">{all.mods.cfBlockedNote}</span>}
+                      </span>
+                      {!m.blocked && (
+                        <AddPluginButton id={server.id} pluginId={`cf:${m.modId}`} added={hasCurseforgeMod(server.plugins, m.modId)} t={t} />
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <h3>{all.mods.cfAddLink}</h3>
+              <AddWorkshopForm id={server.id} t={t} placeholder={all.mods.cfLinkPlaceholder} site="curseforge" />
+            </>
+          )
+        ) : results === null ? null : results === "modrinthUnavailable" ? (
           <p className="notice warn">{t.errors.modrinthUnavailable}</p>
         ) : results.length === 0 ? (
           <p className="muted">{t.noResults}</p>
