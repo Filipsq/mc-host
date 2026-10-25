@@ -883,7 +883,6 @@ const en: Messages = {
     },
   },
   modsOnPlain: {
-    tab: "Mods",
     intro: "Mods from Modrinth for Fabric{version}. Pick the ones you want on your server.",
     pick: "Pick",
     picked: "Picked",

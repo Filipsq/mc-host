@@ -882,7 +882,6 @@ const pl = {
     },
   },
   modsOnPlain: {
-    tab: "Mody",
     intro: "Mody z Modrinth na Fabric{version}. Wybierz te, które chcesz mieć na serwerze.",
     pick: "Wybierz",
     picked: "Wybrany",
