@@ -9,12 +9,13 @@ import * as agent from "@/lib/agent";
 import { agentSpec } from "@/lib/servers";
 import { getServerFor } from "@/lib/access";
 import { getAddon } from "@/lib/modrinth";
-import { GAME_MODE_PLUGINS, PLUGINS_MAX, PLUGIN_SETS, addonType, isProjectId, pluginIds, setFits } from "@/lib/plugins";
+import { curseforgeModId, pinCurseforgeMods } from "@/lib/curseforge";
+import { GAME_MODE_PLUGINS, PLUGINS_MAX, PLUGIN_SETS, addonType, curseforgeEntry, curseforgeMod, isProjectId, pluginIds, setFits } from "@/lib/plugins";
 import { POPULAR_TMOD_MODS, parseWorkshopInput } from "@/lib/terraria";
 import { resolveWorkshopItem } from "@/lib/steam";
 import type { Messages } from "@/i18n/messages";
 
-export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; pending?: boolean };
+export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; name?: string; pending?: boolean };
 
 /** The server, if the user may change its plugins (Paper) or mods (a mod loader). */
 async function addonServer(id: string) {
@@ -33,6 +34,9 @@ export async function addPluginAction(id: string, projectId: string): Promise<Pl
     const mod = POPULAR_TMOD_MODS.find((m) => m.id === projectId);
     return mod ? addWorkshopMods(server, [mod.id, ...mod.with]) : { error: "failed" };
   }
+  // A CurseForge search result: "cf:<project ID>".
+  const cf = projectId.match(/^cf:(\d{1,10})$/);
+  if (server && cf) return addCurseforgeMod(server, Number(cf[1]));
   if (!server || !isProjectId(projectId)) return { error: "failed" };
   if (server.plugins.includes(projectId)) return {};
   if (server.plugins.length >= PLUGINS_MAX) return { error: "tooMany" };
@@ -41,6 +45,41 @@ export async function addPluginAction(id: string, projectId: string): Promise<Pl
   // The game mode's own plugins are always there.
   if ((GAME_MODE_PLUGINS[server.kind] ?? []).some((p) => p.slug === plugin.slug)) return {};
   return savePlugins(server, [...server.plugins, plugin.id]);
+}
+
+/** Adds a mod from a pasted CurseForge link, slug or project ID. */
+export async function addCurseforgeLinkAction(id: string, input: string): Promise<PluginResult> {
+  const server = await addonServer(id);
+  if (server?.type !== "mod") return { error: "failed" };
+  let modId;
+  try {
+    modId = await curseforgeModId(input.slice(0, 300));
+  } catch (err) {
+    console.error("curseforge lookup failed", input, err);
+    return { error: "curseforgeUnavailable" };
+  }
+  return modId ? addCurseforgeMod(server, modId) : { error: "cfLink" };
+}
+
+/**
+ * Adds a CurseForge mod, pinned to its file for the server's version and
+ * loader, with the mods it needs (Fabric API from Modrinth, like Modrinth's mods get it).
+ */
+async function addCurseforgeMod(server: Server & { type: string }, modId: number): Promise<PluginResult> {
+  if (server.type !== "mod") return { error: "failed" };
+  // A file is picked for one Minecraft version; "newest" would change under it.
+  if (server.version === "LATEST") return { error: "cfNeedsVersion" };
+  const have = new Set(server.plugins.map((p) => curseforgeMod(p)?.modId).filter((m) => m !== undefined));
+  if (have.has(modId)) return {};
+  const pinned = await pinCurseforgeMods([modId], server.version, server.kind, have);
+  if ("error" in pinned) return { error: pinned.error, name: pinned.name };
+  const added = [
+    ...pinned.curseforge.map((f) => curseforgeEntry(f.modId, f.fileId)),
+    ...pinned.modrinth.filter((m) => !server.plugins.includes(m)),
+  ];
+  if (added.length === 0) return {};
+  if (server.plugins.length + added.length > PLUGINS_MAX) return { error: "tooMany" };
+  return savePlugins(server, [...server.plugins, ...added]);
 }
 
 /**

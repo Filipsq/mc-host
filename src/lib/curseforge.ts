@@ -2,6 +2,7 @@ import "server-only";
 import { inflateRawSync } from "node:zlib";
 import { plans } from "./plans";
 import { USER_AGENT } from "./modrinth";
+import { curseforgeEntry, curseforgeMod } from "./plugins";
 
 // Mod packs from CurseForge (https://docs.curseforge.com/rest-api/): the most
 // popular ones for the home page, and one pack pinned to an exact file for a
@@ -413,4 +414,190 @@ export async function topCurseforgePacks(): Promise<CurseforgePack[] | null> {
     if (!top) await Promise.race([refreshing, new Promise((r) => setTimeout(r, 3000))]);
   }
   return top?.packs ?? null;
+}
+
+// Single mods for Fabric, Forge and NeoForge servers. The panel picks the file
+// for the server's Minecraft version and loader, with the mods it needs, and
+// stores each pinned ("cf:<mod>:<file>"); the image downloads them when the
+// server starts (CURSEFORGE_FILES in the agent).
+
+const MC_MODS = 6; // CurseForge's class of mods
+const MOD_LOADER_TYPES: Record<string, number> = { forge: 1, fabric: 4, quilt: 5, neoforge: 6 }; // ModLoaderType
+const REQUIRED_DEPENDENCY = 3; // FileRelationType
+const DEPENDENCIES_MAX = 20; // mods one added mod may bring along
+
+// Libraries many mods on both sites need, kept to their Modrinth copy: the
+// image adds them for Modrinth mods too, and two copies stop the server.
+const ON_MODRINTH: Record<number, string> = {
+  306612: "P7dR8mSH", // Fabric API
+};
+
+type ModFile = File & { modId: number; dependencies?: { modId: number; relationType: number }[] };
+
+export type CurseforgeModHit = {
+  modId: number;
+  slug: string;
+  title: string;
+  description: string;
+  icon?: string;
+  downloads: number;
+  blocked: boolean; // its author allows downloads on CurseForge only
+};
+
+export type CurseforgeModError = "cfNoFile" | "cfBlocked" | "cfClientOnly" | "cfDependency" | "pluginNotFound" | "curseforgeUnavailable";
+
+const modHit = (m: Mod): CurseforgeModHit => ({
+  modId: m.id,
+  slug: m.slug,
+  title: m.name.slice(0, 80),
+  description: m.summary.slice(0, 200),
+  icon: m.logo?.thumbnailUrl || m.logo?.url || undefined,
+  downloads: m.downloadCount,
+  blocked: m.allowModDistribution === false,
+});
+
+/** Mods for the loader and Minecraft version matching the query (the most popular ones without one). */
+export async function searchCurseforgeMods(query: string, o: { gameVersion: string; loader: string }): Promise<CurseforgeModHit[] | "curseforgeUnavailable"> {
+  const params = new URLSearchParams({
+    gameId: String(MINECRAFT),
+    classId: String(MC_MODS),
+    gameVersion: o.gameVersion,
+    modLoaderType: String(MOD_LOADER_TYPES[o.loader] ?? 0),
+    sortField: String(POPULARITY),
+    sortOrder: "desc",
+    pageSize: "20",
+  });
+  if (query) params.set("searchFilter", query.slice(0, 100));
+  try {
+    return ((await call<{ data: Mod[] }>(`/v1/mods/search?${params}`))?.data ?? []).filter((m) => m.isAvailable !== false).map(modHit);
+  } catch (err) {
+    console.error("curseforge mod search failed", query, err);
+    return "curseforgeUnavailable";
+  }
+}
+
+/** Names and icons of the given mods, by project ID. Empty if CurseForge can't be reached. */
+export async function getCurseforgeModInfos(modIds: number[]): Promise<Map<number, CurseforgeModHit>> {
+  if (modIds.length === 0 || !curseforgeEnabled()) return new Map();
+  try {
+    const list = (await call<{ data: Mod[] }>("/v1/mods", { modIds }))?.data ?? [];
+    return new Map(list.map((m) => [m.id, modHit(m)]));
+  } catch (err) {
+    console.error("curseforge lookup failed", modIds, err);
+    return new Map();
+  }
+}
+
+/** A mod's project ID from a pasted CurseForge link or slug, or the ID itself. */
+export async function curseforgeModId(input: string): Promise<number | null> {
+  const s = input.trim();
+  if (/^\d{1,10}$/.test(s)) return Number(s);
+  const slug = s.match(/curseforge\.com\/minecraft\/mc-mods\/([a-z0-9-]+)/i)?.[1]?.toLowerCase() ?? s.toLowerCase();
+  if (!SLUG.test(slug) || !curseforgeEnabled()) return null;
+  const params = new URLSearchParams({ gameId: String(MINECRAFT), classId: String(MC_MODS), slug });
+  return (await call<{ data: Mod[] }>(`/v1/mods/search?${params}`))?.data.find((m) => m.slug === slug)?.id ?? null;
+}
+
+const clientOnly = (f: File) => f.gameVersions.includes("Client") && !f.gameVersions.includes("Server");
+
+/**
+ * The newest file of a mod for this Minecraft version and loader that a
+ * server can download and run: releases first, then betas and alphas.
+ */
+async function fileFor(mod: Mod, gameVersion: string, loader: string): Promise<ModFile | Exclude<CurseforgeModError, "cfDependency">> {
+  if (mod.isAvailable === false) return "pluginNotFound";
+  if (mod.allowModDistribution === false) return "cfBlocked";
+  const params = new URLSearchParams({ gameVersion, modLoaderType: String(MOD_LOADER_TYPES[loader] ?? 0), pageSize: "50" });
+  const files = ((await call<{ data: ModFile[] }>(`/v1/mods/${mod.id}/files?${params}`))?.data ?? []).filter(
+    (f) => f.gameVersions.includes(gameVersion) && !f.isServerPack,
+  );
+  if (files.length === 0) return "cfNoFile";
+  const usable = files.filter((f) => !clientOnly(f));
+  if (usable.length === 0) return "cfClientOnly";
+  const file = usable.filter((f) => f.downloadUrl).sort((a, b) => a.releaseType - b.releaseType || b.id - a.id)[0];
+  return file ?? "cfBlocked";
+}
+
+export type PinnedMods = { curseforge: { modId: number; fileId: number }[]; modrinth: string[] };
+
+/**
+ * Picks the files of these mods, and of the mods they need, for a server on
+ * this Minecraft version and loader. Mods in `have` are already on the server
+ * and aren't looked at again. An error names the mod it's about.
+ */
+export async function pinCurseforgeMods(
+  modIds: number[],
+  gameVersion: string,
+  loader: string,
+  have: Set<number> = new Set(),
+): Promise<PinnedMods | { error: CurseforgeModError; name?: string }> {
+  if (!curseforgeEnabled() || !GAME_VERSION.test(gameVersion)) return { error: "cfNoFile" };
+  const pinned: PinnedMods = { curseforge: [], modrinth: [] };
+  const seen = new Set(have);
+  // The mods asked for, then the ones they need (which may be missing for some, a reason to stop).
+  let queue: { id: number; needed: boolean }[] = [];
+  for (const id of modIds) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    if (ON_MODRINTH[id]) pinned.modrinth.push(ON_MODRINTH[id]);
+    else queue.push({ id, needed: false });
+  }
+  try {
+    while (queue.length) {
+      queue.forEach((q) => seen.add(q.id));
+      const mods = (await call<{ data: Mod[] }>("/v1/mods", { modIds: queue.map((q) => q.id) }))?.data ?? [];
+      const next: typeof queue = [];
+      for (const q of queue) {
+        const mod = mods.find((m) => m.id === q.id);
+        const file = mod ? await fileFor(mod, gameVersion, loader) : "pluginNotFound";
+        if (typeof file === "string") return q.needed ? { error: "cfDependency", name: mod?.name ?? String(q.id) } : { error: file, name: mod?.name };
+        pinned.curseforge.push({ modId: q.id, fileId: file.id });
+        for (const d of file.dependencies ?? []) {
+          if (d.relationType !== REQUIRED_DEPENDENCY || seen.has(d.modId) || next.some((n) => n.id === d.modId)) continue;
+          if (ON_MODRINTH[d.modId]) {
+            seen.add(d.modId);
+            pinned.modrinth.push(ON_MODRINTH[d.modId]);
+          } else next.push({ id: d.modId, needed: true });
+        }
+      }
+      if (pinned.curseforge.length + next.length > modIds.length + DEPENDENCIES_MAX) return { error: "cfDependency", name: mods[0]?.name };
+      queue = next;
+    }
+  } catch (err) {
+    console.error("curseforge mod lookup failed", modIds, err);
+    return { error: "curseforgeUnavailable" };
+  }
+  return pinned;
+}
+
+/**
+ * The list with each CurseForge mod pinned again for another Minecraft
+ * version: the mods with no file for it are left out (and named). Null if
+ * CurseForge can't be reached, so nothing is lost by a version change then.
+ */
+export async function repinCurseforgeMods(
+  plugins: string[],
+  gameVersion: string,
+  loader: string,
+): Promise<{ plugins: string[]; dropped: string[] } | null> {
+  const mods = plugins.map(curseforgeMod).filter((m) => m !== null);
+  if (mods.length === 0) return { plugins, dropped: [] };
+  const kept = plugins.filter((p) => !curseforgeMod(p));
+  const have = new Set<number>();
+  const dropped: string[] = [];
+  for (const { modId } of mods) {
+    if (have.has(modId)) continue;
+    const pinned = await pinCurseforgeMods([modId], gameVersion, loader, have);
+    if ("error" in pinned) {
+      if (pinned.error === "curseforgeUnavailable") return null;
+      dropped.push(pinned.name ?? String(modId));
+      continue;
+    }
+    for (const f of pinned.curseforge) {
+      have.add(f.modId);
+      kept.push(curseforgeEntry(f.modId, f.fileId));
+    }
+    kept.push(...pinned.modrinth.filter((id) => !kept.includes(id)));
+  }
+  return { plugins: kept, dropped };
 }

@@ -11,6 +11,22 @@ export const PLUGINS_MAX = 50;
 /** A Modrinth project ID, which is what the panel stores. */
 export const isProjectId = (s: string) => /^[A-Za-z0-9]{8}$/.test(s);
 
+// A mod from CurseForge is stored as "cf:<project ID>:<file ID>", pinned to the
+// file the panel picked for the server's Minecraft version and loader
+// (src/lib/curseforge.ts pinCurseforgeMods); the agent hands those to the image.
+const CF_MOD = /^cf:(\d{1,10}):(\d{1,12})$/;
+
+/** The CurseForge project and file of a stored mod, or null for a Modrinth one. */
+export function curseforgeMod(entry: string): { modId: number; fileId: number } | null {
+  const m = entry.match(CF_MOD);
+  return m ? { modId: Number(m[1]), fileId: Number(m[2]) } : null;
+}
+
+export const curseforgeEntry = (modId: number, fileId: number) => `cf:${modId}:${fileId}`;
+
+/** Whether the list already has a file of this CurseForge project. */
+export const hasCurseforgeMod = (plugins: string[], modId: number) => plugins.some((p) => curseforgeMod(p)?.modId === modId);
+
 /** Plugins every server of a game mode has; they can't be removed. */
 export const GAME_MODE_PLUGINS: Record<string, { slug: string; title: string }[]> = {
   skyblock: [
@@ -58,6 +74,7 @@ export const addonType = (s: Pick<Server, "edition" | "kind">): AddonType | null
   supportsPlugins(s) ? "plugin" : supportsMods(s) ? "mod" : isTmodloader(s) ? "workshop" : null;
 
 export const pluginPage = (slug: string, type: AddonType = "plugin") => `https://modrinth.com/${type}/${slug}`;
+export const curseforgeModPage = (slug: string) => `https://www.curseforge.com/minecraft/mc-mods/${slug}`;
 
 // Well-known plugins the panel offers in sets and ready games, by their
 // Modrinth project IDs (which never change) and slugs. All run on Paper.

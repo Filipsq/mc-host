@@ -350,6 +350,32 @@ func TestKindEnv(t *testing.T) {
 		if strings.Contains(env, "TYPE=PAPER") {
 			t.Errorf("%s must not run Paper:\n%s", kind, env)
 		}
+		// Always set, so mods removed in the panel leave the server; no key without CurseForge mods.
+		if !strings.Contains(env, "CURSEFORGE_FILES=\n") || strings.Contains(env, "CF_API_KEY") {
+			t.Errorf("%s without CurseForge mods:\n%s", kind, env)
+		}
+	}
+
+	// CurseForge mods go to the image's CurseForge list, pinned, with the key; Modrinth's stay apart.
+	cfMods := base
+	cfMods.Kind, cfMods.Version, cfMods.Plugins = "forge", "1.20.1", []string{"gvQqBUqZ", "cf:238222:4593548", "cf:306612:5000000"}
+	env = specEnv(keyed.containerSpec(cfMods, images["JAVA"]))
+	for _, want := range []string{"MODRINTH_PROJECTS=gvQqBUqZ?\n", "CURSEFORGE_FILES=238222:4593548,306612:5000000\n", "CF_API_KEY=$2a$10$key\n"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("CurseForge mods env missing %q:\n%s", want, env)
+		}
+	}
+	if err := cfMods.validate(); err != nil {
+		t.Errorf("CurseForge mods refused: %v", err)
+	}
+	for _, bad := range []createRequest{
+		{Edition: "JAVA", Kind: "vanilla", Version: "1.21.1", GameMode: "survival", Difficulty: "normal", Plugins: []string{"cf:238222:4593548"}}, // Paper
+		{Edition: "JAVA", Kind: "fabric", Version: "1.21.1", GameMode: "survival", Difficulty: "normal", Plugins: []string{"cf:238222"}},          // no file
+		{Edition: "JAVA", Kind: "fabric", Version: "1.21.1", GameMode: "survival", Difficulty: "normal", Plugins: []string{"cf:1,2:3"}},
+	} {
+		if bad.validate() == nil {
+			t.Errorf("accepted %v", bad.Plugins)
+		}
 	}
 
 	for _, bad := range []createRequest{

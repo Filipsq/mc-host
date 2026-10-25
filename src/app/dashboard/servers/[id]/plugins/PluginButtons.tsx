@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Plus, RotateCw, Trash2 } from "lucide-react";
-import { addPluginAction, addPluginSetAction, addWorkshopModAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
+import { addCurseforgeLinkAction, addPluginAction, addPluginSetAction, addWorkshopModAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -15,7 +15,7 @@ function useSave(t: T) {
   const save = (action: () => Promise<PluginResult>) =>
     startTransition(async () => {
       const res = await action();
-      if (res.error) setMessage({ text: t.errors[res.error], error: true });
+      if (res.error) setMessage({ text: format(t.errors[res.error], { name: res.name ?? "" }), error: true });
       else setMessage({ text: res.pending ? t.savedRunning : t.savedOffline, error: false });
     });
   return { pending, message, save };
@@ -67,8 +67,8 @@ export function RemovePluginButton({ id, pluginId, title, t }: { id: string; plu
   );
 }
 
-/** Adds a tModLoader mod by its Steam Workshop link or ID. */
-export function AddWorkshopForm({ id, t, placeholder }: { id: string; t: T; placeholder: string }) {
+/** Adds a tModLoader mod by its Steam Workshop link or ID, or a mod by its CurseForge link. */
+export function AddWorkshopForm({ id, t, placeholder, site = "workshop" }: { id: string; t: T; placeholder: string; site?: "workshop" | "curseforge" }) {
   const { pending, message, save } = useSave(t);
   const [input, setInput] = useState("");
   return (
@@ -76,7 +76,7 @@ export function AddWorkshopForm({ id, t, placeholder }: { id: string; t: T; plac
       className="plugin-search"
       onSubmit={(e) => {
         e.preventDefault();
-        if (input.trim()) save(() => addWorkshopModAction(id, input));
+        if (input.trim()) save(() => (site === "curseforge" ? addCurseforgeLinkAction(id, input) : addWorkshopModAction(id, input)));
       }}
     >
       <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} aria-label={placeholder} maxLength={300} spellCheck={false} />
@@ -99,7 +99,7 @@ export function ApplyPlugins({ id, pending: changed, t }: { id: string; pending:
       <button className="small" disabled={pending} onClick={() => startTransition(async () => setResult(await applyPluginsAction(id)))}>
         <RotateCw size={15} aria-hidden /> {pending ? t.applying : t.apply}
       </button>
-      {result?.error && <span className="error small">{t.errors[result.error]}</span>}
+      {result?.error && <span className="error small">{format(t.errors[result.error], { name: result.name ?? "" })}</span>}
     </div>
   );
 }

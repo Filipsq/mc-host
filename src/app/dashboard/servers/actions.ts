@@ -43,7 +43,8 @@ import {
   versionsFor,
 } from "@/lib/settings";
 import { activeLevel } from "@/lib/worlds";
-import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, isModLoader, planAtLeast, planForRam } from "@/lib/modpacks";
+import { repinCurseforgeMods } from "@/lib/curseforge";
 import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
@@ -563,11 +564,20 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   const whitelist = s.whitelist === "on";
   if (whitelist && players.length === 0) return { error: "whitelistEmpty" };
   if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
+  // CurseForge mods are pinned to a file for one Minecraft version: they're picked again for the new one.
+  let plugins = server.plugins;
+  let dropped: string[] = [];
+  if (version !== server.version && isModLoader(server.kind)) {
+    const repinned = await repinCurseforgeMods(server.plugins, version, server.kind);
+    if (!repinned) return { error: "curseforgeUnavailable" };
+    ({ plugins, dropped } = repinned);
+  }
 
   const updated = await db.server.update({
     where: { id: server.id },
     data: {
       version,
+      plugins,
       gameMode: s.gameMode,
       difficulty: s.difficulty,
       motd: s.motd,
@@ -597,7 +607,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
     return { error: "applyFailed" };
   }
   revalidatePath(`/dashboard/servers/${id}`, "layout");
-  redirect(`/dashboard/servers/${id}?settings=saved`);
+  redirect(`/dashboard/servers/${id}?settings=saved${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
 }
 
 export type IconState = { error?: "iconInvalid" | "applyFailed"; saved?: boolean };
