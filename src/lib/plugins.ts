@@ -77,6 +77,9 @@ export const KNOWN_PLUGINS = {
   "warps-for-bentobox": { id: "P08aFayx", title: "Warps" },
 } as const satisfies Record<string, { id: string; title: string }>;
 
+/** Simple Voice Chat, the same project for Paper and the mod loaders; the agent opens its port (agent/voice.go). */
+export const VOICE_CHAT = { id: "9eGKb6K1", slug: "simple-voice-chat", title: "Simple Voice Chat" } as const;
+
 export type KnownPlugin = keyof typeof KNOWN_PLUGINS;
 
 /** Sets of plugins added with one click on the Plugins page. */

@@ -862,6 +862,18 @@ const en: Messages = {
       failed: "That didn't work. Try again in a moment.",
     },
   },
+  voice: {
+    title: "Voice chat",
+    intro: "With Simple Voice Chat players talk in the game and hear whoever stands nearby. We set up its port for you, no files to change.",
+    steps: [
+      "Add Simple Voice Chat and restart the server.",
+      "Every player installs the Simple Voice Chat mod in their game (from Modrinth or CurseForge), for the same Minecraft version.",
+      "In the game, V opens the microphone settings; hold Caps Lock to talk.",
+    ],
+    address: "Voice chat address (UDP)",
+    addressHint: "The game connects to it by itself. Handy when a player has a firewall or something doesn't work.",
+    oldServer: "Uploaded the mod yourself in Files and it won't connect? Open Settings and click Save: the server gets its voice port.",
+  },
   workshop: {
     title: "Mods",
     manage: "Manage mods",
