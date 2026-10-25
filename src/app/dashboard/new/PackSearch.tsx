@@ -8,11 +8,14 @@ import { searchModpacksAction } from "./packActions";
 
 type Props = { t: Messages["server"]; locale: string; initial?: string };
 
+// What the form sends for a pack found here: a Modrinth slug, or a CurseForge pack's link.
+const packLink = (h: PackHit) => (h.curseforge ? `https://www.curseforge.com/minecraft/modpacks/${h.slug}` : h.slug);
+
 // A pasted link needs no search.
 const LINK = /(modrinth|curseforge)\.com/;
 
 /**
- * "Another pack from Modrinth": search by name, or paste a link. The field is
+ * "Another pack": search Modrinth and CurseForge by name, or paste a link. The field is
  * what the form sends as packLink; picking a result puts the pack's name there.
  */
 export default function PackSearch({ t, locale, initial }: Props) {
@@ -46,7 +49,7 @@ export default function PackSearch({ t, locale, initial }: Props) {
           <button type="button" className="secondary small" onClick={() => setChosen(null)}>
             {t.packChange}
           </button>
-          <input type="hidden" name="packLink" value={chosen.slug} />
+          <input type="hidden" name="packLink" value={packLink(chosen)} />
         </div>
       ) : (
         <>
@@ -71,21 +74,25 @@ export default function PackSearch({ t, locale, initial }: Props) {
           {Array.isArray(hits) && hits.length > 0 && !LINK.test(text) && (
             <ul className="pack-hits">
               {hits.map((h) => (
-                <li key={h.slug}>
+                <li key={`${h.curseforge ? "cf" : "mr"}-${h.slug}`}>
                   <button
                     type="button"
                     className="pack-hit"
                     onClick={() => {
                       setChosen(h);
-                      setText(h.slug);
+                      setText(packLink(h));
                     }}
                   >
                     <PackIcon src={h.icon} />
                     <span className="stack-tight">
-                      <strong>{h.title}</strong>
+                      <span>
+                        <strong>{h.title}</strong> <span className="chip small-chip">{h.curseforge ? t.packCurseforge : t.packModrinth}</span>
+                      </span>
                       <span className="muted small">{h.description}</span>
                       <span className="muted small">
-                        {h.newestVersion
+                        {h.curseforge
+                          ? format(t.packMetaNoVersion, { n: numbers.format(h.downloads) })
+                          : h.newestVersion
                           ? format(t.packMeta, { n: numbers.format(h.downloads), version: h.newestVersion })
                           : format(t.packMetaNoVersion, { n: numbers.format(h.downloads) })}
                       </span>

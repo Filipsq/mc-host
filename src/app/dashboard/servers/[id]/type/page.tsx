@@ -4,21 +4,30 @@ import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { getServerFor } from "@/lib/access";
 import { getPackArt } from "@/lib/modrinth";
-import { curseforgeEnabled } from "@/lib/curseforge";
+import { curseforgeEnabled, curseforgePackOptions } from "@/lib/curseforge";
 import { CURATED_PACKS, isModLoader } from "@/lib/modpacks";
 import { plans } from "@/lib/plans";
-import { supportsPlugins } from "@/lib/plugins";
+import { PLUGINS_MAX, isProjectId, supportsPlugins } from "@/lib/plugins";
 import { onHost } from "@/lib/servers";
 import { kindLabel, typeOfKind, usesMods } from "@/lib/serverType";
 import TypeForm from "./TypeForm";
 
-export default async function ServerTypePage({ params }: { params: Promise<{ id: string }> }) {
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ type?: string; mods?: string }> };
+
+export default async function ServerTypePage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  // Mods picked on a plain server's Mods page come along, to be added once it runs Fabric.
+  const pickedMods = query.type === "mods" ? [...new Set((query.mods ?? "").split(","))].filter(isProjectId).slice(0, PLUGINS_MAX) : [];
   const server = await getServerFor(id, session.user.id, "owner");
   if (!server || server.edition !== "JAVA") notFound();
-  const [t, { locale }, packArt] = await Promise.all([getMessages(), getPreferences(), getPackArt(CURATED_PACKS.map((p) => p.slug))]);
+  const [t, { locale }, packArt, cfPacks] = await Promise.all([
+    getMessages(),
+    getPreferences(),
+    getPackArt(CURATED_PACKS.map((p) => p.slug)),
+    curseforgeEnabled() ? curseforgePackOptions() : [],
+  ]);
 
   return (
     <div className="wide-form stack">
@@ -46,6 +55,8 @@ export default async function ServerTypePage({ params }: { params: Promise<{ id:
           locale={locale}
           notes={{ backup: plans.find((p) => p.id === server.plan)!.backupsKept > 0, modsMoved: usesMods(server.kind), plugins: supportsPlugins(server) && server.plugins.length > 0 }}
           curseforge={curseforgeEnabled()}
+          cfPacks={cfPacks}
+          pickedMods={pickedMods}
           t={t.serverType}
           server={t.server}
         />

@@ -4,10 +4,10 @@ import { startTransition, useActionState, useState } from "react";
 import Link from "next/link";
 import type { Plan } from "@prisma/client";
 import { format, type Messages } from "@/i18n/messages";
-import { CURATED_PACKS, LOADER_NAMES, isModLoader, planAtLeast, type ModLoader } from "@/lib/modpacks";
+import { CURATED_PACKS, LOADER_NAMES, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
 import { MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { SERVER_TYPES, minPlanFor, ramFor, typeGame, type ServerType } from "@/lib/serverType";
-import { LoaderFields, PackFields } from "@/app/dashboard/new/ModFields";
+import { LoaderFields, PackFields, pickedCurseforge, type CurseforgeOption } from "@/app/dashboard/new/ModFields";
 import { changeTypeAction } from "./actions";
 
 type Props = {
@@ -20,28 +20,31 @@ type Props = {
   locale: string;
   notes: { backup: boolean; modsMoved: boolean; plugins: boolean };
   curseforge: boolean; // whether CurseForge links work
+  cfPacks: CurseforgeOption[]; // the most popular CurseForge packs
+  pickedMods: string[]; // Modrinth mods picked on a plain server's Mods page, added when it switches to mods
   t: Messages["serverType"];
   server: Messages["server"];
 };
 
-export default function TypeForm({ id, current, plan, planNames, planRam, packIcons, locale, notes, curseforge, t, server }: Props) {
+export default function TypeForm({ id, current, plan, planNames, planRam, packIcons, locale, notes, curseforge, cfPacks, pickedMods, t, server }: Props) {
   const [state, action, pending] = useActionState(changeTypeAction.bind(null, id), {});
   const v = state.values ?? {};
   // Starts on something other than what the server runs, since that's what the page is for.
   const [type, setType] = useState<ServerType>(
-    (v.type as ServerType | undefined) ?? (current.type === "mods" ? "modpack" : "mods"),
+    (v.type as ServerType | undefined) ?? (current.type === "mods" && pickedMods.length === 0 ? "modpack" : "mods"),
   );
   const [loader, setLoader] = useState<ModLoader>(isModLoader(v.loader) ? v.loader : isModLoader(current.loader) ? current.loader : "fabric");
   const [modVersion, setModVersion] = useState(v.modVersion ?? (current.type === "mods" ? current.version : MOD_DEFAULT_VERSION));
   const [pack, setPack] = useState(v.pack ?? CURATED_PACKS[0].slug);
 
   const curated = CURATED_PACKS.find((p) => p.slug === pack);
-  const minPlan = minPlanFor(type, pack);
+  const cfPack = type === "modpack" ? pickedCurseforge(pack, cfPacks) : undefined;
+  const minPlan = cfPack ? planForRam(cfPack.ramGb) : minPlanFor(type, pack);
   const tooSmall = !planAtLeast(plan, minPlan);
-  const wanted = ramFor(type, pack);
+  const wanted = cfPack?.ramGb ?? ramFor(type, pack);
   const ramLow = !tooSmall && wanted > planRam[plan];
   const name =
-    type === "mods" ? LOADER_NAMES[loader] : type === "modpack" ? (curated?.title ?? server.packOther) : server.games[typeGame(type).id];
+    type === "mods" ? LOADER_NAMES[loader] : type === "modpack" ? (curated?.title ?? cfPack?.title ?? server.packOther) : server.games[typeGame(type).id];
 
   return (
     <form
@@ -56,6 +59,7 @@ export default function TypeForm({ id, current, plan, planNames, planRam, packIc
         startTransition(() => action(data));
       }}
     >
+      {type === "mods" && pickedMods.length > 0 && <input type="hidden" name="mods" value={pickedMods.join(",")} />}
       <fieldset className="stack">
         <legend>{t.type}</legend>
         <div className="plan-options">
@@ -88,6 +92,7 @@ export default function TypeForm({ id, current, plan, planNames, planRam, packIc
           locale={locale}
           initialLink={v.packLink}
           curseforge={curseforge}
+          cfPacks={cfPacks}
         />
       )}
 
@@ -104,6 +109,7 @@ export default function TypeForm({ id, current, plan, planNames, planRam, packIc
       <ul className="muted small type-notes">
         {notes.backup && <li>{t.backupNote}</li>}
         {notes.modsMoved && <li>{t.modsMoved}</li>}
+        {type === "mods" && pickedMods.length > 0 && <li>{format(t.pickedMods, { n: pickedMods.length })}</li>}
         {notes.plugins && type !== "vanilla" && type !== "skymap" && type !== "skyblock" && type !== "oneblock" && <li>{t.pluginsDropped}</li>}
       </ul>
       {state.error && <p className="error">{(t.errors as Record<string, string>)[state.error] ?? (server.errors as Record<string, string>)[state.error] ?? t.errors.failed}</p>}

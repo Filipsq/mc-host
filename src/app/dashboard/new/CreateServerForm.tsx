@@ -21,7 +21,7 @@ import type { HelperPick } from "@/lib/planHelper";
 import { Lightbulb } from "lucide-react";
 import AiCreator from "./AiCreator";
 import PlanHelper from "./PlanHelper";
-import { LoaderFields, PackFields, type CurseforgeOption } from "./ModFields";
+import { LoaderFields, PackFields, pickedCurseforge, type CurseforgeOption } from "./ModFields";
 
 type Props = {
   title: string;
@@ -41,7 +41,8 @@ type Props = {
   initialGame?: GameId; // a game or pack picked on the home page or the empty panel
   initialPack?: string;
   packIcons: Record<string, string | undefined>;
-  cfPack?: CurseforgeOption; // a CurseForge pack picked on the home page
+  cfPacks: CurseforgeOption[]; // CurseForge packs offered: the one picked on the home page first, then the popular ones
+  cfPicked: boolean; // whether the first of cfPacks was picked on the home page
   curseforge: boolean; // whether CurseForge links work
   admin: boolean; // admins also get a button to make a test server without paying
   // The creator code to start with (whoever invited the user) and free Starters they earned with their own (creator.ts).
@@ -74,7 +75,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, creator, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPacks, cfPicked, curseforge, admin, creator, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -141,7 +142,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     : canRunNonPremium({ edition: "JAVA", kind: gameById(game).kind, version: "LATEST" });
   // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
   const packPlan = (slug: string) => {
-    const gb = slug === "curseforge" ? cfPack?.ramGb : CURATED_PACKS.find((p) => p.slug === slug)?.ramGb;
+    const gb = pickedCurseforge(slug, cfPacks)?.ramGb ?? CURATED_PACKS.find((p) => p.slug === slug)?.ramGb;
     return gb ? planForRam(gb) : MODPACK_MIN_PLAN;
   };
   // tModLoader needs more memory than the free plan has.
@@ -327,7 +328,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             if (!planAtLeast(plan, packPlan(slug))) setPlan(packPlan(slug));
           }}
           packIcons={packIcons}
-          cfPack={cfPack}
+          cfPacks={cfPacks}
+          cfPicked={cfPicked}
           curseforge={curseforge}
           planName={planName}
           locale={money.locale}

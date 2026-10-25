@@ -10,7 +10,7 @@ import { getMetrics } from "@/lib/agent";
 import { planById } from "@/lib/plans";
 import { maxPlayersFor } from "@/lib/settings";
 import { canUpgrade } from "@/lib/upgrade";
-import { addonType } from "@/lib/plugins";
+import { addonType, offersModPicker } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
 import { EDITION_NAMES } from "@/lib/editions";
 import { isTerrariaKind } from "@/lib/terraria";
@@ -78,6 +78,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
       items: [
         live !== "awaitingPayment" && can("files") && !terraria && { key: "worlds" as const, label: all.worlds.title, path: "/worlds" },
         addonsTitle && can("plugins") && { key: "plugins" as const, label: addonsTitle, path: "/plugins" },
+        offersModPicker(server) && can("plugins") && { key: "mods" as const, label: all.mods.title, path: "/mods" },
       ].filter(present),
     },
     {

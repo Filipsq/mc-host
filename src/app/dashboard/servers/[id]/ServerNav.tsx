@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
+  Blocks,
   ArrowUpCircle,
   Archive,
   ChevronDown,
@@ -30,6 +31,7 @@ const ICONS = {
   backups: Archive,
   worlds: Globe,
   plugins: Puzzle,
+  mods: Blocks,
   billing: CreditCard,
   upgrade: ArrowUpCircle,
   addons: PackagePlus,

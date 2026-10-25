@@ -11,7 +11,7 @@ import { applyToHost, onHost } from "@/lib/servers";
 import { planById } from "@/lib/plans";
 import { MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { LOADER_VERSIONS, MOD_DEFAULT_VERSION, versionsFor } from "@/lib/settings";
-import { canRunNonPremium, supportsPlugins } from "@/lib/plugins";
+import { PLUGINS_MAX, canRunNonPremium, isProjectId, supportsPlugins } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { SERVER_TYPES, minPlanFor, usesMods } from "@/lib/serverType";
 import { activeLevel, nextWorldName, randomSeed } from "@/lib/worlds";
@@ -27,6 +27,7 @@ const typeSchema = z.object({
   modVersion: z.string().max(20).optional(),
   pack: z.string().optional(), // a curated pack's slug, or "custom" for packLink
   packLink: z.string().max(300).optional(), // a Modrinth or CurseForge link, or a pack from the Modrinth search
+  mods: z.string().max(600).optional(), // Modrinth mods picked on a plain server's Mods page, comma-separated
 });
 
 /** "mods-fabric", or "mods-fabric-2" if that's taken. */
@@ -93,13 +94,15 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
       await agent.changeFiles(server.id, { rename: "mods", to });
     }
     const keepPlugins = supportsPlugins(server) && supportsPlugins({ edition: "JAVA", kind });
+    // Mods picked before the switch; their versions are checked when the server starts, like any added mod.
+    const picked = type === "mods" ? [...new Set((parsed.data.mods ?? "").split(","))].filter(isProjectId).slice(0, PLUGINS_MAX) : [];
     const updated = await db.server.update({
       where: { id: server.id },
       data: {
         kind,
         version,
         ...packFields(pack),
-        plugins: keepPlugins ? server.plugins : [],
+        plugins: keepPlugins ? server.plugins : picked,
         onlineMode: canRunNonPremium({ edition: "JAVA", kind, version }) ? server.onlineMode : true,
         // A fresh world; the old one stays in the server's files, under Worlds.
         level: nextWorldName([...names, activeLevel(server)]),

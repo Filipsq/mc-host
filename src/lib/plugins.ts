@@ -82,6 +82,9 @@ export const canRunNonPremium = (s: Pick<Server, "edition" | "kind" | "version">
 /** Bedrock players get in through the Geyser plugin, so crossplay is for Paper servers too. */
 export const canCrossplay = supportsPlugins;
 
+/** A plain Java server, which lists mods too (it can't run them; picking them leads to a switch to Fabric). */
+export const offersModPicker = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && s.kind === "vanilla";
+
 /** Mods picked one by one run on a Fabric, Forge or NeoForge server (a mod pack brings its own). */
 export const supportsMods = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && isModLoader(s.kind);
 
