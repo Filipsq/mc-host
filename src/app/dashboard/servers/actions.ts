@@ -49,7 +49,7 @@ import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, canCrossplay, canRunNonPremium, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
-import { SERVER_PASSWORD, TERRARIA_KINDS, TMOD_ARCH, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
+import { SERVER_PASSWORD, TERRARIA_KINDS, TMOD_MIN_PLAN, requiredArch, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -193,7 +193,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   // Admins may go over the sales limit to test buying; a plan still has to fit on the machine.
   const extraMb = (await isAdmin(user.id)) ? 0 : memoryMb;
   // The machine it goes on: the one with the most room (paid plans need room to sell).
-  const candidates = await rankNodes(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, tmod ? TMOD_ARCH : undefined);
+  // Bedrock and tModLoader need an x86 machine.
+  const candidates = await rankNodes(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, requiredArch({ edition, kind }));
   const node = candidates[0];
   if (!node) return { error: "soldOut", values };
 

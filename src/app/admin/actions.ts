@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { ANNOUNCEMENT_MAX, sayOnAllServers, setAnnouncement } from "@/lib/announcement";
 import { applyToHost, destroyServer, moveServer } from "@/lib/servers";
 import { nodes } from "@/lib/nodes";
-import { TMOD_ARCH } from "@/lib/terraria";
+import { requiredArch } from "@/lib/terraria";
 import { stripeTestMode } from "@/lib/stripe";
 import { makeUpForTestPayment, untoldCustomers } from "@/lib/testPayments";
 import { getPreferences } from "@/i18n/server";
@@ -51,7 +51,8 @@ export async function moveServerAdminAction(id: string, _: MoveState, form: Form
   const to = nodes().find((n) => n.id === form.get("node"));
   const server = await db.server.findUnique({ where: { id } });
   if (!server || !to || to.id === server.node) return { error: "invalid" };
-  if (server.edition === "TERRARIA" && server.kind === "tmodloader" && to.arch && to.arch !== TMOD_ARCH) return { error: "invalid" };
+  const arch = requiredArch(server);
+  if (arch && to.arch && to.arch !== arch) return { error: "invalid" };
   if (to.memoryLimitMb > 0 && server.memoryMb > to.memoryLimitMb) return { error: "invalid" };
   const moved = await moveServer(server, to.id);
   revalidatePath(`/admin/servers/${id}`);

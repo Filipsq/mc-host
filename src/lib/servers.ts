@@ -19,7 +19,7 @@ import { getServerFor } from "./access";
 import { oversold, pickNode } from "./capacity";
 import { planById } from "./plans";
 import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
-import { TMOD_ARCH } from "./terraria";
+import { requiredArch } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
 import { isPreYearVersion, maxPlayersFor } from "./settings";
@@ -279,8 +279,7 @@ const moving = new Set<string>();
 export async function moveIfFull(server: Server): Promise<Server | null> {
   if (moving.has(server.id)) return null;
   if (server.adminTest || !(await oversold(server.node))) return server;
-  const arch = server.edition === "TERRARIA" && server.kind === "tmodloader" ? TMOD_ARCH : undefined;
-  const to = await pickNode(server.memoryMb, server.memoryMb, undefined, arch);
+  const to = await pickNode(server.memoryMb, server.memoryMb, undefined, requiredArch(server));
   if (!to || to === server.node) return server;
   return (await moveServer(server, to)) ?? server;
 }
