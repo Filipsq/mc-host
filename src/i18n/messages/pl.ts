@@ -393,6 +393,63 @@ const pl = {
     },
     console: "Konsola",
     consoleEmpty: "Brak logów. Uruchom serwer, aby zobaczyć konsolę.",
+    hints: {
+      title: "Co się dzieje z serwerem",
+      list: {
+        invalidSession: {
+          title: "Gracz bez premium nie może wejść",
+          fix: "Serwer wpuszcza tylko konta z kupionym Minecraftem. Żeby wpuścić graczy bez premium, włącz w Ustawieniach „Non-premium” i kliknij Zapisz.",
+        },
+        oldWorld: {
+          title: "Ten świat nie jest z Javy albo jest bardzo stary",
+          fix: "To mapa z Bedrocka (folder db) albo sprzed Minecrafta 1.2 (pliki .mcr). Przerób ją za darmo na chunker.app (Java Edition, najnowsza wersja) i wgraj wynik w Światy, albo w Światy włącz inny świat.",
+        },
+        worldTooNew: {
+          title: "Świat jest z nowszej wersji niż serwer",
+          fix: "Ten świat zapisał Minecraft 26 lub nowszy, a serwer ma ustawioną starszą wersję. Zmień wersję w Ustawieniach na „Najnowsza” albo włącz inny świat w Światy.",
+        },
+        brokenWorld: {
+          title: "Nie da się wczytać świata",
+          fix: "Brakuje plików z ustawieniami świata (świat nie został do końca utworzony albo jest z innego typu serwera). Załóż nowy świat w Światy. Jeśli zależy Ci na tym świecie, napisz do nas na czacie pomocy.",
+        },
+        duplicatePlugin: {
+          title: "Ten sam plugin lub mod jest dodany dwa razy",
+          fix: "Usuń powtórzony plugin lub mod w Pluginach (albo Modach) i uruchom serwer jeszcze raz.",
+        },
+        missingDependency: {
+          title: "Mod potrzebuje innego moda albo innej wersji",
+          fix: "Któryś mod wymaga moda, którego brakuje, albo jest na inną wersję Minecrafta. Nazwy są w czerwonych liniach powyżej. Dodaj brakujący mod w Modach albo usuń ten, który go wymaga.",
+        },
+        clientMod: {
+          title: "Mod działa tylko w grze, nie na serwerze",
+          fix: "Na serwerze jest mod tylko dla gracza (np. od wyglądu, minimapy lub menu). Usuń go w Modach. Gracze mogą go mieć u siebie.",
+        },
+        javaTooOld: {
+          title: "Plugin lub mod jest na nowszą wersję",
+          fix: "Któryś plugin lub mod wymaga nowszej wersji Minecrafta, niż ma serwer. Zmień wersję w Ustawieniach albo usuń ten plugin lub mod.",
+        },
+        outOfMemory: {
+          title: "Serwerowi zabrakło pamięci",
+          fix: "Serwer zużył cały RAM z planu. Usuń część modów lub pluginów albo ulepsz plan na większy.",
+        },
+        diskFull: {
+          title: "Brak miejsca na dysku",
+          fix: "Usuń niepotrzebne pliki, stare światy lub kopie zapasowe albo dokup dodatkowe miejsce w Dodatkach.",
+        },
+        accessDenied: {
+          title: "Serwer nie może zapisać pliku",
+          fix: "To problem po naszej stronie. Napisz do nas na czacie pomocy, a naprawimy to.",
+        },
+        pluginSkipped: {
+          title: "Plugin pominięty",
+          fix: "Ten plugin nie ma wersji na wersję Minecrafta Twojego serwera, więc serwer działa bez niego. Wybierz inny plugin albo zmień wersję w Ustawieniach.",
+        },
+        overloaded: {
+          title: "Serwer nie nadąża",
+          fix: "Serwer chwilowo się przycina. Pomaga mniej pluginów lub modów, mniejsza liczba graczy naraz albo większy plan. Jedna taka linia przy starcie to nic złego.",
+        },
+      },
+    },
     commandPlaceholder: "Wpisz komendę, np. say Cześć",
     send: "Wyślij",
     quick: {

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { sendCommandAction } from "../actions";
 import type { Messages } from "@/i18n/messages";
 import { PLAYER_COMMANDS, WORLD_COMMANDS, cleanNick, type ConsoleGame } from "./quickCommands";
+import { hintFor, isErrorLine, type HintId } from "./consoleHints";
 
 const MAX_LINES = 500;
 // Colour codes some plugins print (often without the escape character), which a browser shows as "[0;39m".
@@ -63,10 +64,31 @@ export default function Console({ id, game, t }: { id: string; game: ConsoleGame
 
   const q = t.quick;
   const player = cleanNick(nick);
+  // Known problems in the log, newest first, each explained once above the console.
+  const hints = useMemo(() => {
+    const found: HintId[] = [];
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const h = hintFor(lines[i]);
+      if (h && !found.includes(h)) found.push(h);
+    }
+    return found;
+  }, [lines]);
 
   return (
     <section className="stack">
       <h2>{t.console}</h2>
+      {hints.length > 0 && (
+        <div className="stack console-hints" role="status">
+          <strong>{t.hints.title}</strong>
+          {hints.map((h) => (
+            <p key={h} className="notice warn">
+              <strong>{t.hints.list[h].title}</strong>
+              <br />
+              {t.hints.list[h].fix}
+            </p>
+          ))}
+        </div>
+      )}
       <div className="console-layout">
         <div className="stack console-main">
           <div className="console-frame">
@@ -75,7 +97,14 @@ export default function Console({ id, game, t }: { id: string; game: ConsoleGame
             </div>
             <div className="console-body">
               <pre ref={logRef} className="console" aria-live="polite">
-                {lines.length ? lines.join("\n") : t.consoleEmpty}
+                {lines.length
+                  ? lines.map((line, i) => (
+                      <span key={i} className={hintFor(line) ? "console-hint" : isErrorLine(line) ? "console-error" : undefined}>
+                        {line}
+                        {"\n"}
+                      </span>
+                    ))
+                  : t.consoleEmpty}
               </pre>
             </div>
           </div>
