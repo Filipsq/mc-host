@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -271,6 +272,7 @@ func main() {
 		}
 	}()
 	a.udp = newUDPWaker(a.wake)
+	go a.limitFreeCPU(context.Background())
 	go a.watchIdle(context.Background())
 	go a.watchBackups(context.Background())
 	go a.watchDisk(context.Background())
@@ -852,6 +854,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 
 // serverSpec is the container for a game server, whatever the game.
 func serverSpec(req createRequest, image string, env []string, labels map[string]string, bindings map[string]any, tty bool, limitMb int, entrypoint []string) map[string]any {
+	nanoCPUs, cpuShares := cpuLimits(req.CPUs, req.Autostop)
 	exposed := map[string]any{}
 	for port := range bindings {
 		exposed[port] = map[string]any{}
@@ -866,11 +869,9 @@ func serverSpec(req createRequest, image string, env []string, labels map[string
 		"HostConfig": map[string]any{
 			"Memory":     int64(limitMb) * 1024 * 1024,
 			"MemorySwap": int64(limitMb) * 1024 * 1024, // no swap
-			// A server may borrow one more core while the machine has one idle
-			// (chunk generation is what needs it); when cores are busy, Docker
-			// shares them in proportion to each plan's cores.
-			"NanoCpus":  int64(burstCPUs(req.CPUs) * 1e9),
-			"CpuShares": int64(req.CPUs * 1024),
+			// See cpuLimits.
+			"NanoCpus":  nanoCPUs,
+			"CpuShares": cpuShares,
 			"PidsLimit": 512,
 			// Keep only the newest console output: it holds players' IP addresses and would otherwise fill the disk.
 			"LogConfig": map[string]any{"Type": "json-file", "Config": map[string]string{"max-size": "10m", "max-file": "3"}},
@@ -1183,6 +1184,40 @@ func (a *agent) handleDockerErr(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusInternalServerError, err.Error())
 	}
 	return true
+}
+
+// freeCPUShares is a free server's weight when cores are busy: a quarter of a
+// paid plan's per core, so paying players don't lag because of free servers.
+const freeCPUShares = 256
+
+// cpuLimits are the cores a server may use (NanoCpus) and its weight when the
+// machine's cores are busy (CpuShares). A paid server may borrow one more core
+// while the machine has one idle (chunk generation is what needs it), and busy
+// cores are shared in proportion to each plan's cores. A free server gets its
+// plan's cores at most and gives way to paid ones.
+func cpuLimits(planCPUs float64, free bool) (nanoCPUs, shares int64) {
+	if free {
+		return int64(planCPUs * 1e9), freeCPUShares
+	}
+	return int64(burstCPUs(planCPUs) * 1e9), int64(planCPUs * 1024)
+}
+
+// limitFreeCPU gives free servers made before cpuLimits their new limits.
+func (a *agent) limitFreeCPU(ctx context.Context) {
+	var list []containerSummary
+	query := url.Values{"all": {"1"}, "filters": {`{"label":["mchost.autostop=true"]}`}}
+	if err := a.docker.call(ctx, http.MethodGet, "/containers/json", query, nil, &list); err != nil {
+		log.Printf("free server CPU limits: %v", err)
+		return
+	}
+	nano, shares := cpuLimits(1, true) // the free plan has one core
+	for _, c := range list {
+		name := containerName(c.Labels["mchost.server"])
+		body := map[string]any{"NanoCpus": nano, "CpuShares": shares}
+		if err := a.docker.call(ctx, http.MethodPost, "/containers/"+name+"/update", nil, body, nil); err != nil {
+			log.Printf("CPU limits %s: %v", name, err)
+		}
+	}
 }
 
 // burstCPUs is the most cores a server may use: its plan's cores plus one,
