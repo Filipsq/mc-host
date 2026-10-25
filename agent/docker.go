@@ -202,7 +202,10 @@ type ContainerInfo struct {
 		Labels map[string]string `json:"Labels"`
 	} `json:"Config"`
 	HostConfig struct {
-		NanoCpus int64 `json:"NanoCpus"`
+		NanoCpus     int64 `json:"NanoCpus"`
+		PortBindings map[string][]struct {
+			HostPort string `json:"HostPort"`
+		} `json:"PortBindings"`
 	} `json:"HostConfig"`
 	RestartCount    int `json:"RestartCount"`
 	NetworkSettings struct {

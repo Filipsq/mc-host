@@ -9,6 +9,8 @@ import { formats } from "../format";
 import ServerTable from "../ServerTable";
 import { nodes } from "@/lib/nodes";
 
+const ALL = 5000;
+
 type Props = {
   searchParams: Promise<{
     q?: string;
@@ -27,7 +29,8 @@ export default async function AdminServers({ searchParams }: Props) {
     String(v ?? "").trim()
   );
   const page = Math.max(1, parseInt(params.page ?? "1", 10) || 1);
-  const pageSize = Math.min(200, Math.max(20, parseInt(params.limit ?? "100", 10) || 100));
+  // All servers on one page by default, so sorting a column sorts every server, not just the newest ones.
+  const pageSize = params.limit === undefined || params.limit === "all" ? ALL : Math.min(ALL, Math.max(50, parseInt(params.limit, 10) || ALL));
 
   const allNodes = nodes();
   const where: Prisma.ServerWhereInput = {
@@ -68,7 +71,7 @@ export default async function AdminServers({ searchParams }: Props) {
     if (status) qp.set("status", status);
     if (plan) qp.set("plan", plan);
     if (nodeParam) qp.set("node", nodeParam);
-    if (pageSize !== 100) qp.set("limit", String(pageSize));
+    if (pageSize !== ALL) qp.set("limit", String(pageSize));
     if (p > 1) qp.set("page", String(p));
     const qs = qp.toString();
     return `/admin/servers${qs ? `?${qs}` : ""}`;
@@ -110,10 +113,11 @@ export default async function AdminServers({ searchParams }: Props) {
             ))}
           </select>
         )}
-        <select name="limit" defaultValue={String(pageSize)} aria-label="Limit">
-          <option value="50">{format(t.perPage, { n: 50 })}</option>
+        <select name="limit" defaultValue={pageSize === ALL ? "all" : String(pageSize)} aria-label="Limit">
+          <option value="all">{t.perPageAll}</option>
           <option value="100">{format(t.perPage, { n: 100 })}</option>
           <option value="200">{format(t.perPage, { n: 200 })}</option>
+          <option value="500">{format(t.perPage, { n: 500 })}</option>
         </select>
         <button type="submit" className="secondary">
           {t.filter}

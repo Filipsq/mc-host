@@ -148,7 +148,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
       {live === "diskFull" && diskVars && <p className="notice warn">{format(t.diskStopped, diskVars)}</p>}
       {live !== "diskFull" && diskVars && (diskUsed ?? 0) > diskLimit && <p className="notice warn">{format(t.diskOver, diskVars)}</p>}
       {live === "sleeping" && (
-        <p className="notice">{server.edition === "JAVA" ? t.sleepingJava : t.sleepingBedrock}</p>
+        <p className="notice">{server.edition === "JAVA" ? t.sleepingJava : server.edition === "BEDROCK" ? t.sleepingBedrock : t.sleepingTerraria}</p>
       )}
 
       <div className="card stack">

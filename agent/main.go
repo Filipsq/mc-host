@@ -195,6 +195,8 @@ type agent struct {
 
 	metrics    sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
 	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
+
+	udp *udpWaker // answers Bedrock players while their server is stopped (see bedrock.go)
 }
 
 func main() {
@@ -268,10 +270,12 @@ func main() {
 			}
 		}
 	}()
+	a.udp = newUDPWaker(a.wake)
 	go a.watchIdle(context.Background())
 	go a.watchBackups(context.Background())
 	go a.watchDisk(context.Background())
 	go a.watchMetrics(context.Background())
+	go a.watchBedrockPorts(context.Background())
 
 	gameAddr := envOr("GAME_ADDR", ":25565")
 	ln, err := net.Listen("tcp", gameAddr)
@@ -698,6 +702,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		"mchost.memory":   fmt.Sprint(req.MemoryMb),
 		"mchost.backups":  fmt.Sprint(req.Backups),
 		"mchost.level":    req.level(),
+		"mchost.name":     req.Name, // shown to Bedrock players while the server is stopped (bedrock.go)
 	}
 	if req.Edition == "TERRARIA" {
 		// Players connect straight to the server's port: no router, no hostname.
