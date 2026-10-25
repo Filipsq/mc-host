@@ -22,11 +22,11 @@ export default async function EditFilePage({ params, searchParams }: Props) {
   const text = await readText(server.id, path);
 
   return (
-    <main className="stack">
+    <div className="stack">
       <Link className="back" href={back}>← {t.title}</Link>
       <div>
         <p className="muted small">{t.editing}</p>
-        <h1 className="file-title">{path.split("/").at(-1)}</h1>
+        <h2 className="file-title">{path.split("/").at(-1)}</h2>
         {folder && <p className="muted small mono">{path}</p>}
       </div>
       {text === "notFound" ? (
@@ -46,7 +46,7 @@ export default async function EditFilePage({ params, searchParams }: Props) {
           <FileEditor id={server.id} path={path} initial={text.content} readOnly={!canChangeFiles(server)} t={t} />
         </>
       )}
-    </main>
+    </div>
   );
 }
 

@@ -369,6 +369,7 @@ const en: Messages = {
     crossplaySleeping: "A sleeping server wakes up when someone tries to join. A Bedrock player sees an error then and can join again after about a minute.",
     start: "Start",
     stop: "Stop",
+    restart: "Restart",
     delete: "Delete server",
     deleteConfirm: "Delete this server? The world will be deleted and can't be recovered.",
     stats: {
@@ -642,6 +643,23 @@ const en: Messages = {
       worldTooNew:
         "This server's world was saved by Minecraft 26 or newer, and older versions (1.x) can't open it at all. Keep the version on “Latest” or make a new world on the Worlds tab.",
     },
+  },
+  panel: {
+    menu: "Server menu",
+    servers: "Your servers",
+    switchServer: "Switch server",
+    overview: "Overview",
+    manage: "Manage",
+    game: "Game",
+    account: "Plan and access",
+    console: "Console",
+    backups: "Backups",
+    upgrade: "Upgrade plan",
+    players: "{n} / {max}",
+    playersLabel: "Players online",
+    join: "How to join",
+    danger: "Delete the server",
+    dangerText: "Deletes the server with its world and backups. This can't be undone.",
   },
   files: {
     title: "Files",

@@ -61,9 +61,8 @@ export default async function BillingPage({ params }: { params: Promise<{ id: st
       : null;
 
   return (
-    <main className="wide-form stack">
-      <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
-      <h1>{b.title}</h1>
+    <div className="wide-form stack">
+      <h2>{b.title}</h2>
 
       <section className="card stack">
         <h2 className="card-title">
@@ -128,6 +127,6 @@ export default async function BillingPage({ params }: { params: Promise<{ id: st
           labels: { title: t.paidAddons.pickTitle, hint: t.paidAddons.pickHint, price: t.paidAddons.price },
         }}
       />
-    </main>
+    </div>
   );
 }

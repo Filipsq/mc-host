@@ -40,9 +40,8 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
   const date = server.paidUntil ? new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(server.paidUntil) : "";
 
   return (
-    <main className="wide-form stack">
-      <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
-      <h1>{t.title}</h1>
+    <div className="wide-form stack">
+      <h2>{t.title}</h2>
       <p className="muted">{t.pageHint}</p>
 
       {server.plan === "FREE" ? (
@@ -109,6 +108,6 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
           )}
         </>
       )}
-    </main>
+    </div>
   );
 }

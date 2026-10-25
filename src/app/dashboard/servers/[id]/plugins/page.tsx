@@ -26,15 +26,13 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const type = addonType(server);
   // Mod servers use the same page with mod wording.
   const t = type === "mod" ? { ...all.plugins, ...all.mods } : all.plugins;
-  const back = <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>;
 
   if (!type) {
     return (
-      <main className="wide-form stack">
-        {back}
-        <h1>{t.title}</h1>
+      <div className="wide-form stack">
+        <h2>{t.title}</h2>
         <p className="notice">{{ BEDROCK: t.notBedrock, TERRARIA: t.notTerraria, JAVA: t.notModpack }[server.edition]}</p>
-      </main>
+      </div>
     );
   }
 
@@ -42,9 +40,8 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     const tw = { ...all.plugins, ...all.mods, ...all.workshop };
     const titles = await getWorkshopTitles(server.plugins);
     return (
-      <main className="stack">
-        {back}
-        <h1>{tw.title}</h1>
+      <div className="stack">
+        <h2>{tw.title}</h2>
         <p className="muted">{tw.intro}</p>
         <ApplyPlugins id={server.id} pending={server.pluginsPending} t={tw} />
         <section className="stack">
@@ -97,7 +94,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
             ))}
           </ul>
         </section>
-      </main>
+      </div>
     );
   }
 
@@ -120,9 +117,8 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const tv = all.voice;
 
   return (
-    <main className="stack">
-      {back}
-      <h1>{t.title}</h1>
+    <div className="stack">
+      <h2>{t.title}</h2>
       <p className="muted">
         {type === "mod" ? format(all.mods.introMods, { loader, version: server.version === "LATEST" ? all.settings.latest : server.version }) : t.intro}
       </p>
@@ -271,7 +267,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           </ul>
         )}
       </section>
-    </main>
+    </div>
   );
 }
 

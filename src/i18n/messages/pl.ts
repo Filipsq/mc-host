@@ -368,6 +368,7 @@ const pl = {
     crossplaySleeping: "Śpiący serwer budzi się, gdy ktoś spróbuje dołączyć. Gracz z Bedrocka zobaczy wtedy błąd i po około minucie może dołączyć ponownie.",
     start: "Uruchom",
     stop: "Zatrzymaj",
+    restart: "Restartuj",
     delete: "Usuń serwer",
     deleteConfirm: "Na pewno usunąć ten serwer? Świat zostanie usunięty bez możliwości przywrócenia.",
     stats: {
@@ -641,6 +642,23 @@ const pl = {
       worldTooNew:
         "Świat tego serwera zapisał Minecraft 26 lub nowszy, a starsze wersje (1.x) w ogóle go nie otworzą. Zostaw wersję „Najnowsza” albo zrób nowy świat w zakładce Światy.",
     },
+  },
+  panel: {
+    menu: "Menu serwera",
+    servers: "Twoje serwery",
+    switchServer: "Przełącz serwer",
+    overview: "Przegląd",
+    manage: "Zarządzanie",
+    game: "Gra",
+    account: "Plan i dostęp",
+    console: "Konsola",
+    backups: "Kopie zapasowe",
+    upgrade: "Ulepsz plan",
+    players: "{n} / {max}",
+    playersLabel: "Gracze online",
+    join: "Jak dołączyć",
+    danger: "Usunięcie serwera",
+    dangerText: "Usuwa serwer razem ze światem i kopiami zapasowymi. Tego nie da się cofnąć.",
   },
   files: {
     title: "Pliki",
