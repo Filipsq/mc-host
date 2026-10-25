@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Plus, RotateCw, Trash2 } from "lucide-react";
-import { addCurseforgeLinkAction, addPluginAction, addPluginSetAction, addWorkshopModAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
+import { addCurseforgeLinkAction, addPluginAction, addSiteLinkAction, addPluginSetAction, addWorkshopModAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -67,8 +67,8 @@ export function RemovePluginButton({ id, pluginId, title, t }: { id: string; plu
   );
 }
 
-/** Adds a tModLoader mod by its Steam Workshop link or ID, or a mod by its CurseForge link. */
-export function AddWorkshopForm({ id, t, placeholder, site = "workshop" }: { id: string; t: T; placeholder: string; site?: "workshop" | "curseforge" }) {
+/** Adds a tModLoader mod by its Steam Workshop link or ID, a mod by its CurseForge link, or a plugin by its Hangar or SpigotMC link. */
+export function AddWorkshopForm({ id, t, placeholder, site = "workshop" }: { id: string; t: T; placeholder: string; site?: "workshop" | "curseforge" | "site" }) {
   const { pending, message, save } = useSave(t);
   const [input, setInput] = useState("");
   return (
@@ -76,7 +76,9 @@ export function AddWorkshopForm({ id, t, placeholder, site = "workshop" }: { id:
       className="plugin-search"
       onSubmit={(e) => {
         e.preventDefault();
-        if (input.trim()) save(() => (site === "curseforge" ? addCurseforgeLinkAction(id, input) : addWorkshopModAction(id, input)));
+        if (input.trim()) save(() =>
+            site === "curseforge" ? addCurseforgeLinkAction(id, input) : site === "site" ? addSiteLinkAction(id, input) : addWorkshopModAction(id, input),
+          );
       }}
     >
       <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} aria-label={placeholder} maxLength={300} spellCheck={false} />

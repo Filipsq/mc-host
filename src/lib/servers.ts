@@ -21,7 +21,7 @@ import { planById } from "./plans";
 import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
 import { requiredArch } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
-import { addonType, canCrossplay, canRunNonPremium } from "./plugins";
+import { addonType, canCrossplay, canRunNonPremium, sitePlugin } from "./plugins";
 import { isPreYearVersion, maxPlayersFor } from "./settings";
 import { isModLoader } from "./modpacks";
 
@@ -233,7 +233,8 @@ export function agentSpec(server: Server): CreateServerSpec {
     modpack: server.modpack ?? undefined,
     modpackSource: server.kind === "modpack" ? (server.modpackSource ?? undefined) : undefined,
     modpackVersion: server.modpackVersionId ?? undefined,
-    plugins: addonType(server) ? server.plugins : [],
+    // Plugins from Hangar and SpigotMC are files the panel put there itself.
+    plugins: addonType(server) ? server.plugins.filter((p) => !sitePlugin(p)) : [],
   };
 }
 

@@ -331,8 +331,8 @@ export async function openFile(id: string, path: string, opts: { signal?: AbortS
   return agentFetch(`/servers/${id}/files/content?path=${encodeURIComponent(path)}${max}`, { signal: opts.signal });
 }
 
-/** Saves a file: an upload streamed through from the browser, or an edit. */
-export async function writeFile(id: string, path: string, body: ReadableStream<Uint8Array> | string, length?: number) {
+/** Saves a file: an upload streamed through from the browser, an edit, or a plugin the panel downloaded. */
+export async function writeFile(id: string, path: string, body: ReadableStream<Uint8Array> | string | Uint8Array<ArrayBuffer>, length?: number) {
   await agentFetch(`/servers/${id}/files/content?path=${encodeURIComponent(path)}`, {
     method: "PUT",
     body,

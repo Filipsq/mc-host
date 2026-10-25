@@ -7,6 +7,7 @@ import { format } from "@/i18n/messages";
 import { getServerFor } from "@/lib/access";
 import { getPluginInfos, searchAddons } from "@/lib/modrinth";
 import { curseforgeEnabled, getCurseforgeModInfos, searchCurseforgeMods } from "@/lib/curseforge";
+import { getSitePluginInfos, searchSitePlugins } from "@/lib/sitePlugins";
 import {
   GAME_MODE_PLUGINS,
   KNOWN_PLUGINS,
@@ -19,6 +20,8 @@ import {
   pluginIds,
   pluginPage,
   setFits,
+  sitePlugin,
+  type PluginSite,
 } from "@/lib/plugins";
 import { voiceAddress } from "@/lib/servers";
 import CopyButton from "@/components/CopyButton";
@@ -119,15 +122,27 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   // Mod servers can also take mods from CurseForge, when it's set up.
   const cfOffered = type === "mod" && curseforgeEnabled();
   const fromCf = cfOffered && src === "cf";
+  // Plugins also come from Hangar and SpigotMC; the panel downloads those itself.
+  const site: PluginSite | null = type === "plugin" && (src === "hangar" || src === "spigot") ? src : null;
+  const sources = type === "plugin" ? ["", "hangar", "spigot"] : cfOffered ? ["", "cf"] : [];
+  const sourceNames: Record<string, string> = {
+    "": all.mods.sourceModrinth,
+    cf: all.mods.sourceCurseforge,
+    hangar: all.plugins.sourceHangar,
+    spigot: all.plugins.sourceSpigot,
+  };
+  const active = fromCf ? "cf" : (site ?? "");
   const cfIds = server.plugins.map((p) => curseforgeMod(p)?.modId).filter((m) => m !== undefined);
-  const [infos, cfInfos, results, cfResults] = await Promise.all([
-    getPluginInfos(server.plugins.filter((p) => !curseforgeMod(p))),
+  const [infos, cfInfos, siteInfos, results, cfResults, siteResults] = await Promise.all([
+    getPluginInfos(server.plugins.filter((p) => !curseforgeMod(p) && !sitePlugin(p))),
     getCurseforgeModInfos(cfIds),
-    fromCf ? null : searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
+    getSitePluginInfos(server.plugins.filter((p) => sitePlugin(p))),
+    fromCf || site ? null : searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
     // A CurseForge file is picked for one Minecraft version, so "newest" has none.
     fromCf && mc ? searchCurseforgeMods(query, { gameVersion: mc, loader: server.kind }) : null,
+    site ? searchSitePlugins(site, query, mc) : null,
   ]);
-  const searchHref = (cf: boolean) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(query && { q: query }), ...(cf && { src: "cf" }) })}#szukaj`;
+  const searchHref = (from: string) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(query && { q: query }), ...(from && { src: from }) })}#szukaj`;
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
   const included = GAME_MODE_PLUGINS[kind] ?? [];
   const numbers = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
@@ -161,6 +176,25 @@ export default async function PluginsPage({ params, searchParams }: Props) {
             </li>
           ))}
           {server.plugins.map((pid) => {
+            const fromSite = sitePlugin(pid);
+            if (fromSite) {
+              const p = siteInfos.get(pid);
+              const title = p?.title ?? `${sourceNames[fromSite.site]} ${fromSite.ref}`;
+              return (
+                <li key={pid}>
+                  <PluginIcon src={p?.icon} />
+                  <span className="plugin-main">
+                    <strong>{title}</strong>
+                    {p && (
+                      <a className="small" href={p.page} target="_blank" rel="noreferrer">
+                        {sourceNames[fromSite.site]} <ExternalLink size={12} aria-hidden />
+                      </a>
+                    )}
+                  </span>
+                  <RemovePluginButton id={server.id} pluginId={pid} title={title} t={t} />
+                </li>
+              );
+            }
             const cf = curseforgeMod(pid);
             if (cf) {
               const m = cfInfos.get(cf.modId);
@@ -271,14 +305,17 @@ export default async function PluginsPage({ params, searchParams }: Props) {
 
       <section className="stack" id="szukaj">
         <h2>{t.search}</h2>
-        {cfOffered && (
+        {sources.length > 0 && (
           <nav className="tabs">
-            <Link className={fromCf ? undefined : "active"} href={searchHref(false)}>{all.mods.sourceModrinth}</Link>
-            <Link className={fromCf ? "active" : undefined} href={searchHref(true)}>{all.mods.sourceCurseforge}</Link>
+            {sources.map((from) => (
+              <Link key={from} className={from === active ? "active" : undefined} href={searchHref(from)}>
+                {sourceNames[from]}
+              </Link>
+            ))}
           </nav>
         )}
         <form className="plugin-search" action={`/dashboard/servers/${server.id}/plugins#szukaj`}>
-          {fromCf && <input type="hidden" name="src" value="cf" />}
+          {active && <input type="hidden" name="src" value={active} />}
           <input name="q" type="search" defaultValue={query} placeholder={t.searchPlaceholder} aria-label={t.search} maxLength={100} />
           <button>
             <Search size={16} aria-hidden /> {t.searchButton}
@@ -287,9 +324,43 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         <p className="muted small">
           {query ? format(t.results, { q: query }) : t.popular}
           {type === "mod" && ` · ${loader}`}
-          {mc && ` · ${format(t.forVersion, { mc })}`}
+          {mc && !(site === "spigot") && ` · ${format(t.forVersion, { mc })}`}
         </p>
-        {fromCf ? (
+        {site ? (
+          <>
+            <p className="muted small">{site === "hangar" ? t.hangarIntro : t.spigotIntro}</p>
+            {siteResults === "siteUnavailable" ? (
+              <p className="notice warn">{t.errors.siteUnavailable}</p>
+            ) : !siteResults || siteResults.length === 0 ? (
+              <p className="muted">{t.noResults}</p>
+            ) : (
+              <ul className="card plugin-list">
+                {siteResults.map((p) => (
+                  <li key={p.entry}>
+                    <PluginIcon src={p.icon} />
+                    <span className="plugin-main">
+                      <a href={p.page} target="_blank" rel="noreferrer">
+                        <strong>{p.title}</strong>
+                      </a>
+                      <span className="muted small">{p.description}</span>
+                      <span className="muted small">
+                        {format(t.downloads, { n: numbers.format(p.downloads) })}
+                        {p.newestVersion && ` · ${format(t.upTo, { version: p.newestVersion })}`}
+                      </span>
+                      {p.blocked && <span className="small">{t.siteBlockedNote}</span>}
+                    </span>
+                    {!p.blocked && <AddPluginButton id={server.id} pluginId={p.entry} added={server.plugins.includes(p.entry)} t={t} />}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <h3>{t.siteAddLink}</h3>
+            <AddWorkshopForm id={server.id} t={t} placeholder={site === "hangar" ? t.hangarLinkPlaceholder : t.spigotLinkPlaceholder} site="site" />
+            <p className="muted small">
+              {t.otherSites} <Link href={`/dashboard/servers/${server.id}/files?path=plugins`}>{t.openConfig}</Link>
+            </p>
+          </>
+        ) : fromCf ? (
           cfResults === null ? (
             <p className="notice">{all.mods.errors.cfNeedsVersion}</p>
           ) : cfResults === "curseforgeUnavailable" ? (
