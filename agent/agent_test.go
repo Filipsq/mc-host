@@ -63,11 +63,16 @@ func TestContainerSpecJava(t *testing.T) {
 			t.Fatalf("missing %s: %s", want, env)
 		}
 	}
-	if shares := host["CpuShares"].(int64); shares != 1024 {
-		t.Fatalf("cpu shares = %d", shares)
+	// A free server gets its one core at most, and gives way to paid ones.
+	if shares, cpus := host["CpuShares"].(int64), host["NanoCpus"].(int64); shares != freeCPUShares || cpus != 1e9 {
+		t.Fatalf("free server cpu shares %d, cpus %d", shares, cpus)
 	}
-	if cpus := host["NanoCpus"].(int64); cpus != int64(burstCPUs(1)*1e9) || (runtime.NumCPU() > 1 && cpus != 2e9) {
-		t.Fatalf("a 1-core server should be able to borrow a second core: %d", cpus)
+	paid := a.containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "JAVA", MemoryMb: 3072, CPUs: 2, Port: 25570, MaxPlayers: 10, Hostname: "ekipa.mchost.pl"}, images["JAVA"])["HostConfig"].(map[string]any)
+	if shares := paid["CpuShares"].(int64); shares != 2048 {
+		t.Fatalf("paid cpu shares = %d", shares)
+	}
+	if cpus := paid["NanoCpus"].(int64); cpus != int64(burstCPUs(2)*1e9) || (runtime.NumCPU() > 2 && cpus != 3e9) {
+		t.Fatalf("a paid server should be able to borrow another core: %d", cpus)
 	}
 	if spec["Tty"].(bool) {
 		t.Fatal("java containers should not use a TTY")
