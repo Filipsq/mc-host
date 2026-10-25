@@ -84,6 +84,21 @@ func TestUnfinishedWorldScript(t *testing.T) {
 		t.Errorf("copied twice: %q", out)
 	}
 
+	// An IP ban on the router's address is lifted; other bans stay.
+	if _, err := exec.LookPath("jq"); err == nil {
+		os.WriteFile(filepath.Join(dir, "banned-ips.json"), []byte(`[{"ip":"172.17.0.1","source":"x"},{"ip":"203.0.113.9","source":"y"},{"ip":"10.88.0.1"}]`), 0o644)
+		if out := run("ok"); !strings.Contains(out, "lifted IP bans") {
+			t.Errorf("router ban not lifted: %q", out)
+		}
+		b, _ := os.ReadFile(filepath.Join(dir, "banned-ips.json"))
+		if strings.Contains(string(b), "172.17.0.1") || strings.Contains(string(b), "10.88.0.1") || !strings.Contains(string(b), "203.0.113.9") {
+			t.Errorf("banned-ips.json: %s", b)
+		}
+		if out := run("ok"); out != "" {
+			t.Errorf("lifted twice: %q", out)
+		}
+	}
+
 	a := &agent{}
 	for _, kind := range []string{"vanilla", "skyblock"} {
 		req := createRequest{ID: "abc12345", Name: "X", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 30001, Hostname: "x.mchost.pl", Kind: kind}

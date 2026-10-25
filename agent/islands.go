@@ -222,6 +222,17 @@ const unfinishedWorldScript = `(
     done
     echo "[mchost] $w was made on Paper; copied its world settings to $w/data/minecraft"
   fi
+  # Java players come in through our router, so the server sees one private
+  # address for all of them, and an IP ban on it (ban-ip) shuts everyone out.
+  # Such bans are lifted at every start; bans by name stay.
+  f=banned-ips.json
+  if [ -s "$f" ] && command -v jq >/dev/null; then
+    keep='[.[] | select((.ip // "") | test("^(10\\.|127\\.|172\\.(1[6-9]|2[0-9]|3[01])\\.|192\\.168\\.)") | not)]'
+    if jq -e "length != ($keep | length)" "$f" >/dev/null 2>&1 && jq "$keep" "$f" >"$f.tmp" 2>/dev/null; then
+      cat "$f.tmp" >"$f" && echo "[mchost] lifted IP bans on our router's address (every player shares it); ban players by name instead"
+    fi
+    rm -f "$f.tmp"
+  fi
 )
 `
 
