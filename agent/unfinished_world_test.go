@@ -48,6 +48,42 @@ func TestUnfinishedWorldScript(t *testing.T) {
 		}
 	}
 
+	// A world made on Paper, opened by Fabric: its world settings are copied where Fabric reads them.
+	mk("paperw/level.dat")
+	mk("paperw/players/data/p.dat")
+	mk("paperw/data/minecraft/world_clocks.dat")
+	mk("paperw/dimensions/minecraft/overworld/data/paper/metadata.dat")
+	for _, f := range []string{"world_gen_settings", "game_rules", "weather", "world_clocks"} {
+		mk("paperw/dimensions/minecraft/overworld/data/minecraft/" + f + ".dat")
+	}
+	os.WriteFile(filepath.Join(dir, "paperw/data/minecraft/world_clocks.dat"), []byte("own"), 0o644)
+	runType := func(level, typ string) string {
+		cmd := exec.Command("bash", "-c", strings.ReplaceAll(unfinishedWorldScript, "cd /data", "cd "+dir))
+		cmd.Env = append(os.Environ(), "LEVEL="+level, "TYPE="+typ)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %s", err, out)
+		}
+		return string(out)
+	}
+	if out := runType("paperw", "PAPER"); out != "" {
+		t.Errorf("Paper itself got a copy: %q", out)
+	}
+	if out := runType("paperw", "FABRIC"); !strings.Contains(out, "made on Paper") {
+		t.Errorf("Paper world not fixed for Fabric: %q", out)
+	}
+	for _, f := range []string{"world_gen_settings", "game_rules", "weather"} {
+		if _, err := os.Stat(filepath.Join(dir, "paperw/data/minecraft", f+".dat")); err != nil {
+			t.Errorf("%s not copied", f)
+		}
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, "paperw/data/minecraft/world_clocks.dat")); string(b) != "own" {
+		t.Error("an existing file was overwritten")
+	}
+	if out := runType("paperw", "FABRIC"); out != "" {
+		t.Errorf("copied twice: %q", out)
+	}
+
 	a := &agent{}
 	for _, kind := range []string{"vanilla", "skyblock"} {
 		req := createRequest{ID: "abc12345", Name: "X", Edition: "JAVA", MemoryMb: 2048, CPUs: 1, Port: 30001, Hostname: "x.mchost.pl", Kind: kind}

@@ -211,6 +211,17 @@ const unfinishedWorldScript = `(
     to="$w-przerwany-$(date +%Y%m%d-%H%M%S)"
     mv "$w" "$to" && echo "[mchost] $w was never finished; moved it to $to so a new one is made"
   fi
+  # Paper keeps a world's world-wide files in each dimension's folder; vanilla,
+  # Fabric, Forge and NeoForge read them from data/minecraft and stop without
+  # them ("Overworld settings missing"). A world made on Paper gets a copy.
+  o="$w/dimensions/minecraft/overworld/data"
+  if [ "$TYPE" != PAPER ] && [ -d "$o/paper" ] && [ -e "$o/minecraft/world_gen_settings.dat" ] && [ ! -e "$w/data/minecraft/world_gen_settings.dat" ]; then
+    mkdir -p "$w/data/minecraft"
+    for f in world_gen_settings game_rules weather wandering_trader scheduled_events; do
+      [ -e "$o/minecraft/$f.dat" ] && [ ! -e "$w/data/minecraft/$f.dat" ] && cp -p "$o/minecraft/$f.dat" "$w/data/minecraft/"
+    done
+    echo "[mchost] $w was made on Paper; copied its world settings to $w/data/minecraft"
+  fi
 )
 `
 
