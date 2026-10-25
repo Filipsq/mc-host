@@ -86,8 +86,8 @@ export default function TermsPl({ site }: { site: string }) {
           datą, by go zachować.
         </li>
         <li>
-          Darmowy Serwer usypia, gdy przez kilka minut nikt na nim nie gra. Serwer na Javę budzi się, gdy gracz
-          spróbuje dołączyć; Serwer Bedrock uruchamia się przyciskiem w panelu.
+          Darmowy Serwer usypia, gdy przez kilka minut nikt na nim nie gra. Serwer na Javę i Serwer Bedrock budzą się, gdy
+          gracz spróbuje dołączyć; Serwer Terrarii uruchamia się przyciskiem w panelu.
         </li>
         <li>
           Liczba jednocześnie działających darmowych Serwerów jest ograniczona. Gdy wszystkie miejsca są zajęte,

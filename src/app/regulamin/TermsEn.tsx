@@ -78,8 +78,8 @@ export default function TermsEn({ site }: { site: string }) {
           Provider tells the User by email; playing on the Server before that date is enough to keep it.
         </li>
         <li>
-          A free Server goes to sleep when nobody has played on it for a few minutes. A Java Server wakes up when a
-          player tries to join; a Bedrock Server is started with the button in the panel.
+          A free Server goes to sleep when nobody has played on it for a few minutes. Java and Bedrock Servers wake up when a
+          player tries to join; a Terraria Server is started with the button in the panel.
         </li>
         <li>
           The number of free Servers running at once is limited. When all slots are taken, a free Server starts

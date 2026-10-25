@@ -340,7 +340,8 @@ const pl = {
     adminTest: "Utwórz za darmo (test admina)",
     adminTestHint: "Widzisz to tylko jako admin: serwer dostaje wybrany plan na wybrany okres bez płatności i jest oznaczony jako testowy w panelu admina. Nie liczy się do przychodów.",
     sleepingJava: "Serwer śpi, bo nikt nie grał. Obudzi się sam, gdy ktoś spróbuje dołączyć.",
-    sleepingBedrock: "Serwer śpi, bo nikt nie grał. Kliknij Uruchom, aby go obudzić.",
+    sleepingBedrock: "Serwer śpi, bo nikt nie grał. Obudzi się, gdy ktoś spróbuje dołączyć. Gra pokaże wtedy błąd, a po około minucie można dołączyć ponownie.",
+    sleepingTerraria: "Serwer śpi, bo nikt nie grał. Kliknij Uruchom, aby go obudzić.",
     disk: "Dysk",
     diskUsage: "{used} z {limit}",
     diskOver:
@@ -364,7 +365,7 @@ const pl = {
     javaAddress: "Z komputera (Java)",
     crossplayAddress: "Z telefonu, konsoli i Windows 10/11 (Bedrock)",
     crossplayJoin: "Gracze z Bedrocka wpisują ten adres i port osobno w zakładce Serwery → Dodaj serwer. Grają razem z graczami z Javy.",
-    crossplaySleeping: "Śpiący serwer obudzi wejście gracza z Javy albo przycisk Uruchom. Gracz z Bedrocka go nie obudzi.",
+    crossplaySleeping: "Śpiący serwer budzi się, gdy ktoś spróbuje dołączyć. Gracz z Bedrocka zobaczy wtedy błąd i po około minucie może dołączyć ponownie.",
     start: "Uruchom",
     stop: "Zatrzymaj",
     delete: "Usuń serwer",
