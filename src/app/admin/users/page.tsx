@@ -8,7 +8,8 @@ import { formats } from "../format";
 import SortableTable from "../SortableTable";
 import { sortable } from "../sortable";
 
-const SHOWN = 200;
+// Every user fits on one page, so sorting a column sorts all of them.
+const SHOWN = 5000;
 
 type Props = { searchParams: Promise<{ q?: string }> };
 

@@ -92,19 +92,22 @@ export default async function AdminOverview() {
   ];
   const attention = groups.filter((group) => group.rows.length > 0);
   const signups = signupBuckets(joined.map((u) => u.createdAt), now);
+  // Rows from before the first account ever are always 0, so they go; each bucket ends where the newer one above starts.
+  const first = Math.min(...joined.map((u) => u.createdAt.getTime()));
+  const sinceStart = (rows: Bucket[]) => rows.filter((_, i) => i === 0 || rows[i - 1].start.getTime() > first);
   const utc = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
   const dayLabel = utc({ weekday: "short", day: "numeric", month: "short" });
   const shortDay = utc({ day: "numeric", month: "short" });
   const monthLabel = utc({ month: "long", year: "numeric" });
   const signupTables = [
-    { title: t.signupsDaily, rows: signups.days, label: (b: Bucket, i: number) => (i === 0 ? t.signupsToday : dayLabel.format(b.start)) },
+    { title: t.signupsDaily, rows: sinceStart(signups.days), label: (b: Bucket, i: number) => (i === 0 ? t.signupsToday : dayLabel.format(b.start)) },
     {
       title: t.signupsWeekly,
-      rows: signups.weeks,
+      rows: sinceStart(signups.weeks),
       label: (b: Bucket, i: number) =>
         i === 0 ? t.signupsThisWeek : `${shortDay.format(b.start)} – ${shortDay.format(new Date(b.start.getTime() + 6 * DAY))}`,
     },
-    { title: t.signupsMonthly, rows: signups.months, label: (b: Bucket, i: number) => (i === 0 ? t.signupsThisMonth : monthLabel.format(b.start)) },
+    { title: t.signupsMonthly, rows: sinceStart(signups.months), label: (b: Bucket, i: number) => (i === 0 ? t.signupsThisMonth : monthLabel.format(b.start)) },
   ];
 
   return (
@@ -271,7 +274,7 @@ export default async function AdminOverview() {
 
       <section className="stack">
         <h2>{t.signups}</h2>
-        <div className="admin-grid">
+        <div className="admin-grid signup-tables">
           {signupTables.map((table) => (
             <div key={table.title} className="card flush">
               <table className="admin-table">
