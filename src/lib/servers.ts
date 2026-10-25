@@ -153,6 +153,19 @@ export function crossplayAddress(server: Pick<Server, "edition" | "kind" | "cros
   return { host: bedrockHost(server), port: server.port };
 }
 
+// Simple Voice Chat's own UDP port: the server's port plus this (agent/voice.go keeps the same number).
+const VOICE_PORT_OFFSET = 1000;
+
+/**
+ * Where players' games reach Simple Voice Chat: straight to the server's
+ * machine, like Bedrock players, on a port of its own. The agent sets the
+ * plugin up with it; every Java server has it, used or not.
+ */
+export function voiceAddress(server: Pick<Server, "edition" | "subdomain" | "port" | "node">) {
+  if (server.edition !== "JAVA" || !server.port) return null;
+  return { host: bedrockHost(server), port: server.port + VOICE_PORT_OFFSET };
+}
+
 /** Tells the main machine's router where the Java servers on the other machines are (see agent/peers.go). */
 export async function syncPeerRoutes() {
   const others = nodes().filter((n) => n.id !== MAIN_NODE);
@@ -204,6 +217,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     whitelistPlayers: server.whitelistPlayers,
     onlineMode: server.onlineMode || !canRunNonPremium(server),
     crossplay: server.crossplay && canCrossplay(server),
+    voiceHost: voiceAddress(server)?.host,
     allowFlight: server.allowFlight,
     hardcore: server.hardcore,
     commandBlocks: server.commandBlocks,

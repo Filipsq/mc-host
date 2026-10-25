@@ -862,6 +862,18 @@ const pl = {
       failed: "Nie udało się. Spróbuj ponownie za chwilę.",
     },
   },
+  voice: {
+    title: "Czat głosowy",
+    intro: "Z Simple Voice Chat gracze rozmawiają głosem w grze i słyszą tych, którzy stoją blisko. Port ustawiamy za Ciebie, nic nie trzeba zmieniać w plikach.",
+    steps: [
+      "Dodaj Simple Voice Chat i uruchom serwer ponownie.",
+      "Każdy gracz instaluje mod Simple Voice Chat w swojej grze (z Modrinth albo CurseForge), dla tej samej wersji Minecrafta.",
+      "W grze klawisz V otwiera ustawienia mikrofonu, a mówi się, trzymając Caps Lock.",
+    ],
+    address: "Adres czatu głosowego (UDP)",
+    addressHint: "Gra łączy się z nim sama. Przyda się, gdy gracz ma zaporę albo coś nie działa.",
+    oldServer: "Mod wgrany ręcznie w Plikach się nie łączy? Wejdź w Ustawienia i kliknij Zapisz: serwer dostanie port głosowy.",
+  },
   workshop: {
     title: "Mody",
     manage: "Zarządzaj modami",

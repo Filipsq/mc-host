@@ -89,6 +89,7 @@ export type CreateServerSpec = {
   whitelistPlayers: string[];
   onlineMode: boolean; // false: non-premium (Java on Paper only)
   crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
+  voiceHost?: string; // Java only: the machine players' games reach Simple Voice Chat on
   allowFlight: boolean; // Java only
   hardcore: boolean; // Java only
   commandBlocks: boolean; // Java only

@@ -52,7 +52,7 @@ Minecraft server in Docker. See the "Hosting setup" section of the plan for why.
    `setup.sh` asks for the domain: type `mchosting.pl`.
 
 It installs Docker, opens only the needed ports (SSH, 80, 443, 25565, 30000–30999/UDP for
-Bedrock and crossplay, and 30000–30999/TCP for Terraria), generates passwords into `deploy/.env`, and starts everything. The first build takes a
+Bedrock and crossplay, and 30000–30999/TCP for Terraria, 31000–31999/UDP for Simple Voice Chat), generates passwords into `deploy/.env`, and starts everything. The first build takes a
 few minutes. The site is then live at `https://mchosting.pl`; HTTPS is set up automatically as soon
 as the DNS records from step 1 work.
 

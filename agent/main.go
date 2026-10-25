@@ -351,6 +351,9 @@ type createRequest struct {
 	// Java on Paper only: Bedrock players (phones, consoles, Windows) join too,
 	// through the Geyser plugin on the server's port over UDP.
 	Crossplay bool `json:"crossplay"`
+	// Java only: the machine's address players' games reach the voice chat port
+	// on (voice.go); no voice port if empty.
+	VoiceHost string `json:"voiceHost"`
 	// Java only: players may fly (mods with jetpacks or wings need it), one life
 	// (hardcore), command blocks work, and how far from spawn only operators may
 	// build (16 if missing, as in Minecraft).
@@ -460,6 +463,8 @@ func (req *createRequest) validate() error {
 		return errors.New("non-premium needs a login addon: Paper, or a mod loader on a version its login mod runs on")
 	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run crossplay")
+	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.voicePort() > 65535):
+		return errors.New("voiceHost needs a Java server, a valid hostname and a port that leaves room for the voice port")
 	case req.Level != "" && !validWorldName.MatchString(req.Level):
 		return errors.New("invalid level")
 	case !validSeed.MatchString(req.Seed):
@@ -507,6 +512,8 @@ func (req *createRequest) validateTerraria() error {
 		return errors.New("at most 100 mods")
 	case req.Whitelist || req.Crossplay || req.offline() || req.Modpack != "" || req.Hostname != "":
 		return errors.New("whitelist, crossplay, onlineMode, modpacks and hostnames are Minecraft only")
+	case req.VoiceHost != "":
+		return errors.New("voiceHost is Minecraft Java only")
 	}
 	for _, id := range req.Plugins {
 		if !validWorkshopID.MatchString(id) {
@@ -815,7 +822,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 	}
 	bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
 	if req.Edition == "JAVA" {
-		entrypoint = withUnfinishedWorldCheck(entrypoint)
+		entrypoint = withVoiceChat(req, bindings, withUnfinishedWorldCheck(entrypoint))
 	}
 	return serverSpec(req, image, env, labels, bindings, tty, limitMb, entrypoint)
 }
