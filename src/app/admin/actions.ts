@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/admin";
 import { REMOVABLE_PAYMENTS, TEST_PAYMENTS, giftDays } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { ANNOUNCEMENT_MAX, sayOnAllServers, setAnnouncement } from "@/lib/announcement";
-import { applyToHost, destroyServer, moveServer } from "@/lib/servers";
+import { applyToHost, destroyServer, moveServer, onHost } from "@/lib/servers";
 import { nodes } from "@/lib/nodes";
 import { requiredArch } from "@/lib/terraria";
 import { stripeTestMode } from "@/lib/stripe";
@@ -61,6 +61,32 @@ export async function moveServerAdminAction(id: string, _: MoveState, form: Form
   // Only its files went over: build its container there, stopped, so Start works.
   await applyToHost(moved).catch((err) => console.error("admin: container not built after move", id, err));
   return { moved: to.id };
+}
+
+export type RebuildState = { rebuilt?: number; failed?: number };
+
+/**
+ * Rebuilds the container of every Bedrock and crossplay server, so they take
+ * the agent's newest Bedrock setup (NetherNet, needed from 27.10.2026). Running
+ * ones restart; stopped and sleeping ones get it on their next start.
+ */
+export async function rebuildBedrockAction(): Promise<RebuildState> {
+  await requireAdmin();
+  const servers = await db.server.findMany({ where: { OR: [{ edition: "BEDROCK" }, { edition: "JAVA", crossplay: true }] } });
+  let rebuilt = 0;
+  let failed = 0;
+  // One at a time, so the machines aren't restarting them all at once.
+  for (const server of servers.filter(onHost)) {
+    try {
+      await applyToHost(server);
+      rebuilt++;
+    } catch (err) {
+      console.error("admin: Bedrock rebuild failed", server.id, err);
+      failed++;
+    }
+  }
+  console.info("admin rebuilt Bedrock and crossplay servers", rebuilt, "failed", failed);
+  return { rebuilt, failed };
 }
 
 /** Deletes one test, failed or expired payment from the history. */

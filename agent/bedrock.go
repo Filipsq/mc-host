@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -47,8 +48,9 @@ const (
 // The protocol and version the pong reports. The list doesn't compare them
 // with the game's, and the real server answers with its own once it's up.
 const (
-	bedrockPongProtocol = "924"
-	bedrockPongVersion  = "1.26"
+	bedrockPongProtocol       = "924"
+	bedrockPongProtocolNumber = 924
+	bedrockPongVersion        = "1.26"
 )
 
 // How long a started server keeps its port to itself before the waker may
@@ -68,7 +70,15 @@ type udpSock struct {
 	port   int
 	reason string // why the server is down (stopReason), or "waking"
 	conn   net.PacketConn
+	tcp    net.Listener // NetherNet's HTTP part on the same port, nil if taken
 	mu     sync.Mutex
+}
+
+func (s *udpSock) close() {
+	_ = s.conn.Close()
+	if s.tcp != nil {
+		_ = s.tcp.Close()
+	}
 }
 
 func newUDPWaker(wake func(ctx context.Context, id string) error) *udpWaker {
@@ -81,7 +91,7 @@ func (u *udpWaker) release(id string) {
 	defer u.mu.Unlock()
 	u.hold[id] = time.Now().Add(udpStartHold)
 	if s := u.socks[id]; s != nil {
-		_ = s.conn.Close()
+		s.close()
 		delete(u.socks, id)
 	}
 }
@@ -93,7 +103,7 @@ func (u *udpWaker) sync(down map[string]udpTarget) {
 	defer u.mu.Unlock()
 	for id, s := range u.socks {
 		if t, ok := down[id]; !ok || t.port != s.port {
-			_ = s.conn.Close()
+			s.close()
 			delete(u.socks, id)
 		}
 	}
@@ -121,6 +131,12 @@ func (u *udpWaker) sync(down map[string]udpTarget) {
 			continue
 		}
 		s := &udpSock{port: t.port, reason: t.reason, conn: conn}
+		if ln, err := net.Listen("tcp", ":"+strconv.Itoa(t.port)); err != nil {
+			log.Printf("bedrock waker: TCP port %d for %s: %v", t.port, id, err)
+		} else {
+			s.tcp = ln
+			go u.serveNetherNet(id, t.name, s)
+		}
 		u.socks[id] = s
 		go u.serve(id, t.name, s)
 	}
@@ -165,6 +181,40 @@ func (u *udpWaker) serve(id, name string, s *udpSock) {
 			go u.wakeServer(id, from, s)
 		}
 	}
+}
+
+// serveNetherNet answers games that connect over NetherNet, which ask over
+// HTTP first: GET /v1/join is the server list's question (name, players), and
+// POST /v1/join/<id> is someone joining, which wakes a sleeping server. The
+// join is refused, as RakNet's is; by the time the player tries again the
+// server is up.
+func (u *udpWaker) serveNetherNet(id, name string, s *udpSock) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/join", func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		reason := s.reason
+		s.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"name": bedrockMessage(reason), "protocol": bedrockPongProtocolNumber, "version": bedrockPongVersion,
+			"level": name, "players": 0, "maxPlayers": 0, "gameType": 0,
+		})
+	})
+	mux.HandleFunc("POST /v1/join/{network}", func(w http.ResponseWriter, r *http.Request) {
+		s.mu.Lock()
+		sleeping := s.reason == "sleeping"
+		if sleeping {
+			s.reason = "waking"
+		}
+		s.mu.Unlock()
+		if sleeping {
+			from, _ := net.ResolveTCPAddr("tcp", r.RemoteAddr)
+			go u.wakeServer(id, from, s)
+		}
+		http.Error(w, bedrockMessage("waking"), http.StatusServiceUnavailable)
+	})
+	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second}
+	_ = srv.Serve(s.tcp) // until the port is let go
 }
 
 func (u *udpWaker) wakeServer(id string, from net.Addr, s *udpSock) {
