@@ -46,6 +46,10 @@ func voiceScript(req createRequest) string {
     for kv in port=%d voice_host=%s; do
       if grep -q "^${kv%%%%=*}=" $f; then sed -i "s|^${kv%%%%=*}=.*|$kv|" $f; else echo "$kv" >>$f; fi
     done
+    # This runs as root, before the image switches to the server's user: what
+    # it made goes to that user (the owner of /data), or a mod server that had
+    # no config folder yet can't write its own there (Forge stops on fml.toml).
+    chown "$(stat -c %%u:%%g .)" ${f%%%%/*} ${f%%/*} $f 2>/dev/null
     echo "[mchost] Simple Voice Chat: players connect to %s:%d over UDP"
   fi
 )
