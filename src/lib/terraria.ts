@@ -35,6 +35,14 @@ export const TMOD_ARCH = "amd64";
 export const TMOD_MIN_PLAN: Plan = "STARTER";
 export const isTmodloader = (s: Pick<Server, "edition" | "kind">) => s.edition === "TERRARIA" && s.kind === "tmodloader";
 
+/**
+ * The processor a server's machine must have, if any: tModLoader and Mojang's
+ * Bedrock server are x86 only. Bedrock does start emulated on an Arm machine
+ * but never answers players there (seen on the main machine, 2026-10-25).
+ */
+export const requiredArch = (s: Pick<Server, "edition" | "kind">) =>
+  s.edition === "BEDROCK" || isTmodloader(s) ? TMOD_ARCH : undefined;
+
 /** tModLoader's app on Steam, whose Workshop the mods come from. */
 export const TMOD_APP_ID = 1281930;
 export const isWorkshopId = (s: string) => /^[0-9]{1,12}$/.test(s);
