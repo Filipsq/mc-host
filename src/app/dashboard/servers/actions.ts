@@ -454,13 +454,13 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
   } catch (err) {
     if (agent.isFull(err)) return { error: "full" };
     if (agent.isDiskFull(err)) {
-      revalidatePath(`/dashboard/servers/${id}`);
+      revalidatePath(`/dashboard/servers/${id}`, "layout");
       return { error: "diskFull" };
     }
     throw err;
   }
   await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
-  revalidatePath(`/dashboard/servers/${id}`);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
   return {};
 }
 
@@ -468,7 +468,15 @@ export async function stopServerAction(id: string) {
   const server = await serverOrThrow(id, "view");
   await agent.stopServer(server.id);
   await db.server.update({ where: { id: server.id }, data: { status: "STOPPED" } });
-  revalidatePath(`/dashboard/servers/${id}`);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+}
+
+/** Stops the server and starts it again, e.g. after adding a plugin or when it lags. */
+export async function restartServerAction(id: string): Promise<{ error?: ServerErrorCode }> {
+  const server = await serverOrThrow(id, "view");
+  if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
+  await agent.stopServer(server.id);
+  return startServerAction(id);
 }
 
 export async function deleteServerAction(id: string) {
@@ -498,7 +506,7 @@ export async function createBackupAction(id: string): Promise<BackupResult> {
     console.error("backup failed", server.id, err);
     return { error: "backupFailed" };
   }
-  revalidatePath(`/dashboard/servers/${id}`);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
   return {};
 }
 
@@ -511,7 +519,7 @@ export async function restoreBackupAction(id: string, name: string): Promise<Bac
     console.error("restore failed", server.id, name, err);
     return { error: "restoreFailed" };
   }
-  revalidatePath(`/dashboard/servers/${id}`);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
   return {};
 }
 
@@ -598,7 +606,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
     console.error("apply settings failed", server.id, err);
     return { error: "applyFailed" };
   }
-  revalidatePath(`/dashboard/servers/${id}`);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
   redirect(`/dashboard/servers/${id}?settings=saved${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
 }
 
@@ -642,7 +650,7 @@ export async function saveTerrariaSettingsAction(id: string, _: SettingsState, f
     console.error("apply settings failed", server.id, err);
     return { error: "applyFailed" };
   }
-  revalidatePath(`/dashboard/servers/${id}`);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
   redirect(`/dashboard/servers/${id}?settings=saved`);
 }
 

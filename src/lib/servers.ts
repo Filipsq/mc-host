@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { Prisma, type Server } from "@prisma/client";
 import { db } from "./db";
 import {
@@ -53,6 +54,9 @@ export async function getLiveDetails(server: Pick<Server, "id" | "status">): Pro
     throw err;
   }
 }
+
+/** getLiveDetails asked once per request, so the panel's frame and its page share the answer. */
+export const getLiveDetailsOnce = cache((id: string, status: Server["status"]) => getLiveDetails({ id, status }));
 
 type KnownState = Pick<AgentState, "state" | "health" | "stopReason">;
 

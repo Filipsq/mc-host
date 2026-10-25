@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { getLiveDetails } from "@/lib/servers";
+import { getLiveDetailsOnce } from "@/lib/servers";
 import { getServerFor } from "@/lib/access";
 import { diskLimitMb, formatMb } from "@/lib/disk";
 import { format } from "@/i18n/messages";
@@ -19,16 +19,15 @@ export default async function FilesPage({ params, searchParams }: Props) {
   const server = await getServerFor(id, session.user.id, "files");
   if (!server) notFound();
 
-  const [all, { locale }, { live, agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetails(server)]);
+  const [all, { locale }, { live, agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetailsOnce(server.id, server.status)]);
   const t = all.files;
   const listing = server.status === "AWAITING_PAYMENT" ? null : await listFiles(server.id, path).catch((err) => err as Error);
   const dir = listing && !(listing instanceof Error) ? listing.path : "";
   const crumbs = dir && dir !== "." ? dir.split("/") : [];
 
   return (
-    <main className="stack">
-      <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
-      <h1>{t.title}</h1>
+    <div className="stack">
+      <h2>{t.title}</h2>
       {server.status === "AWAITING_PAYMENT" ? (
         <p className="notice">{t.notYet}</p>
       ) : !listing || listing instanceof Error ? (
@@ -73,7 +72,7 @@ export default async function FilesPage({ params, searchParams }: Props) {
           )}
         </>
       )}
-    </main>
+    </div>
   );
 }
 

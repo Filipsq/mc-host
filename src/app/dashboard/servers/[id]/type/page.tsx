@@ -21,10 +21,10 @@ export default async function ServerTypePage({ params }: { params: Promise<{ id:
   const [t, { locale }, packArt] = await Promise.all([getMessages(), getPreferences(), getPackArt(CURATED_PACKS.map((p) => p.slug))]);
 
   return (
-    <main className="wide-form stack">
+    <div className="wide-form stack">
       <Link className="back" href={`/dashboard/servers/${server.id}/settings`}>← {t.settings.title}</Link>
       <header className="stack-tight">
-        <h1>{t.serverType.pageTitle}</h1>
+        <h2>{t.serverType.pageTitle}</h2>
         <p className="muted">
           {t.serverType.title}: <strong>{kindLabel(server, t)}</strong>
         </p>
@@ -52,6 +52,6 @@ export default async function ServerTypePage({ params }: { params: Promise<{ id:
       ) : (
         <p className="notice">{t.serverType.errors.notOnHost}</p>
       )}
-    </main>
+    </div>
   );
 }

@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Download, Globe } from "lucide-react";
 import { getSession } from "@/lib/session";
@@ -23,17 +22,15 @@ export default async function WorldsPage({ params, searchParams }: Props) {
   if (!server || server.edition === "TERRARIA") notFound();
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.worlds;
-  const back = <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>;
 
   // Unpaid servers aren't on the game host yet; suspended ones are, but only for downloads.
   const listing = server.status === "AWAITING_PAYMENT" || server.status === "PROVISIONING" ? null : await listWorlds(server.id, server.edition).catch(() => "unavailable" as const);
   if (!listing || listing === "unavailable") {
     return (
-      <main className="wide-form stack">
-        {back}
-        <h1>{t.title}</h1>
+      <div className="wide-form stack">
+        <h2>{t.title}</h2>
         <p className={listing ? "notice warn" : "notice"}>{listing ? t.errors.unavailable : t.errors.notOnHost}</p>
-      </main>
+      </div>
     );
   }
 
@@ -56,10 +53,9 @@ export default async function WorldsPage({ params, searchParams }: Props) {
         : null;
 
   return (
-    <main className="wide-form stack">
-      {back}
+    <div className="wide-form stack">
       <header className="stack-tight">
-        <h1>{t.title}</h1>
+        <h2>{t.title}</h2>
         <p className="muted">{t.intro}</p>
       </header>
       {notice && <p className="notice">{notice}</p>}
@@ -133,6 +129,6 @@ export default async function WorldsPage({ params, searchParams }: Props) {
           </section>
         </>
       )}
-    </main>
+    </div>
   );
 }

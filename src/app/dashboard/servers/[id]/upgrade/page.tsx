@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -29,9 +28,8 @@ export default async function UpgradePage({ params }: { params: Promise<{ id: st
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(server.paidUntil!);
 
   return (
-    <main className="wide-form stack">
-      <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
-      <h1>{t.title}</h1>
+    <div className="wide-form stack">
+      <h2>{t.title}</h2>
       <UpgradeForm
         serverId={server.id}
         current={server.plan}
@@ -65,6 +63,6 @@ export default async function UpgradePage({ params }: { params: Promise<{ id: st
         legal={all.legal}
         errors={all.server.errors}
       />
-    </main>
+    </div>
   );
 }

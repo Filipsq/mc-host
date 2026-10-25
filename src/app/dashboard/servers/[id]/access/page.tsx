@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
@@ -27,10 +26,9 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   );
 
   return (
-    <main className="wide-form stack">
-      <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
+    <div className="wide-form stack">
       <header className="stack-tight">
-        <h1>{t.title}</h1>
+        <h2>{t.title}</h2>
         <p className="muted">{t.intro}</p>
       </header>
 
@@ -57,6 +55,6 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         )}
         <p className="muted small">{t.trustNote}</p>
       </section>
-    </main>
+    </div>
   );
 }

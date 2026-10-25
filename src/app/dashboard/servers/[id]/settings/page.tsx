@@ -31,9 +31,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
       difficulty: isWorldDifficulty(server.difficulty) ? tt.difficulties[server.difficulty] : "",
     });
     return (
-      <main className="wide-form stack">
-        <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
-        <h1>{t.settings.title}</h1>
+      <div className="wide-form stack">
+        <h2>{t.settings.title}</h2>
         <TerrariaSettingsForm
           serverId={server.id}
           name={server.name}
@@ -42,7 +41,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           t={t.settings}
           terraria={tt}
         />
-      </main>
+      </div>
     );
   }
 
@@ -62,9 +61,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         : undefined;
 
   return (
-    <main className="wide-form stack">
-      <Link className="back" href={`/dashboard/servers/${server.id}`}>← {server.name}</Link>
-      <h1>{t.settings.title}</h1>
+    <div className="wide-form stack">
+      <h2>{t.settings.title}</h2>
       {server.edition === "JAVA" && allows(access, "owner") && (
         <div className="card row">
           <span className="stack-tight">
@@ -117,6 +115,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         t={t.settings}
       />
       {server.edition === "JAVA" && <IconForm serverId={server.id} t={t.settings} />}
-    </main>
+    </div>
   );
 }
