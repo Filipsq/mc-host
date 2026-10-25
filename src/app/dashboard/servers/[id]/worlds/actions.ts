@@ -37,7 +37,7 @@ async function worldServer(id: string): Promise<Server | WorldError> {
 }
 
 function worldError(err: unknown): WorldError {
-  if (err instanceof agent.AgentError && (err.message === "active" || err.message === "noWorld")) return err.message;
+  if (err instanceof agent.AgentError && ["active", "noWorld", "bedrockMap", "javaMap", "oldMap"].includes(err.message)) return err.message as WorldError;
   return fileError(err);
 }
 

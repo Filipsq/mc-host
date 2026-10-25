@@ -795,6 +795,12 @@ const en: Messages = {
       notFound: "There's no such world. Refresh the page.",
       active: "The server plays this world, so it can't be deleted.",
       noWorld: "There's no Minecraft world in this file (level.dat is missing).",
+      bedrockMap:
+        "This is a Bedrock world (phone, Windows 10/11, console) and the server runs Java, which can't open it. Convert it to Java for free at chunker.app (pick Java Edition and the newest version) and upload the result, or upload it to a Bedrock server.",
+      javaMap:
+        "This is a Java world and the server runs Bedrock, which can't open it. Convert it to Bedrock for free at chunker.app and upload the result, or upload it to a Java server.",
+      oldMap:
+        "This is a very old world (from before Minecraft 1.2) that today's servers can't open. Convert it for free at chunker.app (pick Java Edition and the newest version) and upload the result.",
       worldTooNew:
         "This world was saved by Minecraft 26 or newer, and the server runs an older version (1.x) that can't open it. Set the version to “Latest” in Settings, then play this world.",
       notOnHost: "Worlds will be here once the server is paid for.",
