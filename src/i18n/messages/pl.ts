@@ -794,6 +794,12 @@ const pl = {
       notFound: "Nie ma takiego świata. Odśwież stronę.",
       active: "Na tym świecie gra serwer, więc nie można go usunąć.",
       noWorld: "W tym pliku nie ma świata Minecrafta (brakuje pliku level.dat).",
+      bedrockMap:
+        "To mapa z Bedrocka (telefon, Windows 10/11, konsola), a serwer jest na Javę i jej nie otworzy. Przerób ją na Javę za darmo na chunker.app (wybierz Java Edition i najnowszą wersję) i wgraj wynik albo wgraj ją na serwer Bedrock.",
+      javaMap:
+        "To mapa z Javy, a serwer jest na Bedrocka i jej nie otworzy. Przerób ją na Bedrocka za darmo na chunker.app i wgraj wynik albo wgraj ją na serwer Java.",
+      oldMap:
+        "To bardzo stara mapa (sprzed Minecrafta 1.2), której dzisiejsze serwery nie otworzą. Przerób ją za darmo na chunker.app (wybierz Java Edition i najnowszą wersję) i wgraj wynik.",
       worldTooNew:
         "Ten świat zapisał Minecraft 26 lub nowszy, a serwer ma starszą wersję (1.x), która go nie otworzy. Zmień wersję w Ustawieniach na „Najnowsza”, a potem włącz ten świat.",
       notOnHost: "Światy będą dostępne, gdy serwer będzie opłacony.",

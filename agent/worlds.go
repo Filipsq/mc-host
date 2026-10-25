@@ -35,6 +35,9 @@ var (
 	validWorldName = regexp.MustCompile(`^[\p{L}\p{N}_-][\p{L}\p{N} _.()-]{0,63}$`)
 	errWorldActive = errors.New("the server runs this world")
 	errNoWorld     = errors.New("no Minecraft world (level.dat) in the archive")
+	errBedrockMap  = errors.New("a Bedrock world, which Java can't open")
+	errJavaMap     = errors.New("a Java world, which Bedrock can't open")
+	errOldMap      = errors.New("a world from before Minecraft 1.2 (McRegion), which today's servers can't open")
 )
 
 type worldInfo struct {
@@ -344,6 +347,9 @@ func (a *agent) worldImport(w http.ResponseWriter, r *http.Request) {
 		if depth < 0 {
 			return nil, errNoWorld
 		}
+		if err := checkWorldKind(zr.File, top, bedrock); err != nil {
+			return nil, err
+		}
 
 		// Unpacked next to where it goes, then moved there whole.
 		suffix := make([]byte, 6)
@@ -383,6 +389,40 @@ func (a *agent) worldImport(w http.ResponseWriter, r *http.Request) {
 		}
 		return map[string]any{"name": name, "files": files}, nil
 	})
+}
+
+// checkWorldKind refuses a world the server can't open, so the owner is told
+// why instead of the server stopping at start. Bedrock keeps chunks in db/,
+// Java in .mca region files (.mcr before 1.2: "This world must be opened in an
+// older version (like 1.6.4) to be safely converted").
+func checkWorldKind(files []*zip.File, top string, bedrock bool) error {
+	var db, mca, mcr bool
+	for _, zf := range files {
+		rel := archivePath(zf)
+		if top != "." {
+			var ok bool
+			if rel, ok = strings.CutPrefix(rel, top+"/"); !ok {
+				continue
+			}
+		}
+		switch {
+		case strings.HasPrefix(rel, "db/"):
+			db = true
+		case strings.HasSuffix(rel, ".mca"):
+			mca = true
+		case strings.HasSuffix(rel, ".mcr"):
+			mcr = true
+		}
+	}
+	switch {
+	case !bedrock && db && !mca:
+		return errBedrockMap
+	case !bedrock && mcr && !mca:
+		return errOldMap
+	case bedrock && !db && (mca || mcr):
+		return errJavaMap
+	}
+	return nil
 }
 
 // worldDelete deletes a world, with Paper's nether and end; never the one the server runs.
