@@ -394,6 +394,63 @@ const en: Messages = {
     },
     console: "Console",
     consoleEmpty: "No logs yet. Start the server to see its console.",
+    hints: {
+      title: "What's happening with the server",
+      list: {
+        invalidSession: {
+          title: "A player without premium can't join",
+          fix: "The server only lets in accounts with a bought Minecraft. To let in non-premium players, turn on “Non-premium” in Settings and click Save.",
+        },
+        oldWorld: {
+          title: "This world isn't a Java world, or is very old",
+          fix: "It's a Bedrock world (db folder) or from before Minecraft 1.2 (.mcr files). Convert it for free at chunker.app (Java Edition, newest version) and upload the result in Worlds, or switch to another world in Worlds.",
+        },
+        worldTooNew: {
+          title: "The world is from a newer version than the server",
+          fix: "Minecraft 26 or newer saved this world, and the server is set to an older version. Set the version to “Latest” in Settings or switch to another world in Worlds.",
+        },
+        brokenWorld: {
+          title: "The world can't be loaded",
+          fix: "The world's settings files are missing (it wasn't fully made, or it's from another server type). Make a new world in Worlds. If you need this world, write to us in the help chat.",
+        },
+        duplicatePlugin: {
+          title: "The same plugin or mod is added twice",
+          fix: "Remove the repeated plugin or mod in Plugins (or Mods) and start the server again.",
+        },
+        missingDependency: {
+          title: "A mod needs another mod or another version",
+          fix: "A mod needs a mod that's missing, or is for another Minecraft version. The names are in the red lines above. Add the missing mod in Mods or remove the one that needs it.",
+        },
+        clientMod: {
+          title: "A mod only works in the game, not on a server",
+          fix: "There's a player-only mod on the server (e.g. visuals, a minimap or menus). Remove it in Mods. Players can keep it in their own game.",
+        },
+        javaTooOld: {
+          title: "A plugin or mod is for a newer version",
+          fix: "A plugin or mod needs a newer Minecraft version than the server's. Change the version in Settings or remove that plugin or mod.",
+        },
+        outOfMemory: {
+          title: "The server ran out of memory",
+          fix: "The server used all the RAM in its plan. Remove some mods or plugins, or upgrade to a bigger plan.",
+        },
+        diskFull: {
+          title: "The disk is full",
+          fix: "Delete files you don't need, old worlds or backups, or buy extra space in Add-ons.",
+        },
+        accessDenied: {
+          title: "The server can't save a file",
+          fix: "This is a problem on our side. Write to us in the help chat and we'll fix it.",
+        },
+        pluginSkipped: {
+          title: "A plugin was skipped",
+          fix: "This plugin has no build for your server's Minecraft version, so the server runs without it. Pick another plugin or change the version in Settings.",
+        },
+        overloaded: {
+          title: "The server can't keep up",
+          fix: "The server is lagging for a moment. Fewer plugins or mods, fewer players at once or a bigger plan helps. One such line while starting is fine.",
+        },
+      },
+    },
     commandPlaceholder: "Type a command, e.g. say Hello",
     send: "Send",
     quick: {

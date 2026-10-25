@@ -810,6 +810,10 @@ main.compare { max-width: 1080px; }
   background: #07090c; color: #cfe3c9; font: 13px/1.55 var(--font-mono);
   white-space: pre-wrap; word-break: break-word;
 }
+/* Log lines the console recognises (explained above it) and other errors. */
+.console-hint { background: rgba(245, 180, 60, 0.18); color: #ffd58a; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.console-error { color: #ff8f8f; }
+.console-hints { gap: 8px; }
 .command { flex-wrap: nowrap; }
 .command input { flex: 1; min-width: 0; font-family: var(--font-mono); }
 .console-layout { display: grid; gap: 16px; align-items: start; }
