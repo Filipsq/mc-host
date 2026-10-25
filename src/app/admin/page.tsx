@@ -11,6 +11,7 @@ import { format } from "@/i18n/messages";
 import { liveStates, machineStats } from "./data";
 import { formats } from "./format";
 import { aiEnabled, aiUsageThisMonth } from "@/lib/ai";
+import RebuildBedrock from "./RebuildBedrock";
 import { signupBuckets, signupsSince, type Bucket } from "./signups";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -300,6 +301,7 @@ export default async function AdminOverview() {
 
       <section className="stack">
         <h2>{t.attention}</h2>
+        <RebuildBedrock t={t.bedrockRebuild} />
         {chats.length > 0 && (
           <div className="card stack">
             <h3>

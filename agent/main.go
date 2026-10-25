@@ -99,6 +99,12 @@ const viaVersion = "viaversion"
 // The port Geyser listens on inside the container (Bedrock's usual one).
 const geyserPort = "19132/udp"
 
+// NetherNet, the way Bedrock connects since 26.60 (27.10.2026; RakNet over UDP
+// stops working then): the game first asks the server over HTTP on TCP, on the
+// same port number players type, then plays over WebRTC on UDP. Geyser and
+// Mojang's own server both listen for the HTTP part on Bedrock's usual port.
+const signalingPort = "19132/tcp"
+
 // pluginEnv has the image install a Paper server's plugins, or a mod loader's
 // mods, from Modrinth: the game mode's own, the login plugin or mod a
 // non-premium server needs (loginAddon), then the owner's. The owner's are optional, so one without a
@@ -822,8 +828,13 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		limitMb = req.MemoryMb + javaHeadroomMb(req.MemoryMb)
 		if req.Crossplay {
 			// Bedrock has no hostname to route by, so Geyser gets the server's own
-			// port, open to everyone, over UDP (the Java side stays on TCP).
+			// port, open to everyone, over UDP for play and TCP for NetherNet's
+			// first step. That takes the TCP port the Java side is otherwise
+			// published on, which nobody needs: the router dials the container.
 			bindings[geyserPort] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}
+			bindings[signalingPort] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}
+			env = append(env, "JVM_OPTS="+geyserNetherNetOpts(req))
+			containerPort = ""
 		}
 	} else {
 		env = append(env, "VERSION="+req.Version, "SERVER_NAME="+motd, "GAMEMODE="+req.GameMode)
@@ -842,10 +853,23 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			// Recent Bedrock servers turn the allow list on by default, which keeps everyone out.
 			env = append(env, "ALLOW_LIST=false")
 		}
+		// NetherNet: the HTTP part on the server's port over TCP, then one UDP
+		// port per player from a range of the server's own, which the server
+		// tells the game together with the machine's public address. Nothing
+		// listens on the UDP port players type any more; it stays published
+		// for the waker, which answers older games there while the server is off.
+		first, last := req.bedrockPlayPorts()
+		env = append(env, "TRANSPORT=nethernet", fmt.Sprintf("SERVER_UDP_PORTS=<public_ip>:%d-%d:%d-%d", first, last, first, last))
+		bindings[signalingPort] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}
+		for p := first; p <= last; p++ {
+			bindings[fmt.Sprintf("%d/udp", p)] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(p)}}
+		}
 		containerPort = "19132/udp"
 		tty = true // send-command writes to the server's stdin
 	}
-	bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
+	if containerPort != "" {
+		bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
+	}
 	if req.Edition == "JAVA" {
 		entrypoint = withVoiceChat(req, bindings, withUnfinishedWorldCheck(entrypoint))
 	}

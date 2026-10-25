@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"encoding/json"
 	"net"
+	"net/http"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -139,4 +141,59 @@ func TestUDPPortFromBindings(t *testing.T) {
 	if p := info.udpPort(); p != 30002 {
 		t.Fatalf("port %d", p)
 	}
+}
+
+func TestNetherNetWakerAnswersAndWakes(t *testing.T) {
+	var woke atomic.Int32
+	u := newUDPWaker(func(context.Context, string) error { woke.Add(1); return nil })
+	port := freeUDPPort(t)
+	u.sync(map[string]udpTarget{"s1": {port: port, reason: "sleeping", name: "Ekipa"}})
+	defer u.sync(nil)
+	base := "http://127.0.0.1:" + strconv.Itoa(port) + "/v1/join"
+
+	list := func() map[string]any {
+		t.Helper()
+		resp, err := http.Get(base)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var info map[string]any
+		if resp.StatusCode != 200 || json.NewDecoder(resp.Body).Decode(&info) != nil {
+			t.Fatalf("server list answer: %d", resp.StatusCode)
+		}
+		return info
+	}
+	if info := list(); info["name"] != bedrockMsgSleeping || info["level"] != "Ekipa" {
+		t.Fatalf("list: %v", info)
+	}
+	// Joining wakes it once and is refused; the list then says it's starting.
+	for range 2 {
+		resp, err := http.Post(base+"/1234", "application/sdp", strings.NewReader("v=0"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusServiceUnavailable {
+			t.Fatalf("join: %d", resp.StatusCode)
+		}
+	}
+	deadline := time.Now().Add(2 * time.Second)
+	for woke.Load() == 0 && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if woke.Load() != 1 {
+		t.Fatalf("woke %d times", woke.Load())
+	}
+	if info := list(); info["name"] != bedrockMsgStarting {
+		t.Fatalf("after waking: %v", info)
+	}
+
+	// The TCP port is let go before the server starts, like the UDP one.
+	u.release("s1")
+	ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
+	if err != nil {
+		t.Fatalf("TCP port still held: %v", err)
+	}
+	ln.Close()
 }

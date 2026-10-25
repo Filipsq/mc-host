@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -82,8 +84,26 @@ func TestContainerSpecJava(t *testing.T) {
 func TestContainerSpecBedrock(t *testing.T) {
 	spec := (&agent{idle: 5 * time.Minute}).containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570}, images["BEDROCK"])
 	host := spec["HostConfig"].(map[string]any)
-	if _, ok := host["PortBindings"].(map[string]any)["19132/udp"]; !ok {
+	ports := host["PortBindings"].(map[string]any)
+	if _, ok := ports["19132/udp"]; !ok {
 		t.Fatal("bedrock should bind 19132/udp")
+	}
+	// NetherNet: HTTP on the server's port over TCP, play over its own UDP range.
+	if b := ports["19132/tcp"].([]map[string]string); b[0]["HostIp"] != "" || b[0]["HostPort"] != "25570" {
+		t.Fatalf("signaling: %v", b)
+	}
+	for _, p := range []int{51400, 51419} {
+		if b := ports[fmt.Sprintf("%d/udp", p)].([]map[string]string); b[0]["HostPort"] != fmt.Sprint(p) {
+			t.Fatalf("play port %d: %v", p, b)
+		}
+	}
+	if _, ok := ports["51420/udp"]; ok {
+		t.Fatal("range too long")
+	}
+	for _, want := range []string{"TRANSPORT=nethernet", "SERVER_UDP_PORTS=<public_ip>:51400-51419:51400-51419"} {
+		if !slices.Contains(spec["Env"].([]string), want) {
+			t.Fatalf("missing %s in %v", want, spec["Env"])
+		}
 	}
 	if !spec["Tty"].(bool) || !spec["OpenStdin"].(bool) {
 		t.Fatal("bedrock needs TTY and stdin for send-command")
@@ -469,14 +489,30 @@ func TestCrossplay(t *testing.T) {
 	}
 	host := spec["HostConfig"].(map[string]any)
 	ports := host["PortBindings"].(map[string]any)
-	if b := ports["25565/tcp"].([]map[string]string); b[0]["HostIp"] != "127.0.0.1" || b[0]["HostPort"] != "30007" {
-		t.Fatalf("java side should stay behind the router: %v", b)
+	if _, ok := ports["25565/tcp"]; ok {
+		t.Fatal("the Java side is reached through the router; its TCP port goes to Geyser")
 	}
-	if b := ports["19132/udp"].([]map[string]string); b[0]["HostIp"] != "" || b[0]["HostPort"] != "30007" {
-		t.Fatalf("geyser should be open on the server's port over UDP: %v", b)
+	for _, p := range []string{"19132/udp", "19132/tcp"} {
+		if b := ports[p].([]map[string]string); b[0]["HostIp"] != "" || b[0]["HostPort"] != "30007" {
+			t.Fatalf("geyser should be open on the server's port (%s): %v", p, b)
+		}
+		if _, ok := spec["ExposedPorts"].(map[string]any)[p]; !ok {
+			t.Fatalf("geyser's %s should be exposed", p)
+		}
 	}
-	if _, ok := spec["ExposedPorts"].(map[string]any)["19132/udp"]; !ok {
-		t.Fatal("geyser's port should be exposed")
+	if !strings.Contains(env, "JVM_OPTS=-DgeyserTransport=nethernet\n") {
+		t.Fatalf("NetherNet should be on:\n%s", env)
+	}
+	withHost := on
+	withHost.VoiceHost = "n3.mchost.pl"
+	realLookup := lookupIPv4
+	lookupIPv4 = func(host string) string { return map[string]string{"n3.mchost.pl": "203.0.113.5"}[host] }
+	defer func() { lookupIPv4 = realLookup }()
+	if env := specEnv(a.containerSpec(withHost, images["JAVA"])); !strings.Contains(env, "JVM_OPTS=-DgeyserTransport=nethernet -DgeyserAdvertiseAddresses=203.0.113.5:30007\n") {
+		t.Fatalf("geyser should give the game the machine's address:\n%s", env)
+	}
+	if b := a.containerSpec(base, images["JAVA"])["HostConfig"].(map[string]any)["PortBindings"].(map[string]any)["25565/tcp"].([]map[string]string); b[0]["HostIp"] != "127.0.0.1" || b[0]["HostPort"] != "30007" {
+		t.Fatalf("without crossplay the java side stays behind the router: %v", b)
 	}
 
 	// Off: the plugin list is still set, empty, so the image removes Geyser and Floodgate.

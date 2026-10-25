@@ -45,6 +45,7 @@ ufw allow in on wg0 to any port 25565 proto tcp >/dev/null # Java players, passe
 ufw allow 30000:30999/udp >/dev/null # Bedrock players (and crossplay)
 ufw allow 30000:30999/tcp >/dev/null # Terraria players
 ufw allow 31000:31999/udp >/dev/null # Simple Voice Chat, the server's port + 1000
+ufw allow 40000:59999/udp >/dev/null # Bedrock servers play over NetherNet, 20 ports each (agent/nethernet.go)
 ufw --force enable >/dev/null
 ../game-firewall.sh install
 ../public-dns.sh
