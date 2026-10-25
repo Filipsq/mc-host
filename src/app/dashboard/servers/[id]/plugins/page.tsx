@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ExternalLink, Package, Puzzle, Search } from "lucide-react";
+import { ExternalLink, Mic, Package, Puzzle, Search } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -11,6 +11,7 @@ import {
   GAME_MODE_PLUGINS,
   KNOWN_PLUGINS,
   PLUGIN_SETS,
+  VOICE_CHAT,
   addonType,
   curseforgeMod,
   curseforgeModPage,
@@ -19,6 +20,8 @@ import {
   pluginPage,
   setFits,
 } from "@/lib/plugins";
+import { voiceAddress } from "@/lib/servers";
+import CopyButton from "@/components/CopyButton";
 import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
 import { getWorkshopTitles } from "@/lib/steam";
@@ -135,7 +138,10 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const loader = LOADER_NAMES[server.kind] ?? server.kind;
   const forPlayers = <span className="chip small-chip">{all.mods.forPlayers}</span>;
   // Names for plugins from the sets, in case Modrinth doesn't answer.
-  const knownTitle = (pid: string) => Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title ?? (pid === FABRIC_API ? "Fabric API" : undefined);
+  const knownTitle = (pid: string) =>
+    pid === VOICE_CHAT.id ? VOICE_CHAT.title : (Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title ?? (pid === FABRIC_API ? "Fabric API" : undefined));
+  const voice = voiceAddress(server);
+  const tv = all.voice;
 
   return (
     <main className="stack">
@@ -203,6 +209,44 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           {t.config} <Link href={`/dashboard/servers/${server.id}/files?path=${type === "mod" ? "config" : "plugins"}`}>{t.openConfig}</Link>
         </p>
       </section>
+
+      {voice && (
+        <section className="stack">
+          <h2>{tv.title}</h2>
+          <ul className="card plugin-list">
+            <li>
+              <span className="plugin-icon"><Mic size={20} aria-hidden /></span>
+              <span className="plugin-main">
+                <span>
+                  <a href={pluginPage(VOICE_CHAT.slug, type)} target="_blank" rel="noreferrer">
+                    <strong>{VOICE_CHAT.title}</strong>
+                  </a>{" "}
+                  {forPlayers}
+                </span>
+                <span className="muted small">{tv.intro}</span>
+                {tv.steps.map((step, i) => (
+                  <span key={step} className="small">
+                    {i + 1}. {step}
+                  </span>
+                ))}
+              </span>
+              <AddPluginButton id={server.id} pluginId={VOICE_CHAT.id} added={server.plugins.includes(VOICE_CHAT.id)} t={t} />
+            </li>
+          </ul>
+          <div className="address-card">
+            <div>
+              <p className="address-label">{tv.address}</p>
+              <span className="address-value">
+                {voice.host} <span className="muted">· {all.server.port}</span> {voice.port}
+              </span>
+            </div>
+            <CopyButton text={`${voice.host}:${voice.port}`} label={all.server.copy} copiedLabel={all.server.copied} />
+          </div>
+          <p className="muted small">
+            {tv.addressHint} {tv.oldServer}
+          </p>
+        </section>
+      )}
 
       {sets.length > 0 && (
         <section className="stack">

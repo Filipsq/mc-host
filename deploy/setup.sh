@@ -19,6 +19,7 @@ ufw allow 443/tcp >/dev/null         # website
 ufw allow 25565/tcp >/dev/null       # Java players, through the agent's router
 ufw allow 30000:30999/udp >/dev/null # Bedrock players (and crossplay), one port per server
 ufw allow 30000:30999/tcp >/dev/null # Terraria players, one port per server
+ufw allow 31000:31999/udp >/dev/null # Simple Voice Chat, the server's port + 1000
 ufw --force enable >/dev/null
 ./game-firewall.sh install
 ./public-dns.sh
