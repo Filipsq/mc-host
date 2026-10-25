@@ -75,7 +75,7 @@ const createSchema = z.object({
   days: daysField,
   subdomain: z.string().trim().toLowerCase().optional(),
   game: z.enum(GAME_IDS).default("survival"),
-  pack: z.string().optional(), // a curated pack's slug, "custom" for packLink, or "curseforge" for cfPack
+  pack: z.string().optional(), // a curated pack's slug, "custom" for packLink, or "curseforge:<slug>" (or "curseforge" with cfPack)
   packLink: z.string().max(300).optional(),
   cfPack: z.string().max(64).optional(), // a CurseForge pack's slug, from the home page
 

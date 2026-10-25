@@ -1,7 +1,7 @@
 import "server-only";
 import { inflateRawSync } from "node:zlib";
 import { plans } from "./plans";
-import { USER_AGENT } from "./modrinth";
+import { USER_AGENT, type PackHit } from "./modrinth";
 import { curseforgeEntry, curseforgeMod } from "./plugins";
 
 // Mod packs from CurseForge (https://docs.curseforge.com/rest-api/): the most
@@ -358,6 +358,38 @@ export async function resolveCurseforgePack(ref: { slug: string; fileId?: number
   }
 }
 
+/**
+ * Packs matching the query, for the "another pack" search. Only what the list
+ * shows: whether a server can run one is checked once it's picked.
+ */
+export async function searchCurseforgePacks(query: string): Promise<PackHit[] | "curseforgeUnavailable"> {
+  if (!curseforgeEnabled()) return [];
+  const params = new URLSearchParams({
+    gameId: String(MINECRAFT),
+    classId: String(MODPACKS),
+    searchFilter: query.slice(0, 100),
+    sortField: String(POPULARITY),
+    sortOrder: "desc",
+    pageSize: "8",
+  });
+  try {
+    const mods = (await call<{ data: Mod[] }>(`/v1/mods/search?${params}`))?.data ?? [];
+    return mods
+      .filter((m) => SLUG.test(m.slug) && m.isAvailable !== false && m.allowModDistribution !== false && !CLIENT_PACKS.has(m.slug))
+      .map((m) => ({
+        slug: m.slug,
+        title: m.name.slice(0, 80),
+        description: m.summary.slice(0, 200),
+        icon: m.logo?.thumbnailUrl || m.logo?.url || undefined,
+        downloads: m.downloadCount,
+        curseforge: true,
+      }));
+  } catch (err) {
+    console.error("curseforge pack search failed", query, err);
+    return "curseforgeUnavailable";
+  }
+}
+
 // The home page's list, refreshed in the background every hour and kept only in memory.
 const TOP_SIZE = 10;
 const TOP_TTL = 60 * 60_000;
@@ -600,4 +632,22 @@ export async function repinCurseforgeMods(
     kept.push(...pinned.modrinth.filter((id) => !kept.includes(id)));
   }
   return { plugins: kept, dropped };
+}
+
+/** What a pack list in a form shows of a pack. */
+const packOption = (p: CurseforgePack) => ({
+  slug: p.slug,
+  title: p.title,
+  summary: p.summary,
+  icon: p.icon,
+  ramGb: p.ramGb,
+  mods: p.mods,
+  gameVersion: p.gameVersion,
+  loader: p.loader,
+});
+
+/** The CurseForge packs a form offers: the one picked on the home page first, if any, then the most popular. */
+export async function curseforgePackOptions(picked?: CurseforgePack) {
+  const top = (await topCurseforgePacks()) ?? [];
+  return [...(picked ? [picked] : []), ...top.filter((p) => p.slug !== picked?.slug)].map(packOption);
 }

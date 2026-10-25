@@ -25,9 +25,11 @@ import {
 } from "@/lib/plugins";
 import { voiceAddress } from "@/lib/servers";
 import CopyButton from "@/components/CopyButton";
-import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
+import { LOADER_NAMES, isServerKind, planAtLeast, planForRam } from "@/lib/modpacks";
+import { gameById } from "@/lib/games";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
 import { getWorkshopTitles } from "@/lib/steam";
+import ModPicker from "./ModPicker";
 import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
 
 const FABRIC_API = "P7dR8mSH"; // added for CurseForge mods that need it
@@ -124,24 +126,30 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const fromCf = cfOffered && src === "cf";
   // Plugins also come from Hangar and SpigotMC; the panel downloads those itself.
   const site: PluginSite | null = type === "plugin" && (src === "hangar" || src === "spigot") ? src : null;
-  const sources = type === "plugin" ? ["", "hangar", "spigot"] : cfOffered ? ["", "cf"] : [];
+  // A plain server also lists mods, which it can't run: picking them leads to a server with mods.
+  const modsOffered = type === "plugin" && server.kind === "vanilla";
+  const modsView = modsOffered && src === "mods";
+  const sources = type === "plugin" ? ["", "hangar", "spigot", ...(modsOffered ? ["mods"] : [])] : cfOffered ? ["", "cf"] : [];
   const sourceNames: Record<string, string> = {
     "": all.mods.sourceModrinth,
     cf: all.mods.sourceCurseforge,
     hangar: all.plugins.sourceHangar,
     spigot: all.plugins.sourceSpigot,
+    mods: all.modsOnPlain.tab,
   };
-  const active = fromCf ? "cf" : (site ?? "");
+  const active = fromCf ? "cf" : modsView ? "mods" : (site ?? "");
   const cfIds = server.plugins.map((p) => curseforgeMod(p)?.modId).filter((m) => m !== undefined);
-  const [infos, cfInfos, siteInfos, results, cfResults, siteResults] = await Promise.all([
+  const [infos, cfInfos, siteInfos, results, cfResults, siteResults, modResults] = await Promise.all([
     getPluginInfos(server.plugins.filter((p) => !curseforgeMod(p) && !sitePlugin(p))),
     getCurseforgeModInfos(cfIds),
     getSitePluginInfos(server.plugins.filter((p) => sitePlugin(p))),
-    fromCf || site ? null : searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
+    fromCf || site || modsView ? null : searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
     // A CurseForge file is picked for one Minecraft version, so "newest" has none.
     fromCf && mc ? searchCurseforgeMods(query, { gameVersion: mc, loader: server.kind }) : null,
     site ? searchSitePlugins(site, query, mc) : null,
+    modsView ? searchAddons("mod", query, { gameVersion: mc, loader: "fabric" }) : null,
   ]);
+  const modsPlan = planForRam(gameById("mods").ramGb);
   const searchHref = (from: string) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(query && { q: query }), ...(from && { src: from }) })}#szukaj`;
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
   const included = GAME_MODE_PLUGINS[kind] ?? [];
@@ -304,7 +312,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
       )}
 
       <section className="stack" id="szukaj">
-        <h2>{t.search}</h2>
+        <h2>{modsView ? all.mods.search : t.search}</h2>
         {sources.length > 0 && (
           <nav className="tabs">
             {sources.map((from) => (
@@ -316,7 +324,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         )}
         <form className="plugin-search" action={`/dashboard/servers/${server.id}/plugins#szukaj`}>
           {active && <input type="hidden" name="src" value={active} />}
-          <input name="q" type="search" defaultValue={query} placeholder={t.searchPlaceholder} aria-label={t.search} maxLength={100} />
+          <input name="q" type="search" defaultValue={query} placeholder={modsView ? all.mods.searchPlaceholder : t.searchPlaceholder} aria-label={t.search} maxLength={100} />
           <button>
             <Search size={16} aria-hidden /> {t.searchButton}
           </button>
@@ -326,7 +334,24 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           {type === "mod" && ` · ${loader}`}
           {mc && !(site === "spigot") && ` · ${format(t.forVersion, { mc })}`}
         </p>
-        {site ? (
+        {modResults ? (
+          modResults === "modrinthUnavailable" ? (
+            <p className="notice warn">{t.errors.modrinthUnavailable}</p>
+          ) : (
+            <>
+              <p className="muted small">{format(all.modsOnPlain.intro, { version: mc ? `, Minecraft ${mc}` : "" })}</p>
+              <ModPicker
+                id={server.id}
+                hits={modResults}
+                needsPlan={!planAtLeast(server.plan, modsPlan)}
+                planName={all.plans[modsPlan]}
+                t={all.modsOnPlain}
+                downloads={t.downloads}
+                locale={locale}
+              />
+            </>
+          )
+        ) : site ? (
           <>
             <p className="muted small">{site === "hangar" ? t.hangarIntro : t.spigotIntro}</p>
             {siteResults === "siteUnavailable" ? (

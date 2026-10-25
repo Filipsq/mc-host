@@ -181,7 +181,7 @@ export async function getAddon(
   }
 }
 
-export type PackHit = { slug: string; title: string; description: string; icon?: string; downloads: number; newestVersion?: string };
+export type PackHit = { slug: string; title: string; description: string; icon?: string; downloads: number; newestVersion?: string; curseforge?: boolean };
 
 /** Mod packs that run on servers matching the query, or the most downloaded ones. */
 export async function searchModpacks(query: string): Promise<PackHit[] | "modrinthUnavailable"> {

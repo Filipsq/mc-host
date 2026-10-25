@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { addonOptions, planOptions } from "@/lib/planOptions";
 import { getPackArt } from "@/lib/modrinth";
-import { curseforgeEnabled, resolveCurseforgePack } from "@/lib/curseforge";
+import { curseforgeEnabled, curseforgePackOptions, resolveCurseforgePack } from "@/lib/curseforge";
+import { curseforgePackValue } from "./ModFields";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
 import { isGameId } from "@/lib/games";
 import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
@@ -43,6 +44,7 @@ export default async function NewServerPage({ searchParams }: Props) {
   const chosen = CURATED_PACKS.find((p) => p.slug === pack);
   const found = cf && curseforgeEnabled() ? await resolveCurseforgePack({ slug: cf }) : null;
   const cfPack = found && typeof found === "object" ? found : undefined;
+  const cfPacks = curseforgeEnabled() ? await curseforgePackOptions(cfPack) : [];
   const initialGame = chosen || cfPack ? "modpack" : isGameId(game) ? game : undefined;
   const defaultPlan =
     initialGame === "modpack"
@@ -69,19 +71,9 @@ export default async function NewServerPage({ searchParams }: Props) {
         plans={plans}
         defaultPlan={defaultPlan}
         initialGame={initialGame}
-        initialPack={cfPack ? "curseforge" : chosen?.slug}
-        cfPack={
-          cfPack && {
-            slug: cfPack.slug,
-            title: cfPack.title,
-            summary: cfPack.summary,
-            icon: cfPack.icon,
-            ramGb: cfPack.ramGb,
-            mods: cfPack.mods,
-            gameVersion: cfPack.gameVersion,
-            loader: cfPack.loader,
-          }
-        }
+        initialPack={cfPack ? curseforgePackValue(cfPack.slug) : chosen?.slug}
+        cfPacks={cfPacks}
+        cfPicked={!!cfPack}
         curseforge={curseforgeEnabled()}
         packIcons={packIcons}
         domain={process.env.GAME_DOMAIN ?? "localhost"}

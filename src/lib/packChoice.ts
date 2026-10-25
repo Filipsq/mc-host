@@ -9,11 +9,17 @@ export type PackChoiceError = ResolveError | CurseforgeError | "modpackLink";
 
 export type PackForm = { pack?: string; packLink?: string; cfPack?: string };
 
+/** The CurseForge pack picked from the list: `pack` "curseforge:<slug>", or "curseforge" with `cfPack`. */
+function listedCurseforge(f: PackForm) {
+  if (f.pack?.startsWith("curseforge:")) return f.pack.slice("curseforge:".length) || undefined;
+  return f.pack === "curseforge" ? f.cfPack : undefined;
+}
+
 /** Whether the form names a pack at all, before asking either site about it. */
 export function packNamed(f: PackForm) {
   return (
     CURATED_PACKS.some((p) => p.slug === f.pack) ||
-    (f.pack === "curseforge" && !!f.cfPack) ||
+    !!listedCurseforge(f) ||
     !!parseModrinthLink(f.packLink ?? "") ||
     !!parseCurseforgeLink(f.packLink ?? "")
   );
@@ -21,12 +27,14 @@ export function packNamed(f: PackForm) {
 
 /**
  * The pack a form picked: a curated one (`pack` is its slug), a CurseForge
- * pack from the home page (`pack` "curseforge" and `cfPack` its slug), or a
+ * pack from the list (`pack` "curseforge:<slug>", or "curseforge" and `cfPack` its slug), or a
  * pasted Modrinth or CurseForge link, or a pack found in the Modrinth search (`packLink`).
  */
 export async function resolvePackChoice(f: PackForm): Promise<PackChoice | PackChoiceError> {
   const curated = CURATED_PACKS.find((p) => p.slug === f.pack);
-  const cf = curated ? null : f.pack === "curseforge" ? (f.cfPack ? { slug: f.cfPack } : null) : parseCurseforgeLink(f.packLink ?? "");
+  const listed = listedCurseforge(f);
+  const fromList = !!listed || f.pack === "curseforge";
+  const cf = curated ? null : fromList ? (listed ? { slug: listed } : null) : parseCurseforgeLink(f.packLink ?? "");
   if (cf) {
     if (!curseforgeEnabled()) return "modpackLink";
     const p = await resolveCurseforgePack(cf);
@@ -42,7 +50,7 @@ export async function resolvePackChoice(f: PackForm): Promise<PackChoice | PackC
       ramGb: p.ramGb,
     };
   }
-  const ref = curated ? { slug: curated.slug } : f.pack === "curseforge" ? null : parseModrinthLink(f.packLink ?? "");
+  const ref = curated ? { slug: curated.slug } : fromList ? null : parseModrinthLink(f.packLink ?? "");
   if (!ref) return "modpackLink";
   const p = await resolveModpack(ref);
   return typeof p === "string" ? p : { ...p, source: "modrinth", ramGb: curated?.ramGb };
