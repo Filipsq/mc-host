@@ -28,6 +28,7 @@ import { addonCost, addonList, canBuyAddons, serverAddons, type AddonId } from "
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
+import { FREE_STARTER_DAYS, checkCreatorCode, giveBackFreeStarter, takeFreeStarter } from "@/lib/creator";
 import {
   DIFFICULTIES,
   GAME_MODES,
@@ -118,6 +119,7 @@ async function checkoutUrl(
   days: PeriodDays,
   autoRenew = false,
   addons: AddonId[] = [],
+  creatorId?: string,
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -134,6 +136,7 @@ async function checkoutUrl(
     startConsent: true,
     autoRenew,
     addons,
+    creatorId,
   });
 }
 
@@ -169,7 +172,15 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (!adminTest && plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE", adminTest: false } }))) {
     return { error: "freeLimit", values };
   }
-  if (!adminTest && plan !== "FREE" && form.get("startNow") !== "on") return { error: "consentRequired", values };
+  // A free Starter earned with the creator code: paid for FREE_STARTER_DAYS already, without add-ons.
+  const freeStarter = !adminTest && form.get("freeStarter") === "on";
+  if (freeStarter && plan !== "STARTER") return { error: "freeStarterPlan", values };
+  const paying = plan !== "FREE" && !adminTest && !freeStarter;
+  if (paying && form.get("startNow") !== "on") return { error: "consentRequired", values };
+  // Someone's creator code: a tenth off this first payment, and the server counts for them.
+  const code = paying ? String(form.get("creatorCode") ?? "").trim() : "";
+  const creator = code ? await checkCreatorCode(code, user.id) : null;
+  if (creator && "error" in creator) return { error: creator.error, values };
 
   // Bedrock and Terraria have no ready games or mod packs here.
   const game = gameById(edition === "JAVA" ? parsed.data.game : "survival");
@@ -235,18 +246,25 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(modVersion && { version: modVersion }),
     ...(pack && { version: pack.gameVersion, ...packFields(pack) }),
     // Paid servers are only created on the game host once Stripe confirms payment.
-    status: plan === "FREE" || adminTest ? "PROVISIONING" : "AWAITING_PAYMENT",
+    status: paying ? "AWAITING_PAYMENT" : "PROVISIONING",
     ...(adminTest && { adminTest, addons, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
+    ...(freeStarter && { paidUntil: new Date(Date.now() + FREE_STARTER_DAYS * DAY) }),
+    ...(creator && { creatorId: creator.creatorId }),
   });
   if (server === "subdomainTaken") return { error: "subdomainTaken", values };
   if (!server) return { error: "noPorts", values };
+  // Taken only now the server exists, and given back if it can't start below.
+  if (freeStarter && !(await takeFreeStarter(user.id))) {
+    await db.server.delete({ where: { id: server.id } });
+    return { error: "noFreeStarter", values };
+  }
   // On another machine, Java players reach it through the main machine's router.
   if (server.node !== MAIN_NODE) await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
 
-  if (plan !== "FREE" && !adminTest) {
+  if (paying) {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, days, false, addons);
+      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId);
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -271,6 +289,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
         continue;
       }
       await db.server.delete({ where: { id: server.id } });
+      if (freeStarter) await giveBackFreeStarter(user.id);
       return { error: agent.isFull(err) ? "full" : "agentUnavailable", values };
     }
   }
@@ -320,6 +339,8 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       parsed.data.days,
       form.get("autoRenew") === "on",
       formAddons(form, parsed.data.plan, server.edition),
+      // The first payment of a server made with a creator code, paid here after the first checkout was left.
+      server.status === "AWAITING_PAYMENT" ? (server.creatorId ?? undefined) : undefined,
     );
   } catch (err) {
     console.error("checkout failed", server.id, err);

@@ -21,6 +21,7 @@ import {
 import { sendComebackReminders } from "./comeback";
 import { renewDueServers } from "./renewal";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
+import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type CreatorReward } from "./creator";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
@@ -49,6 +50,7 @@ export async function startCheckout(opts: {
   upgrade?: { from: Plan; amount: number }; // the price difference for the time left (upgrade.ts); days is 0
   addons?: readonly AddonId[]; // every add-on the server has once paid (addons.ts)
   addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
+  creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
 }) {
   const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly } = opts;
   const addons = addonList(opts.addons);
@@ -57,7 +59,9 @@ export async function startCheckout(opts: {
   if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
-  const amount = Math.round((upgrade || addonsOnly || !days ? (upgrade?.amount ?? addonsOnly?.amount ?? 0) : priceFor(plan, days, currency, addons)) * 100);
+  const full = Math.round((upgrade || addonsOnly || !days ? (upgrade?.amount ?? addonsOnly?.amount ?? 0) : priceFor(plan, days, currency, addons)) * 100);
+  const creatorId = days && !upgrade && !addonsOnly ? opts.creatorId : undefined;
+  const amount = creatorId ? withCreatorDiscount(full) : full;
   const payment = await db.payment.create({
     data: {
       userId: user.id,
@@ -71,6 +75,7 @@ export async function startCheckout(opts: {
       upgradeFrom: upgrade?.from,
       addons,
       addonsOnly: !!addonsOnly,
+      creatorId,
     },
   });
 
@@ -121,6 +126,7 @@ export async function stripeCustomer(user: Pick<User, "id" | "email">) {
 export async function fulfillPayment(paymentId: string) {
   const now = new Date();
   let inviter: Inviter | null = null;
+  let creator: CreatorReward | null = null;
   let addonsChanged = false;
   const server = await db.$transaction(async (tx) => {
     // Claim the payment first so a retried webhook can't apply it twice.
@@ -135,6 +141,8 @@ export async function fulfillPayment(paymentId: string) {
 
     // A friend's invite: the first long enough payment gets extra days, and so does whoever invited them.
     inviter = await claimReferral(tx, payment.userId, payment.days);
+    // Bought with a creator code: counts for its owner once paid for long enough.
+    creator = await countCreatorServer(tx, server, payment.days);
     const days = payment.days + (inviter ? REFERRAL_DAYS : 0) + (await claimApologyDays(tx, payment.userId));
     const paidUntil = upgradedUntil(server, payment, now) ?? new Date(creditStart(server, payment.plan, now).getTime() + days * DAY);
     const planChanged = server.plan !== payment.plan;
@@ -164,6 +172,7 @@ export async function fulfillPayment(paymentId: string) {
   // Before provisioning, which may wait for an image download.
   await sendPlanMail("paid", saved ?? server);
   if (inviter) await sendReferralMail(inviter);
+  if (creator) await sendCreatorRewardMail(creator);
   if (addonsChanged) {
     await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
     await syncHostAliases().catch((err) => console.error("host aliases not sent", err));

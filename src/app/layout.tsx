@@ -128,7 +128,7 @@ export default async function RootLayout({
               {signedIn ? (
                 <>
                   <Link href="/dashboard">{t.nav.dashboard}</Link>
-                  <Link href="/dashboard/invite">{t.referrals.title}</Link>
+                  <Link href="/dashboard/invite">{t.creator.title}</Link>
                 </>
               ) : (
                 <>

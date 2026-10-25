@@ -44,6 +44,8 @@ type Props = {
   cfPack?: CurseforgeOption; // a CurseForge pack picked on the home page
   curseforge: boolean; // whether CurseForge links work
   admin: boolean; // admins also get a button to make a test server without paying
+  // The creator code to start with (whoever invited the user) and free Starters they earned with their own (creator.ts).
+  creator: { t: Messages["creator"]; code: string; freeStarters: number; discount: number; days: number };
   /** Set when the AI creator is on. */
   ai?: {
     t: Messages["ai"];
@@ -72,7 +74,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPack, curseforge, admin, creator, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -95,6 +97,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const [nonPremium, setNonPremium] = useState(v.nonPremium === "on");
   const [helperOpen, setHelperOpen] = useState(false);
   const [addons, setAddons] = useState<AddonId[]>(addonList(v.addons?.split(",")));
+  const [creatorCode, setCreatorCode] = useState(v.creatorCode ?? creator.code);
+  const [freeStarter, setFreeStarter] = useState(v.freeStarter === "on" || (v.name === undefined && creator.freeStarters > 0));
 
   function applySuggestion(s: Suggestion) {
     setEdition(s.edition);
@@ -152,6 +156,10 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   // A ready game that's comfortable with more memory than the chosen plan has.
   const wanted = edition === "JAVA" && !modded ? gameById(game).ramGb : 0;
   const ramLow = wanted > planById(plan).ramGb;
+  // A free Starter earned with the creator code needs no payment.
+  const rewarded = plan === "STARTER" && creator.freeStarters > 0 && freeStarter;
+  const paying = plan !== "FREE" && !rewarded;
+  const c = creator.t;
 
   return (
     <>
@@ -378,7 +386,32 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           </Link>
         </p>
       )}
-      {plan !== "FREE" && (
+      {plan === "STARTER" && creator.freeStarters > 0 && (
+        <label className="check creator-reward">
+          <input type="checkbox" name="freeStarter" checked={freeStarter} onChange={(e) => setFreeStarter(e.target.checked)} />
+          <span className="stack-tight">
+            <span>{format(c.useReward, { days: creator.days })}</span>
+            <span className="muted small">{format(c.useRewardHint, { n: creator.freeStarters })}</span>
+          </span>
+        </label>
+      )}
+      {paying && (
+        <label>
+          {c.codeField}
+          <input
+            name="creatorCode"
+            value={creatorCode}
+            onChange={(e) => setCreatorCode(e.target.value)}
+            maxLength={20}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            placeholder={c.codePlaceholder}
+          />
+          <span className="muted small">{format(creatorCode.trim() ? c.codeApplied : c.codeFieldHint, { percent: creator.discount })}</span>
+        </label>
+      )}
+      {paying && (
         <>
           <p className="muted small">{billing.methods}</p>
           <PaymentConsent legal={legal} />
@@ -386,7 +419,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       )}
       {state.error && <p className="error">{t.errors[state.error]}</p>}
       <button type="submit" disabled={pending}>
-        {pending && !testing ? (plan === "FREE" ? t.creating : billing.redirecting) : plan === "FREE" ? t.create : t.createAndPay}
+        {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
       </button>
       {admin && (
         <>

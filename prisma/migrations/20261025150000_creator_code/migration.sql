@@ -1,0 +1,9 @@
+ALTER TABLE "User" ADD COLUMN "creatorCount" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE "User" ADD COLUMN "freeStarters" INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE "Server" ADD COLUMN "creatorId" TEXT;
+ALTER TABLE "Server" ADD COLUMN "creatorCountedAt" TIMESTAMP(3);
+CREATE INDEX "Server_creatorId_idx" ON "Server"("creatorId");
+ALTER TABLE "Server" ADD CONSTRAINT "Server_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "Payment" ADD COLUMN "creatorId" TEXT;

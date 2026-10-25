@@ -11,6 +11,7 @@ import {
   ChevronsUpDown,
   CreditCard,
   FolderOpen,
+  Gift,
   Globe,
   LayoutDashboard,
   Menu,
@@ -33,6 +34,7 @@ const ICONS = {
   upgrade: ArrowUpCircle,
   addons: PackagePlus,
   access: Users,
+  creator: Gift,
 };
 
 export type NavItem = { key: keyof typeof ICONS; label: string; path: string; also?: string[] };
