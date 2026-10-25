@@ -1135,6 +1135,7 @@ const pl = {
     pageInfo: "Strona {page} z {total} ({count} serwerów)",
     totalServersCount: "Łącznie: {count} serwerów",
     perPage: "{n} / str.",
+    perPageAll: "Wszystkie na jednej stronie",
     noServers: "Brak serwerów.",
     noUsers: "Brak użytkowników.",
     noPayments: "Brak płatności.",

@@ -1136,6 +1136,7 @@ const en: Messages = {
     pageInfo: "Page {page} of {total} ({count} servers)",
     totalServersCount: "Total: {count} servers",
     perPage: "{n} / page",
+    perPageAll: "All on one page",
     noServers: "No servers.",
     noUsers: "No users.",
     noPayments: "No payments.",

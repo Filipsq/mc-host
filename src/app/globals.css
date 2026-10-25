@@ -864,6 +864,9 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .gift-row input { width: 120px; }
 .admin-banner { width: 100%; max-width: 960px; margin: 24px auto -16px; padding: 0 16px; }
 .admin table { min-width: 720px; }
+/* The three small sign-up tables share a row, so they must fit their cards. */
+.admin .signup-tables { align-items: start; }
+.admin .signup-tables table { min-width: 0; }
 
 /* Signed in, the top bar holds three buttons, so the page links and some labels go sooner. */
 @media (max-width: 1080px) { .signed-in .topnav { display: none; } }
