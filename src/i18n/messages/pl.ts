@@ -167,6 +167,10 @@ const pl = {
         a: "Tak, na Javie bez modów. Włącz non-premium przy tworzeniu serwera albo w Ustawieniach. Każdy gracz ustawi wtedy hasło komendą /register i będzie logować się przez /login, więc nikt nie zagra pod cudzym nickiem.",
       },
       {
+        q: "Czy serwery mają ochronę przed atakami DDoS?",
+        a: "Tak, w każdym planie, także darmowym, bez dopłat. Nasze maszyny stoją w europejskich centrach danych Hetzner i netcup, które same wykrywają ataki DDoS i odfiltrowują je na poziomie sieci, zanim dotrą do serwera. Żadna ochrona nie zatrzyma każdego ataku, ale większość typowych ataków zostaje odcięta w kilka sekund.",
+      },
+      {
         q: "Jak działa polecanie znajomych?",
         a: "W panelu, w zakładce Polecaj, znajdziesz swój link. Gdy znajomy założy przez niego konto i opłaci serwer na co najmniej {min} dni, dostanie {days} dni gratis do tego serwera, a Ty {days} dni do wybranego płatnego serwera.",
       },
@@ -200,6 +204,7 @@ const pl = {
     noBackups: "Bez kopii zapasowych",
     backups: "Kopie zapasowe: ostatnie {n}",
     support: "Pomoc administratora 24/7",
+    ddos: "Ochrona DDoS w cenie",
   },
   auth: {
     email: "E-mail",
