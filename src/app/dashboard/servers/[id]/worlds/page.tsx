@@ -5,11 +5,14 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getServerFor } from "@/lib/access";
 import { listWorlds } from "@/lib/agent";
-import { onHost } from "@/lib/servers";
+import { getLiveDetailsOnce, onHost } from "@/lib/servers";
 import { canChangeFiles } from "@/lib/files";
-import { formatMb } from "@/lib/disk";
+import { diskLimitMb, formatMb } from "@/lib/disk";
+import { planById } from "@/lib/plans";
+import { biggerPlans, canUpgrade } from "@/lib/upgrade";
+import { serverAddons } from "@/lib/addons";
 import { activeLevel, nextWorldName, worldTypes } from "@/lib/worlds";
-import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld } from "./WorldControls";
+import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ switched?: string; uploaded?: string; deleted?: string }> };
 
@@ -20,7 +23,7 @@ export default async function WorldsPage({ params, searchParams }: Props) {
   const server = await getServerFor(id, session.user.id, "files");
   // Minecraft worlds only; a Terraria server's world is in its files.
   if (!server || server.edition === "TERRARIA") notFound();
-  const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
+  const [all, { locale }, { agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetailsOnce(server.id, server.status)]);
   const t = all.worlds;
 
   // Unpaid servers aren't on the game host yet; suspended ones are, but only for downloads.
@@ -42,6 +45,21 @@ export default async function WorldsPage({ params, searchParams }: Props) {
   const made = worlds.some((w) => w.name === active);
   const date = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
   const java = server.edition === "JAVA";
+  // Room for an upload, as the agent last measured, and the ways to get more:
+  // a paid plan for a free server, a bigger plan or the disk add-on for a paid one.
+  const limitMb = diskLimitMb(server);
+  const space = agent?.diskMb === undefined ? null : { usedMb: agent.diskMb, limitMb };
+  const planMb = planById(server.plan).diskGb * 1024;
+  const more: MoreSpace[] = (
+    server.plan === "FREE"
+      ? biggerPlans("FREE").map((p) => ({ label: all.plans[p.id], mb: p.diskGb * 1024, href: `/dashboard/servers/${server.id}/billing?plan=${p.id}` }))
+      : [
+          ...(canUpgrade(server)
+            ? biggerPlans(server.plan).map((p) => ({ label: all.plans[p.id], mb: limitMb - planMb + p.diskGb * 1024, href: `/dashboard/servers/${server.id}/upgrade` }))
+            : []),
+          ...(serverAddons(server).includes("disk") ? [] : [{ label: all.paidAddons.names.disk, mb: limitMb + 10 * 1024, href: `/dashboard/servers/${server.id}/addons` }]),
+        ]
+  ).sort((a, b) => a.mb - b.mb);
   // The actions come back to this page, so the forms start over once the worlds change.
   const formKey = [active, ...worlds.map((w) => w.name)].join("/");
   const notice = done.switched
@@ -125,7 +143,13 @@ export default async function WorldsPage({ params, searchParams }: Props) {
           <section className="card stack">
             <h2>{t.uploadTitle}</h2>
             <p className="muted">{java ? t.uploadIntro : t.uploadIntroBedrock}</p>
-            <UploadWorld key={formKey} id={server.id} bedrock={!java} t={t} files={all.files.errors} />
+            {server.plan === "FREE" && space && more[0] && (
+              <div className="notice row">
+                <span>{format(t.freeSpace, { limit: formatMb(limitMb, locale), used: formatMb(space.usedMb, locale), plan: more[0].label, more: formatMb(more[0].mb, locale) })}</span>
+                <a className="button small" href={more[0].href}>{format(t.getMore, { plan: more[0].label })}</a>
+              </div>
+            )}
+            <UploadWorld key={formKey} id={server.id} bedrock={!java} t={t} files={all.files.errors} space={space} more={more} locale={locale} />
           </section>
         </>
       )}

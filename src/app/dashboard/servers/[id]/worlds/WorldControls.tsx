@@ -4,6 +4,7 @@ import { startTransition, useActionState, useState, useTransition } from "react"
 import { Play, Trash2, Upload } from "lucide-react";
 import { format, type Messages } from "@/i18n/messages";
 import { WORLD_UPLOAD_DIR, isValidWorldName, worldNameFromFile, type WorldType } from "@/lib/worlds";
+import { formatMb } from "@/lib/disk";
 import { deleteWorldAction, importWorldAction, newWorldAction, switchWorldAction, type WorldError } from "./actions";
 
 type T = Messages["worlds"];
@@ -128,8 +129,35 @@ export function NewWorldForm({ id, initialName, types, t, files }: Props & { ini
   );
 }
 
+/** A way to get more disk space: `mb` is the server's whole space with it. */
+export type MoreSpace = { label: string; mb: number; href: string };
+
+// The agent's per-file upload limit (UPLOAD_MAX_MB).
+const MAX_FILE_MB = 1024;
+// A zipped world unpacks to at least its own size, and the zip stays until it's unpacked.
+const NEEDS_TIMES = 2;
+
+/** Why a world zip won't fit, before it's sent: nobody waits for a big upload just to be told no. */
+function noRoom(f: File, space: { usedMb: number; limitMb: number } | null, more: MoreSpace[]) {
+  const fileMb = Math.ceil(f.size / 1024 / 1024);
+  if (fileMb > MAX_FILE_MB) return { fileMb, tooBig: true as const };
+  if (!space) return null;
+  const needMb = fileMb * NEEDS_TIMES;
+  const freeMb = Math.max(0, space.limitMb - space.usedMb);
+  if (needMb <= freeMb) return null;
+  return { fileMb, needMb, freeMb, fix: more.find((m) => m.mb - space.usedMb >= needMb) };
+}
+
 /** A world zip goes up through the file manager's upload, then the server unpacks it into a world. */
-export function UploadWorld({ id, bedrock, t, files }: Props & { bedrock: boolean }) {
+export function UploadWorld({
+  id,
+  bedrock,
+  t,
+  files,
+  space,
+  more,
+  locale,
+}: Props & { bedrock: boolean; space: { usedMb: number; limitMb: number } | null; more: MoreSpace[]; locale: string }) {
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState("");
   const [play, setPlay] = useState(true);
@@ -159,7 +187,7 @@ export function UploadWorld({ id, bedrock, t, files }: Props & { bedrock: boolea
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || progress) return;
+    if (!file || progress || full) return;
     const world = name.trim();
     if (!isValidWorldName(world)) return setError("invalidName");
     setError(null);
@@ -176,6 +204,9 @@ export function UploadWorld({ id, bedrock, t, files }: Props & { bedrock: boolea
     setProgress(null);
     if (result?.error) setError(result.error);
   }
+
+  const full = file ? noRoom(file, space, more) : null;
+  const mb = (n: number) => formatMb(n, locale);
 
   return (
     <form className="stack" onSubmit={upload}>
@@ -205,8 +236,27 @@ export function UploadWorld({ id, bedrock, t, files }: Props & { bedrock: boolea
           {progress}
         </p>
       )}
+      {full && (
+        <div className="notice warn stack-tight" role="alert">
+          {full.tooBig ? (
+            <span>{format(t.space.tooBig, { size: mb(full.fileMb), max: mb(MAX_FILE_MB) })}</span>
+          ) : (
+            <>
+              <span>{format(t.space.noRoom, { size: mb(full.fileMb), need: mb(full.needMb), free: mb(full.freeMb), limit: mb(space!.limitMb) })}</span>
+              {full.fix ? (
+                <span className="row">
+                  <span>{format(t.space.fix, { plan: full.fix.label, more: mb(full.fix.mb) })}</span>
+                  <a className="button small" href={full.fix.href}>{format(t.getMore, { plan: full.fix.label })}</a>
+                </span>
+              ) : (
+                <span>{t.space.cleanUp}</span>
+              )}
+            </>
+          )}
+        </div>
+      )}
       {error && <p className="error">{errorText(t, files, error)}</p>}
-      <button type="submit" disabled={!!progress || !file}>
+      <button type="submit" disabled={!!progress || !file || !!full}>
         <Upload size={16} aria-hidden /> {t.upload}
       </button>
     </form>

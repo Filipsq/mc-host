@@ -7,7 +7,7 @@ import { format } from "@/i18n/messages";
 import { getOwnedServer } from "@/lib/servers";
 import { addonOptions, planOptions } from "@/lib/planOptions";
 import { serverAddons } from "@/lib/addons";
-import { formatPrice } from "@/lib/plans";
+import { formatPrice, plans } from "@/lib/plans";
 import { priceFor } from "@/lib/billing";
 import { canUpgrade } from "@/lib/upgrade";
 import { RENEW_BEFORE_MS } from "@/lib/renewal";
@@ -18,10 +18,10 @@ import AutoRenewButton from "./AutoRenewButton";
 
 const HOUR = 60 * 60 * 1000;
 
-export default async function BillingPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function BillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ plan?: string }> }) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const server = await getOwnedServer(id, session.user.id);
   if (!server) notFound();
 
@@ -112,7 +112,8 @@ export default async function BillingPage({ params }: { params: Promise<{ id: st
       <CheckoutForm
         serverId={server.id}
         plans={planOptions(t, currency, (p) => p !== "FREE")}
-        defaultPlan={server.plan === "FREE" ? "STARTER" : server.plan}
+        // ?plan= comes from a "needs more space" link, e.g. on the Worlds page.
+        defaultPlan={plans.find((p) => p.id !== "FREE" && p.id === query.plan)?.id ?? (server.plan === "FREE" ? "STARTER" : server.plan)}
         note={activePaid ? `${b.extendNote} ${b.credit}` : undefined}
         t={b}
         labels={{ plan: b.choosePlan, period: t.server.period }}
