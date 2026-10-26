@@ -169,6 +169,10 @@ const en: Messages = {
         a: "Yes, on Java without mods. Turn on non-premium when creating the server or in Settings. Every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
       },
       {
+        q: "Are servers protected against DDoS attacks?",
+        a: "Yes, on every plan, including the free one, at no extra cost. Our machines run in Hetzner and netcup data centres in Europe, which detect DDoS attacks and filter them at the network level before they reach the server. No protection stops every attack, but most common attacks are cut off within seconds.",
+      },
+      {
         q: "How do invites work?",
         a: "You'll find your link under Invite in the panel. When a friend signs up through it and pays for a server for at least {min} days, they get {days} days free on that server, and you get {days} days for a paid server of your choice.",
       },
@@ -201,6 +205,7 @@ const en: Messages = {
     noBackups: "No backups",
     backups: "Backups: last {n} kept",
     support: "24/7 admin support",
+    ddos: "DDoS protection included",
   },
   auth: {
     email: "Email",
