@@ -6,7 +6,8 @@ import { format } from "@/i18n/messages";
 import { crossplayAddress, getLiveDetailsOnce, joinAddress } from "@/lib/servers";
 import { allows, getServerAccess, type ServerNeed } from "@/lib/access";
 import { diskLimitMb, formatMb, hardDiskLimitMb } from "@/lib/disk";
-import { deletionDate } from "@/lib/billing";
+import { deletionDate, idleDeletionDate } from "@/lib/billing";
+import { starterWeekPrice } from "@/lib/planMail";
 import { planById } from "@/lib/plans";
 import { canUpgrade } from "@/lib/upgrade";
 import type { Difficulty, GameMode } from "@/lib/settings";
@@ -38,7 +39,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
   // Friends see what the owner let them use; the rest of the panel stays hidden.
   const can = (need: ServerNeed) => allows(access, need);
 
-  const [all, { locale }, { live, agent }] = await Promise.all([
+  const [all, { locale, currency }, { live, agent }] = await Promise.all([
     getMessages(),
     getPreferences(),
     getLiveDetailsOnce(server.id, server.status),
@@ -110,6 +111,19 @@ export default async function ServerPage({ params, searchParams }: Props) {
             date: deletionDate(server).toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Warsaw" }),
           })}
         </p>
+      )}
+      {server.plan === "FREE" && server.deletionWarnedAt && can("owner") && (
+        <div className="notice warn row">
+          <span>
+            {format(b.idleDelete, {
+              date: idleDeletionDate(server).toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Warsaw" }),
+              starter: starterWeekPrice(currency, locale),
+            })}
+          </span>
+          <Link className="button" href={`/dashboard/servers/${server.id}/billing`}>
+            <ArrowUpCircle size={16} aria-hidden /> {b.keepServer}
+          </Link>
+        </div>
       )}
       {live === "diskFull" && diskVars && <p className="notice warn">{format(t.diskStopped, diskVars)}</p>}
       {live !== "diskFull" && diskVars && (diskUsed ?? 0) > diskLimit && <p className="notice warn">{format(t.diskOver, diskVars)}</p>}

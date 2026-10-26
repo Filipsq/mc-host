@@ -1,10 +1,12 @@
 import "server-only";
 import type { Server, User } from "@prisma/client";
 import { messages, format } from "@/i18n/messages";
-import { defaultLocale, isLocale } from "@/i18n/config";
+import { defaultLocale, isLocale, type Currency } from "@/i18n/config";
 import { BRAND_NAME } from "./brand";
 import { buttonMail, sendMail } from "./mail";
 import { sendPush } from "./push";
+import { formatPrice, planById } from "./plans";
+import { periodPrice } from "./periods";
 
 // Emails about a server's paid plan: when a payment arrives, a few days
 // before the paid period ends (plans don't renew by themselves), when the
@@ -43,8 +45,10 @@ export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, 
     days: KEEP_DAYS,
     idleDays: FREE_IDLE_DAYS - WARN_BEFORE_IDLE_DELETE_DAYS,
     deleteOn: deleteOn ? when(deleteOn) : "",
+    // A free server about to go is offered the cheapest way to keep it: a week of Starter.
+    starter: starterWeekPrice(locale === "pl" ? "PLN" : "EUR", locale),
   };
-  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" || kind === "inactive" ? "" : "/billing"}`;
+  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" ? "" : "/billing"}`;
   const mail = buttonMail({
     to: server.owner.email,
     subject: format(t.subject, vars),
@@ -65,4 +69,9 @@ export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, 
     console.error(`[mail] ${kind} email for server ${server.id} failed:`, err);
     return false;
   }
+}
+
+/** What a week of Starter costs, written out, e.g. "4,50 zł". */
+export function starterWeekPrice(currency: Currency, locale: string) {
+  return formatPrice(periodPrice(planById("STARTER").price[currency], 7), currency, locale);
 }
