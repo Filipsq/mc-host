@@ -23,7 +23,7 @@ export default async function AdminUser({ params }: Props) {
       servers: { orderBy: { createdAt: "desc" }, include: { owner: { select: { id: true, email: true } } } },
       payments: {
         orderBy: { createdAt: "desc" },
-        include: { user: { select: { id: true, email: true } }, server: { select: { id: true, name: true } } },
+        include: { user: { select: { id: true, email: true } }, server: { select: { id: true, name: true } }, gift: { select: { code: true } } },
       },
     },
   });

@@ -18,6 +18,7 @@ import { getSession } from "@/lib/session";
 import { linkInvites } from "@/lib/access";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 import { PUSH_COOKIE } from "@/lib/pushEndpoint";
+import { GIFT_COOKIE } from "@/lib/giftCookie";
 import { LOGIN_PER_EMAIL, RESETS_PER_IP, SIGNUPS_PER_IP, clientIp, hit, isLimited, loginLimited } from "@/lib/rateLimit";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
@@ -26,9 +27,12 @@ export type AuthErrorCode = keyof Messages["auth"]["errors"];
 export type FormState = { error?: AuthErrorCode; email?: string; sent?: boolean };
 
 /** Where to land after signing in: the create page, asking the AI about a home page description, or the dashboard. */
-function afterSignIn(form: FormData) {
+async function afterSignIn(form: FormData) {
   const opis = String(form.get("opis") ?? "").trim().slice(0, 500);
-  return opis ? `/dashboard/new?opis=${encodeURIComponent(opis)}` : "/dashboard";
+  if (opis) return `/dashboard/new?opis=${encodeURIComponent(opis)}`;
+  // Opened a gift code before signing in: back to it.
+  const gift = (await cookies()).get(GIFT_COOKIE)?.value;
+  return gift ? `/prezent/odbierz?kod=${encodeURIComponent(gift)}` : "/dashboard";
 }
 
 export async function signUp(_: FormState, form: FormData): Promise<FormState> {
@@ -66,13 +70,13 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
   // Servers friends shared with this address before it had an account.
   await linkInvites(user.id, email);
 
-  await signIn("credentials", { email, password, redirectTo: afterSignIn(form) });
+  await signIn("credentials", { email, password, redirectTo: await afterSignIn(form) });
   return {};
 }
 
 /** "Sign in with Google" on both log-in and sign-up: the account is found, linked or made on the way back. */
 export async function googleSignIn(form: FormData) {
-  await signIn("google", { redirectTo: afterSignIn(form) });
+  await signIn("google", { redirectTo: await afterSignIn(form) });
 }
 
 export async function logIn(_: FormState, form: FormData): Promise<FormState> {
@@ -84,7 +88,7 @@ export async function logIn(_: FormState, form: FormData): Promise<FormState> {
     await signIn("credentials", {
       email: form.get("email"),
       password: form.get("password"),
-      redirectTo: afterSignIn(form),
+      redirectTo: await afterSignIn(form),
     });
   } catch (err) {
     // signIn throws a redirect on success; only swallow real auth failures.

@@ -24,7 +24,7 @@ export default async function AdminPayments({ searchParams }: Props) {
       where: Object.hasOwn(PaymentStatus, status) ? { status: status as PaymentStatus } : {},
       orderBy: { createdAt: "desc" },
       take: SHOWN + 1,
-      include: { user: { select: { id: true, email: true } }, server: { select: { id: true, name: true } } },
+      include: { user: { select: { id: true, email: true } }, server: { select: { id: true, name: true } }, gift: { select: { code: true } } },
     }),
     db.payment.count({ where: TEST_PAYMENTS }),
     untoldCustomers(),

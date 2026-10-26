@@ -8,7 +8,8 @@ import { DeletePaymentButton } from "./PaymentActions";
 import SortableTable from "./SortableTable";
 import { sortable } from "./sortable";
 
-export type PaymentRow = Payment & { user: { id: string; email: string }; server: { id: string; name: string } | null };
+// gift: the gift code this payment bought (gifts.ts), when it has no server for that reason.
+export type PaymentRow = Payment & { user: { id: string; email: string }; server: { id: string; name: string } | null; gift?: { code: string } | null };
 
 type Props = { rows: PaymentRow[]; all: Messages; f: Formats; showUser?: boolean; showServer?: boolean };
 
@@ -38,7 +39,14 @@ export default function PaymentTable({ rows, all, f, showUser = true, showServer
         value: (p) => p.server?.name ?? null,
         cell: (p) => (
           <td>
-            {p.server ? <Link href={`/admin/servers/${p.server.id}`}>{p.server.name}</Link> : <span className="muted">{t.deletedServer}</span>}
+            {p.server ? (
+              <Link href={`/admin/servers/${p.server.id}`}>{p.server.name}</Link>
+            ) : p.gift ? (
+              <span className="muted">{format(t.giftPayment, { code: p.gift.code })}</span>
+            ) : (
+              <span className="muted">{t.deletedServer}</span>
+            )}
+            {p.redeemedGiftId && <span className="muted small"> {t.paidWithGift}</span>}
           </td>
         ),
       },

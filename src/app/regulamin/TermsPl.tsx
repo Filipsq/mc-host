@@ -147,6 +147,13 @@ export default function TermsPl({ site }: { site: string }) {
           Gdy w danej chwili brakuje zasobów, wybrany Plan może być chwilowo niedostępny do zakupu. Nie dotyczy to
           przedłużenia Planu, który Użytkownik już ma.
         </li>
+        <li>
+          Płatny Plan można też kupić jako kod prezentowy na stronie <Link href="/prezent">Prezent</Link>. Kod daje
+          wybrany Plan na wybrany Okres, działa przez 365 dni od zapłaty i można go użyć raz: przy zakładaniu nowego
+          Serwera albo dla Serwera, który Użytkownik już ma (darmowy Serwer przechodzi wtedy na ten Plan, a przy
+          płatnym Serwerze dni przelicza się jak przy zmianie Planu). Kodu nie można wymienić na pieniądze. Prawo
+          odstąpienia od umowy (§8) ma kupujący; gdy kod został już wykorzystany, stosuje się §8 ust. 2.
+        </li>
       </ol>
 
       <h2>§6. Serwery i kopie zapasowe</h2>

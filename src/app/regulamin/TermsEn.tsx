@@ -139,6 +139,13 @@ export default function TermsEn({ site }: { site: string }) {
           When resources run short, a Plan may be temporarily unavailable to buy. This does not apply to extending a
           Plan you already have.
         </li>
+        <li>
+          A paid Plan can also be bought as a gift code on the <Link href="/prezent">Gift</Link> page. The code gives
+          the chosen Plan for the chosen Period, works for 365 days after payment and can be used once: when creating
+          a new Server, or for a Server you already have (a free Server then moves to that Plan; on a paid Server the
+          days are converted as when changing Plans). The code cannot be exchanged for money. The buyer has the right
+          of withdrawal (§8); once the code has been used, §8(2) applies.
+        </li>
       </ol>
 
       <h2>§6. Servers and backups</h2>
