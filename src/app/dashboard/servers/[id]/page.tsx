@@ -25,14 +25,14 @@ import TestPaymentNotice from "@/components/TestPaymentNotice";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment?: string; settings?: string; type?: string; dropped?: string }>;
+  searchParams: Promise<{ payment?: string; settings?: string; type?: string; dropped?: string; prezent?: string }>;
 };
 
 export default async function ServerPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [{ id }, { payment, settings, type: typeChanged, dropped }] = await Promise.all([params, searchParams]);
+  const [{ id }, { payment, settings, type: typeChanged, dropped, prezent }] = await Promise.all([params, searchParams]);
   const access = await getServerAccess(id, session.user.id);
   if (!access) notFound();
   const { server } = access;
@@ -97,6 +97,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
   return (
     <div className="stack">
       {payment === "success" && <p className="notice success">{b.success}</p>}
+      {prezent === "ok" && server.plan !== "FREE" && <p className="notice success">{format(all.gifts.redeemed, { plan: all.plans[server.plan] })}</p>}
       {payment !== "success" && <TestPaymentNotice userId={session.user.id} all={all} locale={locale} serverId={server.id} />}
       {settings === "saved" && <p className="notice success">{all.settings.saved}</p>}
       {settings === "saved" && dropped && <p className="notice warn">{format(all.mods.droppedOnVersion, { list: dropped.slice(0, 300) })}</p>}

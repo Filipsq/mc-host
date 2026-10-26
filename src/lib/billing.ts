@@ -22,6 +22,7 @@ import { sendComebackReminders } from "./comeback";
 import { renewDueServers } from "./renewal";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type CreatorReward } from "./creator";
+import { fulfillGiftPurchase } from "./gifts";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
@@ -124,6 +125,8 @@ export async function stripeCustomer(user: Pick<User, "id" | "email">) {
  * makes the game host match. Safe to call more than once for the same payment.
  */
 export async function fulfillPayment(paymentId: string) {
+  // A gift code bought for someone (gifts.ts): no server to change yet.
+  if (await fulfillGiftPurchase(paymentId)) return;
   const now = new Date();
   let inviter: Inviter | null = null;
   let creator: CreatorReward | null = null;

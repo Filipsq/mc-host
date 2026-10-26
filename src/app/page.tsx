@@ -302,6 +302,21 @@ export default async function Home() {
         </div>
       </section>
 
+      <section className="section invite-section" id="prezent">
+        <div className="container">
+          <div className="invite-band">
+            <span className="invite-band-icon"><Gift size={30} aria-hidden /></span>
+            <div>
+              <h2>{t.gifts.homeTitle}</h2>
+              <p className="muted">{t.gifts.homeText}</p>
+            </div>
+            <Link className="button large" href="/prezent">
+              {t.gifts.homeButton}
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="section" id="faq">
         <div className="container narrow-container">
           <header className="section-head">

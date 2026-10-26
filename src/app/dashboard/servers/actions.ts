@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -29,6 +30,8 @@ import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
 import { FREE_STARTER_DAYS, checkCreatorCode, giveBackFreeStarter, takeFreeStarter } from "@/lib/creator";
+import { redeemGift, usableGift } from "@/lib/gifts";
+import { GIFT_COOKIE } from "@/lib/giftCookie";
 import {
   DIFFICULTIES,
   GAME_MODES,
@@ -58,6 +61,9 @@ export type ServerErrorCode = keyof Messages["server"]["errors"];
 export type CreateServerState = { error?: ServerErrorCode; values?: Record<string, string> };
 
 const DAY = 24 * 60 * 60 * 1000;
+
+// What redeeming a gift on a new server can fail with that the form explains.
+const GIFT_FORM_ERRORS = { giftInvalid: 1, giftUsed: 1, giftExpired: 1, giftUnpaid: 1, soldOut: 1 } as const;
 
 const planField = z.enum(["FREE", "STARTER", "STANDARD", "PRO"]);
 const daysField = z.coerce
@@ -173,9 +179,16 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     return { error: "freeLimit", values };
   }
   // A free Starter earned with the creator code: paid for FREE_STARTER_DAYS already, without add-ons.
-  const freeStarter = !adminTest && form.get("freeStarter") === "on";
+  // A gift code (gifts.ts): the gift's plan, paid for with it once the server exists.
+  const giftCode = adminTest ? "" : String(form.get("giftCode") ?? "").trim();
+  if (giftCode) {
+    const found = await usableGift(giftCode);
+    if ("error" in found) return { error: found.error, values };
+    if (found.gift.plan !== plan) return { error: "giftPlan", values };
+  }
+  const freeStarter = !adminTest && !giftCode && form.get("freeStarter") === "on";
   if (freeStarter && plan !== "STARTER") return { error: "freeStarterPlan", values };
-  const paying = plan !== "FREE" && !adminTest && !freeStarter;
+  const paying = plan !== "FREE" && !adminTest && !freeStarter && !giftCode;
   if (paying && form.get("startNow") !== "on") return { error: "consentRequired", values };
   // Someone's creator code: a tenth off this first payment, and the server counts for them.
   const code = paying ? String(form.get("creatorCode") ?? "").trim() : "";
@@ -245,8 +258,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...("version" in game && { version: game.version }),
     ...(modVersion && { version: modVersion }),
     ...(pack && { version: pack.gameVersion, ...packFields(pack) }),
-    // Paid servers are only created on the game host once Stripe confirms payment.
-    status: paying ? "AWAITING_PAYMENT" : "PROVISIONING",
+    // Paid servers are only created on the game host once Stripe confirms payment (or the gift code pays).
+    status: paying || giftCode ? "AWAITING_PAYMENT" : "PROVISIONING",
     ...(adminTest && { adminTest, addons, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
     ...(freeStarter && { paidUntil: new Date(Date.now() + FREE_STARTER_DAYS * DAY) }),
     ...(creator && { creatorId: creator.creatorId }),
@@ -260,6 +273,25 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   }
   // On another machine, Java players reach it through the main machine's router.
   if (server.node !== MAIN_NODE) await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
+
+  if (giftCode) {
+    // Room was found above; the code pays as a payment would, which starts the server.
+    let error: string | undefined;
+    try {
+      error = (await redeemGift(giftCode, user.id, server, { checkRoom: false })).error;
+    } catch {
+      error = "agentUnavailable";
+    }
+    if (error) {
+      const applied = await db.server.count({ where: { id: server.id, status: { not: "AWAITING_PAYMENT" } } });
+      if (!applied) {
+        await db.server.delete({ where: { id: server.id } });
+        return { error: (error in GIFT_FORM_ERRORS ? error : "agentUnavailable") as ServerErrorCode, values };
+      }
+    }
+    (await cookies()).delete(GIFT_COOKIE);
+    redirect(`/dashboard/servers/${server.id}?prezent=ok`);
+  }
 
   if (paying) {
     let url: string;

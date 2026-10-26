@@ -47,6 +47,8 @@ type Props = {
   admin: boolean; // admins also get a button to make a test server without paying
   // The creator code to start with (whoever invited the user) and free Starters they earned with their own (creator.ts).
   creator: { t: Messages["creator"]; code: string; freeStarters: number; discount: number; days: number };
+  // A gift code opened on the redeem page (gifts.ts): its plan is paid for with it.
+  gift?: { code: string; plan: Plan; label: string; hint: string };
   /** Set when the AI creator is on. */
   ai?: {
     t: Messages["ai"];
@@ -75,7 +77,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPacks, cfPicked, curseforge, admin, creator, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -100,6 +102,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const [addons, setAddons] = useState<AddonId[]>(addonList(v.addons?.split(",")));
   const [creatorCode, setCreatorCode] = useState(v.creatorCode ?? creator.code);
   const [freeStarter, setFreeStarter] = useState(v.freeStarter === "on" || (v.name === undefined && creator.freeStarters > 0));
+  const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
 
   function applySuggestion(s: Suggestion) {
     setEdition(s.edition);
@@ -158,8 +161,10 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const wanted = edition === "JAVA" && !modded ? gameById(game).ramGb : 0;
   const ramLow = wanted > planById(plan).ramGb;
   // A free Starter earned with the creator code needs no payment.
-  const rewarded = plan === "STARTER" && creator.freeStarters > 0 && freeStarter;
-  const paying = plan !== "FREE" && !rewarded;
+  const giftPlan = !!gift && plan === gift.plan;
+  const gifted = giftPlan && useGift;
+  const rewarded = !gifted && plan === "STARTER" && creator.freeStarters > 0 && freeStarter;
+  const paying = plan !== "FREE" && !rewarded && !gifted;
   const c = creator.t;
 
   return (
@@ -367,7 +372,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         labels={{ plan: t.plan, period: t.period, total: billing.total }}
         formatMoney={money}
         onPlanChange={setPlan}
-        addons={{
+        // A gift pays for the plan alone; add-ons can be bought later in the panel.
+        addons={gifted ? undefined : {
           // The own domain is for Java addresses only.
           options: addonOptions.filter((o) => o.id !== "domain" || edition === "JAVA"),
           initial: addons.filter((a) => a !== "domain" || edition === "JAVA"),
@@ -388,7 +394,16 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           </Link>
         </p>
       )}
-      {plan === "STARTER" && creator.freeStarters > 0 && (
+      {gift && giftPlan && (
+        <label className="check creator-reward">
+          <input type="checkbox" name="giftCode" value={gift.code} checked={useGift} onChange={(e) => setUseGift(e.target.checked)} />
+          <span className="stack-tight">
+            <span>{gift.label}</span>
+            <span className="muted small">{gift.hint}</span>
+          </span>
+        </label>
+      )}
+      {!gifted && plan === "STARTER" && creator.freeStarters > 0 && (
         <label className="check creator-reward">
           <input type="checkbox" name="freeStarter" checked={freeStarter} onChange={(e) => setFreeStarter(e.target.checked)} />
           <span className="stack-tight">

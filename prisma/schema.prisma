@@ -55,6 +55,9 @@ model User {
   comebackOff        Boolean            @default(false)
   // Their Stripe customer, made when they first save a card for automatic renewal.
   stripeCustomerId   String?            @unique
+  // Gift codes (src/lib/gifts.ts) the user bought, and the ones they used.
+  giftsBought        GiftCode[]         @relation("GiftsBought")
+  giftsRedeemed      GiftCode[]         @relation("GiftsRedeemed")
 
   @@index([referredById])
 }
@@ -119,14 +122,14 @@ model SupportChat {
 }
 
 model SupportMessage {
-  id        String      @id @default(cuid())
+  id        String        @id @default(cuid())
   chatId    String
-  chat      SupportChat @relation(fields: [chatId], references: [userId], onDelete: Cascade)
+  chat      SupportChat   @relation(fields: [chatId], references: [userId], onDelete: Cascade)
   // Written by an admin (authorId) rather than by the chat's user.
-  fromStaff Boolean     @default(false)
+  fromStaff Boolean       @default(false)
   authorId  String?
   body      String
-  createdAt DateTime    @default(now())
+  createdAt DateTime      @default(now())
   // Set when an admin deleted the message: its text and picture are gone and
   // the open chats drop it on their next poll.
   deletedAt DateTime?
@@ -309,35 +312,64 @@ enum PaymentStatus {
 
 // One Stripe Checkout payment buying `days` of `plan` for a server.
 model Payment {
-  id              String        @id @default(cuid())
-  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId          String
-  server          Server?       @relation(fields: [serverId], references: [id], onDelete: SetNull)
-  serverId        String?
-  plan            Plan
-  days            Int
-  amount          Int // in the currency's minor unit (grosze, cents)
-  currency        String
-  status          PaymentStatus @default(PENDING)
-  stripeSessionId String?       @unique
+  id                    String        @id @default(cuid())
+  user                  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                String
+  server                Server?       @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  serverId              String?
+  plan                  Plan
+  days                  Int
+  amount                Int // in the currency's minor unit (grosze, cents)
+  currency              String
+  status                PaymentStatus @default(PENDING)
+  stripeSessionId       String?       @unique
   // The buyer asked for the server to start before the 14-day withdrawal period ends.
-  startConsent    Boolean       @default(false)
+  startConsent          Boolean       @default(false)
   // An upgrade from this plan for the time already paid (src/lib/upgrade.ts): days is 0.
-  upgradeFrom     Plan?
+  upgradeFrom           Plan?
   // The buyer asked to save the card and renew automatically.
-  autoRenew       Boolean       @default(false)
+  autoRenew             Boolean       @default(false)
   // Charged automatically with the saved card, without Checkout.
-  renewal         Boolean       @default(false)
-  stripePaymentIntentId String? @unique
+  renewal               Boolean       @default(false)
+  stripePaymentIntentId String?       @unique
   // The add-ons the server has once this is paid (all of them, not only new ones).
-  addons          String[]      @default([])
+  addons                String[]      @default([])
   // Only add-ons bought for the time left of the period (addonCost in addons.ts): days is 0.
-  addonsOnly      Boolean       @default(false)
+  addonsOnly            Boolean       @default(false)
   // Bought with this user's creator code, so CREATOR_DISCOUNT percent cheaper (src/lib/creator.ts).
-  creatorId       String?
-  createdAt       DateTime      @default(now())
-  paidAt          DateTime?
+  creatorId             String?
+  // Buys this gift code (serverId is null then).
+  gift                  GiftCode?     @relation("GiftPurchase")
+  // Paid for with a gift code instead of money (amount is 0).
+  redeemedGiftId        String?
+  createdAt             DateTime      @default(now())
+  paidAt                DateTime?
 
   @@index([userId])
   @@index([serverId])
+}
+
+// A paid plan bought as a present (src/lib/gifts.ts): the buyer pays, gets the
+// code by email, and whoever they give it to adds it to one of their servers
+// or makes a new one with it, without paying.
+model GiftCode {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  buyer        User      @relation("GiftsBought", fields: [buyerId], references: [id], onDelete: Cascade)
+  buyerId      String
+  plan         Plan
+  days         Int
+  payment      Payment?  @relation("GiftPurchase", fields: [paymentId], references: [id], onDelete: SetNull)
+  paymentId    String?   @unique
+  // Set once the payment goes through; only then does the code work, until expiresAt.
+  paidAt       DateTime?
+  expiresAt    DateTime?
+  redeemedAt   DateTime?
+  redeemedBy   User?     @relation("GiftsRedeemed", fields: [redeemedById], references: [id], onDelete: SetNull)
+  redeemedById String?
+  serverId     String?
+  createdAt    DateTime  @default(now())
+
+  @@index([buyerId])
+  @@index([redeemedById])
 }
