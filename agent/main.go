@@ -64,16 +64,16 @@ func imageFor(edition, version, kind string) string {
 	return images["JAVA"]
 }
 
-// What a Java server runs: plain Paper, a BentoBox game mode, classic Skyblock (skymap.go), a Modrinth mod
-// pack, or a mod loader with the mods its owner picked.
+// What a Java server runs: plain Paper, a BentoBox game mode, classic Skyblock (skymap.go), Halloween
+// Survival (halloween.go), a Modrinth mod pack, or a mod loader with the mods its owner picked.
 var (
-	kinds = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "oneblock": true, "modpack": true, "fabric": true, "forge": true, "neoforge": true}
+	kinds = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "halloween": true, "oneblock": true, "modpack": true, "fabric": true, "forge": true, "neoforge": true}
 	// The image's TYPE for each mod loader.
 	loaderTypes = map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"}
 	// The plugins (from Modrinth) each game mode needs on Paper.
 	gameModePlugins = map[string]string{"skyblock": "bentobox,bskyblock", "oneblock": "bentobox,aoneblock"}
 	// Kinds that run on Paper, so they take plugins (AuthMe among them, for non-premium).
-	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "oneblock": true}
+	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "halloween": true, "oneblock": true}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
 	validCurseFile  = regexp.MustCompile(`^[0-9]{1,12}$`)         // CurseForge file ID
@@ -446,7 +446,7 @@ func (req *createRequest) validate() error {
 	}
 	switch {
 	case !kinds[req.Kind] || (req.Kind != "vanilla" && req.Edition != "JAVA"):
-		return errors.New("kind must be vanilla, skyblock, skymap, oneblock, modpack, fabric, forge or neoforge (Java only)")
+		return errors.New("kind must be vanilla, skyblock, skymap, halloween, oneblock, modpack, fabric, forge or neoforge (Java only)")
 	case req.Kind == "modpack" && req.ModpackSource == "curseforge" && (!validModpack.MatchString(req.Modpack) || !validCurseFile.MatchString(req.ModpackVersion)):
 		return errors.New("a CurseForge modpack server needs the pack's slug and a file ID as modpackVersion")
 	case req.Kind == "modpack" && req.ModpackSource != "curseforge" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
@@ -745,6 +745,10 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			// Classic Skyblock: an empty world, where the agent builds the islands (skymap.go).
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version, "LEVEL_TYPE=flat", "GENERATOR_SETTINGS="+skyMapGenerator)
 			labels["mchost.skymap"] = "true"
+		case "halloween":
+			// An ordinary world, where the agent builds a Halloween square at spawn (halloween.go).
+			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
+			labels["mchost.halloween"] = "true"
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
 			if req.ModpackSource == "curseforge" {

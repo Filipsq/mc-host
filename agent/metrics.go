@@ -50,10 +50,12 @@ type serverMetrics struct {
 	online     map[string]bool
 	rcon       *rconConn // Java: kept open between samples; only the sampler uses it
 	// Java: /list was taken over by a plugin, so the sampler asks minecraft:list.
-	namespacedList bool
-	pregen         string // mod packs: "running" or "paused" as last told to Chunky, "" since the start
-	skyMap         bool   // classic Skyblock: the islands are there (or the world wasn't empty); see skymap.go
-	skyMapBuilding bool   // classic Skyblock: the world was found empty, so the islands go in
+	namespacedList    bool
+	pregen            string // mod packs: "running" or "paused" as last told to Chunky, "" since the start
+	skyMap            bool   // classic Skyblock: the islands are there (or the world wasn't empty); see skymap.go
+	skyMapBuilding    bool   // classic Skyblock: the world was found empty, so the islands go in
+	halloween         bool   // Halloween Survival: the square is there (or the world wasn't new); see halloween.go
+	halloweenBuilding bool   // Halloween Survival: the world was found new, so the square goes in
 }
 
 func (m *serverMetrics) listCmd() string {
@@ -223,6 +225,9 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 			}
 			if ok && info.Config.Labels["mchost.skymap"] == "true" {
 				a.skyMap(ctx, name, info.Config.Labels["mchost.level"], m, run)
+			}
+			if ok && info.Config.Labels["mchost.halloween"] == "true" {
+				a.halloween(ctx, name, info.Config.Labels["mchost.level"], m, run, len(players))
 			}
 		}
 	}

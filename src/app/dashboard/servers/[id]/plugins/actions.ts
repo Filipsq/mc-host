@@ -98,7 +98,7 @@ async function addSitePlugin(server: Server & { type: string }, entry: string): 
   // The files are on a game machine only while the server is paid for and set up.
   if (!["RUNNING", "STOPPED", "SLEEPING"].includes(server.status) || !canChangeFiles(server)) return { error: "siteNotOnHost" };
   // Game modes run the newest version.
-  const mc = server.kind === "vanilla" && server.version !== "LATEST" ? server.version : undefined;
+  const mc = (server.kind === "vanilla" || server.kind === "halloween") && server.version !== "LATEST" ? server.version : undefined;
   const got = await downloadSitePlugin(entry, mc);
   if ("error" in got) return { error: got.error, name: got.name };
   try {

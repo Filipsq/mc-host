@@ -40,6 +40,8 @@ export function versionsFor(kind: string): string[] {
   if (kind === "vanilla") return JAVA_VERSIONS;
   // Its empty world is set up the way Minecraft 1.18.2 and newer read it.
   if (kind === "skymap") return JAVA_VERSIONS.filter((v) => v !== "1.17.1");
+  // The agent builds its square with commands Minecraft has had since 1.19.4.
+  if (kind === "halloween") return JAVA_VERSIONS.filter((v) => v !== "1.17.1" && v !== "1.18.2");
   return isModLoader(kind) ? LOADER_VERSIONS[kind] : [];
 }
 

@@ -60,9 +60,9 @@ export const GAME_MODE_PLUGINS: Record<string, { slug: string; title: string }[]
   ],
 };
 
-/** Plugins run on Paper: plain Java servers, classic Skyblock and the island game modes. */
+/** Plugins run on Paper: plain Java servers, classic Skyblock, Halloween Survival and the island game modes. */
 export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) =>
-  s.edition === "JAVA" && ["vanilla", "skymap", "skyblock", "oneblock"].includes(s.kind);
+  s.edition === "JAVA" && ["vanilla", "skymap", "halloween", "skyblock", "oneblock"].includes(s.kind);
 
 /**
  * Non-premium needs a login addon, so nobody plays under someone else's name:

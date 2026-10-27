@@ -10,6 +10,7 @@ import { curseforgeEnabled, curseforgePackOptions, resolveCurseforgePack } from 
 import { curseforgePackValue } from "./ModFields";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
 import { isGameId } from "@/lib/games";
+import { halloweenOn } from "@/lib/halloween";
 import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
 import { isAdmin } from "@/lib/admin";
 import { CREATOR_DISCOUNT, FREE_STARTER_DAYS, suggestedCreatorCode } from "@/lib/creator";
@@ -77,6 +78,7 @@ export default async function NewServerPage({ searchParams }: Props) {
         plans={plans}
         defaultPlan={defaultPlan}
         initialGame={initialGame}
+        halloween={halloweenOn()}
         initialPack={cfPack ? curseforgePackValue(cfPack.slug) : chosen?.slug}
         cfPacks={cfPacks}
         cfPicked={!!cfPack}

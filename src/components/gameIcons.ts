@@ -1,4 +1,4 @@
-import { Box, Cloud, Heart, Pickaxe, Puzzle, Shield, TreePine, Wrench } from "lucide-react";
+import { Box, Cloud, Ghost, Heart, Pickaxe, Puzzle, Shield, TreePine, Wrench } from "lucide-react";
 import type { GameId } from "@/lib/games";
 
 /** The icon shown with each ready game. */
@@ -7,6 +7,7 @@ export const GAME_ICONS = {
   "survival-plus": Shield,
   lifesteal: Heart,
   skymap: TreePine,
+  halloween: Ghost,
   skyblock: Cloud,
   oneblock: Box,
   modpack: Puzzle,

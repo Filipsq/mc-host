@@ -118,7 +118,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
 
   const query = q.trim().slice(0, 100);
   // Servers on a chosen version only see what's made for it; game modes run the newest version.
-  const mc = (server.kind === "vanilla" || type === "mod") && server.version !== "LATEST" ? server.version : undefined;
+  const mc = (server.kind === "vanilla" || server.kind === "halloween" || type === "mod") && server.version !== "LATEST" ? server.version : undefined;
   // Mod servers can also take mods from CurseForge, when it's set up.
   const cfOffered = type === "mod" && curseforgeEnabled();
   const fromCf = cfOffered && src === "cf";

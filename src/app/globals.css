@@ -1378,6 +1378,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .game-art-lifesteal { --glow: rgb(229 72 77 / 0.26); }
 .game-art-skyblock { --glow: rgb(96 165 250 / 0.28); background: radial-gradient(110% 80% at 50% 110%, var(--glow), transparent 70%), linear-gradient(#16243a, var(--surface-2)); }
 .game-art-skymap { --glow: rgb(226 208 130 / 0.26); background: radial-gradient(110% 80% at 50% 110%, var(--glow), transparent 70%), linear-gradient(#16243a, var(--surface-2)); }
+.game-art-halloween { --glow: rgb(255 138 31 / 0.34); background: radial-gradient(110% 80% at 50% 110%, var(--glow), transparent 70%), linear-gradient(#24143a, var(--surface-2)); }
 .game-art-oneblock { --glow: rgb(77 208 225 / 0.2); }
 .game-art-modpack { --glow: rgb(217 164 65 / 0.24); }
 .game-art-mods { --glow: rgb(148 163 184 / 0.2); }
@@ -1397,6 +1398,14 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .plugin-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .plugin-chips li { padding: 1px 8px; border-radius: 6px; font-size: 0.72rem; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); }
 .game-card .ram-pill { margin-top: auto; }
+
+/* Halloween ready games, inside the Halloween band (src/components/HalloweenGames.tsx). */
+.hw-game-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 0; padding: 0; list-style: none; }
+.hw-game { border-color: color-mix(in srgb, var(--hw-orange, #ff8a1f) 45%, transparent); }
+.hw-game .button { align-self: flex-start; margin-top: 6px; }
+.hw-pack-art { width: 100%; height: 140px; margin-bottom: 6px; border-radius: 10px; object-fit: cover; }
+.hw-games .subsection-title svg { color: var(--hw-orange, #ff8a1f); }
+@media (max-width: 640px) { .hw-game-grid { grid-template-columns: 1fr; gap: 12px; } }
 
 @media (max-width: 960px) { .game-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 760px) { .game-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; } }

@@ -38,6 +38,6 @@ export function kindLabel(server: Pick<Server, "kind" | "version" | "modpack" | 
   if (isModLoader(server.kind)) return `${LOADER_NAMES[server.kind]} · ${version}`;
   if (server.kind === "modpack") return `${t.server.kinds.modpack}: ${server.modpackTitle ?? server.modpack ?? ""}`;
   if (server.kind === "skyblock" || server.kind === "oneblock") return t.server.kinds[server.kind];
-  if (server.kind === "skymap") return `${t.server.kinds.skymap} · ${version}`;
+  if (server.kind === "skymap" || server.kind === "halloween") return `${t.server.kinds[server.kind]} · ${version}`;
   return `${t.server.kinds.vanilla} · ${version}`;
 }

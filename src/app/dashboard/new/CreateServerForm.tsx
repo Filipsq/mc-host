@@ -11,7 +11,7 @@ import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
 import { MOD_DEFAULT_VERSION } from "@/lib/settings";
-import { GAMES, gameById, gamePluginTitles, isGameId, type GameId } from "@/lib/games";
+import { gameById, gamePluginTitles, isGameId, offeredGames, type GameId } from "@/lib/games";
 import { planById } from "@/lib/plans";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { EDITION_NAMES } from "@/lib/editions";
@@ -39,6 +39,7 @@ type Props = {
   domain: string;
   money: { locale: string; currency: string };
   initialGame?: GameId; // a game or pack picked on the home page or the empty panel
+  halloween: boolean; // Halloween on the site: its game is offered (src/lib/halloween.ts)
   initialPack?: string;
   packIcons: Record<string, string | undefined>;
   cfPacks: CurseforgeOption[]; // CurseForge packs offered: the one picked on the home page first, then the popular ones
@@ -77,7 +78,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, initialPack, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -298,7 +299,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         <fieldset className="stack">
           <legend>{t.game}</legend>
           <div className="plan-options">
-            {GAMES.map((g) => {
+            {offeredGames(halloween, initialGame).map((g) => {
               const extras = gamePluginTitles(g.id);
               return (
                 <label key={g.id} className="choice plan-choice">
