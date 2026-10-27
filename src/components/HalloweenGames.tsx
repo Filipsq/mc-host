@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Ghost, Skull } from "lucide-react";
+import { Ghost } from "lucide-react";
 import { auth } from "@/auth";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -52,12 +52,9 @@ export default async function HalloweenGames() {
         </li>
         {pack && (
           <li className="feature game-card hw-game">
-            {pack.picture || pack.icon ? (
-              // eslint-disable-next-line @next/next/no-img-element -- CurseForge's own image host
-              <img className="hw-pack-art" src={pack.picture ?? pack.icon} alt="" loading="lazy" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="game-art" aria-hidden><Skull size={64} /></div>
-            )}
+            {/* Our own picture: a haunted house at night with a spider and a creeper (the pack's own is plain). */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="hw-pack-art" src="/art/games/horror.svg" alt="" width={448} height={140} loading="lazy" />
             <h3>{pack.title.split(" - ")[0]}</h3>
             <p className="muted">{h.horrorText}</p>
             <ul className="plugin-chips">
