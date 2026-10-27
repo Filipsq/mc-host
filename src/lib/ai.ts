@@ -5,7 +5,8 @@ import { z } from "zod";
 import type { Plan } from "@prisma/client";
 import { db } from "./db";
 import { messages } from "@/i18n/messages";
-import { GAMES, GAME_IDS, gameById, type GameId } from "./games";
+import { GAME_IDS, gameById, offeredGames, type GameId } from "./games";
+import { halloweenOn } from "./halloween";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, planAtLeast, planForRam } from "./modpacks";
 import { KNOWN_PLUGINS, supportsPlugins, type KnownPlugin } from "./plugins";
 import { plans } from "./plans";
@@ -88,7 +89,7 @@ export type Suggestion = {
 /** What the site offers, for the model. Built from the same lists the pages use, so it can't drift. */
 function catalog() {
   const en = messages.en;
-  const games = GAMES.map((g) => `- ${g.id}: ${en.server.gameHints[g.id]} Comfortable from ${g.ramGb} GB.`).join("\n");
+  const games = offeredGames(halloweenOn()).map((g) => `- ${g.id}: ${en.server.gameHints[g.id]} Comfortable from ${g.ramGb} GB.`).join("\n");
   const packs = CURATED_PACKS.map((p) => `- ${p.slug} (${p.title}): ${en.server.packs[p.slug]} Needs ${p.ramGb} GB, so at least the ${planForRam(p.ramGb)} plan.`).join("\n");
   const planLines = plans
     .map(

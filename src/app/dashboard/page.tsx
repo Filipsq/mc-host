@@ -10,7 +10,8 @@ import { addressLabel, getLiveState } from "@/lib/servers";
 import { sharedServers } from "@/lib/access";
 import EditionIcon from "@/components/EditionIcon";
 import { GAME_ICONS } from "@/components/gameIcons";
-import { GAMES } from "@/lib/games";
+import { offeredGames } from "@/lib/games";
+import { halloweenOn } from "@/lib/halloween";
 import { REFERRAL_DAYS } from "@/lib/referrals";
 import { pushPublicKey } from "@/lib/push";
 import AppInstall from "@/components/AppInstall";
@@ -69,7 +70,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <Link className="button large" href="/dashboard/new"><Plus size={18} aria-hidden /> {t.createServer}</Link>
           <p className="muted small">{t.emptyGames}</p>
           <ul className="empty-games">
-            {GAMES.map((g) => {
+            {offeredGames(halloweenOn()).map((g) => {
               const Icon = GAME_ICONS[g.id];
               return (
                 <li key={g.id}>

@@ -7,7 +7,8 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { formatPrice, planById, plans } from "@/lib/plans";
 import { periodPrice } from "@/lib/periods";
-import { GAMES, gamePluginTitles } from "@/lib/games";
+import { gamePluginTitles, offeredGames } from "@/lib/games";
+import { halloweenOn } from "@/lib/halloween";
 import { CURATED_PACKS } from "@/lib/modpacks";
 import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
 import RamCalculator from "@/components/RamCalculator";
@@ -17,6 +18,7 @@ import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
 import PauseOffscreen from "@/components/PauseOffscreen";
 import EditionIcon from "@/components/EditionIcon";
+import HalloweenGames from "@/components/HalloweenGames";
 import { FeatureArt, GameArt, StepArt } from "@/components/HomeArt";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
@@ -165,8 +167,10 @@ export default async function Home() {
             <h2 className="display">{h.gamesTitle}</h2>
             <p className="muted">{h.gamesSubtitle}</p>
           </header>
+          {/* Halloween ready games: move into the Halloween band once it's on the page. */}
+          <HalloweenGames />
           <ul className="game-grid">
-            {GAMES.map((g) => {
+            {offeredGames(halloweenOn()).map((g) => {
               const extras = gamePluginTitles(g.id);
               return (
                 <li key={g.id} className="feature game-card">
