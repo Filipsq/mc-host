@@ -14,12 +14,12 @@ import { GameArt } from "./HomeArt";
 // Halloween Survival (no mods, phones too) and horror mod packs for those who
 // want to be scared. Shown only while Halloween lasts.
 
-// Two horror tiles, each showing the first pack a server can run. DREAD, the
-// most played horror pack (Forge 1.19.2, picked by Fiq), on its own. The other
-// tries Horrorland 2 (NeoForge 1.21.1; live it has mods only CurseForge may
-// hand out), then Modrinth packs, which never hold such mods.
+// Two horror tiles, each showing the first pack a server can run. CurseForge's
+// DREAD (Forge 1.19.2, picked by Fiq) and Horrorland 2 (NeoForge 1.21.1) both
+// have mods only CurseForge may hand out (live, 27.10), so each falls back to
+// a Modrinth horror pack, which never holds such mods.
 const HORROR_TILES = [
-  { key: "dread", curseforge: ["dread-arrenek"], modrinth: [] },
+  { key: "dread", curseforge: ["dread-arrenek"], modrinth: ["spooky-scary"] },
   { key: "horror", curseforge: ["horrorland-2"], modrinth: ["gots-scary-pack", "spooky-scary"] },
 ] as const;
 // Modrinth doesn't say how much memory a pack needs; these run on Standard.
@@ -95,7 +95,7 @@ export default async function HalloweenGames() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className={`hw-pack-art hw-pack-art-${key}`} src="/art/games/horror.svg" alt="" width={448} height={140} loading="lazy" />
             <h3>{pack.title.split(" - ")[0]}</h3>
-            <p className="muted">{key === "dread" ? h.dreadText : h.horrorText}</p>
+            <p className="muted">{pack.query === "cf=dread-arrenek" ? h.dreadText : h.horrorText}</p>
             <ul className="plugin-chips">
               <li>{`${LOADER_NAMES[pack.loader] ?? pack.loader} ${pack.gameVersion}`}</li>
               {pack.mods !== undefined && <li>{format(h.horrorMods, { count: pack.mods })}</li>}
