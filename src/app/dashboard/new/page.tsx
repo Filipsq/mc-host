@@ -14,9 +14,10 @@ import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
 import { isAdmin } from "@/lib/admin";
 import { CREATOR_DISCOUNT, FREE_STARTER_DAYS, suggestedCreatorCode } from "@/lib/creator";
 import { usableGift } from "@/lib/gifts";
+import { HALLOWEEN_CODE, HALLOWEEN_DISCOUNT, halloweenOn } from "@/lib/halloween";
 import CreateServerForm from "./CreateServerForm";
 
-type Props = { searchParams: Promise<{ pack?: string; cf?: string; game?: string; opis?: string; prezent?: string }> };
+type Props = { searchParams: Promise<{ pack?: string; cf?: string; game?: string; opis?: string; prezent?: string; kod?: string }> };
 
 export default async function NewServerPage({ searchParams }: Props) {
   const session = await getSession();
@@ -25,7 +26,7 @@ export default async function NewServerPage({ searchParams }: Props) {
     const { opis } = await searchParams;
     redirect(opis ? `/login?opis=${encodeURIComponent(opis.slice(0, DESCRIPTION_MAX))}` : "/login");
   }
-  const [t, { locale, currency }, freeCount, packArt, { pack, cf, game, opis, prezent }, admin, code, { freeStarters }] = await Promise.all([
+  const [t, { locale, currency }, freeCount, packArt, { pack, cf, game, opis, prezent, kod }, admin, code, { freeStarters }] = await Promise.all([
     getMessages(),
     getPreferences(),
     // An admin's test servers don't use up their own free one.
@@ -85,7 +86,15 @@ export default async function NewServerPage({ searchParams }: Props) {
         domain={process.env.GAME_DOMAIN ?? "localhost"}
         money={{ locale, currency }}
         admin={admin}
-        creator={{ t: t.creator, code, freeStarters, discount: CREATOR_DISCOUNT, days: FREE_STARTER_DAYS }}
+        creator={{
+          t: t.creator,
+          // A code from a link (the Halloween band on the home page) before the inviter's.
+          code: kod?.trim().slice(0, 20) || code,
+          freeStarters,
+          discount: CREATOR_DISCOUNT,
+          days: FREE_STARTER_DAYS,
+          promo: halloweenOn() ? { code: HALLOWEEN_CODE, discount: HALLOWEEN_DISCOUNT, hint: t.halloween.codeApplied, label: t.halloween.codeField } : undefined,
+        }}
         gift={
           gift
             ? {

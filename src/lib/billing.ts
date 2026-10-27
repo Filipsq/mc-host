@@ -23,6 +23,7 @@ import { renewDueServers } from "./renewal";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type CreatorReward } from "./creator";
 import { fulfillGiftPurchase } from "./gifts";
+import { isHalloweenCode, withHalloweenDiscount } from "./halloween";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
@@ -52,6 +53,7 @@ export async function startCheckout(opts: {
   addons?: readonly AddonId[]; // every add-on the server has once paid (addons.ts)
   addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
   creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
+  promoCode?: string; // the Halloween code (halloween.ts): the same, without a creator
 }) {
   const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly } = opts;
   const addons = addonList(opts.addons);
@@ -62,7 +64,8 @@ export async function startCheckout(opts: {
   }
   const full = Math.round((upgrade || addonsOnly || !days ? (upgrade?.amount ?? addonsOnly?.amount ?? 0) : priceFor(plan, days, currency, addons)) * 100);
   const creatorId = days && !upgrade && !addonsOnly ? opts.creatorId : undefined;
-  const amount = creatorId ? withCreatorDiscount(full) : full;
+  const promoCode = days && !upgrade && !addonsOnly && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
+  const amount = creatorId ? withCreatorDiscount(full) : promoCode ? withHalloweenDiscount(full) : full;
   const payment = await db.payment.create({
     data: {
       userId: user.id,
@@ -77,6 +80,7 @@ export async function startCheckout(opts: {
       addons,
       addonsOnly: !!addonsOnly,
       creatorId,
+      promoCode,
     },
   });
 

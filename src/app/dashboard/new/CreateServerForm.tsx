@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
@@ -22,6 +22,8 @@ import { Lightbulb } from "lucide-react";
 import AiCreator from "./AiCreator";
 import PlanHelper from "./PlanHelper";
 import { LoaderFields, PackFields, pickedCurseforge, type CurseforgeOption } from "./ModFields";
+import { huntFound } from "@/components/Halloween";
+import { HUNT_PUMPKINS } from "@/lib/halloween";
 
 type Props = {
   title: string;
@@ -46,7 +48,15 @@ type Props = {
   curseforge: boolean; // whether CurseForge links work
   admin: boolean; // admins also get a button to make a test server without paying
   // The creator code to start with (whoever invited the user) and free Starters they earned with their own (creator.ts).
-  creator: { t: Messages["creator"]; code: string; freeStarters: number; discount: number; days: number };
+  creator: {
+    t: Messages["creator"];
+    code: string;
+    freeStarters: number;
+    discount: number;
+    days: number;
+    // The Halloween code (halloween.ts), while the event lasts.
+    promo?: { code: string; discount: number; hint: string; label: string };
+  };
   // A gift code opened on the redeem page (gifts.ts): its plan is paid for with it.
   gift?: { code: string; plan: Plan; label: string; hint: string };
   /** Set when the AI creator is on. */
@@ -102,6 +112,14 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const [addons, setAddons] = useState<AddonId[]>(addonList(v.addons?.split(",")));
   const [creatorCode, setCreatorCode] = useState(v.creatorCode ?? creator.code);
   const [freeStarter, setFreeStarter] = useState(v.freeStarter === "on" || (v.name === undefined && creator.freeStarters > 0));
+  // Found every pumpkin on the home page (HalloweenHunt): the code is filled in.
+  useEffect(() => {
+    if (creatorCode || !creator.promo) return;
+    if (huntFound().length >= HUNT_PUMPKINS) setCreatorCode(creator.promo.code.toUpperCase());
+    // Only once, on opening the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const promoTyped = !!creator.promo && creatorCode.toLowerCase().replace(/\s+/g, "") === creator.promo.code;
   const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
 
   function applySuggestion(s: Suggestion) {
@@ -414,7 +432,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       )}
       {paying && (
         <label>
-          {c.codeField}
+          {creator.promo?.label ?? c.codeField}
           <input
             name="creatorCode"
             value={creatorCode}
@@ -425,7 +443,11 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             spellCheck={false}
             placeholder={c.codePlaceholder}
           />
-          <span className="muted small">{format(creatorCode.trim() ? c.codeApplied : c.codeFieldHint, { percent: creator.discount })}</span>
+          <span className="muted small">
+            {promoTyped
+              ? format(creator.promo!.hint, { percent: creator.promo!.discount })
+              : format(creatorCode.trim() ? c.codeApplied : c.codeFieldHint, { percent: creator.discount })}
+          </span>
         </label>
       )}
       {paying && (

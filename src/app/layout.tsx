@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
-import { LayoutGrid, LogOut, Megaphone } from "lucide-react";
+import { Ghost, LayoutGrid, LogOut, Megaphone } from "lucide-react";
 import "@fontsource-variable/inter";
 import "@fontsource/jersey-10/latin.css";
 import "@fontsource/jersey-10/latin-ext.css";
@@ -9,12 +9,15 @@ import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
 import ServiceWorker from "@/components/ServiceWorker";
 import HelpBubble from "@/components/HelpBubble";
+import HalloweenDecor from "@/components/HalloweenDecor";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { siteUrl } from "@/lib/site";
 import { isAdmin } from "@/lib/admin";
 import { adminOnline } from "@/lib/presence";
 import { getAnnouncement } from "@/lib/announcement";
+import { HALLOWEEN_DISCOUNT, HUNT_PUMPKINS, halloweenOn } from "@/lib/halloween";
+import { format } from "@/i18n/messages";
 import { CHAT_RATE, MAX_LENGTH } from "@/lib/support";
 import { logOut } from "./actions";
 import "./globals.css";
@@ -53,11 +56,14 @@ export default async function RootLayout({
   ]);
   const signedIn = !!session?.user;
   const admin = session?.user?.id ? await isAdmin(session.user.id) : false;
+  // Switches itself off after the event (lib/halloween.ts).
+  const halloween = halloweenOn();
 
   return (
     <html lang={locale}>
-      <body>
+      <body className={halloween ? "halloween" : undefined}>
         <ServiceWorker />
+        {halloween && <HalloweenDecor />}
         <header className="topbar">
           <div className={signedIn ? "topbar-inner signed-in" : "topbar-inner"}>
             <Logo />
@@ -97,6 +103,15 @@ export default async function RootLayout({
             </div>
           </div>
         </header>
+        {halloween && (
+          <div className="announcement-bar halloween-bar" role="status">
+            <Ghost size={16} aria-hidden />{" "}
+            <span>
+              {format(t.halloween.bar, { total: HUNT_PUMPKINS, percent: HALLOWEEN_DISCOUNT })}{" "}
+              <Link href="/#halloween">{t.halloween.barLink}</Link>
+            </span>
+          </div>
+        )}
         {announcement && (
           <div className="announcement-bar" role="status">
             <Megaphone size={16} aria-hidden /> <span>{announcement}</span>

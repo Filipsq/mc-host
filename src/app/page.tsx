@@ -21,6 +21,9 @@ import { FeatureArt, GameArt, StepArt } from "@/components/HomeArt";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
 import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
+import { halloweenOn } from "@/lib/halloween";
+import HalloweenBand from "@/components/HalloweenBand";
+import { HuntPumpkin } from "@/components/Halloween";
 import { REFERRAL_COOKIE, REFERRAL_DAYS, REFERRAL_MIN_DAYS } from "@/lib/referrals";
 
 const featureIcons = {
@@ -48,6 +51,9 @@ export default async function Home() {
   const start = session?.user ? "/dashboard/new" : "/signup";
   const free = planById("FREE");
   const h = t.home;
+  // The pumpkin hunt (lib/halloween.ts): one pumpkin hidden in each of these spots.
+  const halloween = halloweenOn();
+  const pumpkin = (id: string) => halloween && <HuntPumpkin id={id} label={t.halloween.pumpkin} className={`hunt-${id}`} />;
 
   return (
     <main className="home">
@@ -96,6 +102,7 @@ export default async function Home() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/art/island.svg" alt="" width={560} height={520} />
             </div>
+            {pumpkin("hero")}
             <div className="hero-card">
               <span className="dot online" />
               <HeroAddress names={h.heroNames} domain={domain} />
@@ -105,7 +112,14 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="section">
+      {halloween && (
+        <HalloweenBand t={t.halloween} signedIn={!!session?.user}>
+          {/* Halloween ready games go here */}
+        </HalloweenBand>
+      )}
+
+      <section className="section hunt-spot">
+        {pumpkin("features")}
         <div className="container">
           <header className="section-head">
             <h2 className="display">{h.featuresTitle}</h2>
@@ -144,7 +158,8 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="section" id="gry">
+      <section className="section hunt-spot" id="gry">
+        {pumpkin("games")}
         <div className="container stack-large">
           <header className="section-head">
             <h2 className="display">{h.gamesTitle}</h2>
@@ -229,7 +244,8 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="section alt" id="cennik">
+      <section className="section alt hunt-spot" id="cennik">
+        {pumpkin("pricing")}
         <div className="container">
           <header className="section-head">
             <h2 className="display">{h.pricingTitle}</h2>
@@ -318,7 +334,8 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="section" id="faq">
+      <section className="section hunt-spot" id="faq">
+        {pumpkin("faq")}
         <div className="container narrow-container">
           <header className="section-head">
             <h2 className="display">{h.faqTitle}</h2>

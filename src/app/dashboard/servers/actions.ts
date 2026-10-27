@@ -30,6 +30,7 @@ import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
 import { FREE_STARTER_DAYS, checkCreatorCode, giveBackFreeStarter, takeFreeStarter } from "@/lib/creator";
+import { HALLOWEEN_CODE, isHalloweenCode } from "@/lib/halloween";
 import { redeemGift, usableGift } from "@/lib/gifts";
 import { GIFT_COOKIE } from "@/lib/giftCookie";
 import {
@@ -126,6 +127,7 @@ async function checkoutUrl(
   autoRenew = false,
   addons: AddonId[] = [],
   creatorId?: string,
+  promoCode?: string,
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -143,6 +145,7 @@ async function checkoutUrl(
     autoRenew,
     addons,
     creatorId,
+    promoCode,
   });
 }
 
@@ -191,8 +194,10 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   const paying = plan !== "FREE" && !adminTest && !freeStarter && !giftCode;
   if (paying && form.get("startNow") !== "on") return { error: "consentRequired", values };
   // Someone's creator code: a tenth off this first payment, and the server counts for them.
+  // Or the Halloween code (halloween.ts), typed in the same field: a fifth off.
   const code = paying ? String(form.get("creatorCode") ?? "").trim() : "";
-  const creator = code ? await checkCreatorCode(code, user.id) : null;
+  const promoCode = code && isHalloweenCode(code) ? HALLOWEEN_CODE : undefined;
+  const creator = code && !promoCode ? await checkCreatorCode(code, user.id) : null;
   if (creator && "error" in creator) return { error: creator.error, values };
 
   // Bedrock and Terraria have no ready games or mod packs here.
@@ -263,6 +268,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     ...(adminTest && { adminTest, addons, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
     ...(freeStarter && { paidUntil: new Date(Date.now() + FREE_STARTER_DAYS * DAY) }),
     ...(creator && { creatorId: creator.creatorId }),
+    ...(promoCode && { promoCode }),
   });
   if (server === "subdomainTaken") return { error: "subdomainTaken", values };
   if (!server) return { error: "noPorts", values };
@@ -296,7 +302,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (paying) {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId);
+      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode);
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -373,6 +379,8 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       formAddons(form, parsed.data.plan, server.edition),
       // The first payment of a server made with a creator code, paid here after the first checkout was left.
       server.status === "AWAITING_PAYMENT" ? (server.creatorId ?? undefined) : undefined,
+      // Likewise the Halloween code, while the event lasts (startCheckout checks).
+      server.status === "AWAITING_PAYMENT" ? (server.promoCode ?? undefined) : undefined,
     );
   } catch (err) {
     console.error("checkout failed", server.id, err);
