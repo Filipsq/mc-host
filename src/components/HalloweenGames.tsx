@@ -11,29 +11,32 @@ import { resolveModpack } from "@/lib/modrinth";
 import { GameArt } from "./HomeArt";
 
 // The Halloween ready games on the home page, inside the Halloween band: our own
-// Halloween Survival (no mods, phones too) and a horror mod pack for those who
+// Halloween Survival (no mods, phones too) and horror mod packs for those who
 // want to be scared. Shown only while Halloween lasts.
 
-// Horror packs offered, the first one that a server can run: from CurseForge
-// (DREAD, the most played horror pack, Forge 1.19.2, picked by Fiq; Horrorland 2,
-// NeoForge 1.21.1, has mods only CurseForge may hand out), else from Modrinth,
-// whose packs never hold mods that can't be downloaded.
-const HORROR_CURSEFORGE = ["dread-arrenek", "horrorland-2"];
-const HORROR_MODRINTH = ["gots-scary-pack", "spooky-scary"];
+// Two horror tiles, each showing the first pack a server can run. DREAD, the
+// most played horror pack (Forge 1.19.2, picked by Fiq), on its own. The other
+// tries Horrorland 2 (NeoForge 1.21.1; live it has mods only CurseForge may
+// hand out), then Modrinth packs, which never hold such mods.
+const HORROR_TILES = [
+  { key: "dread", curseforge: ["dread-arrenek"], modrinth: [] },
+  { key: "horror", curseforge: ["horrorland-2"], modrinth: ["gots-scary-pack", "spooky-scary"] },
+] as const;
 // Modrinth doesn't say how much memory a pack needs; these run on Standard.
 const MODRINTH_RAM_GB = 6;
 
 type HorrorPack = { title: string; loader: string; gameVersion: string; mods?: number; ramGb: number; query: string };
+type Candidates = { curseforge: readonly string[]; modrinth: readonly string[] };
 
 // Looked up at most once an hour (like the top list in curseforge.ts): it reads the pack's manifest.
-// When neither site answered, asked again after a few minutes.
+// When no site answered, asked again after a few minutes.
 const HOUR = 60 * 60 * 1000;
 const RETRY = 5 * 60 * 1000;
-let horror: { at: number; ttl: number; pack: HorrorPack | null } | null = null;
+const found = new Map<string, { at: number; ttl: number; pack: HorrorPack | null }>();
 
-async function findHorrorPack(): Promise<{ pack: HorrorPack | null; unavailable: boolean }> {
+async function findHorrorPack({ curseforge, modrinth }: Candidates): Promise<{ pack: HorrorPack | null; unavailable: boolean }> {
   let unavailable = false;
-  for (const slug of HORROR_CURSEFORGE) {
+  for (const slug of curseforge) {
     const p = await resolveCurseforgePack({ slug });
     if (typeof p === "object") {
       return { pack: { title: p.title, loader: p.loader, gameVersion: p.gameVersion, mods: p.mods, ramGb: p.ramGb, query: `cf=${p.slug}` }, unavailable };
@@ -41,7 +44,7 @@ async function findHorrorPack(): Promise<{ pack: HorrorPack | null; unavailable:
     if (curseforgeEnabled()) console.warn(`halloween horror pack: curseforge ${slug}: ${p}`);
     unavailable ||= p === "curseforgeUnavailable";
   }
-  for (const slug of HORROR_MODRINTH) {
+  for (const slug of modrinth) {
     const p = await resolveModpack({ slug });
     if (typeof p === "object") {
       return { pack: { title: p.title, loader: p.loader, gameVersion: p.gameVersion, ramGb: MODRINTH_RAM_GB, query: `mr=${p.slug}` }, unavailable };
@@ -52,17 +55,21 @@ async function findHorrorPack(): Promise<{ pack: HorrorPack | null; unavailable:
   return { pack: null, unavailable };
 }
 
-async function horrorPack() {
-  if (!horror || Date.now() - horror.at > horror.ttl) {
-    const { pack, unavailable } = await findHorrorPack();
-    horror = { at: Date.now(), ttl: !pack && unavailable ? RETRY : HOUR, pack };
-  }
-  return horror.pack;
+async function horrorPack(key: string, candidates: Candidates) {
+  const cached = found.get(key);
+  if (cached && Date.now() - cached.at <= cached.ttl) return cached.pack;
+  const { pack, unavailable } = await findHorrorPack(candidates);
+  found.set(key, { at: Date.now(), ttl: !pack && unavailable ? RETRY : HOUR, pack });
+  return pack;
 }
 
 export default async function HalloweenGames() {
   if (!halloweenOn()) return null;
-  const [t, session, pack] = await Promise.all([getMessages(), auth(), horrorPack()]);
+  const [t, session, ...horror] = await Promise.all([getMessages(), auth(), ...HORROR_TILES.map((c) => horrorPack(c.key, c))]);
+  // The same pack twice (both lists ending on it) shows once.
+  const packs = horror
+    .map((pack, i) => pack && { pack, key: HORROR_TILES[i].key })
+    .filter((x, i, all): x is { pack: HorrorPack; key: (typeof HORROR_TILES)[number]["key"] } => !!x && all.findIndex((y) => y?.pack.query === x.pack.query) === i);
   const h = t.home.halloweenGames;
   const link = (query: string) => (session?.user ? `/dashboard/new?${query}` : "/signup");
   const survival = gameById("halloween");
@@ -82,13 +89,13 @@ export default async function HalloweenGames() {
           <span className="ram-pill">{format(t.server.ramFrom, { gb: survival.ramGb })}</span>
           <Link className="button" href={link("game=halloween&kod=DYNIA20")}>{h.survivalCta}</Link>
         </li>
-        {pack && (
-          <li className="feature game-card hw-game">
-            {/* Our own picture: a haunted house at night with a spider and a creeper (the pack's own is plain). */}
+        {packs.map(({ pack, key }) => (
+          <li key={key} className="feature game-card hw-game">
+            {/* Our own picture: a haunted house at night with a spider and a creeper (the packs' own are plain). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="hw-pack-art" src="/art/games/horror.svg" alt="" width={448} height={140} loading="lazy" />
+            <img className={`hw-pack-art hw-pack-art-${key}`} src="/art/games/horror.svg" alt="" width={448} height={140} loading="lazy" />
             <h3>{pack.title.split(" - ")[0]}</h3>
-            <p className="muted">{h.horrorText}</p>
+            <p className="muted">{key === "dread" ? h.dreadText : h.horrorText}</p>
             <ul className="plugin-chips">
               <li>{`${LOADER_NAMES[pack.loader] ?? pack.loader} ${pack.gameVersion}`}</li>
               {pack.mods !== undefined && <li>{format(h.horrorMods, { count: pack.mods })}</li>}
@@ -97,7 +104,7 @@ export default async function HalloweenGames() {
             <p className="muted small">{h.horrorNote}</p>
             <Link className="button secondary" href={link(`${pack.query}&kod=DYNIA20`)}>{h.horrorCta}</Link>
           </li>
-        )}
+        ))}
       </ul>
     </div>
   );
