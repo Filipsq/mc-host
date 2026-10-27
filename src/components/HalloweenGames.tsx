@@ -15,9 +15,10 @@ import { GameArt } from "./HomeArt";
 // want to be scared. Shown only while Halloween lasts.
 
 // Horror packs offered, the first one that a server can run: from CurseForge
-// (psychological and classic horror on NeoForge 1.21.1), else from Modrinth,
+// (DREAD, the most played horror pack, Forge 1.19.2, picked by Fiq; Horrorland 2,
+// NeoForge 1.21.1, has mods only CurseForge may hand out), else from Modrinth,
 // whose packs never hold mods that can't be downloaded.
-const HORROR_CURSEFORGE = ["horrorland-2"];
+const HORROR_CURSEFORGE = ["dread-arrenek", "horrorland-2"];
 const HORROR_MODRINTH = ["gots-scary-pack", "spooky-scary"];
 // Modrinth doesn't say how much memory a pack needs; these run on Standard.
 const MODRINTH_RAM_GB = 6;
