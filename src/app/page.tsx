@@ -8,7 +8,6 @@ import { format } from "@/i18n/messages";
 import { formatPrice, planById, plans } from "@/lib/plans";
 import { periodPrice } from "@/lib/periods";
 import { gamePluginTitles, offeredGames } from "@/lib/games";
-import { halloweenOn } from "@/lib/halloween";
 import { CURATED_PACKS } from "@/lib/modpacks";
 import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
 import RamCalculator from "@/components/RamCalculator";
@@ -116,7 +115,7 @@ export default async function Home() {
 
       {halloween && (
         <HalloweenBand t={t.halloween} signedIn={!!session?.user}>
-          {/* Halloween ready games go here */}
+          <HalloweenGames />
         </HalloweenBand>
       )}
 
@@ -167,10 +166,8 @@ export default async function Home() {
             <h2 className="display">{h.gamesTitle}</h2>
             <p className="muted">{h.gamesSubtitle}</p>
           </header>
-          {/* Halloween ready games: move into the Halloween band once it's on the page. */}
-          <HalloweenGames />
           <ul className="game-grid">
-            {offeredGames(halloweenOn()).map((g) => {
+            {offeredGames(halloween).map((g) => {
               const extras = gamePluginTitles(g.id);
               return (
                 <li key={g.id} className="feature game-card">
