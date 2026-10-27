@@ -5,25 +5,56 @@ import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { gameById } from "@/lib/games";
 import { halloweenOn } from "@/lib/halloween";
-import { planForRam } from "@/lib/modpacks";
-import { resolveCurseforgePack, type CurseforgePack } from "@/lib/curseforge";
+import { LOADER_NAMES, planForRam } from "@/lib/modpacks";
+import { curseforgeEnabled, resolveCurseforgePack } from "@/lib/curseforge";
+import { resolveModpack } from "@/lib/modrinth";
 import { GameArt } from "./HomeArt";
 
 // The Halloween ready games on the home page, inside the Halloween band: our own
-// Halloween Survival (no mods, phones too) and a horror mod pack from CurseForge
-// for those who want to be scared. Shown only while Halloween lasts.
+// Halloween Survival (no mods, phones too) and a horror mod pack for those who
+// want to be scared. Shown only while Halloween lasts.
 
-/** The horror pack offered: psychological and classic horror on NeoForge 1.21.1. */
-export const HORROR_PACK = "horrorland-2";
+// Horror packs offered, the first one that a server can run: from CurseForge
+// (psychological and classic horror on NeoForge 1.21.1), else from Modrinth,
+// whose packs never hold mods that can't be downloaded.
+const HORROR_CURSEFORGE = ["horrorland-2"];
+const HORROR_MODRINTH = ["gots-scary-pack", "spooky-scary"];
+// Modrinth doesn't say how much memory a pack needs; these run on Standard.
+const MODRINTH_RAM_GB = 6;
+
+type HorrorPack = { title: string; loader: string; gameVersion: string; mods?: number; ramGb: number; query: string };
 
 // Looked up at most once an hour (like the top list in curseforge.ts): it reads the pack's manifest.
+// When neither site answered, asked again after a few minutes.
 const HOUR = 60 * 60 * 1000;
-let horror: { at: number; pack: CurseforgePack | null } | null = null;
+const RETRY = 5 * 60 * 1000;
+let horror: { at: number; ttl: number; pack: HorrorPack | null } | null = null;
+
+async function findHorrorPack(): Promise<{ pack: HorrorPack | null; unavailable: boolean }> {
+  let unavailable = false;
+  for (const slug of HORROR_CURSEFORGE) {
+    const p = await resolveCurseforgePack({ slug });
+    if (typeof p === "object") {
+      return { pack: { title: p.title, loader: p.loader, gameVersion: p.gameVersion, mods: p.mods, ramGb: p.ramGb, query: `cf=${p.slug}` }, unavailable };
+    }
+    if (curseforgeEnabled()) console.warn(`halloween horror pack: curseforge ${slug}: ${p}`);
+    unavailable ||= p === "curseforgeUnavailable";
+  }
+  for (const slug of HORROR_MODRINTH) {
+    const p = await resolveModpack({ slug });
+    if (typeof p === "object") {
+      return { pack: { title: p.title, loader: p.loader, gameVersion: p.gameVersion, ramGb: MODRINTH_RAM_GB, query: `mr=${p.slug}` }, unavailable };
+    }
+    console.warn(`halloween horror pack: modrinth ${slug}: ${p}`);
+    unavailable ||= p === "modrinthUnavailable";
+  }
+  return { pack: null, unavailable };
+}
 
 async function horrorPack() {
-  if (!horror || Date.now() - horror.at > HOUR) {
-    const found = await resolveCurseforgePack({ slug: HORROR_PACK });
-    horror = { at: Date.now(), pack: typeof found === "object" ? found : null };
+  if (!horror || Date.now() - horror.at > horror.ttl) {
+    const { pack, unavailable } = await findHorrorPack();
+    horror = { at: Date.now(), ttl: !pack && unavailable ? RETRY : HOUR, pack };
   }
   return horror.pack;
 }
@@ -58,12 +89,12 @@ export default async function HalloweenGames() {
             <h3>{pack.title.split(" - ")[0]}</h3>
             <p className="muted">{h.horrorText}</p>
             <ul className="plugin-chips">
-              <li>{`${pack.loader} ${pack.gameVersion}`}</li>
-              <li>{format(h.horrorMods, { count: pack.mods })}</li>
+              <li>{`${LOADER_NAMES[pack.loader] ?? pack.loader} ${pack.gameVersion}`}</li>
+              {pack.mods !== undefined && <li>{format(h.horrorMods, { count: pack.mods })}</li>}
             </ul>
             <span className="ram-pill">{format(h.horrorPlan, { plan: t.plans[planForRam(pack.ramGb)] })}</span>
             <p className="muted small">{h.horrorNote}</p>
-            <Link className="button secondary" href={link(`cf=${HORROR_PACK}&kod=DYNIA20`)}>{h.horrorCta}</Link>
+            <Link className="button secondary" href={link(`${pack.query}&kod=DYNIA20`)}>{h.horrorCta}</Link>
           </li>
         )}
       </ul>

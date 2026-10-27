@@ -43,6 +43,7 @@ type Props = {
   initialGame?: GameId; // a game or pack picked on the home page or the empty panel
   halloween: boolean; // Halloween on the site: its game is offered (src/lib/halloween.ts)
   initialPack?: string;
+  initialPackLink?: string; // a Modrinth pack picked as "another pack" from a link on the home page
   packIcons: Record<string, string | undefined>;
   cfPacks: CurseforgeOption[]; // CurseForge packs offered: the one picked on the home page first, then the popular ones
   cfPicked: boolean; // whether the first of cfPacks was picked on the home page
@@ -88,7 +89,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -357,7 +358,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           curseforge={curseforge}
           planName={planName}
           locale={money.locale}
-          initialLink={v.packLink}
+          initialLink={v.packLink ?? initialPackLink}
         />
       )}
       {mods && <LoaderFields t={t} loader={loader} version={modVersion} onLoader={setLoader} onVersion={setModVersion} />}
