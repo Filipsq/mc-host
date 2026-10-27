@@ -17,7 +17,10 @@ import { usableGift } from "@/lib/gifts";
 import { HALLOWEEN_CODE, HALLOWEEN_DISCOUNT, halloweenOn } from "@/lib/halloween";
 import CreateServerForm from "./CreateServerForm";
 
-type Props = { searchParams: Promise<{ pack?: string; cf?: string; game?: string; opis?: string; prezent?: string; kod?: string }> };
+// What a pack from a Modrinth link is guessed to need (Modrinth doesn't say): most big packs run on Standard.
+const MR_PACK_RAM_GB = 6;
+
+type Props = { searchParams: Promise<{ pack?: string; cf?: string; mr?: string; game?: string; opis?: string; prezent?: string; kod?: string }> };
 
 export default async function NewServerPage({ searchParams }: Props) {
   const session = await getSession();
@@ -26,7 +29,7 @@ export default async function NewServerPage({ searchParams }: Props) {
     const { opis } = await searchParams;
     redirect(opis ? `/login?opis=${encodeURIComponent(opis.slice(0, DESCRIPTION_MAX))}` : "/login");
   }
-  const [t, { locale, currency }, freeCount, packArt, { pack, cf, game, opis, prezent, kod }, admin, code, { freeStarters }] = await Promise.all([
+  const [t, { locale, currency }, freeCount, packArt, { pack, cf, mr, game, opis, prezent, kod }, admin, code, { freeStarters }] = await Promise.all([
     getMessages(),
     getPreferences(),
     // An admin's test servers don't use up their own free one.
@@ -51,11 +54,13 @@ export default async function NewServerPage({ searchParams }: Props) {
   const found = cf && curseforgeEnabled() ? await resolveCurseforgePack({ slug: cf }) : null;
   const cfPack = found && typeof found === "object" ? found : undefined;
   const cfPacks = curseforgeEnabled() ? await curseforgePackOptions(cfPack) : [];
-  const initialGame = chosen || cfPack ? "modpack" : isGameId(game) ? game : undefined;
+  // A Modrinth pack outside the curated ones (the Halloween band's horror pack): picked as "another pack".
+  const mrPack = !chosen && !cfPack && mr && /^[A-Za-z0-9_-]{2,64}$/.test(mr) ? mr : undefined;
+  const initialGame = chosen || cfPack || mrPack ? "modpack" : isGameId(game) ? game : undefined;
   const defaultPlan = gift
     ? gift.plan
     : initialGame === "modpack"
-      ? planForRam(cfPack?.ramGb ?? (chosen ?? CURATED_PACKS[0]).ramGb)
+      ? planForRam(cfPack?.ramGb ?? (mrPack ? MR_PACK_RAM_GB : (chosen ?? CURATED_PACKS[0]).ramGb))
       : hasFree || freeStarters > 0
         ? "STARTER"
         : "FREE";
@@ -79,7 +84,8 @@ export default async function NewServerPage({ searchParams }: Props) {
         defaultPlan={defaultPlan}
         initialGame={initialGame}
         halloween={halloweenOn()}
-        initialPack={cfPack ? curseforgePackValue(cfPack.slug) : chosen?.slug}
+        initialPack={cfPack ? curseforgePackValue(cfPack.slug) : mrPack ? "custom" : chosen?.slug}
+        initialPackLink={mrPack && `https://modrinth.com/modpack/${mrPack}`}
         cfPacks={cfPacks}
         cfPicked={!!cfPack}
         curseforge={curseforgeEnabled()}
