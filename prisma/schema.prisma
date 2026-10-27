@@ -193,6 +193,8 @@ model Server {
   creator          User?          @relation("CreatorServers", fields: [creatorId], references: [id], onDelete: SetNull)
   creatorId        String?
   creatorCountedAt DateTime?
+  // A promo code it was bought with (src/lib/halloween.ts), kept for a checkout that was left and paid later.
+  promoCode        String?
   edition          Edition        @default(JAVA)
   plan             Plan           @default(FREE)
   status           ServerStatus   @default(PROVISIONING)
@@ -338,6 +340,8 @@ model Payment {
   addonsOnly            Boolean       @default(false)
   // Bought with this user's creator code, so CREATOR_DISCOUNT percent cheaper (src/lib/creator.ts).
   creatorId             String?
+  // Bought with a promo code (src/lib/halloween.ts), so cheaper.
+  promoCode             String?
   // Buys this gift code (serverId is null then).
   gift                  GiftCode?     @relation("GiftPurchase")
   // Paid for with a gift code instead of money (amount is 0).
