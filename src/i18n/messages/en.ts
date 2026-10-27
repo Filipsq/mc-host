@@ -71,6 +71,7 @@ const en: Messages = {
       survivalChips: ["No mods", "Java + phones (crossplay)", "Square built at spawn"],
       survivalCta: "Play Halloween",
       horrorText: "A horror mod pack: scary monsters, dark dimensions and quests. For the brave.",
+      dreadText: "The most played horror pack: the usual monsters are gone, and far scarier ones hunt you in the dark.",
       horrorMods: "{count} mods",
       horrorPlan: "From the {plan} plan",
       horrorNote: "Every player installs the same pack (the “Get the pack” button in the server panel).",

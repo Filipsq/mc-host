@@ -69,6 +69,7 @@ const pl = {
       survivalChips: ["Bez modów", "Java + telefon (crossplay)", "Plac zbudowany przy spawnie"],
       survivalCta: "Zagraj w Halloween",
       horrorText: "Paczka horror z modami: straszne potwory, mroczne wymiary i zadania. Dla odważnych.",
+      dreadText: "Najpopularniejsza paczka horror: zwykłe potwory znikają, a w ciemności polują na was nowe, dużo straszniejsze.",
       horrorMods: "{count} modów",
       horrorPlan: "Od planu {plan}",
       horrorNote: "Każdy gracz instaluje u siebie tę samą paczkę (przycisk „Pobierz paczkę” w panelu serwera).",
