@@ -10,7 +10,6 @@ import { curseforgeEnabled, curseforgePackOptions, resolveCurseforgePack } from 
 import { curseforgePackValue } from "./ModFields";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
 import { isGameId } from "@/lib/games";
-import { halloweenOn } from "@/lib/halloween";
 import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
 import { isAdmin } from "@/lib/admin";
 import { CREATOR_DISCOUNT, FREE_STARTER_DAYS, suggestedCreatorCode } from "@/lib/creator";
