@@ -60,7 +60,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         ? format(t.settings.versionGameMode, { kind: t.server.kinds[server.kind] })
         : undefined;
 
-  const free = !planById(server.plan).alwaysOn;
   return (
     <div className="wide-form stack">
       <h2>{t.settings.title}</h2>
@@ -85,7 +84,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
         playerLimit={playerLimit(planById(server.plan))}
-        viewDistance={{ max: viewDistanceMax(free), def: viewDistanceDefault(free) }}
+        viewDistance={{ max: viewDistanceMax(server.plan), def: viewDistanceDefault(server.plan) }}
         nonPremium={
           server.edition === "JAVA"
             ? {
@@ -111,7 +110,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           hardcore: server.hardcore,
           commandBlocks: server.commandBlocks,
           spawnProtection: server.spawnProtection,
-          viewDistance: Math.min(server.viewDistance ?? viewDistanceDefault(free), viewDistanceMax(free)),
+          viewDistance: Math.min(server.viewDistance ?? viewDistanceDefault(server.plan), viewDistanceMax(server.plan)),
           whitelist: server.whitelist,
           players: server.whitelistPlayers.join("\n"),
         }}
