@@ -252,6 +252,17 @@ export async function deleteServer(id: string, node?: GameNode) {
   await agentFetch(`/servers/${id}`, { method: "DELETE", timeoutMs: 90_000, node });
 }
 
+/** Every server container on a machine, with its state and when it was made. */
+export async function listContainers(node: GameNode): Promise<{ id: string; state: string; created: number }[]> {
+  const res = await agentFetch("/containers", { node });
+  return ((await res.json()) as { containers: { id: string; state: string; created: number }[] }).containers;
+}
+
+/** Removes only a server's container on `node`, keeping its files and backups. */
+export async function removeContainer(id: string, node: GameNode) {
+  await agentFetch(`/servers/${id}/container`, { method: "DELETE", timeoutMs: 60_000, node });
+}
+
 const MOVE_TIMEOUT_MS = 2 * 60 * 60_000;
 
 /**

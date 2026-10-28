@@ -5,6 +5,7 @@ import { stripe, stripeTestMode } from "./stripe";
 import * as agent from "./agent";
 import { agentSpec, changePort, destroyServer, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
+import { nodes } from "./nodes";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
@@ -418,8 +419,41 @@ export function isRemovablePayment(p: Pick<Payment, "stripeSessionId" | "status"
 }
 
 /** Periodic housekeeping, run by /api/cron/billing. */
+// Old enough that no creation or move (at most 2 hours) is still working on it.
+const LEFTOVER_AFTER_MS = 6 * 60 * 60_000;
+
+/**
+ * Removes containers the site no longer knows on a machine: left by a creation
+ * that failed half-way, or a moved server's stopped old copy. A stopped one
+ * still holds its ports, which a new server would be given, so its start fails.
+ * Only the container goes; its files stay on the disk.
+ */
+export async function removeLeftoverContainers(now = new Date()) {
+  const home = new Map((await db.server.findMany({ select: { id: true, node: true } })).map((s) => [s.id, s.node]));
+  let removed = 0;
+  for (const node of nodes()) {
+    const list = await agent.listContainers(node).catch((err) => {
+      console.error(`containers on ${node.id} not listed`, err);
+      return [];
+    });
+    for (const c of list) {
+      if (now.getTime() - c.created * 1000 < LEFTOVER_AFTER_MS) continue;
+      const at = home.get(c.id);
+      if (at === node.id || (at !== undefined && c.state === "running")) continue;
+      try {
+        await agent.removeContainer(c.id, node);
+        console.log(`removed leftover container of ${c.id} on ${node.id} (${at ? `server is on ${at}` : "no such server"})`);
+        removed++;
+      } catch (err) {
+        console.error(`leftover container ${c.id} on ${node.id} not removed`, err);
+      }
+    }
+  }
+  return removed;
+}
+
 export async function runBillingJob(now = new Date()) {
-  const result = { renewed: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, abandoned: 0, provisioned: 0 };
+  const result = { renewed: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Auto-renewing servers whose period ends within a day: charge the saved card.
@@ -526,6 +560,11 @@ export async function runBillingJob(now = new Date()) {
   await db.payment.updateMany({
     where: { status: "PENDING", createdAt: { lt: new Date(now.getTime() - DAY) } },
     data: { status: "EXPIRED" },
+  });
+
+  result.leftovers = await removeLeftoverContainers(now).catch((err) => {
+    console.error("leftover containers not checked", err);
+    return 0;
   });
 
   // Every server's disk limit and own domain, so the agents have them all.

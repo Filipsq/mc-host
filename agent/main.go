@@ -303,6 +303,7 @@ func (a *agent) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	mux.HandleFunc("GET /stats", a.stats)
+	mux.HandleFunc("GET /containers", a.containersList)
 	mux.HandleFunc("PUT /disk-limits", a.putDiskLimits)
 	mux.HandleFunc("PUT /peer-routes", a.putPeerRoutes)
 	mux.HandleFunc("PUT /host-aliases", a.putHostAliases)
@@ -312,6 +313,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("POST /servers/{id}/start", a.start)
 	mux.HandleFunc("POST /servers/{id}/stop", a.stop)
 	mux.HandleFunc("DELETE /servers/{id}", a.remove)
+	mux.HandleFunc("DELETE /servers/{id}/container", a.removeContainer)
 	mux.HandleFunc("GET /servers/{id}/logs", a.logs)
 	mux.HandleFunc("POST /servers/{id}/command", a.command)
 	mux.HandleFunc("GET /servers/{id}/metrics", a.metricsHandler)
@@ -1025,6 +1027,46 @@ func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
 		log.Printf("disk limit %s: %v", id, err)
 	}
 	log.Printf("removed %s", name)
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// containersList names every server container on this machine, with its
+// state and when it was made, so the site can spot ones it no longer knows.
+func (a *agent) containersList(w http.ResponseWriter, r *http.Request) {
+	var list []struct {
+		State   string            `json:"State"`
+		Created int64             `json:"Created"`
+		Labels  map[string]string `json:"Labels"`
+	}
+	query := url.Values{"all": {"1"}, "filters": {`{"label":["mchost.server"]}`}}
+	if a.handleDockerErr(w, a.docker.call(r.Context(), http.MethodGet, "/containers/json", query, nil, &list)) {
+		return
+	}
+	type entry struct {
+		ID      string `json:"id"`
+		State   string `json:"state"`
+		Created int64  `json:"created"` // Unix seconds
+	}
+	out := make([]entry, 0, len(list))
+	for _, c := range list {
+		out = append(out, entry{ID: c.Labels["mchost.server"], State: c.State, Created: c.Created})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"containers": out})
+}
+
+// removeContainer removes only a server's container, keeping its files and
+// backups: for one left behind that still holds its ports.
+func (a *agent) removeContainer(w http.ResponseWriter, r *http.Request) {
+	id, ok := a.idFrom(w, r)
+	if !ok {
+		return
+	}
+	defer a.lockServer(id)()
+	if err := a.docker.RemoveContainer(r.Context(), containerName(id)); err != nil && !errors.Is(err, errNotFound) {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	log.Printf("removed leftover container %s (files kept)", containerName(id))
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
