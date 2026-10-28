@@ -16,8 +16,10 @@ type Props = {
   otherName: string;
   maxLength: number;
   rate: ChatRate;
-  /** The page marked unread messages read, so the badges should update. */
+  /** There were unread messages, which opening the chat marks read, so the badges should update. */
   hadUnread: boolean;
+  /** `initial` was loaded ahead without marking the chat read: its first poll does that. */
+  peeked?: boolean;
 };
 
 const POLL_MS = 4000;
@@ -54,7 +56,7 @@ function merge(list: ChatMessage[], more: ChatMessage[]) {
 }
 
 /** The chat window: messages that update every few seconds while the page is visible, and a box to write in. */
-export default function SupportChat({ t, initial, chat, otherName, maxLength, rate, hadUnread }: Props) {
+export default function SupportChat({ t, initial, chat, otherName, maxLength, rate, hadUnread, peeked = false }: Props) {
   const router = useRouter();
   const [messages, setMessages] = useState(initial.messages);
   const [seenAt, setSeenAt] = useState(initial.seenAt);
@@ -66,15 +68,16 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
   const log = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const stick = useRef(true); // keep the newest message in view unless the reader scrolled up
+  const [synced, setSynced] = useState(!peeked);
   const last = messages.at(-1)?.at;
   const staff = chat !== undefined;
 
   // Tell the top bar and the admin tabs that this chat has been read.
   useEffect(() => {
-    if (!hadUnread) return;
+    if (!hadUnread || !synced) return;
     window.dispatchEvent(new Event("support-read"));
     router.refresh();
-  }, [hadUnread, router]);
+  }, [hadUnread, synced, router]);
 
   const poll = useCallback(async () => {
     const params = new URLSearchParams({ since: last ?? new Date(0).toISOString() });
@@ -92,6 +95,12 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
       // Offline for a moment; the next poll catches up.
     }
   }, [chat, last]);
+
+  // A chat loaded ahead (or opened again) may be behind: catch up and mark it read right away.
+  const first = useRef(poll);
+  useEffect(() => {
+    void first.current().then(() => setSynced(true));
+  }, []);
 
   useEffect(() => {
     const tick = () => {

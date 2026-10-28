@@ -20,6 +20,8 @@ type Props = {
 
 const CHECK_MS = 30_000;
 const TIP_DELAY_MS = 1500;
+/** The chat loads this long after the page, so it doesn't compete with the page's own requests. */
+const PRELOAD_DELAY_MS = 1000;
 /** Shown once per browser session, so it greets visitors without nagging on every page. */
 const TIP_KEY = "help-tip-shown";
 /** Set when a signed-out visitor goes to log in from the bubble, so the chat opens once they are back. */
@@ -45,9 +47,11 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
   const [online, setOnline] = useState(adminOnline);
   const [open, setOpen] = useState(false);
   const [tip, setTip] = useState(false);
-  const [chat, setChat] = useState<{ state: ChatState; hadUnread: boolean } | null>(null);
+  const [chat, setChat] = useState<{ state: ChatState; hadUnread: boolean; peeked: boolean } | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [openedUnread, setOpenedUnread] = useState(false);
+  const loading = useRef(false);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   // The full chat page and the admin panel have their own chat.
@@ -105,25 +109,39 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
     }
   }, [signedIn, admin]);
 
-  // Load the conversation the first time the window opens; the chat keeps itself up to date from then on.
+  // Load the conversation soon after the page loads, without marking it read, so
+  // the window opens at once: on a busy machine the request can take a while.
+  // Opened before then (or that load failed): load it now, marking it read.
+  // From then on the chat keeps itself up to date.
   useEffect(() => {
-    if (!open || !signedIn || chat) return;
-    let gone = false;
-    setFailed(false);
-    const hadUnread = count > 0;
-    fetch(`/api/support?since=${new Date(0).toISOString()}`, { cache: "no-store" })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(String(res.status));
-        const state = (await res.json()) as ChatState;
-        if (!gone) setChat({ state, hadUnread });
-      })
-      .catch(() => !gone && setFailed(true));
-    return () => {
-      gone = true;
-    };
+    if (!signedIn || admin || chat || loading.current) return;
+    if (!open && (hidden || attempt > 0)) return;
+    const peek = !open;
+    const timer = setTimeout(() => {
+      loading.current = true;
+      setFailed(false);
+      const hadUnread = count > 0;
+      fetch(`/api/support?since=${new Date(0).toISOString()}${peek ? "&peek=1" : ""}`, { cache: "no-store" })
+        .then(async (res) => {
+          if (!res.ok) throw new Error(String(res.status));
+          setChat({ state: (await res.json()) as ChatState, hadUnread, peeked: peek });
+        })
+        // A failed early load tries again when the window opens.
+        .catch(() => (peek ? setAttempt((n) => n + 1) : setFailed(true)))
+        .finally(() => {
+          loading.current = false;
+        });
+    }, peek ? PRELOAD_DELAY_MS : 0);
+    return () => clearTimeout(timer);
     // `count` only says whether this load marked replies read; it must not reload the chat.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, signedIn, chat, attempt]);
+  }, [open, signedIn, admin, hidden, chat, attempt]);
+
+  // Whether there were unread replies when the window opened, which the chat then marks read.
+  useEffect(() => {
+    if (open) setOpenedUnread(count > 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Opening the window shows the replies, so the badge clears.
   useEffect(() => {
@@ -197,7 +215,8 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
               otherName={t.staff}
               maxLength={maxLength}
               rate={rate}
-              hadUnread={chat.hadUnread}
+              hadUnread={chat.peeked ? openedUnread : chat.hadUnread}
+              peeked={chat.peeked}
             />
           ) : (
             <div className="help-guest">
