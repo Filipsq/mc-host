@@ -698,6 +698,7 @@ const en: Messages = {
     spawnProtection: "Spawn protection (blocks)",
     spawnProtectionHint: "Only operators (OP) can change this many blocks around spawn. 0 turns it off.",
     viewDistance: "View distance (chunks)",
+    viewDistanceHigh: "A large view distance can cause lag and TPS drops, especially when several players explore in different places. Lower it if the server slows down.",
     viewDistanceHint: "{min} to {max} on this plan, {def} by default. More chunks use more RAM and CPU, and new ground may load slower.",
     icon: "Icon in the server list",
     iconHint: "Pick any picture and we'll crop it to a 64×64 square. It shows after the server restarts.",

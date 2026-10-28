@@ -248,7 +248,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     commandBlocks: server.commandBlocks,
     spawnProtection: server.spawnProtection,
     // A pick from a paid plan never goes past what the plan has now.
-    viewDistance: server.viewDistance == null ? undefined : Math.min(server.viewDistance, viewDistanceMax(!plan.alwaysOn)),
+    viewDistance: server.viewDistance == null ? undefined : Math.min(server.viewDistance, viewDistanceMax(server.plan)),
     level: server.level ?? "",
     seed: server.levelSeed ?? "",
     levelType: server.levelType ?? "",

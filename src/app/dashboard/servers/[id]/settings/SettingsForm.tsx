@@ -40,6 +40,7 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
+  const [view, setView] = useState(initial.viewDistance);
   const java = edition === "JAVA";
   const nonPremiumOffered = nonPremium?.versions ? nonPremium.versions.includes(version) : nonPremium?.offered;
   const label = (v: string) => (v === "LATEST" ? t.latest : v);
@@ -141,9 +142,12 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
             <span className="muted small">{t.spawnProtectionHint}</span>
           </label>
           <label>
-            {t.viewDistance}
-            <input name="viewDistance" type="number" min={VIEW_DISTANCE_MIN} max={viewDistance.max} required defaultValue={initial.viewDistance} />
+            <span>
+              {t.viewDistance}: <strong>{view}</strong>
+            </span>
+            <input name="viewDistance" type="range" min={VIEW_DISTANCE_MIN} max={viewDistance.max} step={1} value={view} onChange={(e) => setView(Number(e.target.value))} />
             <span className="muted small">{format(t.viewDistanceHint, { min: VIEW_DISTANCE_MIN, max: viewDistance.max, def: viewDistance.def })}</span>
+            {view > 12 && <span className="notice warn small">{t.viewDistanceHigh}</span>}
           </label>
         </>
       )}
