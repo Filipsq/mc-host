@@ -14,6 +14,7 @@ import { RENEW_BEFORE_MS } from "@/lib/renewal";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import type { Currency } from "@/i18n/config";
 import CheckoutForm from "./CheckoutForm";
+import { paysafecardEnabled } from "@/lib/hotpay";
 import AutoRenewButton from "./AutoRenewButton";
 
 const HOUR = 60 * 60 * 1000;
@@ -121,6 +122,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         legal={t.legal}
         money={{ locale, currency }}
         autoRenew={server.autoRenew}
+        paysafecard={paysafecardEnabled(currency)}
         addons={{
           // The own domain is for Java addresses only.
           options: addonOptions(t, currency).filter((o) => o.id !== "domain" || server.edition === "JAVA"),

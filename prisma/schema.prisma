@@ -336,6 +336,10 @@ model Payment {
   // Charged automatically with the saved card, without Checkout.
   renewal               Boolean       @default(false)
   stripePaymentIntentId String?       @unique
+  // Paid with a paysafecard code through HotPay (src/lib/hotpay.ts), not Stripe.
+  paysafecard           Boolean       @default(false)
+  // HotPay's own id for the payment, once it says it went through.
+  hotpayId              String?       @unique
   // The add-ons the server has once this is paid (all of them, not only new ones).
   addons                String[]      @default([])
   // Only add-ons bought for the time left of the period (addonCost in addons.ts): days is 0.

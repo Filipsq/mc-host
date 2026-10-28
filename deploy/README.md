@@ -80,6 +80,17 @@ Also turn on **Successful payments** under Settings → Customer emails, so ever
 email. Polish consumer law expects a confirmation of the purchase on a "durable medium", and the receipt
 covers that until the site sends its own emails.
 
+### paysafecard (HotPay)
+
+Stripe doesn't take paysafecard, so it goes through HotPay (hotpay.pl, needs a registered business;
+about 14% fee). In the HotPay panel, add a paysafecard service for `mchosting.pl` and set its
+notification address to `https://mchosting.pl/api/hotpay/notify`. Put the service's secret
+(`SEKRET`) and its notification password into `deploy/.env` as `HOTPAY_SECRET='…'` and
+`HOTPAY_PASSWORD='…'`, then run `docker compose up -d` in `deploy/` again. A "Pay with
+paysafecard" button then shows next to the Stripe one when paying in złoty (new servers and the
+Plan page; upgrades and add-ons stay on Stripe). If HotPay gives a different payment address than
+`https://psc.hotpay.pl/`, set it as `HOTPAY_URL`.
+
 ## Emails
 
 The site sends password reset links by email through [Brevo](https://www.brevo.com) (free for up to

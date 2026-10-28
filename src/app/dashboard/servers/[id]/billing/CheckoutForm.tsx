@@ -20,9 +20,10 @@ type Props = {
   money: { locale: string; currency: string };
   autoRenew: boolean; // ticked to start with
   addons: ComponentProps<typeof PlanPicker>["addons"];
+  paysafecard: boolean; // offered too (hotpay.ts)
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, paysafecard }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -46,6 +47,14 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <button type="submit" disabled={pending}>{pending ? t.redirecting : t.checkout}</button>
+      {paysafecard && (
+        <>
+          <button type="submit" className="secondary" name="method" value="paysafecard" disabled={pending}>
+            {t.paysafecard}
+          </button>
+          <p className="muted small">{t.paysafecardHint}</p>
+        </>
+      )}
     </form>
   );
 }
