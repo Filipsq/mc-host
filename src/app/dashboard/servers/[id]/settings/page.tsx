@@ -5,7 +5,7 @@ import { getMessages } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { bedrockHost } from "@/lib/servers";
-import { maxPlayersFor, playerLimit, versionsFor } from "@/lib/settings";
+import { maxPlayersFor, playerLimit, versionsFor, viewDistanceDefault, viewDistanceMax } from "@/lib/settings";
 import { planById } from "@/lib/plans";
 import { isModLoader } from "@/lib/modpacks";
 import { kindLabel } from "@/lib/serverType";
@@ -60,6 +60,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         ? format(t.settings.versionGameMode, { kind: t.server.kinds[server.kind] })
         : undefined;
 
+  const free = !planById(server.plan).alwaysOn;
   return (
     <div className="wide-form stack">
       <h2>{t.settings.title}</h2>
@@ -84,6 +85,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
         playerLimit={playerLimit(planById(server.plan))}
+        viewDistance={{ max: viewDistanceMax(free), def: viewDistanceDefault(free) }}
         nonPremium={
           server.edition === "JAVA"
             ? {
@@ -109,6 +111,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           hardcore: server.hardcore,
           commandBlocks: server.commandBlocks,
           spawnProtection: server.spawnProtection,
+          viewDistance: Math.min(server.viewDistance ?? viewDistanceDefault(free), viewDistanceMax(free)),
           whitelist: server.whitelist,
           players: server.whitelistPlayers.join("\n"),
         }}

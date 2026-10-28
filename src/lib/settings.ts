@@ -47,6 +47,10 @@ export function versionsFor(kind: string): string[] {
 
 export const MOTD_MAX = 60;
 export const SPAWN_PROTECTION_MAX = 64;
+// More chunks cost RAM and CPU, so the free plan may raise it less.
+export const VIEW_DISTANCE_MIN = 4;
+export const viewDistanceDefault = (free: boolean) => (free ? 8 : 10);
+export const viewDistanceMax = (free: boolean) => (free ? 12 : 16);
 export const ICON_SIZE = 64; // Minecraft shows only a 64×64 PNG
 // The most players an owner can pick on a plan with no player limit.
 export const PLAYERS_MAX = 1000;

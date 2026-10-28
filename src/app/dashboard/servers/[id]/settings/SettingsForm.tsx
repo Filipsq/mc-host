@@ -3,7 +3,7 @@
 import { startTransition, useActionState, useState } from "react";
 import type { Edition } from "@prisma/client";
 import { saveSettingsAction } from "../../actions";
-import { DIFFICULTIES, GAME_MODES, MOTD_MAX, SPAWN_PROTECTION_MAX, isDowngrade } from "@/lib/settings";
+import { DIFFICULTIES, GAME_MODES, MOTD_MAX, SPAWN_PROTECTION_MAX, VIEW_DISTANCE_MIN, isDowngrade } from "@/lib/settings";
 import { format, type Messages } from "@/i18n/messages";
 
 type Props = {
@@ -14,6 +14,7 @@ type Props = {
   versionNote?: string; // shown instead of the version picker when the version isn't up to the owner
   versionHint?: string; // replaces the usual hint under the version picker
   playerLimit: number; // the most the plan allows
+  viewDistance: { max: number; def: number }; // the plan's range and default, in chunks
   // Java only; offered on Paper servers, and on mod loaders only on the versions their login mod runs on
   nonPremium?: { offered: boolean; on: boolean; versions?: readonly string[] };
   crossplay?: { offered: boolean; on: boolean; host: string; port: number }; // the same, with where Bedrock players join
@@ -28,13 +29,14 @@ type Props = {
     hardcore: boolean;
     commandBlocks: boolean;
     spawnProtection: number;
+    viewDistance: number;
     whitelist: boolean;
     players: string;
   };
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, playerLimit, nonPremium, crossplay, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, playerLimit, viewDistance, nonPremium, crossplay, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
@@ -137,6 +139,11 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
             {t.spawnProtection}
             <input name="spawnProtection" type="number" min={0} max={SPAWN_PROTECTION_MAX} required defaultValue={initial.spawnProtection} />
             <span className="muted small">{t.spawnProtectionHint}</span>
+          </label>
+          <label>
+            {t.viewDistance}
+            <input name="viewDistance" type="number" min={VIEW_DISTANCE_MIN} max={viewDistance.max} required defaultValue={initial.viewDistance} />
+            <span className="muted small">{format(t.viewDistanceHint, { min: VIEW_DISTANCE_MIN, max: viewDistance.max, def: viewDistance.def })}</span>
           </label>
         </>
       )}

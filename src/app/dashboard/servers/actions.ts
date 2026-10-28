@@ -42,6 +42,9 @@ import {
   ICON_SIZE,
   MOTD_MAX,
   SPAWN_PROTECTION_MAX,
+  VIEW_DISTANCE_MIN,
+  viewDistanceDefault,
+  viewDistanceMax,
   playerLimit,
   WHITELIST_MAX,
   isValidPlayerName,
@@ -615,6 +618,7 @@ const settingsSchema = z.object({
   hardcore: z.literal("on").optional(),
   commandBlocks: z.literal("on").optional(),
   spawnProtection: z.coerce.number().int().min(0).max(SPAWN_PROTECTION_MAX).optional(),
+  viewDistance: z.coerce.number().int().optional(),
   whitelist: z.literal("on").optional(),
   players: z.string().default(""),
   nonPremium: z.literal("on").optional(),
@@ -636,6 +640,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
   const limit = playerLimit(planById(server.plan));
   if (s.maxPlayers !== undefined && (s.maxPlayers < 1 || s.maxPlayers > limit)) return { error: "maxPlayersRange" };
+  const free = !planById(server.plan).alwaysOn;
+  if (s.viewDistance !== undefined && (s.viewDistance < VIEW_DISTANCE_MIN || s.viewDistance > viewDistanceMax(free))) return { error: "viewDistanceRange" };
   const players = parsePlayers(s.players);
   const bad = players.find((p) => !isValidPlayerName(server.edition, p));
   if (bad) return { error: "invalidPlayer", player: bad };
@@ -667,6 +673,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       hardcore: java ? s.hardcore === "on" : server.hardcore,
       commandBlocks: java ? s.commandBlocks === "on" : server.commandBlocks,
       spawnProtection: java ? (s.spawnProtection ?? server.spawnProtection) : server.spawnProtection,
+      // The plan's default is kept as no pick, so changing plans moves it.
+      viewDistance: !java || s.viewDistance === undefined ? server.viewDistance : s.viewDistance === viewDistanceDefault(free) ? null : s.viewDistance,
       whitelist,
       whitelistPlayers: players,
       // On the version saved now: a mod server's login mod runs only on some.

@@ -215,6 +215,8 @@ model Server {
   hardcore         Boolean        @default(false)
   commandBlocks    Boolean        @default(false)
   spawnProtection  Int            @default(16)
+  // Chunks around each player; null: the plan's default (8 free, 10 paid). Java only.
+  viewDistance     Int?
   whitelist        Boolean        @default(false)
   whitelistPlayers String[]       @default([])
   // Java on Paper only: false lets in players without a bought Minecraft ("non-premium"),

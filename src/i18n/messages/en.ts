@@ -697,6 +697,8 @@ const en: Messages = {
     commandBlocks: "Command blocks work (adventure maps, minigames)",
     spawnProtection: "Spawn protection (blocks)",
     spawnProtectionHint: "Only operators (OP) can change this many blocks around spawn. 0 turns it off.",
+    viewDistance: "View distance (chunks)",
+    viewDistanceHint: "{min} to {max} on this plan, {def} by default. More chunks use more RAM and CPU, and new ground may load slower.",
     icon: "Icon in the server list",
     iconHint: "Pick any picture and we'll crop it to a 64×64 square. It shows after the server restarts.",
     iconSaved: "Icon saved. It shows after the server restarts.",
@@ -731,6 +733,7 @@ const en: Messages = {
       whitelistEmpty: "Add at least one player or turn the list off",
       invalidPlayer: "Invalid name: {player}",
       maxPlayersRange: "The player count must be between 1 and the plan's limit",
+      viewDistanceRange: "The view distance is outside this plan's range",
       tooManyPlayers: "The list can have at most 100 players",
       applyFailed: "We saved the settings but couldn't apply them on the server. Try again in a moment.",
       worldTooNew:
