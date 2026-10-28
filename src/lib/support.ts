@@ -1,6 +1,6 @@
 import "server-only";
 import { after } from "next/server";
-import { Prisma, type SupportChat } from "@prisma/client";
+import type { SupportChat } from "@prisma/client";
 import { db } from "./db";
 import { messages, format } from "@/i18n/messages";
 import { defaultLocale, isLocale } from "@/i18n/config";
@@ -77,13 +77,17 @@ function timeFormat(locale: string) {
   };
 }
 
+/** How often an open chat's poll refreshes its read time while there's nothing new to mark read. */
+const READ_REFRESH_MS = 20_000;
+
 /**
  * The chat's messages (the latest SHOWN, or those from `since` on) and when
  * the other side last looked at it, which shows as "Seen". Looking marks the
- * chat read for this side.
+ * chat read for this side, unless `peek` is set (the help bubble loading the
+ * chat ahead of a click).
  */
-export async function readChat(userId: string, side: Side, locale: string, since?: Date): Promise<ChatState> {
-  const [rows, gone] = await Promise.all([
+export async function readChat(userId: string, side: Side, locale: string, since?: Date, peek = false): Promise<ChatState> {
+  const [rows, gone, chat] = await Promise.all([
     db.supportMessage.findMany({
       where: { chatId: userId, deletedAt: null, ...(since ? { createdAt: { gte: since } } : {}) },
       orderBy: { createdAt: "desc" },
@@ -94,18 +98,23 @@ export async function readChat(userId: string, side: Side, locale: string, since
     since
       ? db.supportMessage.findMany({ where: { chatId: userId, deletedAt: { gte: since } }, select: { id: true } })
       : [],
+    // There's no chat until its first message.
+    db.supportChat.findUnique({ where: { userId } }),
   ]);
-  const now = new Date();
-  const chat = await db.supportChat
-    .update({
-      where: { userId },
-      data: side === "user" ? { userUnread: 0, userReadAt: now } : { staffUnread: 0, staffReadAt: now },
-    })
-    .catch((err: unknown) => {
-      // There's no chat until its first message.
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2025") return null;
-      throw err;
-    });
+  if (chat && !peek) {
+    // Writes are what's slow on a busy machine, so a poll only writes when it has
+    // something to mark read, and otherwise refreshes the read time (which stops
+    // emails to someone reading) every READ_REFRESH_MS, after answering.
+    const unread = side === "user" ? chat.userUnread : chat.staffUnread;
+    const readAt = side === "user" ? chat.userReadAt : chat.staffReadAt;
+    const mark = () =>
+      db.supportChat.update({
+        where: { userId },
+        data: side === "user" ? { userUnread: 0, userReadAt: new Date() } : { staffUnread: 0, staffReadAt: new Date() },
+      });
+    if (unread > 0) await mark();
+    else if (!readAt || Date.now() - readAt.getTime() > READ_REFRESH_MS) after(() => mark().then(() => {}, () => {}));
+  }
   const when = timeFormat(locale);
   const seen = side === "user" ? chat?.staffReadAt : chat?.userReadAt;
   return {

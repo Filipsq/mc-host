@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Polled by the open chat: `?since=` returns the messages from then on and
- * marks the chat read (`&chat=<user id>` reads a user's chat as an admin).
+ * marks the chat read (`&chat=<user id>` reads a user's chat as an admin,
+ * `&peek=1` leaves it unread: the help bubble loading it ahead of a click).
  * Without `since` it only returns the count for the badge in the top bar.
  */
 export async function GET(req: NextRequest) {
@@ -28,6 +29,6 @@ export async function GET(req: NextRequest) {
   if (chat !== null && !admin) return NextResponse.json({ error: "notFound" }, { status: 404 });
   const from = new Date(since);
   const { locale } = await getPreferences();
-  const state = await readChat(chat ?? userId, chat !== null ? "staff" : "user", locale, isNaN(from.getTime()) ? undefined : from);
+  const state = await readChat(chat ?? userId, chat !== null ? "staff" : "user", locale, isNaN(from.getTime()) ? undefined : from, params.has("peek"));
   return NextResponse.json(state, { headers });
 }
