@@ -11,6 +11,7 @@ import * as agent from "@/lib/agent";
 import {
   agentSpec,
   applyToHost,
+  changePort,
   createServerRecord,
   destroyServer,
   getOwnedServer,
@@ -311,6 +312,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     redirect(url);
   }
 
+  const busy = new Set<number>();
   for (let next = 1; ; next++) {
     try {
       await agent.createServer(agentSpec(server));
@@ -319,6 +321,16 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
       if (!agent.isFull(err)) console.error("create server failed", server.id, err);
       // Clean up anything half-created so the user can try again.
       await agent.deleteServer(server.id).catch(() => {});
+      // Something on the machine holds the port (every new server would get it): take the next one.
+      if (agent.portInUse(err) && server.port !== null && busy.size < 5) {
+        busy.add(server.port);
+        const moved = await changePort(server, busy);
+        if (moved) {
+          server = moved;
+          next--;
+          continue;
+        }
+      }
       // That machine has no free server's worth of memory awake right now: try the next one.
       if (agent.isFull(err) && next < candidates.length) {
         server = await db.server.update({ where: { id: server.id }, data: { node: candidates[next] } });

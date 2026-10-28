@@ -129,6 +129,27 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
   return null;
 }
 
+/**
+ * Moves the server to the lowest free port that isn't in `busy`: ports its
+ * machine holds though no server has them (e.g. a container left behind).
+ * Returns null if none is free.
+ */
+export async function changePort(server: Server, busy: ReadonlySet<number>): Promise<Server | null> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const taken = await db.server.findMany({ where: { port: { gte: PORT_START, lte: PORT_END } }, select: { port: true } });
+    const used = new Set(taken.map((s) => s.port));
+    let port = PORT_START;
+    while ((used.has(port) || busy.has(port)) && port <= PORT_END) port++;
+    if (port > PORT_END) return null;
+    try {
+      return await db.server.update({ where: { id: server.id }, data: { port } });
+    } catch (err) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+    }
+  }
+  return null;
+}
+
 const GAME_DOMAIN = process.env.GAME_DOMAIN ?? "localhost";
 
 /** The Java address: every machine's servers are reached through the main machine's router. */

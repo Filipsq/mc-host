@@ -20,6 +20,11 @@ export function isFull(err: unknown) {
   return err instanceof AgentError && err.status === 503 && err.message === "full";
 }
 
+/** Docker couldn't publish the server's port: something else on its machine holds it. */
+export function portInUse(err: unknown) {
+  return err instanceof AgentError && /address already in use|port is already allocated/.test(err.message);
+}
+
 /** The agent refused to start a server whose files take too much more than its plan's disk space. */
 export function isDiskFull(err: unknown) {
   return err instanceof AgentError && err.status === 507 && err.message === "diskFull";
