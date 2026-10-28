@@ -147,6 +147,7 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
             </span>
             <input name="viewDistance" type="range" min={VIEW_DISTANCE_MIN} max={viewDistance.max} step={1} value={view} onChange={(e) => setView(Number(e.target.value))} />
             <span className="muted small">{format(t.viewDistanceHint, { min: VIEW_DISTANCE_MIN, max: viewDistance.max, def: viewDistance.def })}</span>
+            {view > 12 && <span className="notice warn small">{t.viewDistanceHigh}</span>}
           </label>
         </>
       )}

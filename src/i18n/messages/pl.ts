@@ -697,6 +697,7 @@ const pl = {
     spawnProtection: "Ochrona spawnu (kratki)",
     spawnProtectionHint: "Tyle kratek wokół spawnu mogą zmieniać tylko operatorzy (OP). 0 wyłącza ochronę.",
     viewDistance: "Pole widzenia (chunki)",
+    viewDistanceHigh: "Duże pole widzenia może powodować lagi i spadki TPS, zwłaszcza gdy kilku graczy biega w różnych miejscach. Jeśli serwer zwolni, zmniejsz je.",
     viewDistanceHint: "Od {min} do {max} na tym planie, domyślnie {def}. Więcej chunków zużywa więcej RAM-u i CPU, a nowy teren może się wolniej wczytywać.",
     icon: "Ikona na liście serwerów",
     iconHint: "Wybierz dowolny obrazek, a przytniemy go do kwadratu 64×64. Pokaże się po ponownym uruchomieniu serwera.",
