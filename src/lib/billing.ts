@@ -3,7 +3,7 @@ import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
 import * as agent from "./agent";
-import { agentSpec, destroyServer, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
+import { agentSpec, changePort, destroyServer, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
@@ -375,7 +375,19 @@ export async function provision(server: Server) {
     const here = await moveIfFull(server);
     if (!here) return false; // being moved; the call moving it provisions it
     server = here;
-    await agent.recreateServer(agentSpec(server));
+    // Something on the machine may hold its port: then it gets the next free one.
+    for (const busy = new Set<number>(); ; ) {
+      try {
+        await agent.recreateServer(agentSpec(server));
+        break;
+      } catch (err) {
+        if (!agent.portInUse(err) || server.port === null || busy.size >= 5) throw err;
+        busy.add(server.port);
+        const moved = await changePort(server, busy);
+        if (!moved) throw err;
+        server = moved;
+      }
+    }
     await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
     return true;
   } catch (err) {
