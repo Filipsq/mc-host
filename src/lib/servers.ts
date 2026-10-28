@@ -22,7 +22,7 @@ import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
 import { requiredArch } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium, sitePlugin } from "./plugins";
-import { isPreYearVersion, maxPlayersFor } from "./settings";
+import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
 
 export type LiveState =
@@ -247,6 +247,8 @@ export function agentSpec(server: Server): CreateServerSpec {
     hardcore: server.hardcore,
     commandBlocks: server.commandBlocks,
     spawnProtection: server.spawnProtection,
+    // A pick from a paid plan never goes past what the plan has now.
+    viewDistance: server.viewDistance == null ? undefined : Math.min(server.viewDistance, viewDistanceMax(!plan.alwaysOn)),
     level: server.level ?? "",
     seed: server.levelSeed ?? "",
     levelType: server.levelType ?? "",

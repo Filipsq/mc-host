@@ -387,6 +387,8 @@ type createRequest struct {
 	Hardcore        bool `json:"hardcore"`
 	CommandBlocks   bool `json:"commandBlocks"`
 	SpawnProtection *int `json:"spawnProtection"`
+	// How many chunks around each player the server sends; the plan's default if missing.
+	ViewDistance *int `json:"viewDistance"`
 
 	// The world the server runs (a folder in its files; see worlds.go) and,
 	// for one it hasn't made yet, its seed and type. The image's default
@@ -818,11 +820,14 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		// Fewer chunks around each player (Minecraft's default is 10) means new
 		// ground appears faster when someone runs or flies; free servers share
 		// less CPU, so they see a little less far.
-		view := "10"
+		view := 10
 		if req.Autostop {
-			view = "8"
+			view = 8
 		}
-		env = append(env, "VIEW_DISTANCE="+view, "SIMULATION_DISTANCE=6")
+		if req.ViewDistance != nil {
+			view = max(3, min(*req.ViewDistance, 32))
+		}
+		env = append(env, fmt.Sprintf("VIEW_DISTANCE=%d", view), fmt.Sprintf("SIMULATION_DISTANCE=%d", min(6, view)))
 		if req.Autostop {
 			// The image stops the server by itself once nobody has played for this long.
 			secs := fmt.Sprint(int(a.idle.Seconds()))

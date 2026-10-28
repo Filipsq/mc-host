@@ -99,6 +99,7 @@ export type CreateServerSpec = {
   hardcore: boolean; // Java only
   commandBlocks: boolean; // Java only
   spawnProtection: number; // Java only: blocks around spawn only operators may change
+  viewDistance?: number; // Java only: chunks around each player; the plan's default if missing
   level: string; // the world folder it runs; empty for the image's default
   seed: string; // for a world it hasn't made yet
   levelType: string; // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria); empty if not chosen

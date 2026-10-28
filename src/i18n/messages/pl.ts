@@ -696,6 +696,8 @@ const pl = {
     commandBlocks: "Bloki poleceń działają (mapy przygodowe, minigry)",
     spawnProtection: "Ochrona spawnu (kratki)",
     spawnProtectionHint: "Tyle kratek wokół spawnu mogą zmieniać tylko operatorzy (OP). 0 wyłącza ochronę.",
+    viewDistance: "Pole widzenia (chunki)",
+    viewDistanceHint: "Od {min} do {max} na tym planie, domyślnie {def}. Więcej chunków zużywa więcej RAM-u i CPU, a nowy teren może się wolniej wczytywać.",
     icon: "Ikona na liście serwerów",
     iconHint: "Wybierz dowolny obrazek, a przytniemy go do kwadratu 64×64. Pokaże się po ponownym uruchomieniu serwera.",
     iconSaved: "Zapisano ikonę. Pokaże się po ponownym uruchomieniu serwera.",
@@ -730,6 +732,7 @@ const pl = {
       whitelistEmpty: "Dopisz co najmniej jednego gracza albo wyłącz listę",
       invalidPlayer: "Niepoprawny nick: {player}",
       maxPlayersRange: "Liczba graczy musi być od 1 do limitu planu",
+      viewDistanceRange: "Pole widzenia jest poza zakresem dla tego planu",
       tooManyPlayers: "Lista może mieć najwyżej 100 graczy",
       applyFailed: "Zapisaliśmy ustawienia, ale nie udało się ich zastosować na serwerze. Spróbuj ponownie za chwilę.",
       worldTooNew:
