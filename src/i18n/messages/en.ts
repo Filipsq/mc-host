@@ -326,6 +326,8 @@ const en: Messages = {
     checkout: "Go to payment",
     redirecting: "Redirecting to payment...",
     methods: "Pay by card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). Without automatic renewal plans don't renew by themselves, but we email you before yours ends.",
+    paysafecard: "Pay with paysafecard",
+    paysafecardHint: "Have a paysafecard code? You can buy one at a newsagent or petrol station. A paysafecard payment doesn't renew automatically.",
     status: "Status",
     statuses: { active: "Active", suspended: "Suspended", awaiting: "Awaiting payment", free: "Free" },
     expires: "Expires",

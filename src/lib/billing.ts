@@ -2,6 +2,7 @@ import "server-only";
 import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
+import { paysafecardEnabled } from "./hotpay";
 import * as agent from "./agent";
 import { agentSpec, changePort, destroyServer, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
@@ -55,12 +56,15 @@ export async function startCheckout(opts: {
   addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
   creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
   promoCode?: string; // the Halloween code (halloween.ts): the same, without a creator
+  paysafecard?: boolean; // paid with a paysafecard code through HotPay (hotpay.ts) instead of Stripe
 }) {
   const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly } = opts;
   const addons = addonList(opts.addons);
-  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly;
+  const paysafecard = !!opts.paysafecard;
+  if (paysafecard && !paysafecardEnabled(currency)) throw new Error("paysafecard is not set up");
+  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !paysafecard;
   // Test keys take no money, so only admins may check out with them (to try the site).
-  if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
+  if (!paysafecard && stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
   const full = Math.round((upgrade || addonsOnly || !days ? (upgrade?.amount ?? addonsOnly?.amount ?? 0) : priceFor(plan, days, currency, addons)) * 100);
@@ -82,10 +86,13 @@ export async function startCheckout(opts: {
       addonsOnly: !!addonsOnly,
       creatorId,
       promoCode,
+      paysafecard,
     },
   });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  // HotPay takes a posted form: this page of ours sends the buyer on with it.
+  if (paysafecard) return `${appUrl}/api/hotpay/start/${payment.id}`;
   const back = `${appUrl}/dashboard/servers/${server.id}`;
   const session = await stripe().checkout.sessions.create({
     mode: "payment",

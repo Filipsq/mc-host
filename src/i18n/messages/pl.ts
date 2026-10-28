@@ -325,6 +325,8 @@ const pl = {
     checkout: "Przejdź do płatności",
     redirecting: "Przekierowanie do płatności...",
     methods: "Zapłacisz kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Bez automatycznego odnawiania plan nie odnawia się sam, ale przed końcem okresu przypomnimy Ci mailem.",
+    paysafecard: "Zapłać paysafecard",
+    paysafecardHint: "Masz kod paysafecard? Kupisz go np. w kiosku lub na stacji benzynowej. Płatność paysafecard nie odnawia się automatycznie.",
     status: "Status",
     statuses: { active: "Aktywny", suspended: "Zawieszony", awaiting: "Czeka na płatność", free: "Darmowy" },
     expires: "Wygasa",

@@ -21,7 +21,11 @@ import { defaultLocale, isLocale } from "@/i18n/config";
 export const APOLOGY_DAYS = 7;
 const DAY = 24 * 60 * 60 * 1000;
 
-const LIVE_PAID = { status: "PAID", stripeSessionId: { startsWith: "cs_live_" } } satisfies Prisma.PaymentWhereInput;
+const LIVE_PAID = {
+  status: "PAID",
+  // paysafecard payments (hotpay.ts) are always real.
+  OR: [{ stripeSessionId: { startsWith: "cs_live_" } }, { hotpayId: { not: null } }],
+} satisfies Prisma.PaymentWhereInput;
 // Customers: not the admins' own tests, nor test accounts.
 const CUSTOMER = { admin: false, NOT: { email: { endsWith: "@example.com" } } } satisfies Prisma.UserWhereInput;
 // A server on a paid plan with no real payment behind it: every paid plan so far came from test checkouts.

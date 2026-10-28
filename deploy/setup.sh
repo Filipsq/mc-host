@@ -123,6 +123,16 @@ if ! grep -qE '^CF_API_KEY=.+' .env; then
   echo "CurseForge packs are off: set CF_API_KEY in deploy/.env (see deploy/README.md)."
 fi
 
+# paysafecard through HotPay (src/lib/hotpay.ts); see deploy/README.md.
+if ! grep -q '^HOTPAY_SECRET=' .env; then
+  cat >> .env <<'ENV'
+# From the HotPay panel (paysafecard service): SEKRET and the notification
+# password, in single quotes. Without them the paysafecard button is hidden.
+HOTPAY_SECRET=
+HOTPAY_PASSWORD=
+ENV
+fi
+
 # Phone notifications from the installed app (Web Push) are signed with this
 # key pair. Made once; changing it later would cut off every subscribed phone.
 if ! grep -qE '^VAPID_PUBLIC_KEY=.+' .env; then
