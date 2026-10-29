@@ -16,7 +16,7 @@ import {
   type CreateServerSpec,
 } from "./agent";
 import { getServerFor } from "./access";
-import { oversold, pickNode } from "./capacity";
+import { oversold, pickNode, rankNodes } from "./capacity";
 import { planById } from "./plans";
 import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
 import { requiredArch } from "./terraria";
@@ -68,7 +68,8 @@ export function liveStateFrom(server: Pick<Server, "status">, s: KnownState | "m
   if (server.status === "AWAITING_PAYMENT") return "awaitingPayment";
   if (server.status === "SUSPENDED") return "suspended";
   // Paid but not yet created on the game host (the billing job retries).
-  if (s === "missing") return server.status === "PROVISIONING" ? "starting" : "unknown";
+  // No container on its machine otherwise (e.g. moved and not built yet): off, and Start builds it.
+  if (s === "missing") return server.status === "PROVISIONING" ? "starting" : "offline";
   if (s === "unknown") return "unknown";
   if (s.state === "restarting") return "restarting";
   if (s.state === "running") return s.health === "healthy" ? "online" : "starting";
@@ -318,6 +319,21 @@ export async function moveIfFull(server: Server): Promise<Server | null> {
   const to = await pickNode(server.memoryMb, server.memoryMb, undefined, requiredArch(server));
   if (!to || to === server.node) return server;
   return (await moveServer(server, to)) ?? server;
+}
+
+/**
+ * When a free server's machine has no memory awake for it, moves it to the
+ * machine best placed for free servers and starts it there. Returns the moved
+ * server, or null if there's no other machine or the copy failed.
+ */
+export async function startElsewhere(server: Server): Promise<Server | null> {
+  const to = (await rankNodes(server.memoryMb, 0, undefined, requiredArch(server))).find((n) => n !== server.node);
+  if (!to) return null;
+  const moved = await moveServer(server, to);
+  if (!moved) return null;
+  console.info("free server moved to start", server.id, server.node, "->", to);
+  await recreateServer(agentSpec(moved));
+  return moved;
 }
 
 /**
