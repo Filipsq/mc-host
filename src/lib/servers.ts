@@ -68,7 +68,8 @@ export function liveStateFrom(server: Pick<Server, "status">, s: KnownState | "m
   if (server.status === "AWAITING_PAYMENT") return "awaitingPayment";
   if (server.status === "SUSPENDED") return "suspended";
   // Paid but not yet created on the game host (the billing job retries).
-  if (s === "missing") return server.status === "PROVISIONING" ? "starting" : "unknown";
+  // No container on its machine otherwise (e.g. moved and not built yet): off, and Start builds it.
+  if (s === "missing") return server.status === "PROVISIONING" ? "starting" : "offline";
   if (s === "unknown") return "unknown";
   if (s.state === "restarting") return "restarting";
   if (s.state === "running") return s.health === "healthy" ? "online" : "starting";
