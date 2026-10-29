@@ -1402,6 +1402,20 @@ const pl = {
     footer: "To przypomnienie o Twoim serwerze w {brand}.",
     unsubscribe: "Nie chcę takich przypomnień",
   },
+  startOffer: {
+    title: "Tylko dla Ciebie: −{n}% na pierwszy płatny plan",
+    text: "Widzimy, że grasz na serwerze! Przejdź na płatny plan do {date}, a pierwsza płatność będzie {n}% tańsza. Świat zostaje, serwer nie zasypia i nikt go nie usunie.",
+    billing: "Masz zniżkę −{n}% na pierwszą płatność, ważną do {date}. Odejmiemy ją na stronie płatności (cena wyżej jest jeszcze bez zniżki).",
+    button: "Odbierz zniżkę",
+    mailSubject: "−{n}% na Twój pierwszy płatny serwer",
+    mailParagraphs: [
+      "Hejka! Widzimy, że gracie na serwerze {server}. Super!",
+      "Mamy dla Ciebie zniżkę −{n}% na pierwszy płatny plan, ważną do {date}. Twój świat zostaje, serwer działa cały czas bez zasypiania, ma więcej pamięci i kopie zapasowe.",
+      "Wystarczy wybrać plan na stronie płatności, zniżka odejmie się sama.",
+    ],
+    push: "−{n}% na pierwszy płatny plan dla {server}, do {date}.",
+    mailFooter: "Ta wiadomość dotyczy Twojego serwera w {brand}.",
+  },
   comebackPage: {
     title: "Przypomnienia o graniu",
     off: "Nie będziemy już przypominać, że dawno nie grałeś. Wiadomości o płatnościach i usunięciu serwera nadal przyjdą.",

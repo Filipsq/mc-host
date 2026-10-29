@@ -10,6 +10,7 @@ import { serverAddons } from "@/lib/addons";
 import { formatPrice, plans } from "@/lib/plans";
 import { priceFor } from "@/lib/billing";
 import { canUpgrade } from "@/lib/upgrade";
+import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
 import { RENEW_BEFORE_MS } from "@/lib/renewal";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import type { Currency } from "@/i18n/config";
@@ -30,6 +31,8 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
   const now = new Date();
   const activePaid = server.plan !== "FREE" && server.paidUntil && server.paidUntil > now;
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" });
+  // The start offer (startOffer.ts) takes a first payment's discount off at checkout.
+  const offerEnds = activePaid ? null : await startOfferEnds(session.user.id, now);
 
   const status =
     server.plan === "FREE"
@@ -107,6 +110,15 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
           </span>
           {renewal && <AutoRenewButton serverId={server.id} on={!renewal.on} label={renewal.on ? b.turnOff : b.turnOn} />}
         </section>
+      )}
+
+      {offerEnds && (
+        <p className="notice success">
+          {format(t.startOffer.billing, {
+            n: START_OFFER_DISCOUNT,
+            date: offerEnds.toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Warsaw" }),
+          })}
+        </p>
       )}
 
       <CheckoutForm

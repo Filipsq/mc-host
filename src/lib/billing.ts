@@ -25,6 +25,7 @@ import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./
 import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type CreatorReward } from "./creator";
 import { fulfillGiftPurchase } from "./gifts";
 import { isHalloweenCode, withHalloweenDiscount } from "./halloween";
+import { startOffers, startOfferEnds, withStartOfferDiscount } from "./startOffer";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
@@ -66,7 +67,9 @@ export async function startCheckout(opts: {
   const full = Math.round((upgrade || addonsOnly || !days ? (upgrade?.amount ?? addonsOnly?.amount ?? 0) : priceFor(plan, days, currency, addons)) * 100);
   const creatorId = days && !upgrade && !addonsOnly ? opts.creatorId : undefined;
   const promoCode = days && !upgrade && !addonsOnly && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
-  const amount = creatorId ? withCreatorDiscount(full) : promoCode ? withHalloweenDiscount(full) : full;
+  // Without a code, a first payment while the user's start offer runs (startOffer.ts) is cheaper too.
+  const startOffer = days && !upgrade && !addonsOnly && !creatorId && !promoCode && (await startOfferEnds(user.id)) ? "start" : undefined;
+  const amount = creatorId ? withCreatorDiscount(full) : promoCode ? withHalloweenDiscount(full) : startOffer ? withStartOfferDiscount(full) : full;
   const payment = await db.payment.create({
     data: {
       userId: user.id,
@@ -81,7 +84,7 @@ export async function startCheckout(opts: {
       addons,
       addonsOnly: !!addonsOnly,
       creatorId,
-      promoCode,
+      promoCode: promoCode ?? startOffer,
     },
   });
 
@@ -295,7 +298,7 @@ export function idleDeletionDate(server: Pick<Server, "lastPlayedAt" | "deletion
  * FREE_IDLE_DAYS, so they don't hold disk, ports and free slots for good.
  * Owners are first asked to come back after COMEBACK_DAYS (comeback.ts).
  */
-async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; idleDeleted: number; comeback: number }) {
+async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; idleDeleted: number; comeback: number; startOffers: number }) {
   const stats = await agent.getStats().catch((err) => {
     console.error("idle free servers: no stats", err);
     return null;
@@ -310,6 +313,11 @@ async function deleteIdleFreeServers(now: Date, result: { idleWarned: number; id
   // A few days with nobody playing: ask the owner to come back (paid servers too).
   result.comeback += await sendComebackReminders(now, stats.unreachable).catch((err) => {
     console.error("comeback reminders failed", err);
+    return 0;
+  });
+  // Someone keeps playing on a free server: offer them a cheaper first payment.
+  result.startOffers += await startOffers(now, playing).catch((err) => {
+    console.error("start offers failed", err);
     return 0;
   });
   // Warnings go out WARN_BEFORE_IDLE_DELETE_DAYS before the terms allow deleting.
@@ -453,7 +461,7 @@ export async function removeLeftoverContainers(now = new Date()) {
 }
 
 export async function runBillingJob(now = new Date()) {
-  const result = { renewed: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
+  const result = { renewed: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Auto-renewing servers whose period ends within a day: charge the saved card.

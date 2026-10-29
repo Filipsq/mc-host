@@ -10,11 +10,12 @@ import { deletionDate, idleDeletionDate } from "@/lib/billing";
 import { starterWeekPrice } from "@/lib/planMail";
 import { planById } from "@/lib/plans";
 import { canUpgrade } from "@/lib/upgrade";
+import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
 import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
-import { ArrowUpCircle } from "lucide-react";
+import { ArrowUpCircle, Gift } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -93,6 +94,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
   // Keep refreshing while starting, or while a just-made payment is being confirmed.
   // (While starting, the panel's frame keeps refreshing.)
   const waiting = payment === "success" && unpaid;
+  // A running start offer (startOffer.ts), shown to the owner on their free servers.
+  const offerEnds = server.plan === "FREE" && can("owner") ? await startOfferEnds(session.user.id) : null;
 
   return (
     <div className="stack">
@@ -123,6 +126,22 @@ export default async function ServerPage({ params, searchParams }: Props) {
           </span>
           <Link className="button" href={`/dashboard/servers/${server.id}/billing`}>
             <ArrowUpCircle size={16} aria-hidden /> {b.keepServer}
+          </Link>
+        </div>
+      )}
+      {offerEnds && !server.deletionWarnedAt && (
+        <div className="notice success row">
+          <span className="stack-tight">
+            <strong>{format(all.startOffer.title, { n: START_OFFER_DISCOUNT })}</strong>
+            <span>
+              {format(all.startOffer.text, {
+                n: START_OFFER_DISCOUNT,
+                date: offerEnds.toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Warsaw" }),
+              })}
+            </span>
+          </span>
+          <Link className="button" href={`/dashboard/servers/${server.id}/billing`}>
+            <Gift size={16} aria-hidden /> {all.startOffer.button}
           </Link>
         </div>
       )}
