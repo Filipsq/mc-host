@@ -17,6 +17,7 @@ import {
   getOwnedServer,
   isValidSubdomain,
   onHost,
+  startElsewhere,
   syncHostAliases,
   syncPeerRoutes,
   worldTooNew,
@@ -534,6 +535,12 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
         await agent.recreateServer(agentSpec(server));
       });
   } catch (err) {
+    // A free server's machine is full right now: it moves to one with room and starts there.
+    if (agent.isFull(err) && server.plan === "FREE" && (await startElsewhere(server).catch(() => null))) {
+      await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
+      revalidatePath(`/dashboard/servers/${id}`, "layout");
+      return {};
+    }
     if (agent.isFull(err)) return { error: "full" };
     if (agent.isDiskFull(err)) {
       revalidatePath(`/dashboard/servers/${id}`, "layout");

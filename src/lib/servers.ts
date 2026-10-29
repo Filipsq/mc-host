@@ -16,7 +16,7 @@ import {
   type CreateServerSpec,
 } from "./agent";
 import { getServerFor } from "./access";
-import { oversold, pickNode } from "./capacity";
+import { oversold, pickNode, rankNodes } from "./capacity";
 import { planById } from "./plans";
 import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
 import { requiredArch } from "./terraria";
@@ -319,6 +319,21 @@ export async function moveIfFull(server: Server): Promise<Server | null> {
   const to = await pickNode(server.memoryMb, server.memoryMb, undefined, requiredArch(server));
   if (!to || to === server.node) return server;
   return (await moveServer(server, to)) ?? server;
+}
+
+/**
+ * When a free server's machine has no memory awake for it, moves it to the
+ * machine best placed for free servers and starts it there. Returns the moved
+ * server, or null if there's no other machine or the copy failed.
+ */
+export async function startElsewhere(server: Server): Promise<Server | null> {
+  const to = (await rankNodes(server.memoryMb, 0, undefined, requiredArch(server))).find((n) => n !== server.node);
+  if (!to) return null;
+  const moved = await moveServer(server, to);
+  if (!moved) return null;
+  console.info("free server moved to start", server.id, server.node, "->", to);
+  await recreateServer(agentSpec(moved));
+  return moved;
 }
 
 /**
