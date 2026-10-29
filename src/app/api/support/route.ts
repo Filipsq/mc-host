@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/admin";
 import { getPreferences } from "@/i18n/server";
-import { readChat, unreadCount } from "@/lib/support";
+import { latestMessageAt, readChat, unreadCount } from "@/lib/support";
 import { markAdminSeen } from "@/lib/presence";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,8 @@ export const dynamic = "force-dynamic";
  * Polled by the open chat: `?since=` returns the messages from then on and
  * marks the chat read (`&chat=<user id>` reads a user's chat as an admin,
  * `&peek=1` leaves it unread: the help bubble loading it ahead of a click).
- * Without `since` it only returns the count for the badge in the top bar.
+ * Without `since` it only returns the count for the badge in the top bar;
+ * admins can add `latest` to also get when the newest message came in.
  */
 export async function GET(req: NextRequest) {
   const session = await getSession();
@@ -23,7 +24,13 @@ export async function GET(req: NextRequest) {
   if (admin) markAdminSeen();
 
   const since = params.get("since");
-  if (since === null) return NextResponse.json({ count: await unreadCount(userId, admin) }, { headers });
+  if (since === null) {
+    const [count, latest] = await Promise.all([
+      unreadCount(userId, admin),
+      admin && params.has("latest") ? latestMessageAt() : undefined,
+    ]);
+    return NextResponse.json({ count, latest }, { headers });
+  }
 
   const chat = params.get("chat");
   if (chat !== null && !admin) return NextResponse.json({ error: "notFound" }, { status: 404 });

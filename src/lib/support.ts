@@ -276,6 +276,12 @@ async function notify(userId: string, from: Side, body: string, picture: boolean
   }
 }
 
+/** When the newest message in any chat was sent, so the admin pages can tell something new came in. */
+export async function latestMessageAt() {
+  const { _max } = await db.supportChat.aggregate({ _max: { lastMessageAt: true } });
+  return _max.lastMessageAt?.toISOString() ?? null;
+}
+
 /** The badge in the top bar: unread replies for a user, or the number of chats waiting for an admin. */
 export async function unreadCount(userId: string, admin: boolean) {
   if (admin) return db.supportChat.count({ where: { staffUnread: { gt: 0 } } });
