@@ -1403,6 +1403,20 @@ const en: Messages = {
     footer: "This is a reminder about your server at {brand}.",
     unsubscribe: "I don't want these reminders",
   },
+  startOffer: {
+    title: "Just for you: −{n}% off your first paid plan",
+    text: "We see you're playing! Switch to a paid plan by {date} and your first payment is {n}% cheaper. Your world stays, the server never sleeps and nobody deletes it.",
+    billing: "You have −{n}% off your first payment, valid until {date}. It's taken off on the payment page (the price above doesn't include it yet).",
+    button: "Get the discount",
+    mailSubject: "−{n}% off your first paid server",
+    mailParagraphs: [
+      "Hey! We see you're playing on {server}. Great!",
+      "Here's −{n}% off your first paid plan, valid until {date}. Your world stays, the server runs all the time without sleeping, with more memory and backups.",
+      "Just pick a plan on the payment page and the discount is taken off.",
+    ],
+    push: "−{n}% off a paid plan for {server}, until {date}.",
+    mailFooter: "This message is about your server at {brand}.",
+  },
   comebackPage: {
     title: "Play reminders",
     off: "We won't remind you to come back and play anymore. Emails about payments and server deletion still come.",

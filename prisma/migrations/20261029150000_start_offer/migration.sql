@@ -1,0 +1,1 @@
+ALTER TABLE "User" ADD COLUMN "startOfferAt" TIMESTAMP(3);
