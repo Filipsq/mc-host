@@ -202,6 +202,7 @@ type agent struct {
 
 	metrics    sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
 	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
+	autostops  sync.Map // server id -> autostopExit, whether its last nonzero exit was going to sleep
 
 	udp *udpWaker // answers Bedrock players while their server is stopped (see bedrock.go)
 }
@@ -984,6 +985,8 @@ func (a *agent) stopReason(id string, info *ContainerInfo) string {
 		return "sleeping"
 	case info.Config.Labels["mchost.autostop"] == "true" && info.State.ExitCode == 0:
 		return "sleeping" // Java's built-in autostop exits cleanly
+	case info.Config.Labels["mchost.autostop"] == "true" && a.sleptOnExit(id, info):
+		return "sleeping" // autostop saved the world, but a mod kept Java running until it was killed
 	case info.State.ExitCode != 0:
 		return "crashed"
 	default:
