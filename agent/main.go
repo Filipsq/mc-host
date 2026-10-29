@@ -383,12 +383,20 @@ type createRequest struct {
 	// Java only: players may fly (mods with jetpacks or wings need it), one life
 	// (hardcore), command blocks work, and how far from spawn only operators may
 	// build (16 if missing, as in Minecraft).
-	AllowFlight     bool `json:"allowFlight"`
-	Hardcore        bool `json:"hardcore"`
-	CommandBlocks   bool `json:"commandBlocks"`
-	SpawnProtection *int `json:"spawnProtection"`
+	AllowFlight   bool `json:"allowFlight"`
+	Hardcore      bool `json:"hardcore"`
+	CommandBlocks bool `json:"commandBlocks"`
+	// The Nether, everyone in the server's game mode, hostile mobs. Missing (an
+	// older site): server.properties keeps what it has.
+	AllowNether     *bool `json:"allowNether"`
+	ForceGamemode   *bool `json:"forceGamemode"`
+	SpawnMonsters   *bool `json:"spawnMonsters"`
+	SpawnProtection *int  `json:"spawnProtection"`
 	// How many chunks around each player the server sends; the plan's default if missing.
 	ViewDistance *int `json:"viewDistance"`
+	// The resource pack players get on joining. Missing: server.properties keeps
+	// whatever it has (an owner may have set one by hand); an empty URL takes it off.
+	ResourcePack *resourcePack `json:"resourcePack"`
 
 	// The world the server runs (a folder in its files; see worlds.go) and,
 	// for one it hasn't made yet, its seed and type. The image's default
@@ -497,6 +505,8 @@ func (req *createRequest) validate() error {
 		return errors.New("only Java servers on Paper can run crossplay")
 	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.voicePort() > 65535):
 		return errors.New("voiceHost needs a Java server, a valid hostname and a port that leaves room for the voice port")
+	case req.ResourcePack != nil && req.Edition != "JAVA":
+		return errors.New("only Java servers take a resource pack")
 	case req.Level != "" && !validWorldName.MatchString(req.Level):
 		return errors.New("invalid level")
 	case !validSeed.MatchString(req.Seed):
@@ -504,7 +514,7 @@ func (req *createRequest) validate() error {
 	case req.LevelType != "" && levelTypes[req.LevelType] == "":
 		return errors.New("invalid levelType")
 	}
-	return nil
+	return req.ResourcePack.validate()
 }
 
 func (req *createRequest) validateTerraria() error {
@@ -789,6 +799,12 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		}
 		env = append(env, fmt.Sprintf("ALLOW_FLIGHT=%v", req.AllowFlight), fmt.Sprintf("HARDCORE=%v", req.Hardcore),
 			fmt.Sprintf("ENABLE_COMMAND_BLOCK=%v", req.CommandBlocks), fmt.Sprintf("SPAWN_PROTECTION=%d", spawnProtection))
+		for name, on := range map[string]*bool{"ALLOW_NETHER": req.AllowNether, "FORCE_GAMEMODE": req.ForceGamemode, "SPAWN_MONSTERS": req.SpawnMonsters} {
+			if on != nil {
+				env = append(env, fmt.Sprintf("%s=%v", name, *on))
+			}
+		}
+		env = append(env, req.ResourcePack.env()...)
 		if req.Level != "" {
 			env = append(env, "LEVEL="+req.Level)
 		}

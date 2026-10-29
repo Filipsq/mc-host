@@ -72,6 +72,9 @@ async function agentFetch(path: string, init: RequestInit & { timeoutMs?: number
   return res;
 }
 
+// The resource pack players get on joining; an empty url takes it off.
+export type ResourcePackSpec = { url: string; sha1: string; required: boolean; prompt: string };
+
 export type CreateServerSpec = {
   id: string;
   name: string;
@@ -98,8 +101,12 @@ export type CreateServerSpec = {
   allowFlight: boolean; // Java only
   hardcore: boolean; // Java only
   commandBlocks: boolean; // Java only
+  allowNether: boolean; // Java only
+  forceGamemode: boolean; // Java only: everyone joins in the server's game mode
+  spawnMonsters: boolean; // Java only
   spawnProtection: number; // Java only: blocks around spawn only operators may change
   viewDistance?: number; // Java only: chunks around each player; the plan's default if missing
+  resourcePack?: ResourcePackSpec; // Java only: missing leaves server.properties as it is
   level: string; // the world folder it runs; empty for the image's default
   seed: string; // for a world it hasn't made yet
   levelType: string; // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria); empty if not chosen

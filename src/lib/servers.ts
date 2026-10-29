@@ -246,9 +246,21 @@ export function agentSpec(server: Server): CreateServerSpec {
     allowFlight: server.allowFlight,
     hardcore: server.hardcore,
     commandBlocks: server.commandBlocks,
+    allowNether: server.allowNether,
+    forceGamemode: server.forceGamemode,
+    spawnMonsters: server.spawnMonsters,
     spawnProtection: server.spawnProtection,
     // A pick from a paid plan never goes past what the plan has now.
     viewDistance: server.viewDistance == null ? undefined : Math.min(server.viewDistance, viewDistanceMax(server.plan)),
+    resourcePack:
+      server.resourcePack == null || server.edition !== "JAVA"
+        ? undefined
+        : {
+            url: server.resourcePack,
+            sha1: server.resourcePackSha1 ?? "",
+            required: server.resourcePack !== "" && server.resourcePackRequired,
+            prompt: server.resourcePackPrompt,
+          },
     level: server.level ?? "",
     seed: server.levelSeed ?? "",
     levelType: server.levelType ?? "",
