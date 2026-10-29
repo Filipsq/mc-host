@@ -79,6 +79,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
         live !== "awaitingPayment" && can("files") && !terraria && { key: "worlds" as const, label: all.worlds.title, path: "/worlds" },
         addonsTitle && can("plugins") && { key: "plugins" as const, label: addonsTitle, path: "/plugins" },
         offersModPicker(server) && can("plugins") && { key: "mods" as const, label: all.mods.title, path: "/mods" },
+        server.edition === "JAVA" && can("settings") && { key: "resourcepack" as const, label: all.resourcePack.title, path: "/resourcepack" },
       ].filter(present),
     },
     {

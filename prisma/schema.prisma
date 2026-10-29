@@ -217,6 +217,13 @@ model Server {
   spawnProtection  Int            @default(16)
   // Chunks around each player; null: the plan's default (8 free, 10 paid). Java only.
   viewDistance     Int?
+  // Java only: the resource pack players get on joining (src/lib/resourcePack.ts), a direct
+  // link to its .zip and the zip's SHA-1. null: never set, so a pack written into
+  // server.properties by hand stays; "": taken off.
+  resourcePack         String?
+  resourcePackSha1     String?
+  resourcePackRequired Boolean        @default(false) // players who decline it can't join
+  resourcePackPrompt   String         @default("") // shown when the game asks, if set
   whitelist        Boolean        @default(false)
   whitelistPlayers String[]       @default([])
   // Java on Paper only: false lets in players without a bought Minecraft ("non-premium"),
