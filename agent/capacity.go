@@ -101,6 +101,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 		return errDiskFull
 	}
 	a.clearMarkers(id)
+	a.fixOwners(ctx, id)
 	a.fixLogin(ctx, id)
 	if a.udp != nil {
 		a.udp.release(id) // Docker publishes the Bedrock port itself
