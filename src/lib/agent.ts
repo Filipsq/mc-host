@@ -101,6 +101,9 @@ export type CreateServerSpec = {
   allowFlight: boolean; // Java only
   hardcore: boolean; // Java only
   commandBlocks: boolean; // Java only
+  allowNether: boolean; // Java only
+  forceGamemode: boolean; // Java only: everyone joins in the server's game mode
+  spawnMonsters: boolean; // Java only
   spawnProtection: number; // Java only: blocks around spawn only operators may change
   viewDistance?: number; // Java only: chunks around each player; the plan's default if missing
   resourcePack?: ResourcePackSpec; // Java only: missing leaves server.properties as it is

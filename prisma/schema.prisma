@@ -214,6 +214,11 @@ model Server {
   allowFlight      Boolean        @default(false)
   hardcore         Boolean        @default(false)
   commandBlocks    Boolean        @default(false)
+  // Java only: players may go to the Nether, everyone joins in the server's game mode
+  // (not the one they had), and hostile mobs spawn.
+  allowNether      Boolean        @default(true)
+  forceGamemode    Boolean        @default(false)
+  spawnMonsters    Boolean        @default(true)
   spawnProtection  Int            @default(16)
   // Chunks around each player; null: the plan's default (8 free, 10 paid). Java only.
   viewDistance     Int?

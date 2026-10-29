@@ -246,6 +246,9 @@ export function agentSpec(server: Server): CreateServerSpec {
     allowFlight: server.allowFlight,
     hardcore: server.hardcore,
     commandBlocks: server.commandBlocks,
+    allowNether: server.allowNether,
+    forceGamemode: server.forceGamemode,
+    spawnMonsters: server.spawnMonsters,
     spawnProtection: server.spawnProtection,
     // A pick from a paid plan never goes past what the plan has now.
     viewDistance: server.viewDistance == null ? undefined : Math.min(server.viewDistance, viewDistanceMax(server.plan)),

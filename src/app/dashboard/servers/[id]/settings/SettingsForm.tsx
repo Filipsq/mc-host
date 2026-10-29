@@ -28,6 +28,9 @@ type Props = {
     allowFlight: boolean;
     hardcore: boolean;
     commandBlocks: boolean;
+    allowNether: boolean;
+    forceGamemode: boolean;
+    spawnMonsters: boolean;
     spawnProtection: number;
     viewDistance: number;
     whitelist: boolean;
@@ -135,6 +138,27 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
           <label className="check">
             <input type="checkbox" name="commandBlocks" defaultChecked={initial.commandBlocks} />
             <span>{t.commandBlocks}</span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="allowNether" defaultChecked={initial.allowNether} />
+            <span className="stack-tight">
+              <span>{t.allowNether}</span>
+              <span className="muted small">{t.allowNetherHint}</span>
+            </span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="spawnMonsters" defaultChecked={initial.spawnMonsters} />
+            <span className="stack-tight">
+              <span>{t.spawnMonsters}</span>
+              <span className="muted small">{t.spawnMonstersHint}</span>
+            </span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="forceGamemode" defaultChecked={initial.forceGamemode} />
+            <span className="stack-tight">
+              <span>{t.forceGamemode}</span>
+              <span className="muted small">{t.forceGamemodeHint}</span>
+            </span>
           </label>
           <label>
             {t.spawnProtection}

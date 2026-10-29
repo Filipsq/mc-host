@@ -2,3 +2,7 @@ ALTER TABLE "Server" ADD COLUMN "resourcePack" TEXT,
 ADD COLUMN "resourcePackSha1" TEXT,
 ADD COLUMN "resourcePackRequired" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN "resourcePackPrompt" TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE "Server" ADD COLUMN "allowNether" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN "forceGamemode" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN "spawnMonsters" BOOLEAN NOT NULL DEFAULT true;
