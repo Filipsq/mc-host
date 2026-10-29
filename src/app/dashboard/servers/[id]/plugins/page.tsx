@@ -161,6 +161,12 @@ export default async function PluginsPage({ params, searchParams }: Props) {
       <p className="muted">
         {type === "mod" ? format(all.mods.introMods, { loader, version: server.version === "LATEST" ? all.settings.latest : server.version }) : t.intro}
       </p>
+      {type === "mod" && (
+        <p className="notice">
+          {format(all.mods.noPlugins, { loader })}{" "}
+          <Link href={`/dashboard/servers/${server.id}/type`}>{all.mods.noPluginsSwitch}</Link>
+        </p>
+      )}
       <ApplyPlugins id={server.id} pending={server.pluginsPending} t={t} />
 
       <section className="stack">

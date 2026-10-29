@@ -461,6 +461,10 @@ const pl = {
           title: "Serwer nie może zapisać pliku",
           fix: "To problem po naszej stronie. Napisz do nas na czacie pomocy, a naprawimy to.",
         },
+        pluginOnModServer: {
+          title: "Plugin wgrany jako mod",
+          fix: "W folderze mods jest plugin (np. ze SpigotMC, Hangar albo Bukkit). Serwer z modami nie wczytuje pluginów. Usuń ten plik w Plikach (folder mods) i poszukaj moda, który robi to samo, w zakładce Mody. Pluginy działają tylko na zwykłym serwerze (Paper).",
+        },
         pluginSkipped: {
           title: "Plugin pominięty",
           fix: "Ten plugin nie ma wersji na wersję Minecrafta Twojego serwera, więc serwer działa bez niego. Wybierz inny plugin albo zmień wersję w Ustawieniach.",
@@ -797,6 +801,8 @@ const pl = {
     settingsNote: "Opis, tryb gry, poziom trudności, PvP i białą listę ustawiasz w Ustawieniach: przy starcie mają pierwszeństwo przed server.properties.",
     restartNote: "Zmiany w konfiguracji i pluginach działają po ponownym uruchomieniu serwera.",
     readOnly: "Serwer jest zawieszony: pliki możesz tylko pobierać.",
+    pluginsIgnored: "Ten serwer nie wczytuje pluginów, więc pliki w tym folderze nic nie zmienią. Pluginy działają tylko na zwykłym serwerze (Paper). Na serwerze z modami dodawaj mody.",
+    modsOnly: "Wgrywaj tu tylko mody na Fabric, Forge lub NeoForge (taki jak serwer). Pluginy ze SpigotMC, Hangar czy Bukkit tu nie zadziałają.",
     notYet: "Pliki pojawią się, gdy serwer zostanie utworzony.",
     unavailable: "Nie udało się wczytać plików. Spróbuj ponownie za chwilę.",
     editing: "Edycja pliku",
@@ -940,7 +946,7 @@ const pl = {
     openConfig: "Otwórz folder plugins",
     notBedrock: "Serwery Bedrock nie obsługują pluginów.",
     notTerraria: "Pluginy z Modrinth są tylko dla Minecrafta.",
-    notModpack: "Serwer z paczką modów ma tylko mody z paczki, bez pluginów.",
+    notModpack: "Serwer z paczką modów ma tylko mody z paczki. Pluginy (ze SpigotMC, Hangar czy Bukkit) działają tylko na zwykłym serwerze (Paper).",
     onModrinth: "Modrinth",
     sets: "Gotowe zestawy",
     setsIntro: "Kilka sprawdzonych pluginów naraz, jednym kliknięciem.",
@@ -1010,6 +1016,9 @@ const pl = {
     onCurseforge: "CurseForge",
     fromCurseforge: "z CurseForge",
     cfIntro: "Szukamy modów na {loader} dla Minecrafta {version}. Wybraną wersję moda i mody, których potrzebuje, dodamy same.",
+    noPlugins:
+      "To serwer z modami na {loader}, więc pluginy (np. EssentialsX, LuckPerms, pliki ze SpigotMC, Hangar czy Bukkit) tu nie działają. Działają tylko na zwykłym serwerze (Paper). Tutaj dodawaj mody, wiele pluginów ma swój odpowiednik wśród modów.",
+    noPluginsSwitch: "Wolisz pluginy? Zmień typ serwera na zwykły (serwer zacznie od nowego świata, stary zostanie w Światach).",
     cfBlockedNote: "Autor pozwala pobierać tylko z CurseForge: wgraj plik .jar sam w Plikach (folder mods).",
     cfAddLink: "Albo wklej link z CurseForge",
     cfLinkPlaceholder: "np. https://www.curseforge.com/minecraft/mc-mods/jei",

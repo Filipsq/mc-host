@@ -8,6 +8,7 @@ import { diskLimitMb, formatMb } from "@/lib/disk";
 import { format } from "@/i18n/messages";
 import { listFiles, type FileEntry } from "@/lib/agent";
 import { canChangeFiles, EDIT_MAX_BYTES } from "@/lib/files";
+import { supportsPlugins } from "@/lib/plugins";
 import FileBrowser, { type FileRow } from "./FileBrowser";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ path?: string }> };
@@ -24,6 +25,8 @@ export default async function FilesPage({ params, searchParams }: Props) {
   const listing = server.status === "AWAITING_PAYMENT" ? null : await listFiles(server.id, path).catch((err) => err as Error);
   const dir = listing && !(listing instanceof Error) ? listing.path : "";
   const crumbs = dir && dir !== "." ? dir.split("/") : [];
+  // Mod servers don't load plugins; say so where owners drop plugin jars.
+  const modServer = server.edition === "JAVA" && !supportsPlugins(server);
 
   return (
     <div className="stack">
@@ -39,6 +42,8 @@ export default async function FilesPage({ params, searchParams }: Props) {
         <>
           {!canChangeFiles(server) && <p className="notice warn">{t.readOnly}</p>}
           {(live === "online" || live === "starting") && dir === "." && <p className="notice">{t.runningWarn}</p>}
+          {modServer && crumbs[0] === "plugins" && <p className="notice warn">{t.pluginsIgnored}</p>}
+          {modServer && crumbs[0] === "mods" && <p className="notice">{t.modsOnly}</p>}
           <nav className="crumbs" aria-label={t.top}>
             <Link href={`/dashboard/servers/${server.id}/files`}>{t.top}</Link>
             {crumbs.map((part, i) => (
