@@ -3,7 +3,6 @@ import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import AutoRefresh from "@/components/AutoRefresh";
 import { formats } from "../format";
 
 const SHOWN = 100;
@@ -28,7 +27,6 @@ export default async function AdminSupport() {
 
   return (
     <>
-      <AutoRefresh everyMs={8000} />
       <header className="stack-tight">
         <h2>{t.admin.title}</h2>
         <p className="muted">{waiting > 0 ? format(t.admin.waitingCount, { n: waiting }) : t.admin.allAnswered}</p>
