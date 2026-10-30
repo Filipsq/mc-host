@@ -270,9 +270,8 @@ model Server {
   // The paidUntil its owner was last reminded of, so each period gets one reminder.
   reminderSentFor  DateTime?
   // When its owner was told a suspended server will be deleted; cleared by a payment.
-  // For a free server: told it will be deleted for nobody playing; cleared when someone plays.
   deletionWarnedAt DateTime?
-  // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
+  // When players were last seen on it (or when it was made); used for comeback emails.
   lastPlayedAt     DateTime       @default(now())
   // When its owner was asked to come back and play (src/lib/comeback.ts); cleared when someone plays.
   comebackSentAt   DateTime?

@@ -346,8 +346,6 @@ const pl = {
     success: "Dziękujemy! Płatność przyjęta. Serwer uruchomi się za chwilę.",
     cancelled: "Płatność anulowana. Możesz spróbować ponownie.",
     awaiting: "Ten serwer czeka na płatność. Uruchomimy go zaraz po jej potwierdzeniu.",
-    idleDelete: "Na ten darmowy serwer nikt nie wchodził od kilku dni, więc {date} usuniemy go razem ze światem. Zagraj na nim przed tą datą albo zachowaj go na stałe z planem Starter, od {starter} za 7 dni.",
-    keepServer: "Zachowaj serwer",
     suspended: "Serwer jest zawieszony, bo skończył się opłacony okres. Świat zachowamy do {date}, potem serwer zostanie usunięty. Opłać serwer, aby go przywrócić.",
     productName: "{plan}: {server}, {days} dni",
   },
@@ -1386,15 +1384,6 @@ const pl = {
         "{deleteOn} usuniemy go razem ze światem i kopiami zapasowymi. Jeśli chcesz go zachować, opłać kolejny okres. Pliki serwera możesz też pobrać w panelu.",
       ],
       button: "Opłać serwer",
-    },
-    inactive: {
-      subject: "Darmowy serwer {server} zostanie usunięty {deleteOn}",
-      paragraphs: [
-        "Na darmowy serwer {server} nikt nie wchodził od {idleDays} dni, a takie serwery usuwamy, żeby zrobić miejsce dla innych.",
-        "{deleteOn} usuniemy go razem ze światem. Żeby go zachować, wystarczy, że ktoś na nim zagra przed tą datą. Świat możesz też pobrać w panelu.",
-        "Możesz też zachować go na stałe: z planem Starter (od {starter} za 7 dni) serwer zostaje ze swoim światem i adresem, działa cały czas bez usypiania i nie zostanie usunięty, póki plan jest opłacony.",
-      ],
-      button: "Zachowaj serwer",
     },
   },
   comebackMail: {

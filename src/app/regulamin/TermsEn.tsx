@@ -74,10 +74,6 @@ export default function TermsEn({ site }: { site: string }) {
       <ol>
         <li>Each User can have one Server on the free Plan. The free Plan costs nothing.</li>
         <li>
-          A free Server nobody has played on for 7 days is deleted with its world. At least 2 days before, the
-          Provider tells the User by email; playing on the Server before that date is enough to keep it.
-        </li>
-        <li>
           A free Server goes to sleep when nobody has played on it for a few minutes. Java and Bedrock Servers wake up when a
           player tries to join; a Terraria Server is started with the button in the panel.
         </li>
