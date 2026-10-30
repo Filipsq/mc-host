@@ -13,6 +13,7 @@ import { stripeTestMode } from "@/lib/stripe";
 import { makeUpForTestPayment, untoldCustomers } from "@/lib/testPayments";
 import { getPreferences } from "@/i18n/server";
 import { createAdminResetLink } from "@/lib/passwordReset";
+import { PLAYERS_MAX } from "@/lib/settings";
 
 export type GiftState = { error?: "invalid" | "free" | "soldOut" | "failed"; days?: number; date?: string };
 
@@ -41,6 +42,29 @@ export async function deleteServerAdminAction(id: string): Promise<{ error?: "fa
     console.info("admin deleted server", id);
   }
   redirect("/admin/servers");
+}
+
+export type SlotsState = { error?: "invalid" | "failed"; saved?: boolean };
+
+/** Gives a server more (or fewer) player slots than its plan, without changing its RAM. Empty: the plan's limit. */
+export async function playerSlotsAction(id: string, _: SlotsState, form: FormData): Promise<SlotsState> {
+  await requireAdmin();
+  const raw = String(form.get("slots") ?? "").trim();
+  const slots = raw === "" ? null : Number(raw);
+  if (slots !== null && (!Number.isInteger(slots) || slots < 1 || slots > PLAYERS_MAX)) return { error: "invalid" };
+  const server = await db.server.update({ where: { id }, data: { playerSlots: slots } }).catch(() => null);
+  if (!server) return { error: "invalid" };
+  console.info("admin set player slots", id, slots);
+  revalidatePath(`/admin/servers/${id}`);
+  if (onHost(server)) {
+    try {
+      await applyToHost(server);
+    } catch (err) {
+      console.error("admin: slots not applied", id, err);
+      return { error: "failed" };
+    }
+  }
+  return { saved: true };
 }
 
 export type MoveState = { error?: "invalid" | "failed"; moved?: string };

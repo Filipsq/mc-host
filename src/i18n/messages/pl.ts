@@ -1639,6 +1639,18 @@ const pl = {
       cleared: "Pasek z ogłoszeniem usunięty.",
       tooLong: "Ogłoszenie może mieć najwyżej {n} znaków.",
     },
+    slots: {
+      title: "Sloty graczy",
+      hint: "Daje serwerowi inny limit graczy niż jego plan, bez zmiany RAM-u. Puste pole: limit planu. Właściciel ustawia potem liczbę graczy w Ustawieniach do tego limitu.",
+      slots: "Limit graczy",
+      planDefault: "jak w planie",
+      submit: "Zapisz",
+      done: "Zapisano. Działający serwer się zrestartował.",
+      errors: {
+        invalid: "Podaj liczbę od 1 do 1000 albo zostaw puste.",
+        failed: "Zapisano, ale maszyna nie przyjęła zmiany. Zrestartuj serwer.",
+      },
+    },
     gift: {
       title: "Dodaj dni",
       hint: "Przedłuża opłacony okres bez płatności, np. jako rekompensatę za przerwę. Zawieszony albo jeszcze nieopłacony serwer zostanie uruchomiony.",
