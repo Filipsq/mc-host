@@ -347,7 +347,7 @@ const en: Messages = {
     success: "Thank you! Payment received. Your server will start in a moment.",
     cancelled: "Payment cancelled. You can try again.",
     awaiting: "This server is waiting for payment. We'll start it as soon as the payment is confirmed.",
-    idleDelete: "Nobody has played on this free server for a few days, so on {date} we'll delete it with its world. Play on it before then, or keep it for good with the Starter plan, from {starter} for 7 days.",
+    idleDelete: "Nobody has played on this free server for almost a month, so on {date} we'll delete it with its world. Play on it before then, or keep it for good with the Starter plan, from {starter} for 7 days.",
     keepServer: "Keep my server",
     suspended: "This server is suspended because its paid period ended. We keep the world until {date}; then the server is deleted. Pay to bring it back.",
     productName: "{plan}: {server}, {days} days",

@@ -346,7 +346,7 @@ const pl = {
     success: "Dziękujemy! Płatność przyjęta. Serwer uruchomi się za chwilę.",
     cancelled: "Płatność anulowana. Możesz spróbować ponownie.",
     awaiting: "Ten serwer czeka na płatność. Uruchomimy go zaraz po jej potwierdzeniu.",
-    idleDelete: "Na ten darmowy serwer nikt nie wchodził od kilku dni, więc {date} usuniemy go razem ze światem. Zagraj na nim przed tą datą albo zachowaj go na stałe z planem Starter, od {starter} za 7 dni.",
+    idleDelete: "Na ten darmowy serwer nikt nie wchodził od prawie miesiąca, więc {date} usuniemy go razem ze światem. Zagraj na nim przed tą datą albo zachowaj go na stałe z planem Starter, od {starter} za 7 dni.",
     keepServer: "Zachowaj serwer",
     suspended: "Serwer jest zawieszony, bo skończył się opłacony okres. Świat zachowamy do {date}, potem serwer zostanie usunięty. Opłać serwer, aby go przywrócić.",
     productName: "{plan}: {server}, {days} dni",

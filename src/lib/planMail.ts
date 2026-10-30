@@ -23,9 +23,9 @@ export const KEEP_DAYS = 14;
 /** How long before deleting a suspended server its owner is told. */
 export const WARN_BEFORE_DELETE_DAYS = 3;
 /** After how many days with nobody playing a free server is deleted (the terms say so too). */
-export const FREE_IDLE_DAYS = 7;
+export const FREE_IDLE_DAYS = 30;
 /** How long before that its owner is told. */
-export const WARN_BEFORE_IDLE_DELETE_DAYS = 2;
+export const WARN_BEFORE_IDLE_DELETE_DAYS = 3;
 /** The terms that allow it take effect then (14 days' notice, §12); nothing is deleted for being idle before. */
 export const FREE_IDLE_FROM = new Date("2026-11-01T00:00:00+01:00");
 

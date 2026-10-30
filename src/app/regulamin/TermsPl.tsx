@@ -81,7 +81,7 @@ export default function TermsPl({ site }: { site: string }) {
       <ol>
         <li>Każdy Użytkownik może mieć jeden Serwer w Planie darmowym. Plan darmowy jest bezpłatny.</li>
         <li>
-          Darmowy Serwer, na którym przez 7 dni nikt nie grał, jest usuwany razem ze światem. Co najmniej 2 dni
+          Darmowy Serwer, na którym przez 30 dni nikt nie grał, jest usuwany razem ze światem. Co najmniej 3 dni
           wcześniej Usługodawca informuje o tym Użytkownika e-mailem; wystarczy, że ktoś zagra na Serwerze przed tą
           datą, by go zachować.
         </li>
