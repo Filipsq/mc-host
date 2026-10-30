@@ -15,6 +15,8 @@ export const GAMES = [
   { id: "lifesteal", kind: "vanilla", plugins: ["lifestealz"], ramGb: 3 },
   // Classic Skyblock: one shared map with a starting island and a sand island (agent/skymap.go).
   { id: "skymap", kind: "skymap", plugins: [], ramGb: 2 },
+  // Minigames for a few friends: a lobby with Spleef, TNT Run, SkyWars, Chowany and Parkour (agent/minigames.go).
+  { id: "minigames", kind: "minigames", plugins: [], ramGb: 2 },
   { id: "skyblock", kind: "skyblock", plugins: ["level", "challenges-for-bentobox", "warps-for-bentobox"], ramGb: 2 },
   { id: "oneblock", kind: "oneblock", plugins: ["level", "challenges-for-bentobox", "warps-for-bentobox"], ramGb: 2 },
   { id: "modpack", kind: "modpack", plugins: [], ramGb: 3 },

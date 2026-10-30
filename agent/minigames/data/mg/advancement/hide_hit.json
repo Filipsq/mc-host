@@ -1,0 +1,18 @@
+{
+  "criteria": {
+    "hit": {
+      "trigger": "minecraft:entity_hurt_player",
+      "conditions": {
+        "damage": {
+          "source_entity": {
+            "type": "minecraft:player",
+            "team": "mg_seek"
+          }
+        }
+      }
+    }
+  },
+  "rewards": {
+    "function": "mg:hide/hit"
+  }
+}

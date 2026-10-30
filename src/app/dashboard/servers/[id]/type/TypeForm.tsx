@@ -110,7 +110,7 @@ export default function TypeForm({ id, current, plan, planNames, planRam, packIc
         {notes.backup && <li>{t.backupNote}</li>}
         {notes.modsMoved && <li>{t.modsMoved}</li>}
         {type === "mods" && pickedMods.length > 0 && <li>{format(t.pickedMods, { n: pickedMods.length })}</li>}
-        {notes.plugins && type !== "vanilla" && type !== "skymap" && type !== "skyblock" && type !== "oneblock" && <li>{t.pluginsDropped}</li>}
+        {notes.plugins && type !== "vanilla" && type !== "skymap" && type !== "minigames" && type !== "skyblock" && type !== "oneblock" && <li>{t.pluginsDropped}</li>}
       </ul>
       {state.error && <p className="error">{(t.errors as Record<string, string>)[state.error] ?? (server.errors as Record<string, string>)[state.error] ?? t.errors.failed}</p>}
       <button type="submit" disabled={pending || tooSmall}>

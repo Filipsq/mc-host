@@ -3,13 +3,13 @@ import { plans } from "./plans";
 
 // What a Java server runs. Skyblock and OneBlock are BentoBox game modes on
 // Paper; classic Skyblock (skymap) is one shared map the agent builds on Paper; Halloween
-// Survival (halloween) is an ordinary world where the agent builds a spooky square at spawn; a mod pack comes from Modrinth or CurseForge; a mod loader runs the mods its owner
+// Survival (halloween) is an ordinary world where the agent builds a spooky square at spawn; Minigames (minigames) is an empty world with a lobby and arenas from our data pack (agent/minigames.go); a mod pack comes from Modrinth or CurseForge; a mod loader runs the mods its owner
 // picks one by one. The agent turns these into the image's settings (agent/main.go).
 export const MOD_LOADERS = ["fabric", "forge", "neoforge"] as const;
 export type ModLoader = (typeof MOD_LOADERS)[number];
 export const isModLoader = (k: unknown): k is ModLoader => MOD_LOADERS.includes(k as ModLoader);
 
-export const SERVER_KINDS = ["vanilla", "skyblock", "skymap", "halloween", "oneblock", "modpack", ...MOD_LOADERS] as const;
+export const SERVER_KINDS = ["vanilla", "skyblock", "skymap", "halloween", "minigames", "oneblock", "modpack", ...MOD_LOADERS] as const;
 export type ServerKind = (typeof SERVER_KINDS)[number];
 
 export const isServerKind = (k: unknown): k is ServerKind => SERVER_KINDS.includes(k as ServerKind);

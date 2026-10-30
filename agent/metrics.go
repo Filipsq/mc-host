@@ -56,6 +56,8 @@ type serverMetrics struct {
 	skyMapBuilding    bool   // classic Skyblock: the world was found empty, so the islands go in
 	halloween         bool   // Halloween Survival: the square is there (or the world wasn't new); see halloween.go
 	halloweenBuilding bool   // Halloween Survival: the world was found new, so the square goes in
+	minigames         bool   // Minigames: the rules are set this start, and the map is there (or the world wasn't empty); see minigames.go
+	minigamesBuilding bool   // Minigames: the world was found empty, so the map goes in
 }
 
 func (m *serverMetrics) listCmd() string {
@@ -166,6 +168,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		m.startedAt, m.cpuTotal, m.cpuSystem, m.tpsCmd, m.tpsTried = info.State.StartedAt, 0, 0, -1, time.Time{}
 		m.logsSince, m.online, m.players, m.count, m.maxPlayers, m.pregen = started.Unix(), map[string]bool{}, nil, 0, 0, ""
 		m.skyMap, m.skyMapBuilding = false, false
+		m.minigames, m.minigamesBuilding = false, false
 		m.closeRCON()
 	}
 	m.mu.Unlock()
@@ -228,6 +231,9 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 			}
 			if ok && info.Config.Labels["mchost.halloween"] == "true" {
 				a.halloween(ctx, name, info.Config.Labels["mchost.level"], m, run, len(players))
+			}
+			if ok && info.Config.Labels["mchost.minigames"] == "true" {
+				a.minigames(ctx, name, info.Config.Labels["mchost.level"], m, run)
 			}
 		}
 	}
