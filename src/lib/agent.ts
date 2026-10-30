@@ -97,7 +97,7 @@ export type CreateServerSpec = {
   level: string; // the world folder it runs; empty for the image's default
   seed: string; // for a world it hasn't made yet
   levelType: string; // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria); empty if not chosen
-  kind: string; // Java: vanilla, skyblock, skymap, oneblock, modpack, fabric, forge or neoforge; Terraria: vanilla, tshock or tmodloader
+  kind: string; // Java: vanilla, skyblock, skymap, halloween, minigames, oneblock, modpack, fabric, forge or neoforge; Terraria: vanilla, tshock or tmodloader
   modpack?: string; // Modrinth slug or ID, or CurseForge slug, for a modpack
   modpackSource?: string; // "curseforge", or none for Modrinth
   modpackVersion?: string; // Modrinth version ID or CurseForge file ID, for a modpack

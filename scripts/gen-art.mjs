@@ -31,6 +31,11 @@ const P = {
   brass: ["#d9a441", "#c8922f", "#e6b65a", "#b07e26"],
   sand: ["#dbcf8e", "#e3d89b", "#d2c47f", "#e8dfa8"],
   cactus: ["#3f8f3a", "#357e31", "#4a9c43"],
+  snow: ["#f4f8fb", "#e8eff5", "#fbfdff", "#dde7ef"],
+  tnt: ["#d33b2c", "#c4321f", "#de4a36"],
+  gold: ["#f2c14e", "#e6b03a", "#f7d16b", "#d9a441"],
+  lime: ["#7cc63f", "#6fb835", "#86d048"],
+  purple: ["#8e44c9", "#7f3bb8", "#9a52d4"],
 };
 
 const shade = { top: 1, left: 0.86, right: 0.7 };
@@ -85,6 +90,19 @@ function pixel(type, face, i, j, r) {
       // Pale spines in a grid on the sides.
       if (face !== "top" && i % 2 === 1 && j % 2 === 0) return "#c9d98a";
       return pick(P.cactus);
+    case "snow":
+      return pick(P.snow);
+    case "tnt":
+      // A white band with a dark label across the sides, a fuse on top.
+      if (face === "top") return i > 0 && i < N - 1 && j > 0 && j < N - 1 ? "#2b2b2b" : "#9a9a9a";
+      if (j === 1 || j === 2) return i === 1 || i === 2 ? "#2b2b2b" : "#eeeeee";
+      return pick(P.tnt);
+    case "gold":
+      return pick(P.gold);
+    case "lime":
+      return pick(P.lime);
+    case "purple":
+      return pick(P.purple);
     case "brass":
       if (face !== "top" && (i === 0 || i === N - 1 || j === 0 || j === N - 1)) return "#8a6420";
       return pick(P.brass);
@@ -241,6 +259,13 @@ const GAME_SCENES = {
     tree(0, 0, 2, b);
     b.push({ x: 4, y: -2, z: 0, type: "sand" }, { x: 5, y: -2, z: 0, type: "sand" }, { x: 4, y: -1, z: 0, type: "sand" }, { x: 5, y: -1, z: 0, type: "sand" });
     b.push({ x: 4, y: -2, z: 1, type: "cactus" }, { x: 4, y: -2, z: 2, type: "cactus" });
+    return b;
+  },
+  // Minigames: a Spleef floor of snow with TNT on it, and parkour blocks climbing to a gold finish.
+  minigames() {
+    const b = plot(3, "snow", "snow").filter((k) => k.z === 1);
+    b.push({ x: 2, y: 2, z: 2, type: "tnt" }, { x: 0, y: 2, z: 2, type: "tnt" }, { x: 2, y: 0, z: 2, type: "cobble" });
+    b.push({ x: -2, y: 1, z: 2, type: "lime" }, { x: -2, y: -1, z: 3, type: "purple" }, { x: 0, y: -2, z: 4, type: "gold" });
     return b;
   },
   skyblock() {

@@ -65,15 +65,15 @@ func imageFor(edition, version, kind string) string {
 }
 
 // What a Java server runs: plain Paper, a BentoBox game mode, classic Skyblock (skymap.go), Halloween
-// Survival (halloween.go), a Modrinth mod pack, or a mod loader with the mods its owner picked.
+// Survival (halloween.go), Minigames (minigames.go), a Modrinth mod pack, or a mod loader with the mods its owner picked.
 var (
-	kinds = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "halloween": true, "oneblock": true, "modpack": true, "fabric": true, "forge": true, "neoforge": true}
+	kinds = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "halloween": true, "minigames": true, "oneblock": true, "modpack": true, "fabric": true, "forge": true, "neoforge": true}
 	// The image's TYPE for each mod loader.
 	loaderTypes = map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"}
 	// The plugins (from Modrinth) each game mode needs on Paper.
 	gameModePlugins = map[string]string{"skyblock": "bentobox,bskyblock", "oneblock": "bentobox,aoneblock"}
 	// Kinds that run on Paper, so they take plugins (AuthMe among them, for non-premium).
-	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "halloween": true, "oneblock": true}
+	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "halloween": true, "minigames": true, "oneblock": true}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
 	validCurseFile  = regexp.MustCompile(`^[0-9]{1,12}$`)         // CurseForge file ID
@@ -446,7 +446,7 @@ func (req *createRequest) validate() error {
 	}
 	switch {
 	case !kinds[req.Kind] || (req.Kind != "vanilla" && req.Edition != "JAVA"):
-		return errors.New("kind must be vanilla, skyblock, skymap, halloween, oneblock, modpack, fabric, forge or neoforge (Java only)")
+		return errors.New("kind must be vanilla, skyblock, skymap, halloween, minigames, oneblock, modpack, fabric, forge or neoforge (Java only)")
 	case req.Kind == "modpack" && req.ModpackSource == "curseforge" && (!validModpack.MatchString(req.Modpack) || !validCurseFile.MatchString(req.ModpackVersion)):
 		return errors.New("a CurseForge modpack server needs the pack's slug and a file ID as modpackVersion")
 	case req.Kind == "modpack" && req.ModpackSource != "curseforge" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
@@ -664,6 +664,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	}
 	if req.Edition == "JAVA" {
 		a.prepareIslands(ctx, req.ID, req.Kind)
+		a.prepareMinigames(ctx, req.ID, req.Kind, req.level())
 	}
 	if !start {
 		return nil
@@ -735,7 +736,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 	// Leave headroom above the JVM heap for the JVM itself, or the kernel OOM-kills it.
 	limitMb := req.MemoryMb
 	if req.Edition == "JAVA" {
-		pvp := req.PVP == nil || *req.PVP
+		pvp := req.PVP == nil || *req.PVP || req.Kind == "minigames" // SkyWars and Chowany are fights
 		switch req.Kind {
 		case "skyblock", "oneblock":
 			// The image picks the newest Minecraft version all the game mode's plugins support.
@@ -749,6 +750,10 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			// An ordinary world, where the agent builds a Halloween square at spawn (halloween.go).
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 			labels["mchost.halloween"] = "true"
+		case "minigames":
+			// Minigames: an empty world, where the data pack builds its lobby and arenas (minigames.go).
+			env = append(env, "TYPE=PAPER", "VERSION="+req.Version, "LEVEL_TYPE=flat", "GENERATOR_SETTINGS="+skyMapGenerator)
+			labels["mchost.minigames"] = "true"
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
 			if req.ModpackSource == "curseforge" {
@@ -783,6 +788,9 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		if req.SpawnProtection != nil {
 			spawnProtection = *req.SpawnProtection
 		}
+		if req.Kind == "minigames" {
+			spawnProtection = 0 // it would keep players from pressing the lobby's buttons; the lobby is in adventure mode
+		}
 		env = append(env, fmt.Sprintf("ALLOW_FLIGHT=%v", req.AllowFlight), fmt.Sprintf("HARDCORE=%v", req.Hardcore),
 			fmt.Sprintf("ENABLE_COMMAND_BLOCK=%v", req.CommandBlocks), fmt.Sprintf("SPAWN_PROTECTION=%d", spawnProtection))
 		if req.Level != "" {
@@ -791,7 +799,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		if req.Seed != "" {
 			env = append(env, "SEED="+req.Seed)
 		}
-		if req.LevelType != "" && req.Kind != "skymap" {
+		if req.LevelType != "" && req.Kind != "skymap" && req.Kind != "minigames" {
 			env = append(env, "LEVEL_TYPE="+javaLevelTypes[req.LevelType])
 		}
 		// Java starts with a small heap and grows it only as far as the players

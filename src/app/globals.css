@@ -1379,6 +1379,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .game-art-skyblock { --glow: rgb(96 165 250 / 0.28); background: radial-gradient(110% 80% at 50% 110%, var(--glow), transparent 70%), linear-gradient(#16243a, var(--surface-2)); }
 .game-art-skymap { --glow: rgb(226 208 130 / 0.26); background: radial-gradient(110% 80% at 50% 110%, var(--glow), transparent 70%), linear-gradient(#16243a, var(--surface-2)); }
 .game-art-halloween { --glow: rgb(255 138 31 / 0.34); background: radial-gradient(110% 80% at 50% 110%, var(--glow), transparent 70%), linear-gradient(#24143a, var(--surface-2)); }
+.game-art-minigames { --glow: rgb(77 208 225 / 0.26); background: radial-gradient(110% 80% at 50% 110%, var(--glow), transparent 70%), linear-gradient(#16243a, var(--surface-2)); }
 .game-art-oneblock { --glow: rgb(77 208 225 / 0.2); }
 .game-art-modpack { --glow: rgb(217 164 65 / 0.24); }
 .game-art-mods { --glow: rgb(148 163 184 / 0.2); }

@@ -3,11 +3,11 @@ import type { Messages } from "@/i18n/messages";
 import { CURATED_PACKS, LOADER_NAMES, MODPACK_MIN_PLAN, isModLoader, planForRam } from "./modpacks";
 import { gameById } from "./games";
 
-// Changing what a Java server runs, on its type page: Paper, classic Skyblock, a BentoBox game
+// Changing what a Java server runs, on its type page: Paper, classic Skyblock, Minigames, a BentoBox game
 // mode, mods on a loader, or a mod pack. The server then starts on a new
 // world, and the old one stays in its Worlds.
 
-export const SERVER_TYPES = ["vanilla", "skymap", "skyblock", "oneblock", "mods", "modpack"] as const;
+export const SERVER_TYPES = ["vanilla", "skymap", "minigames", "skyblock", "oneblock", "mods", "modpack"] as const;
 export type ServerType = (typeof SERVER_TYPES)[number];
 export const isServerType = (t: unknown): t is ServerType => SERVER_TYPES.includes(t as ServerType);
 
@@ -38,6 +38,6 @@ export function kindLabel(server: Pick<Server, "kind" | "version" | "modpack" | 
   if (isModLoader(server.kind)) return `${LOADER_NAMES[server.kind]} · ${version}`;
   if (server.kind === "modpack") return `${t.server.kinds.modpack}: ${server.modpackTitle ?? server.modpack ?? ""}`;
   if (server.kind === "skyblock" || server.kind === "oneblock") return t.server.kinds[server.kind];
-  if (server.kind === "skymap" || server.kind === "halloween") return `${t.server.kinds[server.kind]} · ${version}`;
+  if (server.kind === "skymap" || server.kind === "halloween" || server.kind === "minigames") return `${t.server.kinds[server.kind]} · ${version}`;
   return `${t.server.kinds.vanilla} · ${version}`;
 }
