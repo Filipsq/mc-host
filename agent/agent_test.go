@@ -65,8 +65,8 @@ func TestContainerSpecJava(t *testing.T) {
 			t.Fatalf("missing %s: %s", want, env)
 		}
 	}
-	// A free server gets its one core at most, and gives way to paid ones.
-	if shares, cpus := host["CpuShares"].(int64), host["NanoCpus"].(int64); shares != freeCPUShares || cpus != 1e9 {
+	// A free server may borrow one idle core, and gives way to paid ones.
+	if shares, cpus := host["CpuShares"].(int64), host["NanoCpus"].(int64); shares != freeCPUShares || cpus != int64(burstCPUs(1)*1e9) {
 		t.Fatalf("free server cpu shares %d, cpus %d", shares, cpus)
 	}
 	paid := a.containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "JAVA", MemoryMb: 3072, CPUs: 2, Port: 25570, MaxPlayers: 10, Hostname: "ekipa.mchost.pl"}, images["JAVA"])["HostConfig"].(map[string]any)
