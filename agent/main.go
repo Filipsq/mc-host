@@ -1299,11 +1299,13 @@ const freeCPUShares = 256
 // cpuLimits are the cores a server may use (NanoCpus) and its weight when the
 // machine's cores are busy (CpuShares). A paid server may borrow one more core
 // while the machine has one idle (chunk generation is what needs it), and busy
-// cores are shared in proportion to each plan's cores. A free server gets its
-// plan's cores at most and gives way to paid ones.
+// cores are shared in proportion to each plan's cores. A free server may
+// borrow one more idle core too (on a single core, garbage collection and
+// chunk generation stall the game thread and players see lag), but it gives
+// way to paid ones whenever cores are busy.
 func cpuLimits(planCPUs float64, free bool) (nanoCPUs, shares int64) {
 	if free {
-		return int64(planCPUs * 1e9), freeCPUShares
+		return int64(burstCPUs(planCPUs) * 1e9), freeCPUShares
 	}
 	return int64(burstCPUs(planCPUs) * 1e9), int64(planCPUs * 1024)
 }
