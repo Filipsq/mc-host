@@ -244,6 +244,10 @@ model Server {
   level            String?
   levelSeed        String?
   levelType        String?
+  // Minigames turned on from the panel (src/lib/minigamesSwitch.ts): what the server ran
+  // before, to go back to, and the minigames world, to come back to next time.
+  minigamesBack    Json?
+  minigamesLevel   String?
   // What the server runs: on Java vanilla (Paper), skyblock, skymap, halloween, minigames, oneblock, modpack, fabric, forge or neoforge
   // (src/lib/modpacks.ts); on Terraria vanilla, tshock or tmodloader (src/lib/terraria.ts).
   kind             String         @default("vanilla")

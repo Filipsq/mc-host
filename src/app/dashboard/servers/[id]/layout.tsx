@@ -3,6 +3,7 @@ import { Users } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { getServerAccess, allows, type ServerNeed } from "@/lib/access";
+import { offersMinigames } from "@/lib/minigamesSwitch";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getLiveDetailsOnce } from "@/lib/servers";
@@ -79,6 +80,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
         live !== "awaitingPayment" && can("files") && !terraria && { key: "worlds" as const, label: all.worlds.title, path: "/worlds" },
         addonsTitle && can("plugins") && { key: "plugins" as const, label: addonsTitle, path: "/plugins" },
         offersModPicker(server) && can("plugins") && { key: "mods" as const, label: all.mods.title, path: "/mods" },
+        can("owner") && offersMinigames(server) && { key: "minigames" as const, label: all.minigamesSwitch.nav, path: "/minigames" },
         server.edition === "JAVA" && can("settings") && { key: "resourcepack" as const, label: all.resourcePack.title, path: "/resourcepack" },
       ].filter(present),
     },
