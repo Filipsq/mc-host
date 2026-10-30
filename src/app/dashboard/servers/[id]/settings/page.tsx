@@ -5,7 +5,7 @@ import { getMessages } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { bedrockHost } from "@/lib/servers";
-import { maxPlayersFor, playerLimit, versionsFor, viewDistanceDefault, viewDistanceMax } from "@/lib/settings";
+import { maxPlayersFor, serverPlayerLimit, versionsFor, viewDistanceDefault, viewDistanceMax } from "@/lib/settings";
 import { planById } from "@/lib/plans";
 import { isModLoader } from "@/lib/modpacks";
 import { kindLabel } from "@/lib/serverType";
@@ -83,7 +83,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         versions={versions}
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
-        playerLimit={playerLimit(planById(server.plan))}
+        playerLimit={serverPlayerLimit(server, planById(server.plan))}
         viewDistance={{ max: viewDistanceMax(server.plan), def: viewDistanceDefault(server.plan) }}
         nonPremium={
           server.edition === "JAVA"
@@ -105,7 +105,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           difficulty: server.difficulty,
           motd: server.motd,
           pvp: server.pvp,
-          maxPlayers: maxPlayersFor(server, planById(server.plan)) || playerLimit(planById(server.plan)),
+          maxPlayers: maxPlayersFor(server, planById(server.plan)) || serverPlayerLimit(server, planById(server.plan)),
           allowFlight: server.allowFlight,
           hardcore: server.hardcore,
           commandBlocks: server.commandBlocks,

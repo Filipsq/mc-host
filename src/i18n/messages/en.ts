@@ -1640,6 +1640,18 @@ const en: Messages = {
       cleared: "Announcement bar removed.",
       tooLong: "An announcement can be at most {n} characters.",
     },
+    slots: {
+      title: "Player slots",
+      hint: "Gives the server a different player limit than its plan, without changing its RAM. Empty: the plan's limit. The owner then sets the player count in Settings up to it.",
+      slots: "Player limit",
+      planDefault: "as in plan",
+      submit: "Save",
+      done: "Saved. A running server restarted.",
+      errors: {
+        invalid: "Enter 1 to 1000 or leave it empty.",
+        failed: "Saved, but the machine didn't take the change. Restart the server.",
+      },
+    },
     gift: {
       title: "Add days",
       hint: "Extends the paid period without a payment, e.g. to make up for downtime. A suspended or not yet paid server is started.",

@@ -211,6 +211,8 @@ model Server {
   pvp              Boolean        @default(true) // Java only
   // Most players at once, picked by the owner; null: the plan's limit. Never above the plan's.
   maxPlayers       Int?
+  // Set by an admin: player slots instead of the plan's limit (RAM stays the plan's). null: the plan's.
+  playerSlots      Int?
   // Java only: players may fly (on by default for mods, whose jetpacks and wings need it),
   // one life, command blocks, and how far from spawn only operators may build.
   allowFlight      Boolean        @default(false)

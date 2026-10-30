@@ -46,7 +46,7 @@ import {
   VIEW_DISTANCE_MIN,
   viewDistanceDefault,
   viewDistanceMax,
-  playerLimit,
+  serverPlayerLimit,
   WHITELIST_MAX,
   isValidPlayerName,
   parsePlayers,
@@ -648,7 +648,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   const offered = java ? versionsFor(server.kind) : [];
   const version = s.version && (offered.includes(s.version) || s.version === server.version) ? s.version : server.version;
   if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
-  const limit = playerLimit(planById(server.plan));
+  const limit = serverPlayerLimit(server, planById(server.plan));
   if (s.maxPlayers !== undefined && (s.maxPlayers < 1 || s.maxPlayers > limit)) return { error: "maxPlayersRange" };
   if (s.viewDistance !== undefined && (s.viewDistance < VIEW_DISTANCE_MIN || s.viewDistance > viewDistanceMax(server.plan))) return { error: "viewDistanceRange" };
   const players = parsePlayers(s.players);
