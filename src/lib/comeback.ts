@@ -49,6 +49,8 @@ export async function sendComebackReminders(now: Date, unreachable: string[]): P
       status: { in: ["RUNNING", "STOPPED", "SLEEPING"] },
       lastPlayedAt: { lt: new Date(now.getTime() - COMEBACK_DAYS * DAY) },
       comebackSentAt: null,
+      // A free server already warned it will be deleted needs no second email.
+      deletionWarnedAt: null,
       adminTest: false,
       node: { notIn: unreachable },
       owner: { comebackOff: false },
