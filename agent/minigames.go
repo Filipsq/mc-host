@@ -63,6 +63,7 @@ var minigamesRules = []string{
 	"gamerule doMobSpawning false", "gamerule spawn_mobs false",
 	"gamerule doInsomnia false", "gamerule spawn_phantoms false",
 	"gamerule announceAdvancements false", "gamerule show_advancement_messages false",
+	"gamerule fallDamage false", "gamerule fall_damage false",
 	"time set 6000", "weather clear",
 	"team add mg_seek", "team add mg_hide",
 	"team modify mg_seek color red", "team modify mg_hide color green",
