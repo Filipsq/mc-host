@@ -1,4 +1,6 @@
 import type { Edition, Server } from "@prisma/client";
+import { isModLoader } from "./modpacks";
+import { versionsFor } from "./settings";
 
 // Worlds are folders in a server's files (see agent/worlds.go); Server.level
 // says which one the server runs, and levelSeed and levelType how a new one
@@ -12,6 +14,14 @@ export const worldTypes = (edition: Edition): readonly WorldType[] => (edition =
 
 /** The world a server runs when none was picked: the images' own default. */
 export const defaultLevel = (edition: Edition) => (edition === "BEDROCK" ? "Bedrock level" : "world");
+
+/**
+ * The versions a new world can start on: the version that first saves a world
+ * decides which can open it (26.x worlds never go back to 1.x), so it's picked
+ * with the world. Mod loaders change version in Settings, where their mods follow.
+ */
+export const newWorldVersions = (s: Pick<Server, "edition" | "kind">) =>
+  s.edition === "JAVA" && !isModLoader(s.kind) ? versionsFor(s.kind) : [];
 
 export const activeLevel = (s: Pick<Server, "edition" | "level">) => s.level ?? defaultLevel(s.edition);
 

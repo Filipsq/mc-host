@@ -15,6 +15,7 @@ import {
   isValidSeed,
   isValidWorldName,
   javaWorldFolders,
+  newWorldVersions,
   randomSeed,
   WORLD_UPLOAD_DIR,
   worldTypes,
@@ -42,10 +43,10 @@ function worldError(err: unknown): WorldError {
 }
 
 /** Runs the server on another world (or one it makes on its next start), restarting it if it's on. */
-async function playWorld(server: Server, level: string, newWorld?: { seed: string; type: WorldType }) {
+async function playWorld(server: Server, level: string, newWorld?: { seed: string; type: WorldType; version?: string }) {
   const updated = await db.server.update({
     where: { id: server.id },
-    data: { level, levelSeed: newWorld?.seed ?? null, levelType: newWorld?.type ?? null },
+    data: { level, levelSeed: newWorld?.seed ?? null, levelType: newWorld?.type ?? null, ...(newWorld?.version && { version: newWorld.version }) },
   });
   await applyToHost(updated);
 }
@@ -84,9 +85,12 @@ export async function newWorldAction(id: string, _: WorldState, form: FormData):
   if (!isValidWorldName(name)) return { error: "invalidName", values };
   if (!isValidSeed(seed)) return { error: "invalidSeed", values };
   if (await nameTaken(server, name)) return { error: "nameTaken", values };
+  // A new world is made by the version it starts on, and one made by 26.x can't go back
+  // to 1.x, so the version is picked here. Mod loaders change it in Settings (mods follow it).
+  const version = newWorldVersions(server).find((v) => v === values.version);
   try {
     // An empty seed is made up here: a seed left unset would keep the last world's.
-    await playWorld(server, name, { seed: seed || randomSeed(), type });
+    await playWorld(server, name, { seed: seed || randomSeed(), type, version });
   } catch (err) {
     return { error: worldError(err), values };
   }

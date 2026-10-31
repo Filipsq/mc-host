@@ -753,7 +753,7 @@ const en: Messages = {
       tooManyPlayers: "The list can have at most 100 players",
       applyFailed: "We saved the settings but couldn't apply them on the server. Try again in a moment.",
       worldTooNew:
-        "This server's world was saved by Minecraft 26 or newer, and older versions (1.x) can't open it at all. Keep the version on “Latest” or make a new world on the Worlds tab.",
+        "This server's world was saved by Minecraft 26 or newer, and older versions (1.x) can't open it at all. Keep the version on “Latest” or make a new world on the Worlds tab and pick the older version there.",
       curseforgeUnavailable: "Couldn't reach CurseForge, which the mods from it need for the new version. Try again in a moment.",
     },
   },
@@ -883,6 +883,8 @@ const en: Messages = {
     name: "Name",
     seed: "Seed",
     seedHint: "Leave empty for a random one. Another world's seed gives the same terrain.",
+    version: "Minecraft version",
+    versionHint: "The version the world is made on. A world made on 26.x (Latest) can't move to an older 1.x later, so pick it now.",
     type: "World type",
     types: { normal: "Normal", flat: "Flat", large_biomes: "Large biomes", amplified: "Amplified" },
     create: "Create and play it",

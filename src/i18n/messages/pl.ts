@@ -752,7 +752,7 @@ const pl = {
       tooManyPlayers: "Lista może mieć najwyżej 100 graczy",
       applyFailed: "Zapisaliśmy ustawienia, ale nie udało się ich zastosować na serwerze. Spróbuj ponownie za chwilę.",
       worldTooNew:
-        "Świat tego serwera zapisał Minecraft 26 lub nowszy, a starsze wersje (1.x) w ogóle go nie otworzą. Zostaw wersję „Najnowsza” albo zrób nowy świat w zakładce Światy.",
+        "Świat tego serwera zapisał Minecraft 26 lub nowszy, a starsze wersje (1.x) w ogóle go nie otworzą. Zostaw wersję „Najnowsza” albo zrób nowy świat w zakładce Światy i wybierz tam starszą wersję.",
       curseforgeUnavailable: "CurseForge nie odpowiada, a mody z niego trzeba dobrać do nowej wersji. Spróbuj ponownie za chwilę.",
     },
   },
@@ -882,6 +882,8 @@ const pl = {
     name: "Nazwa",
     seed: "Ziarno (seed)",
     seedHint: "Puste pole: losowe. Ziarno z innego świata da ten sam teren.",
+    version: "Wersja Minecrafta",
+    versionHint: "Wersja, na której świat powstanie. Świata zrobionego na 26.x (Najnowsza) nie da się potem przenieść na starszą wersję 1.x, więc wybierz ją teraz.",
     type: "Rodzaj świata",
     types: { normal: "Zwykły", flat: "Płaski", large_biomes: "Duże biomy", amplified: "Wzmocniony (Amplified)" },
     create: "Utwórz i graj na nim",
