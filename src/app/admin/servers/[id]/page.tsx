@@ -10,7 +10,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { formats } from "../../format";
 import { EDITION_NAMES } from "@/lib/editions";
 import PaymentTable from "../../PaymentTable";
-import { DeleteButton, GiftForm, MoveForm } from "./AdminServerActions";
+import { DeleteButton, GiftForm, MoveForm, SlotsForm } from "./AdminServerActions";
 import { nodes } from "@/lib/nodes";
 
 type Props = { params: Promise<{ id: string }> };
@@ -106,6 +106,14 @@ export default async function AdminServer({ params }: Props) {
           <h3>{t.gift.title}</h3>
           <p className="muted small">{t.gift.hint}</p>
           <GiftForm id={server.id} t={t.gift} />
+        </section>
+      )}
+
+      {server.edition !== "TERRARIA" && (
+        <section className="card stack">
+          <h3>{t.slots.title}</h3>
+          <p className="muted small">{t.slots.hint}</p>
+          <SlotsForm id={server.id} slots={server.playerSlots} t={t.slots} />
         </section>
       )}
 

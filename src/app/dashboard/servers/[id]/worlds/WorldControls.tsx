@@ -85,7 +85,16 @@ export function DeleteWorldButton({ id, name, t, files }: Props & { name: string
   );
 }
 
-export function NewWorldForm({ id, initialName, types, t, files }: Props & { initialName: string; types: readonly WorldType[] }) {
+export function NewWorldForm({
+  id,
+  initialName,
+  types,
+  versions,
+  version,
+  latest,
+  t,
+  files,
+}: Props & { initialName: string; types: readonly WorldType[]; versions: string[]; version: string; latest: string }) {
   const [state, action, pending] = useActionState(newWorldAction.bind(null, id), {});
   const v = state.values ?? {};
   return (
@@ -119,6 +128,19 @@ export function NewWorldForm({ id, initialName, types, t, files }: Props & { ini
               </option>
             ))}
           </select>
+        </label>
+      )}
+      {versions.length > 1 && (
+        <label>
+          {t.version}
+          <select name="version" defaultValue={v.version ?? version}>
+            {versions.map((ver) => (
+              <option key={ver} value={ver}>
+                {ver === "LATEST" ? latest : ver}
+              </option>
+            ))}
+          </select>
+          <span className="muted small">{t.versionHint}</span>
         </label>
       )}
       {state.error && <p className="error">{errorText(t, files, state.error)}</p>}

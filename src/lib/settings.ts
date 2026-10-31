@@ -63,10 +63,14 @@ export const PLAYERS_MAX = 1000;
 export const playerLimit = (plan: { maxPlayers: number | null }) => plan.maxPlayers ?? PLAYERS_MAX;
 
 /** Players at once on the server: the owner's pick, never more than the plan's limit (0: no limit). */
-export function maxPlayersFor(server: { maxPlayers: number | null }, plan: { maxPlayers: number | null }) {
-  if (!server.maxPlayers) return plan.maxPlayers ?? 0;
-  return Math.min(server.maxPlayers, playerLimit(plan));
+export function maxPlayersFor(server: { maxPlayers: number | null; playerSlots?: number | null }, plan: { maxPlayers: number | null }) {
+  if (!server.maxPlayers) return server.playerSlots ?? plan.maxPlayers ?? 0;
+  return Math.min(server.maxPlayers, serverPlayerLimit(server, plan));
 }
+
+/** The most players an owner may pick: slots an admin gave the server, else the plan's limit. */
+export const serverPlayerLimit = (server: { playerSlots?: number | null }, plan: { maxPlayers: number | null }) =>
+  server.playerSlots ?? playerLimit(plan);
 export const WHITELIST_MAX = 100;
 
 // Java profile names, or Xbox gamertags for Bedrock (letters in any script, digits, spaces).

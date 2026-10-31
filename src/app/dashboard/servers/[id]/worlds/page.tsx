@@ -11,7 +11,7 @@ import { diskLimitMb, formatMb } from "@/lib/disk";
 import { planById } from "@/lib/plans";
 import { biggerPlans, canUpgrade } from "@/lib/upgrade";
 import { serverAddons } from "@/lib/addons";
-import { activeLevel, nextWorldName, worldTypes } from "@/lib/worlds";
+import { activeLevel, newWorldVersions, nextWorldName, worldTypes } from "@/lib/worlds";
 import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ switched?: string; uploaded?: string; deleted?: string }> };
@@ -136,6 +136,9 @@ export default async function WorldsPage({ params, searchParams }: Props) {
               id={server.id}
               initialName={nextWorldName([...worlds.map((w) => w.name), active])}
               types={worldTypes(server.edition)}
+              versions={newWorldVersions(server)}
+              version={server.version}
+              latest={all.settings.latest}
               t={t}
               files={all.files.errors}
             />

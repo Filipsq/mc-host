@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
-import { deleteServerAdminAction, giftDaysAction, moveServerAdminAction, type GiftState, type MoveState } from "../../actions";
+import { deleteServerAdminAction, giftDaysAction, moveServerAdminAction, playerSlotsAction, type GiftState, type MoveState, type SlotsState } from "../../actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -19,6 +19,23 @@ export function GiftForm({ id, t }: { id: string; t: Messages["admin"]["gift"] }
       </div>
       {state.error && <p className={state.error === "failed" ? "notice warn" : "error"}>{t.errors[state.error]}</p>}
       {state.days && !state.error && <p className="notice success">{format(t.done, { n: state.days, date: state.date ?? "" })}</p>}
+    </form>
+  );
+}
+
+export function SlotsForm({ id, slots, t }: { id: string; slots: number | null; t: Messages["admin"]["slots"] }) {
+  const [state, action, pending] = useActionState<SlotsState, FormData>(playerSlotsAction.bind(null, id), {});
+  return (
+    <form action={action} className="stack">
+      <div className="row gift-row">
+        <label>
+          {t.slots}
+          <input name="slots" type="number" min={1} defaultValue={slots ?? ""} placeholder={t.planDefault} />
+        </label>
+        <button disabled={pending}>{t.submit}</button>
+      </div>
+      {state.error && <p className={state.error === "failed" ? "notice warn" : "error"}>{t.errors[state.error]}</p>}
+      {state.saved && !state.error && <p className="notice success">{t.done}</p>}
     </form>
   );
 }
