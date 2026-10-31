@@ -217,6 +217,24 @@ export async function getPluginInfos(ids: string[]): Promise<Map<string, PluginI
   }
 }
 
+/**
+ * The given project IDs Modrinth no longer has (taken down or made private). The
+ * image can't fetch their versions and stops the server's start, even for an
+ * optional plugin. Empty if Modrinth can't be reached, so nothing is dropped then.
+ */
+export async function removedProjects(ids: string[]): Promise<string[]> {
+  if (ids.length === 0) return [];
+  try {
+    const list = await get<{ id: string }[]>(`/v2/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`);
+    if (!list) return [];
+    const found = new Set(list.map((p) => p.id));
+    return ids.filter((id) => !found.has(id));
+  } catch (err) {
+    console.error("modrinth lookup failed", ids, err);
+    return [];
+  }
+}
+
 export type PackArt = { icon?: string; image?: string };
 type GalleryImage = { url: string; featured: boolean; ordering: number };
 
