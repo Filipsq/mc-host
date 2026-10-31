@@ -218,17 +218,35 @@ export async function getPluginInfos(ids: string[]): Promise<Map<string, PluginI
 }
 
 /**
- * The given project IDs Modrinth no longer has (taken down or made private). The
- * image can't fetch their versions and stops the server's start, even for an
- * optional plugin. Empty if Modrinth can't be reached, so nothing is dropped then.
+ * The given projects the image can't install: ones Modrinth no longer has (taken
+ * down or made private), and ones whose newest build for the server needs such a
+ * project. The image stops the server's start on those, even for an optional
+ * plugin ("404 Not Found"). Empty if Modrinth can't be reached, so nothing is
+ * dropped then.
  */
-export async function removedProjects(ids: string[]): Promise<string[]> {
+export async function uninstallableProjects(ids: string[], loader: string, gameVersion?: string): Promise<string[]> {
   if (ids.length === 0) return [];
   try {
-    const list = await get<{ id: string }[]>(`/v2/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`);
-    if (!list) return [];
-    const found = new Set(list.map((p) => p.id));
-    return ids.filter((id) => !found.has(id));
+    const missing = async (want: string[]) => {
+      const list = (await get<{ id: string }[]>(`/v2/projects?ids=${encodeURIComponent(JSON.stringify(want))}`)) ?? [];
+      const found = new Set(list.map((p) => p.id));
+      return want.filter((id) => !found.has(id));
+    };
+    const gone = await missing(ids);
+    const filter = `loaders=${encodeURIComponent(JSON.stringify([loader]))}${gameVersion ? `&game_versions=${encodeURIComponent(JSON.stringify([gameVersion]))}` : ""}`;
+    type Build = { dependencies: { project_id: string | null; dependency_type: string }[] };
+    const needs = await Promise.all(
+      ids
+        .filter((id) => !gone.includes(id))
+        .map(async (id) => {
+          const newest = (await get<Build[]>(`/v2/project/${id}/version?${filter}`))?.[0];
+          const deps = newest?.dependencies.filter((d) => d.dependency_type === "required" && d.project_id).map((d) => d.project_id!) ?? [];
+          return { id, deps };
+        }),
+    );
+    const deps = [...new Set(needs.flatMap((n) => n.deps))];
+    const goneDeps = deps.length ? await missing(deps) : [];
+    return [...gone, ...needs.filter((n) => n.deps.some((d) => goneDeps.includes(d))).map((n) => n.id)];
   } catch (err) {
     console.error("modrinth lookup failed", ids, err);
     return [];

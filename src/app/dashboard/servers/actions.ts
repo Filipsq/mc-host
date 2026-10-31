@@ -58,7 +58,7 @@ import { repinCurseforgeMods } from "@/lib/curseforge";
 import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, addonType, canCrossplay, canRunNonPremium, isProjectId, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
-import { removedProjects } from "@/lib/modrinth";
+import { uninstallableProjects } from "@/lib/modrinth";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { SERVER_PASSWORD, TERRARIA_KINDS, TMOD_MIN_PLAN, requiredArch, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -526,16 +526,17 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
   const server = await serverOrThrow(id, "view");
   // Unpaid servers stay off until someone pays.
   if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
-  // A plugin or mod taken off Modrinth would keep the server down ("404 Not Found"
-  // in the console): it leaves the list and the server is rebuilt without it.
+  // A plugin or mod taken off Modrinth, or needing one that was, would keep the server
+  // down ("404 Not Found" in the console): it leaves the list and the server is rebuilt without it.
   const type = addonType(server);
   if (type === "plugin" || type === "mod") {
-    const gone = await removedProjects(server.plugins.filter(isProjectId));
+    const loader = type === "plugin" ? "paper" : server.kind;
+    const gone = await uninstallableProjects(server.plugins.filter(isProjectId), loader, server.version === "LATEST" ? undefined : server.version);
     if (gone.length) {
       server.plugins = server.plugins.filter((p) => !gone.includes(p));
       server.pluginsPending = true;
       await db.server.update({ where: { id: server.id }, data: { plugins: server.plugins, pluginsPending: true } });
-      console.log("dropped plugins removed from Modrinth", server.id, gone);
+      console.log("dropped plugins Modrinth can no longer install", server.id, gone);
     }
   }
   try {
