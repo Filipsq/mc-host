@@ -10,6 +10,7 @@ import { getServerFor } from "@/lib/access";
 import { applyToHost, onHost } from "@/lib/servers";
 import { planById } from "@/lib/plans";
 import { MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
+import { fitAddonsToVersion } from "@/lib/addonVersions";
 import { LOADER_VERSIONS, MOD_DEFAULT_VERSION, versionsFor } from "@/lib/settings";
 import { PLUGINS_MAX, canRunNonPremium, isProjectId, supportsPlugins } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
@@ -82,6 +83,7 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
       : type !== "mods" || version === server.version);
   if (same) return { error: "same", values };
 
+  let dropped: string[] = [];
   try {
     if (planById(server.plan).backupsKept > 0) {
       await agent.createBackup(server.id).catch((err) => console.error("pre-type-change backup failed", server.id, err));
@@ -94,6 +96,9 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
       await agent.changeFiles(server.id, { rename: "mods", to });
     }
     const keepPlugins = supportsPlugins(server) && supportsPlugins({ edition: "JAVA", kind });
+    // Plugins kept on another version: the ones with nothing for it leave the list (src/lib/addonVersions.ts).
+    const fitted = keepPlugins && version !== server.version ? await fitAddonsToVersion(server, version, kind) : null;
+    dropped = fitted?.dropped ?? [];
     // Mods picked before the switch; their versions are checked when the server starts, like any added mod.
     const picked = type === "mods" ? [...new Set((parsed.data.mods ?? "").split(","))].filter(isProjectId).slice(0, PLUGINS_MAX) : [];
     const updated = await db.server.update({
@@ -102,8 +107,8 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
         kind,
         version,
         ...packFields(pack),
-        plugins: keepPlugins ? server.plugins : picked,
-        onlineMode: canRunNonPremium({ edition: "JAVA", kind, version }) ? server.onlineMode : true,
+        plugins: keepPlugins ? (fitted?.plugins ?? server.plugins) : picked,
+        onlineMode: canRunNonPremium({ edition: "JAVA", kind, version, modpackLoader: pack?.loader }) ? server.onlineMode : true,
         // A fresh world; the old one stays in the server's files, under Worlds.
         level: nextWorldName([...names, activeLevel(server)]),
         levelSeed: randomSeed(),
@@ -116,5 +121,5 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
     return { error: "failed", values };
   }
   revalidatePath(`/dashboard/servers/${id}`);
-  redirect(`/dashboard/servers/${id}?type=changed`);
+  redirect(`/dashboard/servers/${id}?type=changed${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
 }

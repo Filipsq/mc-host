@@ -157,7 +157,7 @@ func TestPackScriptRemovesExcludedMods(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(dir, "mods"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"missingmodschecker.jar", "missingmodschecker-1.0.1.jar", "ftbquestsfreezefix-fabric-1.0.0-1.20.1.jar", "modernfix.jar"} {
+	for _, name := range []string{"missingmodschecker.jar", "missingmodschecker-1.0.1.jar", "ftbquestsfreezefix-fabric-1.0.0-1.20.1.jar", "Barsita-1.19.2-1.1.2.jar", "modernfix.jar"} {
 		if err := os.WriteFile(filepath.Join(dir, "mods", name), nil, 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -272,7 +272,7 @@ func TestPackScriptRemovesModsForgeCouldNotLoad(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	mods := []string{"TwilightCaveFix-1.0.0.jar", "ConnectorExtras-1.11.2+1.20.1.jar", "Audio Improvements v1.3.1 - Forge 1.20.1.jar", "jei.jar", "needsnewer.jar"}
+	mods := []string{"TwilightCaveFix-1.0.0.jar", "ConnectorExtras-1.11.2+1.20.1.jar", "Audio Improvements v1.3.1 - Forge 1.20.1.jar", "clientkeys-1.0.jar", "jei.jar", "needsnewer.jar"}
 	put := func() {
 		for _, name := range mods {
 			if err := os.WriteFile(filepath.Join(dir, "mods", name), nil, 0o644); err != nil {
@@ -284,6 +284,7 @@ func TestPackScriptRemovesModsForgeCouldNotLoad(t *testing.T) {
 	report := "-- MOD twilightfixes --\nDetails:\n\tMod File: /data/mods/TwilightCaveFix-1.0.0.jar\n\tFailure message: Mod twilightfixes requires twilightforest 4.3.2145 or above\n\t\tCurrently, twilightforest is not installed\n" +
 		"-- MOD connectorextras_architectury_bridge --\nDetails:\n\tMod File: /data/mods/ConnectorExtras-1.11.2+1.20.1.jar#460!/META-INF/jarjar/architectury-bridge-1.11.2+1.20.1.jar\n\tFailure message: Mod connectorextras_architectury_bridge requires connectormod 1.0.0-beta.18 or above\n\t\tCurrently, connectormod is not installed\n" +
 		"-- MOD audio --\nDetails:\n\tMod File: /data/mods/Audio Improvements v1.3.1 - Forge 1.20.1.jar\n\tFailure message: Mod audio requires flib 0.0.14 or above\n\t\tCurrently, flib is not installed\n" +
+		"-- MOD clientkeys --\nDetails:\n\tMod File: /data/./mods/clientkeys-1.0.jar\n\tFailure message: Client Keys (clientkeys) has failed to load correctly\n\t\tjava.lang.RuntimeException: Attempted to load class net/minecraft/client/KeyMapping for invalid dist DEDICATED_SERVER\n" +
 		"-- MOD newer --\nDetails:\n\tMod File: /data/mods/needsnewer.jar\n\tFailure message: Mod newer requires geckolib 4.5 or above\n\t\tCurrently, geckolib is 4.2\n"
 	if err := os.WriteFile(filepath.Join(dir, "crash-reports", "crash-2026-10-20_06.26.21-fml.txt"), []byte(report), 0o644); err != nil {
 		t.Fatal(err)
@@ -324,7 +325,7 @@ func TestPackScriptRemovesModsForgeCouldNotLoad(t *testing.T) {
 	// A new pack version may have what they need: they stay, and the old report is not read again.
 	put()
 	run("newver01")
-	if got := left(); got != strings.Join([]string{"Audio Improvements v1.3.1 - Forge 1.20.1.jar", "ConnectorExtras-1.11.2+1.20.1.jar", "TwilightCaveFix-1.0.0.jar", "jei.jar", "needsnewer.jar"}, ",") {
+	if got := left(); got != strings.Join([]string{"Audio Improvements v1.3.1 - Forge 1.20.1.jar", "ConnectorExtras-1.11.2+1.20.1.jar", "TwilightCaveFix-1.0.0.jar", "clientkeys-1.0.jar", "jei.jar", "needsnewer.jar"}, ",") {
 		t.Fatalf("mods left on a new version: %s", got)
 	}
 }

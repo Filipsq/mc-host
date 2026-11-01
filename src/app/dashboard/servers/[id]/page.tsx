@@ -103,7 +103,9 @@ export default async function ServerPage({ params, searchParams }: Props) {
       {prezent === "ok" && server.plan !== "FREE" && <p className="notice success">{format(all.gifts.redeemed, { plan: all.plans[server.plan] })}</p>}
       {payment !== "success" && <TestPaymentNotice userId={session.user.id} all={all} locale={locale} serverId={server.id} />}
       {settings === "saved" && <p className="notice success">{all.settings.saved}</p>}
-      {settings === "saved" && dropped && <p className="notice warn">{format(all.mods.droppedOnVersion, { list: dropped.slice(0, 300) })}</p>}
+      {(settings === "saved" || typeChanged === "changed") && dropped && (
+        <p className="notice warn">{format(all.plugins.droppedOnVersion, { list: dropped.slice(0, 300) })}</p>
+      )}
       {typeChanged === "changed" && server.edition === "JAVA" && (
         <p className="notice success">{format(all.serverType.done, { type: kindLabel(server, all), world: activeLevel(server) })}</p>
       )}

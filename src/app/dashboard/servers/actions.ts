@@ -53,8 +53,8 @@ import {
   versionsFor,
 } from "@/lib/settings";
 import { activeLevel } from "@/lib/worlds";
-import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, isModLoader, planAtLeast, planForRam } from "@/lib/modpacks";
-import { repinCurseforgeMods } from "@/lib/curseforge";
+import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
+import { fitAddonsToVersion } from "@/lib/addonVersions";
 import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, addonType, canCrossplay, canRunNonPremium, isProjectId, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
@@ -264,7 +264,10 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     }),
     ...(parsed.data.motd && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
-    onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind, version: modVersion ?? "LATEST" })),
+    onlineMode: !(
+      parsed.data.nonPremium === "on" &&
+      canRunNonPremium({ edition, kind, version: pack?.gameVersion ?? modVersion ?? "LATEST", modpackLoader: pack?.loader })
+    ),
     crossplay: parsed.data.crossplay === "on" && canCrossplay({ edition, kind }),
     ...("version" in game && { version: game.version }),
     ...(modVersion && { version: modVersion }),
@@ -673,13 +676,14 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   const whitelist = s.whitelist === "on";
   if (whitelist && players.length === 0) return { error: "whitelistEmpty" };
   if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
-  // CurseForge mods are pinned to a file for one Minecraft version: they're picked again for the new one.
+  // Plugins and mods with nothing for the new version leave the list, and jars the panel
+  // downloaded (CurseForge, Hangar, SpigotMC) are picked again for it (src/lib/addonVersions.ts).
   let plugins = server.plugins;
   let dropped: string[] = [];
-  if (version !== server.version && isModLoader(server.kind)) {
-    const repinned = await repinCurseforgeMods(server.plugins, version, server.kind);
-    if (!repinned) return { error: "curseforgeUnavailable" };
-    ({ plugins, dropped } = repinned);
+  if (version !== server.version) {
+    const fitted = await fitAddonsToVersion(server, version);
+    if (!fitted) return { error: "curseforgeUnavailable" };
+    ({ plugins, dropped } = fitted);
   }
 
   const updated = await db.server.update({

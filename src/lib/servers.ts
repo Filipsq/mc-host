@@ -21,7 +21,7 @@ import { planById } from "./plans";
 import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
 import { requiredArch } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
-import { addonType, canCrossplay, canRunNonPremium, sitePlugin } from "./plugins";
+import { addonType, canCrossplay, canRunNonPremium, sitePlugin, withNeededPlugins } from "./plugins";
 import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
 
@@ -93,7 +93,15 @@ export async function destroyServer(server: Pick<Server, "id">) {
     // Never created on the game host (e.g. unpaid): nothing to remove there.
     if (!(err instanceof AgentError && err.status === 404)) throw err;
   });
-  await db.server.delete({ where: { id: server.id } });
+  const gone = await db.server.delete({ where: { id: server.id } });
+  // Its linked servers stop sending players to it (src/lib/links.ts).
+  if (gone.linkGroup) {
+    const mates = await db.server.findMany({ where: { ownerId: gone.ownerId, linkGroup: gone.linkGroup }, select: { id: true } });
+    if (mates.length) {
+      const { setLinks } = await import("./links");
+      await setLinks(gone.ownerId, mates[0].id, mates.slice(1).map((m) => m.id)).catch((err) => console.error("unlink failed", gone.id, err));
+    }
+  }
 }
 
 // Java servers' own ports sit behind the router (which owns 25565), so the
@@ -270,8 +278,18 @@ export function agentSpec(server: Server): CreateServerSpec {
     modpack: server.modpack ?? undefined,
     modpackSource: server.kind === "modpack" ? (server.modpackSource ?? undefined) : undefined,
     modpackVersion: server.modpackVersionId ?? undefined,
+    // Picks a non-premium pack's login mod (agent/login.go loginScript).
+    modpackLoader: server.kind === "modpack" ? (server.modpackLoader ?? undefined) : undefined,
     // Plugins from Hangar and SpigotMC are files the panel put there itself.
-    plugins: addonType(server) ? server.plugins.filter((p) => !sitePlugin(p)) : [],
+    plugins: addonType(server) ? withNeededPlugins(server.plugins.filter((p) => !sitePlugin(p))) : [],
+    // Linked servers (src/lib/links.ts), kept as "<name>=<java address>".
+    links:
+      server.edition === "JAVA"
+        ? server.links.flatMap((l) => {
+            const i = l.indexOf("=");
+            return i > 0 ? [{ name: l.slice(0, i), host: l.slice(i + 1) }] : [];
+          })
+        : [],
   };
 }
 

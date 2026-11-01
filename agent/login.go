@@ -264,3 +264,72 @@ func setYAMLValues(text string, values map[string]string) string {
 	}
 	return strings.Join(lines, "\n")
 }
+
+// fabricAPI is the library EasyAuth runs on; nearly every Fabric pack has it already.
+const fabricAPI = "P7dR8mSH"
+
+// loginScript runs just before a mod pack starts (the image's PRE_START_SCRIPT,
+// in /data). A pack brings its own mods, so the image can't add the login mod
+// the way pluginEnv does for a mod loader: on a non-premium pack
+// (MCHOST_LOGIN, the Modrinth project from loginAddon) it downloads the login
+// mod's newest build for the pack's loader and Minecraft version into mods/,
+// with Fabric API if a Fabric pack lacks it. If that can't be done, the server
+// doesn't start (the image stops on a failed pre-start script): a non-premium
+// server without a password login would let anyone play under anyone's nick.
+// What it added is listed in .mchost-login-mod (after the loader and
+// version), so turning non-premium off, or a new pack version, takes it out.
+const loginScript = `login_list=.mchost-login-mod
+login_want=
+[ -n "$MCHOST_LOGIN" ] && login_want="$MCHOST_LOGIN_LOADER $MCHOST_LOGIN_VERSION $MCHOST_LOGIN"
+if [ -f $login_list ] && { [ "$(head -1 $login_list)" != "$login_want" ] || tail -n +2 $login_list | while read -r f; do [ -f "mods/$f" ] || echo gone; done | grep -q gone; }; then
+  tail -n +2 $login_list | while read -r f; do
+    [ -n "$f" ] && [ -f "mods/$f" ] && rm -f "mods/$f" && echo "[mchost] removed mods/$f (the password login for non-premium)"
+  done
+  rm -f $login_list
+fi
+if [ -n "$login_want" ] && [ ! -f $login_list ]; then
+  mkdir -p mods
+  login_fetch() { # project: prints the downloaded file's name
+    local url file
+    read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/$1/version?loaders=%5B%22$MCHOST_LOGIN_LOADER%22%5D&game_versions=%5B%22$MCHOST_LOGIN_VERSION%22%5D" |
+      jq -r '[.[0].files[] | select(.primary)][0] | .url + " " + .filename' 2>/dev/null)
+    if [ -n "$url" ] && [ -n "$file" ] && [[ "$file" != */* ]] && curl -fsSL -o "mods/$file" "$url"; then
+      echo "$file"
+    else
+      [ -n "$file" ] && [[ "$file" != */* ]] && rm -f "mods/$file"
+      return 1
+    fi
+  }
+  login_files=
+  if ! command -v curl >/dev/null || ! command -v jq >/dev/null || ! login_files=$(login_fetch "$MCHOST_LOGIN"); then
+    echo "[mchost] could not download the password login mod for $MCHOST_LOGIN_LOADER $MCHOST_LOGIN_VERSION. Without it anyone could join under someone else's nick, so the server won't start while Non-premium is on. Try again in a moment, or turn off Non-premium in Settings."
+    exit 1
+  fi
+  echo "[mchost] added mods/$login_files (password login for non-premium players: /register, then /login)"
+  if [ "$MCHOST_LOGIN_LOADER" = fabric ] && ! ls mods | grep -qiE '^fabric-api|^fabric_api'; then
+    if f=$(login_fetch ` + fabricAPI + `); then
+      login_files+=$'\n'"$f"
+      echo "[mchost] added mods/$f (the login mod needs it)"
+    else
+      echo "[mchost] could not download Fabric API, which the login mod needs"
+    fi
+  fi
+  { echo "$login_want"; echo "$login_files"; } >$login_list
+fi
+`
+
+const loginScriptPath = "/tmp/mchost-login"
+
+// loginEntrypoint puts loginScript where PRE_START_SCRIPT points, then starts
+// the image as usual (CurseForge packs; a Modrinth pack's packScript runs it).
+var loginEntrypoint = []string{"/bin/bash", "-c", "cat >" + loginScriptPath + " <<'MCHOST'\n#!/bin/bash\n" + loginScript +
+	"exit 0\nMCHOST\nchmod 755 " + loginScriptPath + "\nexec /image/scripts/start\n"}
+
+// packLoginEnv tells loginScript which login mod a non-premium mod pack needs;
+// none (so it removes the one it added) when the pack isn't non-premium.
+func packLoginEnv(req *createRequest) []string {
+	if !req.offline() {
+		return nil
+	}
+	return []string{"MCHOST_LOGIN=" + loginAddon(req.loginKind(), req.Version), "MCHOST_LOGIN_LOADER=" + req.ModpackLoader, "MCHOST_LOGIN_VERSION=" + req.Version}
+}

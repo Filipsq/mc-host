@@ -8,9 +8,10 @@ import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec } from "@/lib/servers";
 import { getServerFor } from "@/lib/access";
-import { getAddon } from "@/lib/modrinth";
+import { PAPER_INSTALL_LOADERS, getAddon, projectsWithoutBuild } from "@/lib/modrinth";
+import { downloadVersion, versionsToCheck } from "@/lib/addonVersions";
 import { curseforgeModId, pinCurseforgeMods } from "@/lib/curseforge";
-import { downloadSitePlugin, sitePluginFromLink } from "@/lib/sitePlugins";
+import { apiTooNew, downloadSitePlugin, pluginApiVersion, sitePluginFromLink } from "@/lib/sitePlugins";
 import { canChangeFiles } from "@/lib/files";
 import {
   GAME_MODE_PLUGINS,
@@ -29,7 +30,15 @@ import { POPULAR_TMOD_MODS, parseWorkshopInput } from "@/lib/terraria";
 import { resolveWorkshopItem } from "@/lib/steam";
 import type { Messages } from "@/i18n/messages";
 
-export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; name?: string; pending?: boolean };
+export type PluginResult = { error?: keyof Messages["plugins"]["errors"]; name?: string; version?: string; pending?: boolean };
+
+/** Of these Modrinth projects, the ones with no build for the Minecraft the server runs (none when that isn't known). */
+async function withoutBuild(server: Server & { type: string }, ids: string[]) {
+  const versions = await versionsToCheck(server.kind, server.version);
+  if (!versions) return { missing: [] as string[], version: "" };
+  const loaders = server.type === "plugin" ? PAPER_INSTALL_LOADERS : [server.kind];
+  return { missing: await projectsWithoutBuild(ids, loaders, versions), version: downloadVersion(versions) };
+}
 
 /** The server, if the user may change its plugins (Paper) or mods (a mod loader). */
 async function addonServer(id: string) {
@@ -60,6 +69,9 @@ export async function addPluginAction(id: string, projectId: string): Promise<Pl
   if (typeof plugin === "string") return { error: plugin };
   // The game mode's own plugins are always there.
   if ((GAME_MODE_PLUGINS[server.kind] ?? []).some((p) => p.slug === plugin.slug)) return {};
+  // The image would skip it on this version, and the owner would wonder why it doesn't work.
+  const { missing, version } = await withoutBuild(server, [plugin.id]);
+  if (missing.length) return { error: "noVersion", name: plugin.title, version };
   return savePlugins(server, [...server.plugins, plugin.id]);
 }
 
@@ -97,10 +109,14 @@ async function addSitePlugin(server: Server & { type: string }, entry: string): 
   if (server.plugins.length >= PLUGINS_MAX) return { error: "tooMany" };
   // The files are on a game machine only while the server is paid for and set up.
   if (!["RUNNING", "STOPPED", "SLEEPING"].includes(server.status) || !canChangeFiles(server)) return { error: "siteNotOnHost" };
-  // Game modes run the newest version.
-  const mc = (server.kind === "vanilla" || server.kind === "halloween") && server.version !== "LATEST" ? server.version : undefined;
+  // The version the server runs ("Najnowsza" too); island game modes pick theirs, so the newest build goes there.
+  const versions = await versionsToCheck(server.kind, server.version);
+  const mc = versions ? downloadVersion(versions) : undefined;
   const got = await downloadSitePlugin(entry, mc);
   if ("error" in got) return { error: got.error, name: got.name };
+  // SpigotMC only has the newest build, which may be made for a newer Minecraft: Paper wouldn't load it.
+  const api = pluginApiVersion(got.jar);
+  if (mc && api && apiTooNew(api, mc)) return { error: "pluginTooNew", name: got.title, version: api };
   try {
     await agent.writeFile(server.id, file, got.jar, got.jar.byteLength);
   } catch (err) {
@@ -163,8 +179,12 @@ export async function addPluginSetAction(id: string, setId: string): Promise<Plu
   const server = await addonServer(id);
   const set = PLUGIN_SETS.find((s) => s.id === setId);
   if (!server || server.type !== "plugin" || !set || !setFits(set, server.kind)) return { error: "failed" };
-  const missing = pluginIds(set.plugins).filter((p) => !server.plugins.includes(p));
-  if (missing.length === 0) return {};
+  const absent = pluginIds(set.plugins).filter((p) => !server.plugins.includes(p));
+  if (absent.length === 0) return {};
+  // Only the ones made for the server's version.
+  const { missing: noBuild, version } = await withoutBuild(server, absent);
+  const missing = absent.filter((p) => !noBuild.includes(p));
+  if (missing.length === 0) return { error: "setNoVersion", version };
   if (server.plugins.length + missing.length > PLUGINS_MAX) return { error: "tooMany" };
   return savePlugins(server, [...server.plugins, ...missing]);
 }

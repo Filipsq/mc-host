@@ -289,6 +289,21 @@ func TestImageFor(t *testing.T) {
 			t.Errorf("%s 1.20.4: got %s, want %s", kind, got, want)
 		}
 	}
+	// A non-premium Fabric pack runs on Java 21, which EasyAuth needs; premium, or on Forge, as before.
+	off := false
+	pack := createRequest{Edition: "JAVA", Kind: "modpack", Version: "1.20.1", ModpackLoader: "fabric", OnlineMode: &off}
+	if got := pack.image(); got != "itzg/minecraft-server:java21" {
+		t.Errorf("non-premium Fabric pack 1.20.1: got %s", got)
+	}
+	premium := pack
+	premium.OnlineMode = nil
+	forgePack := pack
+	forgePack.ModpackLoader = "forge"
+	for _, req := range []createRequest{premium, forgePack} {
+		if got := req.image(); got != "itzg/minecraft-server:java17" {
+			t.Errorf("%+v: got %s", req, got)
+		}
+	}
 	if imageFor("JAVA", "1.20.1", "skyblock") != images["JAVA"] {
 		t.Error("skyblock follows its plugins to the newest version")
 	}
@@ -335,7 +350,7 @@ func TestKindEnv(t *testing.T) {
 	pack := base
 	pack.Kind, pack.Modpack, pack.ModpackVersion, pack.Version = "modpack", "cobblemon-fabric", "BpTjgzL8", "1.21.1"
 	env = envOf(pack)
-	for _, want := range []string{"TYPE=MODRINTH\n", "MODRINTH_MODPACK=cobblemon-fabric\n", "MODRINTH_VERSION=BpTjgzL8\n", "VERSION=1.21.1\n", "MODRINTH_EXCLUDE_FILES=missingmodschecker,ftbquestsfreezefix\n", "MODRINTH_FORCE_INCLUDE_FILES=terrablender,balm,ftb-library\n", "PRE_START_SCRIPT=/tmp/mchost-pack\n", "INIT_MEMORY=1024M\n", "MAX_MEMORY=3072M\n"} {
+	for _, want := range []string{"TYPE=MODRINTH\n", "MODRINTH_MODPACK=cobblemon-fabric\n", "MODRINTH_VERSION=BpTjgzL8\n", "VERSION=1.21.1\n", "MODRINTH_EXCLUDE_FILES=missingmodschecker,ftbquestsfreezefix,barsita,barista\n", "MODRINTH_FORCE_INCLUDE_FILES=terrablender,balm,ftb-library\n", "PRE_START_SCRIPT=/tmp/mchost-pack\n", "INIT_MEMORY=1024M\n", "MAX_MEMORY=3072M\n"} {
 		if !strings.Contains(env, want) {
 			t.Errorf("modpack env missing %q:\n%s", want, env)
 		}

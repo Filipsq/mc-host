@@ -179,7 +179,7 @@ const pl = {
       },
       {
         q: "Czy serwer może być non-premium?",
-        a: "Tak, na Javie bez modów. Włącz non-premium przy tworzeniu serwera albo w Ustawieniach. Każdy gracz ustawi wtedy hasło komendą /register i będzie logować się przez /login, więc nikt nie zagra pod cudzym nickiem.",
+        a: "Tak, na Javie bez modów, a z modami i paczkami modów na Fabricu (1.19.4–1.21.11) oraz Forge i NeoForge (1.21.1). Włącz non-premium przy tworzeniu serwera albo w Ustawieniach. Każdy gracz ustawi wtedy hasło komendą /register i będzie logować się przez /login, więc nikt nie zagra pod cudzym nickiem.",
       },
       {
         q: "Czy serwery mają ochronę przed atakami DDoS?",
@@ -444,7 +444,7 @@ const pl = {
         },
         clientMod: {
           title: "Mod działa tylko w grze, nie na serwerze",
-          fix: "Na serwerze jest mod tylko dla gracza (np. od wyglądu, minimapy lub menu). Usuń go w Modach. Gracze mogą go mieć u siebie.",
+          fix: "Na serwerze jest mod tylko dla gracza (np. od wyglądu, minimapy lub menu). Usuń go w Modach. Na serwerze z gotową paczką kliknij po prostu Uruchom jeszcze raz, taki mod usuniemy sami. Gracze mogą go mieć u siebie.",
         },
         javaTooOld: {
           title: "Plugin lub mod jest na nowszą wersję",
@@ -469,6 +469,10 @@ const pl = {
         pluginSkipped: {
           title: "Plugin pominięty",
           fix: "Ten plugin nie ma wersji na wersję Minecrafta Twojego serwera, więc serwer działa bez niego. Wybierz inny plugin albo zmień wersję w Ustawieniach.",
+        },
+        pluginWrongVersion: {
+          title: "Plugin nie pasuje do wersji serwera",
+          fix: "Ten plugin jest zrobiony na inną wersję Minecrafta i się nie włączył. Jeśli wgrałeś go sam w Plikach, pobierz jego wersję na Minecrafta Twojego serwera albo usuń go z folderu plugins. Pluginy dodane w zakładce Pluginy pobieramy na właściwą wersję same.",
         },
         overloaded: {
           title: "Serwer nie nadąża",
@@ -565,6 +569,8 @@ const pl = {
     modsInfo: "{loader}, Minecraft {version}. Gracze potrzebują {loader} w tej samej wersji i modów oznaczonych „też u graczy”. Najłatwiej zainstalować je przez Modrinth App.",
     ramFrom: "od {gb} GB RAM",
     nonPremiumHint: "Każdy gracz zaloguje się hasłem (/register, potem /login), więc nikt nie zagra pod cudzym nickiem. Zmienisz to później w Ustawieniach.",
+    nonPremiumPackHint:
+      "Każdy gracz zaloguje się hasłem (/register, potem /login). Na paczce działa, gdy jest na Fabricu (Minecraft 1.19.4–1.21.11) albo Forge/NeoForge 1.21.1; na innych serwer zostanie premium.",
     crossplayHint: "Gracze z telefonów, konsol i Windows 10/11 (Bedrock) dołączą razem z graczami z Javy. Adres i port dla nich zobaczysz na stronie serwera.",
     withPlugins: "Pluginy: {list}",
     ramLow: "{game} najlepiej działa od {gb} GB RAM, a wybrany plan ma {plan} GB. Serwer ruszy, ale przy wielu graczach może się przycinać.",
@@ -730,7 +736,7 @@ const pl = {
     nonPremiumHint:
       "Przy pierwszym wejściu każdy gracz ustawi hasło komendą /register, a potem loguje się przez /login, więc nikt nie zagra pod cudzym nickiem. Po zmianie trybu gracze zaczynają z pustym ekwipunkiem, bo zmieniają się ich identyfikatory. Świat zostaje.",
     nonPremiumPaperOnly:
-      "Non-premium nie działa na paczkach modów: nie mają logowania hasłem, więc ktoś mógłby wejść pod cudzym nickiem. Działa na serwerach bez modów i na Własnych modach (Fabric, Forge, NeoForge) w niektórych wersjach.",
+      "Non-premium nie działa na tym serwerze: nie mamy dla niego sprawdzonego moda z logowaniem hasłem, więc ktoś mógłby wejść pod cudzym nickiem. Działa na serwerach bez modów oraz na modach i paczkach modów na Fabricu, Forge i NeoForge w niektórych wersjach.",
     nonPremiumModVersions:
       "Non-premium działa na tym silniku tylko w wersjach Minecrafta: {versions}. Tylko tam jest sprawdzony mod z logowaniem hasłem; bez niego ktoś mógłby wejść pod cudzym nickiem.",
     nonPremiumOn: "non-premium",
@@ -930,6 +936,8 @@ const pl = {
     },
   },
   plugins: {
+    noBuild: "brak wersji na {version}, serwer go pominie",
+    droppedOnVersion: "Te pluginy i mody nie mają wersji na nową wersję Minecrafta, więc usunęliśmy je z serwera (ich ustawienia zostały w plikach, wrócą, jeśli dodasz je ponownie): {list}",
     title: "Pluginy",
     manage: "Zarządzaj pluginami",
     cardCount: "Dodane pluginy: {n}",
@@ -977,7 +985,7 @@ const pl = {
     sourceHangar: "Hangar",
     sourceSpigot: "SpigotMC",
     hangarIntro: "Pluginy z Hangar, strony twórców Papera. Po kliknięciu Dodaj pobieramy wersję dla Twojego serwera i wgrywamy ją do folderu plugins.",
-    spigotIntro: "Darmowe pluginy ze SpigotMC. Po kliknięciu Dodaj pobieramy najnowszą wersję i wgrywamy ją do folderu plugins. Sprawdź na stronie pluginu, czy działa na Twojej wersji Minecrafta.",
+    spigotIntro: "Darmowe pluginy ze SpigotMC. Po kliknięciu Dodaj pobieramy najnowszą wersję i wgrywamy ją do folderu plugins. Plugin zrobiony na nowszego Minecrafta niż Twój serwer odrzucimy, a po zmianie wersji pobierzemy go ponownie. SpigotMC nie zawsze podaje wersje, więc sprawdź na stronie pluginu, czy działa na Twojej wersji.",
     siteBlockedNote: "Płatny albo dostępny tylko na stronie autora: pobierz plik .jar sam i wgraj go w Plikach do folderu plugins.",
     siteAddLink: "Albo wklej link do pluginu",
     hangarLinkPlaceholder: "np. https://hangar.papermc.io/ViaVersion/ViaVersion",
@@ -989,6 +997,9 @@ const pl = {
       siteNoSpace: "Na serwerze nie ma miejsca na ten plugin. Usuń coś w Plikach albo dokup miejsce.",
       siteBlocked: "{name} jest płatny albo dostępny tylko na stronie autora. Pobierz plik .jar sam i wgraj go w Plikach do folderu plugins.",
       siteNoVersion: "Ten plugin nie ma wersji dla Paper na Twoją wersję Minecrafta.",
+      noVersion: "{name} nie ma wersji na Minecrafta {version}, więc serwer by go pominął. Wybierz inny albo zmień wersję w Ustawieniach.",
+      pluginTooNew: "{name} jest zrobiony na nowszego Minecrafta ({version}) niż Twój serwer, więc by się nie włączył. Zmień wersję w Ustawieniach albo wybierz inny plugin.",
+      setNoVersion: "Żaden z tych pluginów nie ma jeszcze wersji na Minecrafta {version}.",
       siteUnavailable: "Strona z pluginami nie odpowiada. Spróbuj ponownie za chwilę.",
       siteBadFile: "{name} nie wygląda na plugin do Paper/Spigot, więc go nie wgraliśmy.",
       pluginNotFound: "Ten plugin nie działa na serwerach Paper.",
@@ -1037,7 +1048,6 @@ const pl = {
     cfBlockedNote: "Autor pozwala pobierać tylko z CurseForge: wgraj plik .jar sam w Plikach (folder mods).",
     cfAddLink: "Albo wklej link z CurseForge",
     cfLinkPlaceholder: "np. https://www.curseforge.com/minecraft/mc-mods/jei",
-    droppedOnVersion: "Po zmianie wersji te mody z CurseForge nie mają wersji dla nowego Minecrafta, więc usunęliśmy je z listy: {list}",
     forPlayers: "też u graczy",
     playersNote: "Mody oznaczone „też u graczy” muszą mieć w grze wszyscy gracze, inaczej nie wejdą na serwer.",
     none: "Nie masz jeszcze modów.",
@@ -1057,6 +1067,9 @@ const pl = {
       siteNoSpace: "Na serwerze nie ma miejsca na ten plugin. Usuń coś w Plikach albo dokup miejsce.",
       siteBlocked: "{name} jest płatny albo dostępny tylko na stronie autora. Pobierz plik .jar sam i wgraj go w Plikach do folderu plugins.",
       siteNoVersion: "Ten plugin nie ma wersji dla Paper na Twoją wersję Minecrafta.",
+      noVersion: "{name} nie ma wersji na Minecrafta {version}, więc serwer by go pominął. Wybierz inny albo zmień wersję w Ustawieniach.",
+      pluginTooNew: "{name} jest zrobiony na nowszego Minecrafta ({version}) niż Twój serwer, więc by się nie włączył. Zmień wersję w Ustawieniach albo wybierz inny plugin.",
+      setNoVersion: "Żaden z tych pluginów nie ma jeszcze wersji na Minecrafta {version}.",
       siteUnavailable: "Strona z pluginami nie odpowiada. Spróbuj ponownie za chwilę.",
       siteBadFile: "{name} nie wygląda na plugin do Paper/Spigot, więc go nie wgraliśmy.",
       pluginNotFound: "Ten mod nie działa na tym serwerze: jest dla innego loadera albo tylko dla gry.",
@@ -1127,6 +1140,9 @@ const pl = {
       siteNoSpace: "Na serwerze nie ma miejsca na ten plugin. Usuń coś w Plikach albo dokup miejsce.",
       siteBlocked: "{name} jest płatny albo dostępny tylko na stronie autora. Pobierz plik .jar sam i wgraj go w Plikach do folderu plugins.",
       siteNoVersion: "Ten plugin nie ma wersji dla Paper na Twoją wersję Minecrafta.",
+      noVersion: "{name} nie ma wersji na Minecrafta {version}, więc serwer by go pominął. Wybierz inny albo zmień wersję w Ustawieniach.",
+      pluginTooNew: "{name} jest zrobiony na nowszego Minecrafta ({version}) niż Twój serwer, więc by się nie włączył. Zmień wersję w Ustawieniach albo wybierz inny plugin.",
+      setNoVersion: "Żaden z tych pluginów nie ma jeszcze wersji na Minecrafta {version}.",
       siteUnavailable: "Strona z pluginami nie odpowiada. Spróbuj ponownie za chwilę.",
       siteBadFile: "{name} nie wygląda na plugin do Paper/Spigot, więc go nie wgraliśmy.",
       pluginNotFound: "To nie jest mod do tModLoadera albo nie ma go już na Steam Workshop.",
@@ -1720,6 +1736,31 @@ const pl = {
     failed: "Nie udało się przełączyć. Spróbuj ponownie za chwilę albo napisz do nas na czacie.",
     notOnHost: "Serwer czeka na maszynę. Spróbuj ponownie za chwilę.",
   },
+  links: {
+    title: "Połączone serwery",
+    intro:
+      "Połącz swoje serwery Java, żeby gracze przechodzili między nimi w grze, bez wychodzenia do menu. Każdy serwer zostaje osobny: ma swój świat, ekwipunek, pluginy i płatność.",
+    pick: "Z którymi serwerami połączyć ten serwer?",
+    serverTooOld: "za stara wersja (potrzebna 1.20.5 lub nowsza)",
+    elsewhere: "jest teraz w innej grupie, przejdzie do tej",
+    restartNote: "Zapis uruchomi ponownie włączone serwery, których to dotyczy, gracze zostaną na chwilę rozłączeni.",
+    save: "Zapisz",
+    saving: "Zapisujemy…",
+    saved: "Zapisano. Po ponownym uruchomieniu gracze zobaczą w czacie nazwy połączonych serwerów.",
+    failed: "Nie udało się zapisać. Spróbuj ponownie za chwilę.",
+    tooOld: "Przechodzenie między serwerami działa w Minecrafcie 1.20.5 i nowszym. Zmień wersję serwera w Ustawieniach, żeby go połączyć.",
+    noOthers: "Masz tylko ten serwer Java. Kup albo załóż drugi, a potem wróć tutaj, żeby je połączyć.",
+    howTitle: "Jak gracze przechodzą?",
+    howText: "Po wejściu na serwer gracz widzi w czacie nazwy połączonych serwerów i wystarczy, że kliknie jedną. Może też wpisać komendę:",
+    goesTo: "przenosi na {name}",
+    notesTitle: "Dobrze wiedzieć",
+    notes: [
+      "Każdy serwer płaci się osobno, tak jak do tej pory.",
+      "Gracze z Bedrocka (crossplay) nie mogą przechodzić tą drogą, muszą wejść na drugi serwer z menu.",
+      "Jeśli drugi serwer jest wyłączony, gracz zobaczy, że serwer się uruchamia albo jest wyłączony.",
+      "Na serwerze bez premium (AuthMe) gracz loguje się hasłem jeszcze raz na drugim serwerze.",
+    ],
+  },
   resourcePack: {
     title: "Paczka tekstur",
     intro:
@@ -1871,7 +1912,7 @@ const pl = {
       bigPacks: "Better MC i Prominence II potrzebują 8 GB, czyli planu Pro.",
       tooBig: "To więcej, niż ma nasz największy plan. Weź Pro i napisz do nas na czacie.",
       noCrossplay: "Crossplay z telefonami działa tylko na serwerze bez modów.",
-      noNonPremium: "Gracze bez premium nie wejdą na paczkę modów. Mogą na serwer bez modów albo na Własne mody w niektórych wersjach.",
+      noNonPremium: "Na paczce modów gracze bez premium wejdą, gdy paczka jest na Fabricu (Minecraft 1.19.4–1.21.11) albo Forge/NeoForge 1.21.1. Na innych paczkach serwer zostanie premium.",
       group: "Przy 6 i więcej graczach naraz polecamy co najmniej plan {plan}, żeby serwer nie lagował.",
       addonsPaid: "Dodatki są w płatnych planach, więc polecamy co najmniej Starter.",
     },

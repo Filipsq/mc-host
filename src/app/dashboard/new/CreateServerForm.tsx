@@ -159,10 +159,11 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   }
   const modded = edition === "JAVA" && game === "modpack";
   const mods = edition === "JAVA" && game === "mods";
-  // On mods, only the loader versions a login mod runs on (see LOGIN_MODS).
+  // On mods, only the loader versions a login mod runs on (see LOGIN_MODS). A pack's
+  // loader and version are known only once it's picked, so the server checks it then.
   const nonPremiumOffered = mods
     ? canRunNonPremium({ edition: "JAVA", kind: loader, version: modVersion })
-    : canRunNonPremium({ edition: "JAVA", kind: gameById(game).kind, version: "LATEST" });
+    : modded || canRunNonPremium({ edition: "JAVA", kind: gameById(game).kind, version: "LATEST" });
   // Mod packs need a paid plan with enough memory for the pack, so smaller plans can't be picked for them.
   const packPlan = (slug: string) => {
     const gb = pickedCurseforge(slug, cfPacks)?.ramGb ?? CURATED_PACKS.find((p) => p.slug === slug)?.ramGb;
@@ -367,7 +368,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           <input type="checkbox" name="nonPremium" checked={nonPremium} onChange={(e) => setNonPremium(e.target.checked)} />
           <span className="stack-tight">
             <span>{settings.nonPremium}</span>
-            <span className="muted small">{t.nonPremiumHint}</span>
+            <span className="muted small">{modded ? t.nonPremiumPackHint : t.nonPremiumHint}</span>
           </span>
         </label>
       )}

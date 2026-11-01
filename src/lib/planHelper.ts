@@ -124,9 +124,10 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
   if (a.platform === "bedrock") {
     return { plan, edition: "BEDROCK", crossplay: false, nonPremium: false, addons, reasons: out };
   }
-  // Crossplay and non-premium players come through plugins, so only on servers without mods.
+  // Crossplay comes through plugins, so only on servers without mods. Non-premium
+  // needs a login mod on a pack, which only some loaders and versions have.
   const crossplay = a.platform === "both" && !modded;
-  const nonPremium = extras.has("nonPremium") && !modded;
+  const nonPremium = extras.has("nonPremium");
   if (a.platform === "both" && modded) out.push({ code: "noCrossplay" });
   if (extras.has("nonPremium") && modded) out.push({ code: "noNonPremium" });
   const game: GameId = modded ? "modpack" : use === "plugins" ? "survival-plus" : "survival";

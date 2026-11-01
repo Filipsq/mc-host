@@ -181,7 +181,7 @@ const en: Messages = {
       },
       {
         q: "Can the server be non-premium?",
-        a: "Yes, on Java without mods. Turn on non-premium when creating the server or in Settings. Every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
+        a: "Yes, on Java without mods, and with mods and mod packs on Fabric (1.19.4–1.21.11) and Forge and NeoForge (1.21.1). Turn on non-premium when creating the server or in Settings. Every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
       },
       {
         q: "Are servers protected against DDoS attacks?",
@@ -445,7 +445,7 @@ const en: Messages = {
         },
         clientMod: {
           title: "A mod only works in the game, not on a server",
-          fix: "There's a player-only mod on the server (e.g. visuals, a minimap or menus). Remove it in Mods. Players can keep it in their own game.",
+          fix: "There's a player-only mod on the server (e.g. visuals, a minimap or menus). Remove it in Mods. On a mod pack server just click Start again, we take such a mod out ourselves. Players can keep it in their own game.",
         },
         javaTooOld: {
           title: "A plugin or mod is for a newer version",
@@ -470,6 +470,10 @@ const en: Messages = {
         pluginSkipped: {
           title: "A plugin was skipped",
           fix: "This plugin has no build for your server's Minecraft version, so the server runs without it. Pick another plugin or change the version in Settings.",
+        },
+        pluginWrongVersion: {
+          title: "A plugin doesn't fit the server's version",
+          fix: "This plugin is made for another Minecraft version and didn't load. If you uploaded it yourself in Files, get its build for your server's Minecraft version or delete it from the plugins folder. Plugins added on the Plugins page are downloaded for the right version by us.",
         },
         overloaded: {
           title: "The server can't keep up",
@@ -566,6 +570,8 @@ const en: Messages = {
     modsInfo: "{loader}, Minecraft {version}. Players need {loader} on the same version and the mods marked \"players too\". The Modrinth App installs them most easily.",
     ramFrom: "from {gb} GB RAM",
     nonPremiumHint: "Every player logs in with a password (/register, then /login), so nobody can play under someone else's name. You can change this later in Settings.",
+    nonPremiumPackHint:
+      "Every player logs in with a password (/register, then /login). On a mod pack it works when the pack runs on Fabric (Minecraft 1.19.4–1.21.11) or Forge/NeoForge 1.21.1; on others the server stays premium.",
     crossplayHint: "Players on phones, consoles and Windows 10/11 (Bedrock) join together with Java players. You'll find the address and port for them on the server's page.",
     withPlugins: "Plugins: {list}",
     ramLow: "{game} runs best with {gb} GB RAM or more, and this plan has {plan} GB. It will run, but may lag with many players.",
@@ -731,7 +737,7 @@ const en: Messages = {
     nonPremiumHint:
       "On first join every player sets a password with /register, then logs in with /login, so nobody can play under someone else's name. After switching, players start with an empty inventory because their IDs change. The world stays.",
     nonPremiumPaperOnly:
-      "Non-premium doesn't work on mod packs: they have no password login, so someone could join under another player's name. It works on servers without mods and on “Your own mods” (Fabric, Forge, NeoForge) on some versions.",
+      "Non-premium doesn't work on this server: we have no tested password login mod for it, so someone could join under another player's name. It works on servers without mods, and on mods and mod packs on Fabric, Forge and NeoForge on some versions.",
     nonPremiumModVersions:
       "On this loader non-premium works only on Minecraft {versions}. Only there is a tested password login mod; without it someone could join under another player's name.",
     nonPremiumOn: "non-premium",
@@ -931,6 +937,8 @@ const en: Messages = {
     },
   },
   plugins: {
+    noBuild: "no version for {version}, the server skips it",
+    droppedOnVersion: "These plugins and mods have no version for the new Minecraft version, so we took them off the server (their settings stay in the files and come back if you add them again): {list}",
     title: "Plugins",
     manage: "Manage plugins",
     cardCount: "Plugins added: {n}",
@@ -978,7 +986,7 @@ const en: Messages = {
     sourceHangar: "Hangar",
     sourceSpigot: "SpigotMC",
     hangarIntro: "Plugins from Hangar, the Paper team's site. When you click Add, we download the version for your server into the plugins folder.",
-    spigotIntro: "Free plugins from SpigotMC. When you click Add, we download the newest version into the plugins folder. Check the plugin's page to see whether it works on your Minecraft version.",
+    spigotIntro: "Free plugins from SpigotMC. When you click Add, we download the newest version into the plugins folder. One made for a newer Minecraft than your server is refused, and a version change downloads it again. SpigotMC doesn't always list versions, so check the plugin's page to see whether it works on yours.",
     siteBlockedNote: "Paid or only on its author's site: download the .jar yourself and upload it in Files to the plugins folder.",
     siteAddLink: "Or paste a plugin link",
     hangarLinkPlaceholder: "e.g. https://hangar.papermc.io/ViaVersion/ViaVersion",
@@ -990,6 +998,9 @@ const en: Messages = {
       siteNoSpace: "The server has no room for this plugin. Delete something in Files or buy more space.",
       siteBlocked: "{name} is paid or only on its author's site. Download the .jar yourself and upload it in Files to the plugins folder.",
       siteNoVersion: "This plugin has no Paper version for your Minecraft version.",
+      noVersion: "{name} has no version for Minecraft {version}, so the server would skip it. Pick another one or change the version in Settings.",
+      pluginTooNew: "{name} is made for a newer Minecraft ({version}) than your server, so it wouldn't load. Change the version in Settings or pick another plugin.",
+      setNoVersion: "None of these plugins has a version for Minecraft {version} yet.",
       siteUnavailable: "The plugin site isn't answering. Try again in a moment.",
       siteBadFile: "{name} doesn't look like a Paper/Spigot plugin, so we didn't upload it.",
       pluginNotFound: "That plugin doesn't run on Paper servers.",
@@ -1038,7 +1049,6 @@ const en: Messages = {
     cfBlockedNote: "Its author allows CurseForge downloads only: upload the .jar yourself in Files (mods folder).",
     cfAddLink: "Or paste a CurseForge link",
     cfLinkPlaceholder: "e.g. https://www.curseforge.com/minecraft/mc-mods/jei",
-    droppedOnVersion: "These CurseForge mods have no file for the new Minecraft version, so we took them off the list: {list}",
     forPlayers: "players too",
     playersNote: "Every player needs the mods marked \"players too\" in their game, or they can't join.",
     none: "No mods yet.",
@@ -1058,6 +1068,9 @@ const en: Messages = {
       siteNoSpace: "The server has no room for this plugin. Delete something in Files or buy more space.",
       siteBlocked: "{name} is paid or only on its author's site. Download the .jar yourself and upload it in Files to the plugins folder.",
       siteNoVersion: "This plugin has no Paper version for your Minecraft version.",
+      noVersion: "{name} has no version for Minecraft {version}, so the server would skip it. Pick another one or change the version in Settings.",
+      pluginTooNew: "{name} is made for a newer Minecraft ({version}) than your server, so it wouldn't load. Change the version in Settings or pick another plugin.",
+      setNoVersion: "None of these plugins has a version for Minecraft {version} yet.",
       siteUnavailable: "The plugin site isn't answering. Try again in a moment.",
       siteBadFile: "{name} doesn't look like a Paper/Spigot plugin, so we didn't upload it.",
       pluginNotFound: "This mod doesn't work on this server: it's for another loader or only for the game.",
@@ -1128,6 +1141,9 @@ const en: Messages = {
       siteNoSpace: "The server has no room for this plugin. Delete something in Files or buy more space.",
       siteBlocked: "{name} is paid or only on its author's site. Download the .jar yourself and upload it in Files to the plugins folder.",
       siteNoVersion: "This plugin has no Paper version for your Minecraft version.",
+      noVersion: "{name} has no version for Minecraft {version}, so the server would skip it. Pick another one or change the version in Settings.",
+      pluginTooNew: "{name} is made for a newer Minecraft ({version}) than your server, so it wouldn't load. Change the version in Settings or pick another plugin.",
+      setNoVersion: "None of these plugins has a version for Minecraft {version} yet.",
       siteUnavailable: "The plugin site isn't answering. Try again in a moment.",
       siteBadFile: "{name} doesn't look like a Paper/Spigot plugin, so we didn't upload it.",
       pluginNotFound: "That isn't a tModLoader mod, or it's no longer on the Steam Workshop.",
@@ -1721,6 +1737,31 @@ const en: Messages = {
     failed: "Couldn't switch. Try again in a moment or write to us in the chat.",
     notOnHost: "The server is waiting for a machine. Try again in a moment.",
   },
+  links: {
+    title: "Linked servers",
+    intro:
+      "Link your Java servers so players move between them in the game, without going back to the menu. Each server stays separate: its own world, inventory, plugins and payment.",
+    pick: "Which servers should this one be linked with?",
+    serverTooOld: "version too old (1.20.5 or newer needed)",
+    elsewhere: "is in another group now, it moves to this one",
+    restartNote: "Saving restarts the affected servers that are on; players are disconnected for a moment.",
+    save: "Save",
+    saving: "Saving…",
+    saved: "Saved. After a restart players see the linked servers' names in chat.",
+    failed: "Couldn't save. Try again in a moment.",
+    tooOld: "Moving between servers works on Minecraft 1.20.5 and newer. Change the server's version in Settings to link it.",
+    noOthers: "This is your only Java server. Buy or create another one, then come back here to link them.",
+    howTitle: "How do players move?",
+    howText: "When players join they see the linked servers' names in chat and just click one. They can also type:",
+    goesTo: "goes to {name}",
+    notesTitle: "Good to know",
+    notes: [
+      "Each server is paid for separately, as before.",
+      "Bedrock players (crossplay) can't move this way; they join the other server from the menu.",
+      "If the other server is off, players see that it's starting or turned off.",
+      "On a non-premium server (AuthMe) players log in with their password again on the other server.",
+    ],
+  },
   resourcePack: {
     title: "Resource pack",
     intro:
@@ -1872,7 +1913,7 @@ const en: Messages = {
       bigPacks: "Better MC and Prominence II need 8 GB, which is the Pro plan.",
       tooBig: "That's more than our biggest plan. Take Pro and message us in the chat.",
       noCrossplay: "Crossplay with phones only works on a server without mods.",
-      noNonPremium: "Non-premium players can't join a mod pack. They can join a server without mods, or “Your own mods” on some versions.",
+      noNonPremium: "On a mod pack non-premium players can join when the pack runs on Fabric (Minecraft 1.19.4–1.21.11) or Forge/NeoForge 1.21.1. On other packs the server stays premium.",
       group: "With 6 or more players at once we suggest at least {plan}, so the server doesn't lag.",
       addonsPaid: "Add-ons come with paid plans, so we suggest at least Starter.",
     },

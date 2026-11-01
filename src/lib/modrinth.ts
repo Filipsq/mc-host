@@ -90,7 +90,16 @@ export async function resolveModpack(ref: { slug: string; version?: string }): P
 }
 
 /** A plugin or mod. `forPlayers`: a mod players need in their game too. */
-export type PluginInfo = { id: string; slug: string; title: string; description: string; icon?: string; forPlayers?: boolean };
+export type PluginInfo = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  icon?: string;
+  forPlayers?: boolean;
+  /** Minecraft versions it has builds for (any loader), when Modrinth said. */
+  gameVersions?: string[];
+};
 export type PluginHit = PluginInfo & { downloads: number; newestVersion?: string };
 
 type SearchHit = {
@@ -103,7 +112,7 @@ type SearchHit = {
   versions: string[];
   client_side?: string;
 };
-type PluginProject = Project & { description: string; icon_url?: string | null; loaders: string[]; client_side?: string };
+type PluginProject = Project & { description: string; icon_url?: string | null; loaders: string[]; client_side?: string; game_versions?: string[] };
 
 // What Paper runs: plugins for it and the servers it's built on.
 const PLUGIN_LOADERS = ["paper", "spigot", "bukkit", "purpur", "folia"];
@@ -210,7 +219,7 @@ export async function getPluginInfos(ids: string[]): Promise<Map<string, PluginI
   if (ids.length === 0) return new Map();
   try {
     const list = (await get<PluginProject[]>(`/v2/projects?ids=${encodeURIComponent(JSON.stringify(ids))}`)) ?? [];
-    return new Map(list.map((p) => [p.id, info(p, p.id)]));
+    return new Map(list.map((p) => [p.id, { ...info(p, p.id), gameVersions: p.game_versions }]));
   } catch (err) {
     console.error("modrinth lookup failed", ids, err);
     return new Map();
@@ -250,6 +259,47 @@ export async function uninstallableProjects(ids: string[], loader: string, gameV
   } catch (err) {
     console.error("modrinth lookup failed", ids, err);
     return [];
+  }
+}
+
+/** What the server's image installs on Paper: plugins built for it and for the servers it's built on. */
+export const PAPER_INSTALL_LOADERS = ["paper", "spigot", "bukkit"];
+
+/**
+ * The given projects with no build for any of these Minecraft versions on these
+ * loaders, which the image would skip on the server. A project Modrinth no
+ * longer has counts too; one Modrinth doesn't answer about doesn't, so nothing
+ * is dropped when it's down.
+ */
+export async function projectsWithoutBuild(ids: string[], loaders: string[], gameVersions: string[]): Promise<string[]> {
+  if (ids.length === 0 || gameVersions.length === 0) return [];
+  const filter = new URLSearchParams({
+    loaders: JSON.stringify(loaders),
+    game_versions: JSON.stringify(gameVersions),
+    include_changelog: "false",
+  });
+  const missing = await Promise.all(
+    ids.map(async (id) => {
+      try {
+        const builds = await get<{ id: string }[]>(`/v2/project/${encodeURIComponent(id)}/version?${filter}`);
+        return builds && builds.length > 0 ? null : id;
+      } catch (err) {
+        console.error("modrinth lookup failed", id, err);
+        return null;
+      }
+    }),
+  );
+  return missing.filter((id) => id !== null);
+}
+
+/** The newest Minecraft release, as Modrinth lists it (kept for an hour); undefined if it doesn't answer. */
+export async function newestGameRelease(): Promise<string | undefined> {
+  try {
+    const tags = await get<{ version: string; version_type: string }[]>("/v2/tag/game_version", 3600);
+    return newest((tags ?? []).filter((t) => t.version_type === "release").map((t) => t.version));
+  } catch (err) {
+    console.error("modrinth version list failed", err);
+    return undefined;
   }
 }
 

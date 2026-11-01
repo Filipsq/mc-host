@@ -415,9 +415,13 @@ type createRequest struct {
 	ModpackSource  string `json:"modpackSource"`
 	Modpack        string `json:"modpack"`
 	ModpackVersion string `json:"modpackVersion"`
+	// The pack's mod loader (fabric, forge, neoforge or quilt), so a non-premium pack gets the right login mod.
+	ModpackLoader string `json:"modpackLoader"`
 	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
 	// On tModLoader: the Steam Workshop IDs of the owner's mods.
 	Plugins []string `json:"plugins"`
+	// Java only: the owner's other servers players can go to from this one (links.go).
+	Links []serverLink `json:"links"`
 }
 
 var (
@@ -467,6 +471,10 @@ func (req *createRequest) validate() error {
 		return errors.New("a modpack server needs a Modrinth modpack and modpackVersion")
 	case req.ModpackSource != "" && (req.Kind != "modpack" || (req.ModpackSource != "modrinth" && req.ModpackSource != "curseforge")):
 		return errors.New("modpackSource must be modrinth or curseforge, for a modpack server")
+	case len(req.Links) > 0 && req.Edition != "JAVA":
+		return errors.New("links need a Java server")
+	case validLinks(req.Links, req.Hostname) != nil:
+		return validLinks(req.Links, req.Hostname)
 	case len(req.Plugins) > 0 && (req.Edition != "JAVA" || req.Kind == "modpack"):
 		return errors.New("plugins need a Java server on Paper (not a mod pack)")
 	case len(req.Plugins) > 100:
@@ -501,8 +509,10 @@ func (req *createRequest) validate() error {
 		levelTypes = bedrockLevelTypes
 	}
 	switch {
-	case req.offline() && (req.Edition != "JAVA" || loginAddon(req.Kind, req.Version) == ""):
-		return errors.New("non-premium needs a login addon: Paper, or a mod loader on a version its login mod runs on")
+	case req.offline() && (req.Edition != "JAVA" || loginAddon(req.loginKind(), req.Version) == ""):
+		return errors.New("non-premium needs a login addon: Paper, or a mod loader (or a pack on one) on a version its login mod runs on")
+	case req.ModpackLoader != "" && req.Kind != "modpack":
+		return errors.New("modpackLoader is for a modpack server")
 	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run crossplay")
 	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.voicePort() > 65535):
@@ -570,6 +580,28 @@ func (req *createRequest) validateTerraria() error {
 
 // offline reports whether the server lets in players without a bought Minecraft.
 func (req *createRequest) offline() bool { return req.OnlineMode != nil && !*req.OnlineMode }
+
+// image is the server's container image: imageFor, except that a non-premium
+// Fabric pack runs on Java 21, as a Fabric server of its version does. Fabric
+// packs on 1.20.4 or older otherwise get Java 17 (with Forge packs), but
+// EasyAuth's builds are made for Java 21, and its mixins then make Minecraft's
+// own classes unloadable on Java 17 ("class_1297 has been compiled by a more
+// recent version of the Java Runtime", Better MC BMC2, 2026-11-01).
+func (req *createRequest) image() string {
+	image := imageFor(req.Edition, req.Version, req.Kind)
+	if req.Kind == "modpack" && req.offline() && req.ModpackLoader == "fabric" && image == "itzg/minecraft-server:java17" {
+		return "itzg/minecraft-server:java21"
+	}
+	return image
+}
+
+// loginKind is what picks the login addon (loginAddon): the server's kind, or a mod pack's loader.
+func (req *createRequest) loginKind() string {
+	if req.Kind == "modpack" {
+		return req.ModpackLoader
+	}
+	return req.Kind
+}
 
 // level is the world the server runs.
 func (req *createRequest) level() string {
@@ -651,7 +683,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 
 // run creates the server's container and, if start is set, starts it.
 func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
-	image := imageFor(req.Edition, req.Version, req.Kind)
+	image := req.image()
 	if req.Edition == "TERRARIA" {
 		// Minecraft images fetch the newest game when the server starts; Terraria's
 		// images carry it, so a new container takes the newest image (players'
@@ -676,12 +708,13 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 		return err
 	}
 	if req.offline() {
-		a.prepareLogin(ctx, req.ID, loginAddon(req.Kind, req.Version))
+		a.prepareLogin(ctx, req.ID, loginAddon(req.loginKind(), req.Version))
 	}
 	if req.Edition == "JAVA" {
 		a.prepareIslands(ctx, req.ID, req.Kind)
 		a.prepareMinigames(ctx, req.ID, req.Kind, req.level())
 		a.prepareEnd(ctx, req)
+		a.prepareLinks(ctx, req.ID, req.level(), req.Links)
 	}
 	if !start {
 		return nil
@@ -775,10 +808,11 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			// The image installs the pack's mod loader and server-side mods.
 			if req.ModpackSource == "curseforge" {
 				// The pack's manifest says which Minecraft and loader it runs on.
-				env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+req.Modpack, "CF_FILE_ID="+req.ModpackVersion)
+				env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+req.Modpack, "CF_FILE_ID="+req.ModpackVersion, "PRE_START_SCRIPT="+loginScriptPath)
 				if a.cfKey != "" {
 					env = append(env, "CF_API_KEY="+a.cfKey)
 				}
+				entrypoint = loginEntrypoint
 			} else {
 				env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version,
 					"MODRINTH_EXCLUDE_FILES="+strings.Join(packExcludes, ","), "MODRINTH_FORCE_INCLUDE_FILES="+strings.Join(packIncludes, ","),
@@ -786,6 +820,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 				entrypoint = packEntrypoint
 				labels["mchost.pregen"] = "true" // packScript adds Chunky; see pregen.go
 			}
+			env = append(env, packLoginEnv(&req)...)
 		case "fabric", "forge", "neoforge":
 			// The image installs the loader for the version; pluginEnv adds the mods.
 			env = append(env, "TYPE="+loaderTypes[req.Kind], "VERSION="+req.Version)
@@ -816,6 +851,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			}
 		}
 		env = append(env, req.ResourcePack.env()...)
+		env = append(env, linksEnv(req.Links)...)
 		if req.Level != "" {
 			env = append(env, "LEVEL="+req.Level)
 		}
@@ -1185,8 +1221,11 @@ const gameNetwork = "mchost-games"
 // player-only mod isn't there (always, on a server), which a server can't do
 // (Better MC: java.awt.HeadlessException). FTB Quests Freeze Fix ships an empty
 // en_us.json, which a server can't read (Better MC: "JsonObject.entrySet()
-// because $$2 is null"); it only fixes the FTB Quests screen anyway.
-var packExcludes = []string{"missingmodschecker", "ftbquestsfreezefix"}
+// because $$2 is null"); it only fixes the FTB Quests screen anyway. Barista
+// (its jar is spelled "Barsita") loads its key bindings on a server too and
+// crashes it (Create+ 1.19.2: "Attempted to load class ...Keybindings for
+// invalid dist DEDICATED_SERVER").
+var packExcludes = []string{"missingmodschecker", "ftbquestsfreezefix", "barsita", "barista"}
 
 // packIncludes are libraries some packs mark as player-only although their
 // server-side mods need them (Better MC: NoClassDefFoundError for
