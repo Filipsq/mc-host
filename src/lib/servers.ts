@@ -277,6 +277,8 @@ export function agentSpec(server: Server): CreateServerSpec {
     modpack: server.modpack ?? undefined,
     modpackSource: server.kind === "modpack" ? (server.modpackSource ?? undefined) : undefined,
     modpackVersion: server.modpackVersionId ?? undefined,
+    // Picks a non-premium pack's login mod (agent/login.go loginScript).
+    modpackLoader: server.kind === "modpack" ? (server.modpackLoader ?? undefined) : undefined,
     // Plugins from Hangar and SpigotMC are files the panel put there itself.
     plugins: addonType(server) ? withNeededPlugins(server.plugins.filter((p) => !sitePlugin(p))) : [],
     // Linked servers (src/lib/links.ts), kept as "<name>=<java address>".

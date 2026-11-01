@@ -264,7 +264,10 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     }),
     ...(parsed.data.motd && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
-    onlineMode: !(parsed.data.nonPremium === "on" && canRunNonPremium({ edition, kind, version: modVersion ?? "LATEST" })),
+    onlineMode: !(
+      parsed.data.nonPremium === "on" &&
+      canRunNonPremium({ edition, kind, version: pack?.gameVersion ?? modVersion ?? "LATEST", modpackLoader: pack?.loader })
+    ),
     crossplay: parsed.data.crossplay === "on" && canCrossplay({ edition, kind }),
     ...("version" in game && { version: game.version }),
     ...(modVersion && { version: modVersion }),

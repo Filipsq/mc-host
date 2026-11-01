@@ -179,7 +179,7 @@ const pl = {
       },
       {
         q: "Czy serwer może być non-premium?",
-        a: "Tak, na Javie bez modów. Włącz non-premium przy tworzeniu serwera albo w Ustawieniach. Każdy gracz ustawi wtedy hasło komendą /register i będzie logować się przez /login, więc nikt nie zagra pod cudzym nickiem.",
+        a: "Tak, na Javie bez modów, a z modami i paczkami modów na Fabricu (1.19.4–1.21.11) oraz Forge i NeoForge (1.21.1). Włącz non-premium przy tworzeniu serwera albo w Ustawieniach. Każdy gracz ustawi wtedy hasło komendą /register i będzie logować się przez /login, więc nikt nie zagra pod cudzym nickiem.",
       },
       {
         q: "Czy serwery mają ochronę przed atakami DDoS?",
@@ -569,6 +569,8 @@ const pl = {
     modsInfo: "{loader}, Minecraft {version}. Gracze potrzebują {loader} w tej samej wersji i modów oznaczonych „też u graczy”. Najłatwiej zainstalować je przez Modrinth App.",
     ramFrom: "od {gb} GB RAM",
     nonPremiumHint: "Każdy gracz zaloguje się hasłem (/register, potem /login), więc nikt nie zagra pod cudzym nickiem. Zmienisz to później w Ustawieniach.",
+    nonPremiumPackHint:
+      "Każdy gracz zaloguje się hasłem (/register, potem /login). Na paczce działa, gdy jest na Fabricu (Minecraft 1.19.4–1.21.11) albo Forge/NeoForge 1.21.1; na innych serwer zostanie premium.",
     crossplayHint: "Gracze z telefonów, konsol i Windows 10/11 (Bedrock) dołączą razem z graczami z Javy. Adres i port dla nich zobaczysz na stronie serwera.",
     withPlugins: "Pluginy: {list}",
     ramLow: "{game} najlepiej działa od {gb} GB RAM, a wybrany plan ma {plan} GB. Serwer ruszy, ale przy wielu graczach może się przycinać.",
@@ -732,7 +734,7 @@ const pl = {
     nonPremiumHint:
       "Przy pierwszym wejściu każdy gracz ustawi hasło komendą /register, a potem loguje się przez /login, więc nikt nie zagra pod cudzym nickiem. Po zmianie trybu gracze zaczynają z pustym ekwipunkiem, bo zmieniają się ich identyfikatory. Świat zostaje.",
     nonPremiumPaperOnly:
-      "Non-premium nie działa na paczkach modów: nie mają logowania hasłem, więc ktoś mógłby wejść pod cudzym nickiem. Działa na serwerach bez modów i na Własnych modach (Fabric, Forge, NeoForge) w niektórych wersjach.",
+      "Non-premium nie działa na tym serwerze: nie mamy dla niego sprawdzonego moda z logowaniem hasłem, więc ktoś mógłby wejść pod cudzym nickiem. Działa na serwerach bez modów oraz na modach i paczkach modów na Fabricu, Forge i NeoForge w niektórych wersjach.",
     nonPremiumModVersions:
       "Non-premium działa na tym silniku tylko w wersjach Minecrafta: {versions}. Tylko tam jest sprawdzony mod z logowaniem hasłem; bez niego ktoś mógłby wejść pod cudzym nickiem.",
     nonPremiumOn: "non-premium",
@@ -1908,7 +1910,7 @@ const pl = {
       bigPacks: "Better MC i Prominence II potrzebują 8 GB, czyli planu Pro.",
       tooBig: "To więcej, niż ma nasz największy plan. Weź Pro i napisz do nas na czacie.",
       noCrossplay: "Crossplay z telefonami działa tylko na serwerze bez modów.",
-      noNonPremium: "Gracze bez premium nie wejdą na paczkę modów. Mogą na serwer bez modów albo na Własne mody w niektórych wersjach.",
+      noNonPremium: "Na paczce modów gracze bez premium wejdą, gdy paczka jest na Fabricu (Minecraft 1.19.4–1.21.11) albo Forge/NeoForge 1.21.1. Na innych paczkach serwer zostanie premium.",
       group: "Przy 6 i więcej graczach naraz polecamy co najmniej plan {plan}, żeby serwer nie lagował.",
       addonsPaid: "Dodatki są w płatnych planach, więc polecamy co najmniej Starter.",
     },

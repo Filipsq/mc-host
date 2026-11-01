@@ -67,8 +67,9 @@ export const supportsPlugins = (s: Pick<Server, "edition" | "kind">) =>
 /**
  * Non-premium needs a login addon, so nobody plays under someone else's name:
  * AuthMe on Paper, or a server-side login mod on a mod loader, only on the
- * Minecraft versions it's made for (newest versions and mod packs have none we
- * trust yet). The agent keeps the same list (agent/login.go loginMods).
+ * Minecraft versions it's made for (newest versions have none we trust yet).
+ * A mod pack on Fabric, Forge or NeoForge gets the same mod for its loader and
+ * version (agent/login.go loginScript). The agent keeps the same list (agent/login.go loginMods).
  */
 export const LOGIN_MODS: Record<ModLoader, { id: string; title: string; versions: readonly string[] }> = {
   fabric: { id: "aZj58GfX", title: "EasyAuth", versions: ["1.21.11", "1.21.8", "1.21.4", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4"] },
@@ -76,8 +77,17 @@ export const LOGIN_MODS: Record<ModLoader, { id: string; title: string; versions
   neoforge: { id: "VYmP7iH5", title: "EasyLogin", versions: ["1.21.11", "1.21.1"] },
 };
 
-export const canRunNonPremium = (s: Pick<Server, "edition" | "kind" | "version">) =>
-  supportsPlugins(s) || (s.edition === "JAVA" && isModLoader(s.kind) && LOGIN_MODS[s.kind].versions.includes(s.version));
+/** The mod loader whose login mod a server would run: its own kind, or a mod pack's loader (quilt has none). */
+export const loginLoader = (s: Pick<Server, "kind"> & { modpackLoader?: string | null }): ModLoader | null => {
+  const loader = s.kind === "modpack" ? s.modpackLoader : s.kind;
+  return loader && isModLoader(loader) ? loader : null;
+};
+
+export const canRunNonPremium = (s: Pick<Server, "edition" | "kind" | "version"> & { modpackLoader?: string | null }) => {
+  if (supportsPlugins(s)) return true;
+  const loader = s.edition === "JAVA" ? loginLoader(s) : null;
+  return !!loader && LOGIN_MODS[loader].versions.includes(s.version);
+};
 
 /** Bedrock players get in through the Geyser plugin, so crossplay is for Paper servers too. */
 export const canCrossplay = supportsPlugins;

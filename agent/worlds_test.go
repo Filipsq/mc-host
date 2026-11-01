@@ -61,6 +61,26 @@ func TestNonPremiumAndWorldEnv(t *testing.T) {
 		t.Errorf("premium servers stay online without the login plugin:\n%s", env)
 	}
 
+	// A mod pack gets its login mod from loginScript, by the pack's loader and version.
+	pack := createRequest{ID: "abc12345", Name: "Paczka", Edition: "JAVA", MemoryMb: 6144, CPUs: 2, Port: 25570, Hostname: "paczka.mchost.pl",
+		OnlineMode: &off, Kind: "modpack", Modpack: "better-mc-fabric-bmc2", ModpackVersion: "BpTjgzL8", ModpackLoader: "fabric", Version: "1.20.1"}
+	env, _ = envOf(pack)
+	for _, want := range []string{"ONLINE_MODE=false\n", "MCHOST_LOGIN=" + easyAuth + "\n", "MCHOST_LOGIN_LOADER=fabric\n", "MCHOST_LOGIN_VERSION=1.20.1\n", "PRE_START_SCRIPT=" + packScriptPath + "\n"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("non-premium pack env missing %q:\n%s", want, env)
+		}
+	}
+	cfPack := pack
+	cfPack.ModpackSource, cfPack.Modpack, cfPack.ModpackVersion, cfPack.ModpackLoader, cfPack.Version = "curseforge", "some-pack", "1234567", "neoforge", "1.21.1"
+	env, _ = envOf(cfPack)
+	if !strings.Contains(env, "MCHOST_LOGIN="+easyLogin+"\n") || !strings.Contains(env, "PRE_START_SCRIPT="+loginScriptPath+"\n") {
+		t.Errorf("non-premium CurseForge pack env:\n%s", env)
+	}
+	pack.OnlineMode = nil
+	if env, _ = envOf(pack); strings.Contains(env, "MCHOST_LOGIN") || !strings.Contains(env, "ONLINE_MODE=true\n") {
+		t.Errorf("a premium pack has no login mod:\n%s", env)
+	}
+
 	bedrock := createRequest{ID: "abc12345", Name: "Wyspa", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570, Level: "Moja wyspa", Seed: "42", LevelType: "flat"}
 	env, labels = envOf(bedrock)
 	for _, want := range []string{"LEVEL_NAME=Moja wyspa\n", "LEVEL_SEED=42\n", "LEVEL_TYPE=FLAT\n"} {
@@ -79,7 +99,10 @@ func TestNonPremiumAndWorldEnv(t *testing.T) {
 	for _, bad := range []createRequest{
 		{Kind: "fabric", Version: "LATEST", OnlineMode: &off}, // no login mod made for it yet
 		{Kind: "forge", Version: "1.20.1", OnlineMode: &off},
-		{Kind: "modpack", OnlineMode: &off}, // nor for packs
+		{Kind: "modpack", OnlineMode: &off},                                            // a pack without its loader
+		{Kind: "modpack", ModpackLoader: "forge", Version: "1.20.1", OnlineMode: &off}, // nor on a version without a login mod
+		{Kind: "modpack", ModpackLoader: "quilt", Version: "1.20.1", OnlineMode: &off},
+		{Kind: "fabric", Version: "1.20.1", ModpackLoader: "fabric"}, // only for packs
 		{Level: "../plugins"},
 		{Level: ".hidden"},
 		{Level: "a/b"},

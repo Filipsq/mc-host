@@ -181,7 +181,7 @@ const en: Messages = {
       },
       {
         q: "Can the server be non-premium?",
-        a: "Yes, on Java without mods. Turn on non-premium when creating the server or in Settings. Every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
+        a: "Yes, on Java without mods, and with mods and mod packs on Fabric (1.19.4–1.21.11) and Forge and NeoForge (1.21.1). Turn on non-premium when creating the server or in Settings. Every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
       },
       {
         q: "Are servers protected against DDoS attacks?",
@@ -570,6 +570,8 @@ const en: Messages = {
     modsInfo: "{loader}, Minecraft {version}. Players need {loader} on the same version and the mods marked \"players too\". The Modrinth App installs them most easily.",
     ramFrom: "from {gb} GB RAM",
     nonPremiumHint: "Every player logs in with a password (/register, then /login), so nobody can play under someone else's name. You can change this later in Settings.",
+    nonPremiumPackHint:
+      "Every player logs in with a password (/register, then /login). On a mod pack it works when the pack runs on Fabric (Minecraft 1.19.4–1.21.11) or Forge/NeoForge 1.21.1; on others the server stays premium.",
     crossplayHint: "Players on phones, consoles and Windows 10/11 (Bedrock) join together with Java players. You'll find the address and port for them on the server's page.",
     withPlugins: "Plugins: {list}",
     ramLow: "{game} runs best with {gb} GB RAM or more, and this plan has {plan} GB. It will run, but may lag with many players.",
@@ -733,7 +735,7 @@ const en: Messages = {
     nonPremiumHint:
       "On first join every player sets a password with /register, then logs in with /login, so nobody can play under someone else's name. After switching, players start with an empty inventory because their IDs change. The world stays.",
     nonPremiumPaperOnly:
-      "Non-premium doesn't work on mod packs: they have no password login, so someone could join under another player's name. It works on servers without mods and on “Your own mods” (Fabric, Forge, NeoForge) on some versions.",
+      "Non-premium doesn't work on this server: we have no tested password login mod for it, so someone could join under another player's name. It works on servers without mods, and on mods and mod packs on Fabric, Forge and NeoForge on some versions.",
     nonPremiumModVersions:
       "On this loader non-premium works only on Minecraft {versions}. Only there is a tested password login mod; without it someone could join under another player's name.",
     nonPremiumOn: "non-premium",
@@ -1909,7 +1911,7 @@ const en: Messages = {
       bigPacks: "Better MC and Prominence II need 8 GB, which is the Pro plan.",
       tooBig: "That's more than our biggest plan. Take Pro and message us in the chat.",
       noCrossplay: "Crossplay with phones only works on a server without mods.",
-      noNonPremium: "Non-premium players can't join a mod pack. They can join a server without mods, or “Your own mods” on some versions.",
+      noNonPremium: "On a mod pack non-premium players can join when the pack runs on Fabric (Minecraft 1.19.4–1.21.11) or Forge/NeoForge 1.21.1. On other packs the server stays premium.",
       group: "With 6 or more players at once we suggest at least {plan}, so the server doesn't lag.",
       addonsPaid: "Add-ons come with paid plans, so we suggest at least Starter.",
     },

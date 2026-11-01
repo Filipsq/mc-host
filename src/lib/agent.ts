@@ -95,7 +95,7 @@ export type CreateServerSpec = {
   pvp: boolean; // Java only
   whitelist: boolean;
   whitelistPlayers: string[];
-  onlineMode: boolean; // false: non-premium (Java on Paper only)
+  onlineMode: boolean; // false: non-premium (Java on Paper, or a mod loader or pack where a login mod runs)
   crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
   voiceHost?: string; // Java only: the machine players' games reach Simple Voice Chat on
   allowFlight: boolean; // Java only
@@ -114,6 +114,7 @@ export type CreateServerSpec = {
   modpack?: string; // Modrinth slug or ID, or CurseForge slug, for a modpack
   modpackSource?: string; // "curseforge", or none for Modrinth
   modpackVersion?: string; // Modrinth version ID or CurseForge file ID, for a modpack
+  modpackLoader?: string; // the pack's mod loader (fabric, forge, neoforge, quilt), for a non-premium pack's login mod
   plugins: string[]; // Modrinth project IDs: plugins for Paper servers, mods for mod loader servers; Steam Workshop IDs on tModLoader
   links?: { name: string; host: string }[]; // Java only: linked servers players can go to (/trigger <name>)
 };
