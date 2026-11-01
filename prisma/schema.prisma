@@ -295,6 +295,11 @@ model Server {
   addons           String[]       @default([])
   // With the "domain" add-on: the owner's own domain players type, e.g. graj.mojserwer.pl.
   customDomain     String?        @unique
+  // Linked servers (src/lib/links.ts): servers of one owner with the same group
+  // send players to each other in the game (/trigger <name>, Minecraft's transfer).
+  // links: the others, as "<name>=<java address>", kept in step for the agent.
+  linkGroup        String?
+  links            String[]       @default([])
   // Made by an admin to try things out, without paying: kept out of sales numbers.
   adminTest        Boolean        @default(false)
   payments         Payment[]

@@ -417,6 +417,8 @@ type createRequest struct {
 	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
 	// On tModLoader: the Steam Workshop IDs of the owner's mods.
 	Plugins []string `json:"plugins"`
+	// Java only: the owner's other servers players can go to from this one (links.go).
+	Links []serverLink `json:"links"`
 }
 
 var (
@@ -466,6 +468,10 @@ func (req *createRequest) validate() error {
 		return errors.New("a modpack server needs a Modrinth modpack and modpackVersion")
 	case req.ModpackSource != "" && (req.Kind != "modpack" || (req.ModpackSource != "modrinth" && req.ModpackSource != "curseforge")):
 		return errors.New("modpackSource must be modrinth or curseforge, for a modpack server")
+	case len(req.Links) > 0 && req.Edition != "JAVA":
+		return errors.New("links need a Java server")
+	case validLinks(req.Links, req.Hostname) != nil:
+		return validLinks(req.Links, req.Hostname)
 	case len(req.Plugins) > 0 && (req.Edition != "JAVA" || req.Kind == "modpack"):
 		return errors.New("plugins need a Java server on Paper (not a mod pack)")
 	case len(req.Plugins) > 100:
@@ -680,6 +686,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	if req.Edition == "JAVA" {
 		a.prepareIslands(ctx, req.ID, req.Kind)
 		a.prepareMinigames(ctx, req.ID, req.Kind, req.level())
+		a.prepareLinks(ctx, req.ID, req.level(), req.Links)
 	}
 	if !start {
 		return nil
@@ -814,6 +821,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			}
 		}
 		env = append(env, req.ResourcePack.env()...)
+		env = append(env, linksEnv(req.Links)...)
 		if req.Level != "" {
 			env = append(env, "LEVEL="+req.Level)
 		}

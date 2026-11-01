@@ -115,6 +115,7 @@ export type CreateServerSpec = {
   modpackSource?: string; // "curseforge", or none for Modrinth
   modpackVersion?: string; // Modrinth version ID or CurseForge file ID, for a modpack
   plugins: string[]; // Modrinth project IDs: plugins for Paper servers, mods for mod loader servers; Steam Workshop IDs on tModLoader
+  links?: { name: string; host: string }[]; // Java only: linked servers players can go to (/trigger <name>)
 };
 
 export async function createServer(spec: CreateServerSpec) {
