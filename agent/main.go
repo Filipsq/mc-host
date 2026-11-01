@@ -580,6 +580,20 @@ func (req *createRequest) validateTerraria() error {
 // offline reports whether the server lets in players without a bought Minecraft.
 func (req *createRequest) offline() bool { return req.OnlineMode != nil && !*req.OnlineMode }
 
+// image is the server's container image: imageFor, except that a non-premium
+// Fabric pack runs on Java 21, as a Fabric server of its version does. Fabric
+// packs on 1.20.4 or older otherwise get Java 17 (with Forge packs), but
+// EasyAuth's builds are made for Java 21, and its mixins then make Minecraft's
+// own classes unloadable on Java 17 ("class_1297 has been compiled by a more
+// recent version of the Java Runtime", Better MC BMC2, 2026-11-01).
+func (req *createRequest) image() string {
+	image := imageFor(req.Edition, req.Version, req.Kind)
+	if req.Kind == "modpack" && req.offline() && req.ModpackLoader == "fabric" && image == "itzg/minecraft-server:java17" {
+		return "itzg/minecraft-server:java21"
+	}
+	return image
+}
+
 // loginKind is what picks the login addon (loginAddon): the server's kind, or a mod pack's loader.
 func (req *createRequest) loginKind() string {
 	if req.Kind == "modpack" {
@@ -668,7 +682,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 
 // run creates the server's container and, if start is set, starts it.
 func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
-	image := imageFor(req.Edition, req.Version, req.Kind)
+	image := req.image()
 	if req.Edition == "TERRARIA" {
 		// Minecraft images fetch the newest game when the server starts; Terraria's
 		// images carry it, so a new container takes the newest image (players'
