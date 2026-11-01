@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Server, ServerStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { heldMemoryMb, memoryLimitMb, overbook, salesLimitMb } from "@/lib/capacity";
+import { heldMemoryMb, memoryLimitMb, overbook, overbookOf, salesLimitMb } from "@/lib/capacity";
 import { nodeById } from "@/lib/nodes";
 import { diskLimitMb } from "@/lib/disk";
 import { deletionDate, isTestPayment } from "@/lib/billing";
@@ -180,7 +180,7 @@ export default async function AdminOverview() {
                 {stats.machines.map((m) => {
                   const node = nodeById(m.id);
                   const soldHere = servers.filter((s) => nodeById(s.node).id === m.id).reduce((sum, s) => sum + heldMemoryMb(s), 0);
-                  const limit = Math.floor(node.memoryLimitMb * overbook());
+                  const limit = Math.floor(node.memoryLimitMb * overbookOf(node));
                   const h = m.host;
                   return (
                     <tr key={m.id}>
