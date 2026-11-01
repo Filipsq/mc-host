@@ -1191,8 +1191,11 @@ const gameNetwork = "mchost-games"
 // player-only mod isn't there (always, on a server), which a server can't do
 // (Better MC: java.awt.HeadlessException). FTB Quests Freeze Fix ships an empty
 // en_us.json, which a server can't read (Better MC: "JsonObject.entrySet()
-// because $$2 is null"); it only fixes the FTB Quests screen anyway.
-var packExcludes = []string{"missingmodschecker", "ftbquestsfreezefix"}
+// because $$2 is null"); it only fixes the FTB Quests screen anyway. Barista
+// (its jar is spelled "Barsita") loads its key bindings on a server too and
+// crashes it (Create+ 1.19.2: "Attempted to load class ...Keybindings for
+// invalid dist DEDICATED_SERVER").
+var packExcludes = []string{"missingmodschecker", "ftbquestsfreezefix", "barsita", "barista"}
 
 // packIncludes are libraries some packs mark as player-only although their
 // server-side mods need them (Better MC: NoClassDefFoundError for

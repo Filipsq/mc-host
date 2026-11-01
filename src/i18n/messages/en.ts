@@ -445,7 +445,7 @@ const en: Messages = {
         },
         clientMod: {
           title: "A mod only works in the game, not on a server",
-          fix: "There's a player-only mod on the server (e.g. visuals, a minimap or menus). Remove it in Mods. Players can keep it in their own game.",
+          fix: "There's a player-only mod on the server (e.g. visuals, a minimap or menus). Remove it in Mods. On a mod pack server just click Start again, we take such a mod out ourselves. Players can keep it in their own game.",
         },
         javaTooOld: {
           title: "A plugin or mod is for a newer version",

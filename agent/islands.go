@@ -126,6 +126,8 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // On Forge it also takes out the mods Forge last refused to load because a mod
 // they require isn't installed: a pack can leave the required mod out
 // altogether (Better MC Forge has Twilight Cave Fix but no Twilight Forest).
+// Same for a player-only mod the pack marks for servers, which Forge stops on
+// with "invalid dist DEDICATED_SERVER" (Create+ 1.19.2: Barista).
 // The names come from Forge's own crash report, so only mods that really
 // can't load go. The image puts them back on every start, so the list in
 // .mchost-pack-removed is kept until the pack's version changes.
@@ -133,6 +135,7 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // Last, it adds Chunky, which the agent uses to generate the map ahead
 // (pregen.go): big packs build new chunks slowly while people play.
 var packScript = `#!/bin/bash
+shopt -s nocaseglob # jars are named any which way (Barsita-1.19.2-1.1.2.jar)
 for jar in mods/{` + strings.Join(packExcludes, ",") + `}*.jar; do
   [ -f "$jar" ] && rm -f "$jar" && echo "[mchost] removed $jar (a player-side mod that stops servers)"
 done
@@ -144,12 +147,14 @@ elif [ "$(head -1 $list)" != "version $MODRINTH_VERSION" ]; then
 fi
 if [ -d crash-reports ]; then
   found=$(find crash-reports -name 'crash-*-fml.txt' -newer $list -exec awk '
+    /^-- / { f = "" }
     /Mod File:/ { f = $0; sub(/.*Mod File:[ \t]*/, "", f); sub(/#.*/, "", f); sub(/.*\//, "", f) }
-    /Failure message:.* requires / { getline n; if (n ~ /is not installed/ && f != "") print f }' {} +)
+    /Failure message:.* requires / { getline n; if (n ~ /is not installed/ && f != "") print f }
+    /invalid dist DEDICATED_SERVER/ { if (f != "") print f }' {} +)
   [ -n "$found" ] && sort -u <(tail -n +2 $list) <(echo "$found") | { read -r v <$list; echo "$v"; cat; } >$list.new && mv $list.new $list
 fi
 tail -n +2 $list | while read -r jar; do
-  [ -f "mods/$jar" ] && rm -f "mods/$jar" && echo "[mchost] removed mods/$jar (it needs a mod the pack doesn't have)"
+  [ -f "mods/$jar" ] && rm -f "mods/$jar" && echo "[mchost] removed mods/$jar (it stopped the server from starting)"
 done
 if [ -d libraries/net/neoforged ]; then loader=neoforge; elif [ -d libraries/net/minecraftforge ]; then loader=forge; else loader=fabric; fi
 if [ -d mods ] && ! ls mods | grep -qi '^chunky' && command -v jq >/dev/null && command -v curl >/dev/null; then
