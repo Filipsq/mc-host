@@ -102,6 +102,7 @@ export type CreateServerSpec = {
   hardcore: boolean; // Java only
   commandBlocks: boolean; // Java only
   allowNether: boolean; // Java only
+  allowEnd: boolean; // Java only
   forceGamemode: boolean; // Java only: everyone joins in the server's game mode
   spawnMonsters: boolean; // Java only
   spawnProtection: number; // Java only: blocks around spawn only operators may change

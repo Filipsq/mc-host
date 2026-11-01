@@ -390,6 +390,7 @@ type createRequest struct {
 	// The Nether, everyone in the server's game mode, hostile mobs. Missing (an
 	// older site): server.properties keeps what it has.
 	AllowNether     *bool `json:"allowNether"`
+	AllowEnd        *bool `json:"allowEnd"` // the End (end.go); missing: as it is
 	ForceGamemode   *bool `json:"forceGamemode"`
 	SpawnMonsters   *bool `json:"spawnMonsters"`
 	SpawnProtection *int  `json:"spawnProtection"`
@@ -680,6 +681,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	if req.Edition == "JAVA" {
 		a.prepareIslands(ctx, req.ID, req.Kind)
 		a.prepareMinigames(ctx, req.ID, req.Kind, req.level())
+		a.prepareEnd(ctx, req)
 	}
 	if !start {
 		return nil

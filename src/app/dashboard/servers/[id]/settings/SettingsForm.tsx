@@ -29,6 +29,7 @@ type Props = {
     hardcore: boolean;
     commandBlocks: boolean;
     allowNether: boolean;
+    allowEnd: boolean;
     forceGamemode: boolean;
     spawnMonsters: boolean;
     spawnProtection: number;
@@ -144,6 +145,13 @@ export default function SettingsForm({ serverId, edition, name, versions, versio
             <span className="stack-tight">
               <span>{t.allowNether}</span>
               <span className="muted small">{t.allowNetherHint}</span>
+            </span>
+          </label>
+          <label className="check">
+            <input type="checkbox" name="allowEnd" defaultChecked={initial.allowEnd} />
+            <span className="stack-tight">
+              <span>{t.allowEnd}</span>
+              <span className="muted small">{t.allowEndHint}</span>
             </span>
           </label>
           <label className="check">
