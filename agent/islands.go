@@ -132,8 +132,10 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // can't load go. The image puts them back on every start, so the list in
 // .mchost-pack-removed is kept until the pack's version changes.
 //
-// Last, it adds Chunky, which the agent uses to generate the map ahead
+// It then adds Chunky, which the agent uses to generate the map ahead
 // (pregen.go): big packs build new chunks slowly while people play.
+//
+// Last, loginScript adds the password login mod on a non-premium pack.
 var packScript = `#!/bin/bash
 shopt -s nocaseglob # jars are named any which way (Barsita-1.19.2-1.1.2.jar)
 for jar in mods/{` + strings.Join(packExcludes, ",") + `}*.jar; do
@@ -198,7 +200,7 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
     fi
   done
 fi
-exit 0
+` + loginScript + `exit 0
 `
 
 const packScriptPath = "/tmp/mchost-pack"

@@ -414,6 +414,8 @@ type createRequest struct {
 	ModpackSource  string `json:"modpackSource"`
 	Modpack        string `json:"modpack"`
 	ModpackVersion string `json:"modpackVersion"`
+	// The pack's mod loader (fabric, forge, neoforge or quilt), so a non-premium pack gets the right login mod.
+	ModpackLoader string `json:"modpackLoader"`
 	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
 	// On tModLoader: the Steam Workshop IDs of the owner's mods.
 	Plugins []string `json:"plugins"`
@@ -506,8 +508,10 @@ func (req *createRequest) validate() error {
 		levelTypes = bedrockLevelTypes
 	}
 	switch {
-	case req.offline() && (req.Edition != "JAVA" || loginAddon(req.Kind, req.Version) == ""):
-		return errors.New("non-premium needs a login addon: Paper, or a mod loader on a version its login mod runs on")
+	case req.offline() && (req.Edition != "JAVA" || loginAddon(req.loginKind(), req.Version) == ""):
+		return errors.New("non-premium needs a login addon: Paper, or a mod loader (or a pack on one) on a version its login mod runs on")
+	case req.ModpackLoader != "" && req.Kind != "modpack":
+		return errors.New("modpackLoader is for a modpack server")
 	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run crossplay")
 	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.voicePort() > 65535):
@@ -575,6 +579,14 @@ func (req *createRequest) validateTerraria() error {
 
 // offline reports whether the server lets in players without a bought Minecraft.
 func (req *createRequest) offline() bool { return req.OnlineMode != nil && !*req.OnlineMode }
+
+// loginKind is what picks the login addon (loginAddon): the server's kind, or a mod pack's loader.
+func (req *createRequest) loginKind() string {
+	if req.Kind == "modpack" {
+		return req.ModpackLoader
+	}
+	return req.Kind
+}
 
 // level is the world the server runs.
 func (req *createRequest) level() string {
@@ -681,7 +693,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 		return err
 	}
 	if req.offline() {
-		a.prepareLogin(ctx, req.ID, loginAddon(req.Kind, req.Version))
+		a.prepareLogin(ctx, req.ID, loginAddon(req.loginKind(), req.Version))
 	}
 	if req.Edition == "JAVA" {
 		a.prepareIslands(ctx, req.ID, req.Kind)
@@ -780,10 +792,11 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			// The image installs the pack's mod loader and server-side mods.
 			if req.ModpackSource == "curseforge" {
 				// The pack's manifest says which Minecraft and loader it runs on.
-				env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+req.Modpack, "CF_FILE_ID="+req.ModpackVersion)
+				env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+req.Modpack, "CF_FILE_ID="+req.ModpackVersion, "PRE_START_SCRIPT="+loginScriptPath)
 				if a.cfKey != "" {
 					env = append(env, "CF_API_KEY="+a.cfKey)
 				}
+				entrypoint = loginEntrypoint
 			} else {
 				env = append(env, "TYPE=MODRINTH", "MODRINTH_MODPACK="+req.Modpack, "MODRINTH_VERSION="+req.ModpackVersion, "VERSION="+req.Version,
 					"MODRINTH_EXCLUDE_FILES="+strings.Join(packExcludes, ","), "MODRINTH_FORCE_INCLUDE_FILES="+strings.Join(packIncludes, ","),
@@ -791,6 +804,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 				entrypoint = packEntrypoint
 				labels["mchost.pregen"] = "true" // packScript adds Chunky; see pregen.go
 			}
+			env = append(env, packLoginEnv(&req)...)
 		case "fabric", "forge", "neoforge":
 			// The image installs the loader for the version; pluginEnv adds the mods.
 			env = append(env, "TYPE="+loaderTypes[req.Kind], "VERSION="+req.Version)

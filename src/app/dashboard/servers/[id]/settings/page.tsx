@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
-import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
+import { LOGIN_MODS, canCrossplay, canRunNonPremium, loginLoader } from "@/lib/plugins";
 import { bedrockHost } from "@/lib/servers";
 import { maxPlayersFor, serverPlayerLimit, versionsFor, viewDistanceDefault, viewDistanceMax } from "@/lib/settings";
 import { planById } from "@/lib/plans";
@@ -90,7 +90,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
             ? {
                 offered: canRunNonPremium(server),
                 on: !server.onlineMode,
-                ...(isModLoader(server.kind) && { versions: LOGIN_MODS[server.kind].versions }),
+                ...(loginLoader(server) && { versions: LOGIN_MODS[loginLoader(server)!].versions }),
               }
             : undefined
         }

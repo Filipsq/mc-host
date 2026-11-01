@@ -108,7 +108,7 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
         version,
         ...packFields(pack),
         plugins: keepPlugins ? (fitted?.plugins ?? server.plugins) : picked,
-        onlineMode: canRunNonPremium({ edition: "JAVA", kind, version }) ? server.onlineMode : true,
+        onlineMode: canRunNonPremium({ edition: "JAVA", kind, version, modpackLoader: pack?.loader }) ? server.onlineMode : true,
         // A fresh world; the old one stays in the server's files, under Worlds.
         level: nextWorldName([...names, activeLevel(server)]),
         levelSeed: randomSeed(),
