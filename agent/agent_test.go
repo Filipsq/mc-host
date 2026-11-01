@@ -289,6 +289,21 @@ func TestImageFor(t *testing.T) {
 			t.Errorf("%s 1.20.4: got %s, want %s", kind, got, want)
 		}
 	}
+	// A non-premium Fabric pack runs on Java 21, which EasyAuth needs; premium, or on Forge, as before.
+	off := false
+	pack := createRequest{Edition: "JAVA", Kind: "modpack", Version: "1.20.1", ModpackLoader: "fabric", OnlineMode: &off}
+	if got := pack.image(); got != "itzg/minecraft-server:java21" {
+		t.Errorf("non-premium Fabric pack 1.20.1: got %s", got)
+	}
+	premium := pack
+	premium.OnlineMode = nil
+	forgePack := pack
+	forgePack.ModpackLoader = "forge"
+	for _, req := range []createRequest{premium, forgePack} {
+		if got := req.image(); got != "itzg/minecraft-server:java17" {
+			t.Errorf("%+v: got %s", req, got)
+		}
+	}
 	if imageFor("JAVA", "1.20.1", "skyblock") != images["JAVA"] {
 		t.Error("skyblock follows its plugins to the newest version")
 	}
