@@ -27,6 +27,11 @@ export function overbook() {
   return factor >= 1 ? factor : 1;
 }
 
+/** How many times this machine's memory is sold to paid plans. */
+export function overbookOf(node: GameNode) {
+  return node.overbook ?? overbook();
+}
+
 /** Memory the machines set aside for game servers, together; 0 means no limit. */
 export function memoryLimitMb() {
   const all = nodes();
@@ -35,7 +40,7 @@ export function memoryLimitMb() {
 
 /** Plan memory paid servers may be sold in total; 0 means no limit. */
 export function salesLimitMb() {
-  return Math.floor(memoryLimitMb() * overbook());
+  return memoryLimitMb() && nodes().reduce((sum, n) => sum + Math.floor(n.memoryLimitMb * overbookOf(n)), 0);
 }
 
 /** How much more plan memory each machine can sell to paid servers (Infinity: no limit). */
@@ -50,7 +55,7 @@ async function roomByNode() {
   const freeOn = new Map(free.map((h) => [h.node, h._sum.memoryMb ?? 0]));
   return nodes().map((node) => ({
     node,
-    room: node.memoryLimitMb > 0 ? Math.floor(node.memoryLimitMb * overbook()) - (heldOn.get(node.id) ?? 0) : Infinity,
+    room: node.memoryLimitMb > 0 ? Math.floor(node.memoryLimitMb * overbookOf(node)) - (heldOn.get(node.id) ?? 0) : Infinity,
     // Free servers hold nothing, but each machine wakes only a few at once, so they're spread out too.
     freeMb: freeOn.get(node.id) ?? 0,
   }));

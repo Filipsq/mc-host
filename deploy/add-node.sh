@@ -104,9 +104,11 @@ if [ -z "$stats" ]; then
 fi
 
 # List it in NODES (replacing an earlier entry for the same id) and restart the site with it.
-python3 - "$NODE_ID" "$NODE_WG" "$AGENT_TOKEN" "$NODE_ID.$DOMAIN" "$stats" <<'PY'
+# OVERBOOK=2.5 ./add-node.sh … sells this machine's memory that many times (instead of
+# MEMORY_OVERBOOK); without it an earlier entry's setting is kept.
+python3 - "$NODE_ID" "$NODE_WG" "$AGENT_TOKEN" "$NODE_ID.$DOMAIN" "$stats" "${OVERBOOK:-}" <<'PY'
 import json, re, sys
-node_id, wg_ip, token, host, stats = sys.argv[1:]
+node_id, wg_ip, token, host, stats, overbook = sys.argv[1:]
 node = {"id": node_id, "url": f"http://{wg_ip}:8081", "token": token, "host": host,
         "memoryLimitMb": json.loads(stats).get("memoryBaseMb", 0),
         "arch": json.loads(stats).get("arch", "")}
@@ -114,13 +116,18 @@ with open(".env") as f:
     lines = f.read().splitlines()
 current = next((l for l in lines if l.startswith("NODES=")), None)
 listed = json.loads(current[len("NODES="):].strip("'")) if current else []
+earlier = next((n for n in listed if n.get("id") == node_id), {})
+if overbook:
+    node["overbook"] = float(overbook)
+elif "overbook" in earlier:
+    node["overbook"] = earlier["overbook"]
 listed = [n for n in listed if n.get("id") != node_id] + [node]
 line = "NODES='" + json.dumps(listed, separators=(",", ":")) + "'"
 lines = [line if l.startswith("NODES=") else l for l in lines] if current else lines + [
     "# Extra game machines, written by add-node.sh.", line]
 with open(".env", "w") as f:
     f.write("\n".join(lines) + "\n")
-print(f"{node_id} has {node['memoryLimitMb']} MB for servers.")
+print(f"{node_id} has {node['memoryLimitMb']} MB for servers" + (f", sold {node['overbook']}x." if "overbook" in node else "."))
 PY
 docker compose up -d >/dev/null
 
