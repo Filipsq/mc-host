@@ -14,7 +14,7 @@ import { serverAddons } from "@/lib/addons";
 import { activeLevel, newWorldVersions, nextWorldName, worldTypes } from "@/lib/worlds";
 import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ switched?: string; uploaded?: string; deleted?: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ switched?: string; uploaded?: string; deleted?: string; dropped?: string }> };
 
 export default async function WorldsPage({ params, searchParams }: Props) {
   const session = await getSession();
@@ -77,6 +77,7 @@ export default async function WorldsPage({ params, searchParams }: Props) {
         <p className="muted">{t.intro}</p>
       </header>
       {notice && <p className="notice">{notice}</p>}
+      {done.switched && done.dropped && <p className="notice warn">{format(all.plugins.droppedOnVersion, { list: done.dropped.slice(0, 300) })}</p>}
       {!canChange && server.status === "SUSPENDED" && <p className="notice warn">{all.files.errors.readOnly}</p>}
 
       <section className="stack">

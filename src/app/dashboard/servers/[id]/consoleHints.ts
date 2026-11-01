@@ -19,6 +19,7 @@ export const HINTS: { id: HintId; pattern: RegExp }[] = [
   { id: "diskFull", pattern: /No space left on device/ },
   { id: "accessDenied", pattern: /AccessDeniedException|Permission denied/ },
   { id: "pluginSkipped", pattern: /has no compatible version for/ },
+  { id: "pluginWrongVersion", pattern: /Unsupported API version|Could not load '?plugins[\\/]|Error occurred while enabling|NoClassDefFoundError: org\/bukkit/ },
   { id: "overloaded", pattern: /Can't keep up! Is the server overloaded/ },
 ];
 

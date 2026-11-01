@@ -22,6 +22,7 @@ import {
   type WorldType,
 } from "@/lib/worlds";
 import { isPreYearVersion } from "@/lib/settings";
+import { fitAddonsToVersion } from "@/lib/addonVersions";
 import type { Messages } from "@/i18n/messages";
 
 export type WorldError = keyof Messages["worlds"]["errors"] | FileError;
@@ -43,12 +44,22 @@ function worldError(err: unknown): WorldError {
 }
 
 /** Runs the server on another world (or one it makes on its next start), restarting it if it's on. */
-async function playWorld(server: Server, level: string, newWorld?: { seed: string; type: WorldType; version?: string }) {
+async function playWorld(server: Server, level: string, newWorld?: { seed: string; type: WorldType; version?: string }): Promise<string[]> {
+  // A new version: plugins and mods with nothing for it leave the list (src/lib/addonVersions.ts).
+  const version = newWorld?.version && newWorld.version !== server.version ? newWorld.version : undefined;
+  const fitted = version ? await fitAddonsToVersion(server, version) : null;
   const updated = await db.server.update({
     where: { id: server.id },
-    data: { level, levelSeed: newWorld?.seed ?? null, levelType: newWorld?.type ?? null, ...(newWorld?.version && { version: newWorld.version }) },
+    data: {
+      level,
+      levelSeed: newWorld?.seed ?? null,
+      levelType: newWorld?.type ?? null,
+      ...(version && { version }),
+      ...(fitted && { plugins: fitted.plugins }),
+    },
   });
   await applyToHost(updated);
+  return fitted?.dropped ?? [];
 }
 
 /** Whether a new world's folders would clash with anything in the server's files. */
@@ -88,14 +99,16 @@ export async function newWorldAction(id: string, _: WorldState, form: FormData):
   // A new world is made by the version it starts on, and one made by 26.x can't go back
   // to 1.x, so the version is picked here. Mod loaders change it in Settings (mods follow it).
   const version = newWorldVersions(server).find((v) => v === values.version);
+  let dropped: string[];
   try {
     // An empty seed is made up here: a seed left unset would keep the last world's.
-    await playWorld(server, name, { seed: seed || randomSeed(), type, version });
+    dropped = await playWorld(server, name, { seed: seed || randomSeed(), type, version });
   } catch (err) {
     return { error: worldError(err), values };
   }
-  revalidatePath(`/dashboard/servers/${id}`);
-  redirect(`/dashboard/servers/${id}/worlds?switched=${encodeURIComponent(name)}`);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+  const params = new URLSearchParams({ switched: name, ...(dropped.length && { dropped: dropped.join(", ").slice(0, 300) }) });
+  redirect(`/dashboard/servers/${id}/worlds?${params}`);
 }
 
 export async function importWorldAction(id: string, upload: string, name: string, play: boolean): Promise<WorldState> {

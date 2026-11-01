@@ -8,6 +8,7 @@ import { getServerFor } from "@/lib/access";
 import { getPluginInfos, searchAddons } from "@/lib/modrinth";
 import { curseforgeEnabled, getCurseforgeModInfos, searchCurseforgeMods } from "@/lib/curseforge";
 import { getSitePluginInfos, searchSitePlugins } from "@/lib/sitePlugins";
+import { downloadVersion, versionsToCheck } from "@/lib/addonVersions";
 import {
   GAME_MODE_PLUGINS,
   KNOWN_PLUGINS,
@@ -119,6 +120,9 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const query = q.trim().slice(0, 100);
   // Servers on a chosen version only see what's made for it; game modes run the newest version.
   const mc = (server.kind === "vanilla" || server.kind === "halloween" || type === "mod") && server.version !== "LATEST" ? server.version : undefined;
+  // What it runs, "Najnowsza" included (null: the game mode picks), for Modrinth and Hangar.
+  const runs = await versionsToCheck(server.kind, server.version);
+  const runsOn = runs ? downloadVersion(runs) : undefined;
   // Mod servers can also take mods from CurseForge, when it's set up.
   const cfOffered = type === "mod" && curseforgeEnabled();
   const fromCf = cfOffered && src === "cf";
@@ -137,10 +141,10 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     getPluginInfos(server.plugins.filter((p) => !curseforgeMod(p) && !sitePlugin(p))),
     getCurseforgeModInfos(cfIds),
     getSitePluginInfos(server.plugins.filter((p) => sitePlugin(p))),
-    fromCf || site ? null : searchAddons(type, query, { gameVersion: mc, loader: server.kind }),
+    fromCf || site ? null : searchAddons(type, query, { gameVersion: runsOn, loader: server.kind }),
     // A CurseForge file is picked for one Minecraft version, so "newest" has none.
     fromCf && mc ? searchCurseforgeMods(query, { gameVersion: mc, loader: server.kind }) : null,
-    site ? searchSitePlugins(site, query, mc) : null,
+    site ? searchSitePlugins(site, query, site === "hangar" ? runsOn : undefined) : null,
   ]);
   const searchHref = (from: string) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(query && { q: query }), ...(from && { src: from }) })}#szukaj`;
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
@@ -229,6 +233,9 @@ export default async function PluginsPage({ params, searchParams }: Props) {
                   <span>
                     <strong>{title}</strong> {p?.forPlayers && forPlayers}
                   </span>
+                  {runs && runsOn && p?.gameVersions && !runs.some((v) => p.gameVersions!.includes(v)) && (
+                    <span className="error small">{format(all.plugins.noBuild, { version: runsOn })}</span>
+                  )}
                   {p && (
                     <a className="small" href={pluginPage(p.slug, type)} target="_blank" rel="noreferrer">
                       {t.onModrinth} <ExternalLink size={12} aria-hidden />
@@ -330,7 +337,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         <p className="muted small">
           {query ? format(t.results, { q: query }) : t.popular}
           {type === "mod" && ` · ${loader}`}
-          {mc && !(site === "spigot") && ` · ${format(t.forVersion, { mc })}`}
+          {(fromCf ? mc : runsOn) && site !== "spigot" && ` · ${format(t.forVersion, { mc: (fromCf ? mc : runsOn)! })}`}
         </p>
         {site ? (
           <>
