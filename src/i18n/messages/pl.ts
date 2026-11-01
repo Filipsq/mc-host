@@ -1718,6 +1718,31 @@ const pl = {
     failed: "Nie udało się przełączyć. Spróbuj ponownie za chwilę albo napisz do nas na czacie.",
     notOnHost: "Serwer czeka na maszynę. Spróbuj ponownie za chwilę.",
   },
+  links: {
+    title: "Połączone serwery",
+    intro:
+      "Połącz swoje serwery Java, żeby gracze przechodzili między nimi w grze, bez wychodzenia do menu. Każdy serwer zostaje osobny: ma swój świat, ekwipunek, pluginy i płatność.",
+    pick: "Z którymi serwerami połączyć ten serwer?",
+    serverTooOld: "za stara wersja (potrzebna 1.20.5 lub nowsza)",
+    elsewhere: "jest teraz w innej grupie, przejdzie do tej",
+    restartNote: "Zapis uruchomi ponownie włączone serwery, których to dotyczy, gracze zostaną na chwilę rozłączeni.",
+    save: "Zapisz",
+    saving: "Zapisujemy…",
+    saved: "Zapisano. Po ponownym uruchomieniu gracze zobaczą w czacie nazwy połączonych serwerów.",
+    failed: "Nie udało się zapisać. Spróbuj ponownie za chwilę.",
+    tooOld: "Przechodzenie między serwerami działa w Minecrafcie 1.20.5 i nowszym. Zmień wersję serwera w Ustawieniach, żeby go połączyć.",
+    noOthers: "Masz tylko ten serwer Java. Kup albo załóż drugi, a potem wróć tutaj, żeby je połączyć.",
+    howTitle: "Jak gracze przechodzą?",
+    howText: "Po wejściu na serwer gracz widzi w czacie nazwy połączonych serwerów i wystarczy, że kliknie jedną. Może też wpisać komendę:",
+    goesTo: "przenosi na {name}",
+    notesTitle: "Dobrze wiedzieć",
+    notes: [
+      "Każdy serwer płaci się osobno, tak jak do tej pory.",
+      "Gracze z Bedrocka (crossplay) nie mogą przechodzić tą drogą, muszą wejść na drugi serwer z menu.",
+      "Jeśli drugi serwer jest wyłączony, gracz zobaczy, że serwer się uruchamia albo jest wyłączony.",
+      "Na serwerze bez premium (AuthMe) gracz loguje się hasłem jeszcze raz na drugim serwerze.",
+    ],
+  },
   resourcePack: {
     title: "Paczka tekstur",
     intro:

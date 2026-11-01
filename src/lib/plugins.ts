@@ -118,6 +118,23 @@ export const KNOWN_PLUGINS = {
   "warps-for-bentobox": { id: "P08aFayx", title: "Warps" },
 } as const satisfies Record<string, { id: string; title: string }>;
 
+/** FastAsyncWorldEdit, which stands in for WorldEdit. */
+const FAWE_ID = "z4HZZnLr";
+
+/**
+ * Adds plugins another one can't run without but whose Modrinth page doesn't
+ * say so, so the image wouldn't fetch them: WorldGuard 7.0.19+ dropped its
+ * WorldEdit dependency there, and without WorldEdit it never loads (no /rg).
+ */
+export function withNeededPlugins(plugins: string[]) {
+  const { worldguard, worldedit } = KNOWN_PLUGINS;
+  const has = (id: string, slug: string) => plugins.includes(id) || plugins.includes(slug);
+  if (has(worldguard.id, "worldguard") && !has(worldedit.id, "worldedit") && !has(FAWE_ID, "fastasyncworldedit")) {
+    return [...plugins, worldedit.id];
+  }
+  return plugins;
+}
+
 /** Simple Voice Chat, the same project for Paper and the mod loaders; the agent opens its port (agent/voice.go). */
 export const VOICE_CHAT = { id: "9eGKb6K1", slug: "simple-voice-chat", title: "Simple Voice Chat" } as const;
 

@@ -1719,6 +1719,31 @@ const en: Messages = {
     failed: "Couldn't switch. Try again in a moment or write to us in the chat.",
     notOnHost: "The server is waiting for a machine. Try again in a moment.",
   },
+  links: {
+    title: "Linked servers",
+    intro:
+      "Link your Java servers so players move between them in the game, without going back to the menu. Each server stays separate: its own world, inventory, plugins and payment.",
+    pick: "Which servers should this one be linked with?",
+    serverTooOld: "version too old (1.20.5 or newer needed)",
+    elsewhere: "is in another group now, it moves to this one",
+    restartNote: "Saving restarts the affected servers that are on; players are disconnected for a moment.",
+    save: "Save",
+    saving: "Saving…",
+    saved: "Saved. After a restart players see the linked servers' names in chat.",
+    failed: "Couldn't save. Try again in a moment.",
+    tooOld: "Moving between servers works on Minecraft 1.20.5 and newer. Change the server's version in Settings to link it.",
+    noOthers: "This is your only Java server. Buy or create another one, then come back here to link them.",
+    howTitle: "How do players move?",
+    howText: "When players join they see the linked servers' names in chat and just click one. They can also type:",
+    goesTo: "goes to {name}",
+    notesTitle: "Good to know",
+    notes: [
+      "Each server is paid for separately, as before.",
+      "Bedrock players (crossplay) can't move this way; they join the other server from the menu.",
+      "If the other server is off, players see that it's starting or turned off.",
+      "On a non-premium server (AuthMe) players log in with their password again on the other server.",
+    ],
+  },
   resourcePack: {
     title: "Resource pack",
     intro:

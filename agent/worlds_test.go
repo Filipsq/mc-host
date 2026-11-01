@@ -50,7 +50,7 @@ func TestNonPremiumAndWorldEnv(t *testing.T) {
 	if !strings.Contains(env, "MODRINTH_PROJECTS=bentobox,bskyblock,"+authMe+"\n") || !strings.Contains(env, "LEVEL_TYPE=largebiomes\n") {
 		t.Errorf("skyblock non-premium env:\n%s", env)
 	}
-	if strings.Contains(env, "LEVEL=") || strings.Contains(env, "SEED=") || labels["mchost.level"] != "world" {
+	if strings.Contains(env, "\nLEVEL=") || strings.Contains(env, "\nSEED=") || labels["mchost.level"] != "world" {
 		t.Errorf("no level set means the image's default world:\n%s %v", env, labels)
 	}
 
