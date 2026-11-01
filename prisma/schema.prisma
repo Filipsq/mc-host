@@ -221,6 +221,8 @@ model Server {
   // Java only: players may go to the Nether, everyone joins in the server's game mode
   // (not the one they had), and hostile mobs spawn.
   allowNether      Boolean        @default(true)
+  // Java only: players may go to the End (agent/end.go: bukkit.yml on Paper, a data pack elsewhere).
+  allowEnd         Boolean        @default(true)
   forceGamemode    Boolean        @default(false)
   spawnMonsters    Boolean        @default(true)
   spawnProtection  Int            @default(16)

@@ -1,0 +1,12 @@
+{
+  "pack": {
+    "description": "MCHosting: End wyłączony",
+    "pack_format": 15,
+    "supported_formats": [
+      4,
+      999
+    ],
+    "min_format": 4,
+    "max_format": 999
+  }
+}

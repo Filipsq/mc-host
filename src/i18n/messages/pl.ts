@@ -711,6 +711,8 @@ const pl = {
     commandBlocks: "Bloki poleceń działają (mapy przygodowe, minigry)",
     allowNether: "Nether włączony",
     allowNetherHint: "Wyłącz, a portale do Netheru przestaną działać. Świat Netheru zostaje zapisany.",
+    allowEnd: "End włączony",
+    allowEndHint: "Wyłącz, a nikt nie wejdzie do Endu, a gracze, którzy tam są, wrócą do świata. Świat Endu zostaje zapisany.",
     spawnMonsters: "Potwory się pojawiają",
     spawnMonstersHint: "Wyłącz, a zombie, szkielety i creepery przestaną się pojawiać, także w nocy.",
     forceGamemode: "Wymuś tryb gry",

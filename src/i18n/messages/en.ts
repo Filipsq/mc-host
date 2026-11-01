@@ -712,6 +712,8 @@ const en: Messages = {
     commandBlocks: "Command blocks work (adventure maps, minigames)",
     allowNether: "Nether on",
     allowNetherHint: "Turn it off and Nether portals stop working. The Nether world is kept.",
+    allowEnd: "End on",
+    allowEndHint: "Turn it off and nobody can go to the End; players there are sent back to the world. The End world is kept.",
     spawnMonsters: "Monsters spawn",
     spawnMonstersHint: "Turn it off and zombies, skeletons and creepers stop spawning, night included.",
     forceGamemode: "Force game mode",

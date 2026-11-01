@@ -110,6 +110,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           hardcore: server.hardcore,
           commandBlocks: server.commandBlocks,
           allowNether: server.allowNether,
+          allowEnd: server.allowEnd,
           forceGamemode: server.forceGamemode,
           spawnMonsters: server.spawnMonsters,
           spawnProtection: server.spawnProtection,

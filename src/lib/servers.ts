@@ -256,6 +256,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     hardcore: server.hardcore,
     commandBlocks: server.commandBlocks,
     allowNether: server.allowNether,
+    allowEnd: server.allowEnd,
     forceGamemode: server.forceGamemode,
     spawnMonsters: server.spawnMonsters,
     spawnProtection: server.spawnProtection,
