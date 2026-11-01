@@ -133,6 +133,7 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // Last, it adds Chunky, which the agent uses to generate the map ahead
 // (pregen.go): big packs build new chunks slowly while people play.
 var packScript = `#!/bin/bash
+shopt -s nocaseglob # jars are named any which way (Barsita-1.19.2-1.1.2.jar)
 for jar in mods/{` + strings.Join(packExcludes, ",") + `}*.jar; do
   [ -f "$jar" ] && rm -f "$jar" && echo "[mchost] removed $jar (a player-side mod that stops servers)"
 done
