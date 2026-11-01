@@ -444,7 +444,7 @@ const pl = {
         },
         clientMod: {
           title: "Mod działa tylko w grze, nie na serwerze",
-          fix: "Na serwerze jest mod tylko dla gracza (np. od wyglądu, minimapy lub menu). Usuń go w Modach. Gracze mogą go mieć u siebie.",
+          fix: "Na serwerze jest mod tylko dla gracza (np. od wyglądu, minimapy lub menu). Usuń go w Modach. Na serwerze z gotową paczką kliknij po prostu Uruchom jeszcze raz, taki mod usuniemy sami. Gracze mogą go mieć u siebie.",
         },
         javaTooOld: {
           title: "Plugin lub mod jest na nowszą wersję",
