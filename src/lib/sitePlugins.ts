@@ -1,4 +1,5 @@
 import "server-only";
+import { inflateRawSync } from "node:zlib";
 import { USER_AGENT } from "./modrinth";
 import { sitePlugin, sitePluginEntry, type PluginSite } from "./plugins";
 
@@ -297,3 +298,49 @@ export function isPluginJar(jar: Uint8Array) {
   const text = Buffer.from(jar).toString("latin1");
   return /PK\x01\x02[\s\S]{42}(?:paper-)?plugin\.yml/.test(text);
 }
+
+/** A file at the top of a zip held in memory (stored or deflated), or null. */
+function zipEntry(zip: Buffer, name: string): Buffer | null {
+  // The end of central directory record sits in the last few bytes (after a comment of up to 64 KB).
+  const eocd = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));
+  if (eocd < 0 || eocd + 22 > zip.length) return null;
+  const dirSize = zip.readUInt32LE(eocd + 12);
+  const dirStart = zip.readUInt32LE(eocd + 16);
+  if (dirStart + dirSize > zip.length) return null; // zip64 or cut short
+  for (let at = dirStart; at + 46 <= dirStart + dirSize && zip.readUInt32LE(at) === 0x02014b50; ) {
+    const method = zip.readUInt16LE(at + 10);
+    const packed = zip.readUInt32LE(at + 20);
+    const nameLen = zip.readUInt16LE(at + 28);
+    const local = zip.readUInt32LE(at + 42);
+    if (zip.toString("utf8", at + 46, at + 46 + nameLen) === name) {
+      if (packed > 4 << 20 || (method !== 0 && method !== 8) || local + 30 > zip.length) return null;
+      const start = local + 30 + zip.readUInt16LE(local + 26) + zip.readUInt16LE(local + 28);
+      const data = zip.subarray(start, start + packed);
+      try {
+        return method === 0 ? data : inflateRawSync(data, { maxOutputLength: 4 << 20 });
+      } catch {
+        return null;
+      }
+    }
+    at += 46 + nameLen + zip.readUInt16LE(at + 30) + zip.readUInt16LE(at + 32);
+  }
+  return null;
+}
+
+/**
+ * The Minecraft version a plugin jar says it's made for (api-version in its
+ * plugin.yml or paper-plugin.yml, e.g. "1.21" or "1.20.4"); null if it says none.
+ * Paper refuses to load a plugin whose api-version is newer than the server.
+ */
+export function pluginApiVersion(jar: Uint8Array): string | null {
+  const zip = Buffer.from(jar.buffer, jar.byteOffset, jar.byteLength);
+  for (const name of ["paper-plugin.yml", "plugin.yml"]) {
+    const yml = zipEntry(zip, name)?.toString("utf8");
+    const m = yml?.match(/^api-version:\s*["']?(\d+\.\d+(?:\.\d+)?)["']?\s*(?:#.*)?$/m);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/** Whether a plugin made for api-version `api` is too new to load on Minecraft `mc`. */
+export const apiTooNew = (api: string, mc: string) => compareVersions(api, mc) > 0;

@@ -15,7 +15,7 @@ function useSave(t: T) {
   const save = (action: () => Promise<PluginResult>) =>
     startTransition(async () => {
       const res = await action();
-      if (res.error) setMessage({ text: format(t.errors[res.error], { name: res.name ?? "" }), error: true });
+      if (res.error) setMessage({ text: format(t.errors[res.error], { name: res.name ?? "", version: res.version ?? "" }), error: true });
       else setMessage({ text: res.pending ? t.savedRunning : t.savedOffline, error: false });
     });
   return { pending, message, save };
@@ -101,7 +101,7 @@ export function ApplyPlugins({ id, pending: changed, t }: { id: string; pending:
       <button className="small" disabled={pending} onClick={() => startTransition(async () => setResult(await applyPluginsAction(id)))}>
         <RotateCw size={15} aria-hidden /> {pending ? t.applying : t.apply}
       </button>
-      {result?.error && <span className="error small">{format(t.errors[result.error], { name: result.name ?? "" })}</span>}
+      {result?.error && <span className="error small">{format(t.errors[result.error], { name: result.name ?? "", version: result.version ?? "" })}</span>}
     </div>
   );
 }
