@@ -109,7 +109,7 @@ export default async function AdminServer({ params }: Props) {
         </section>
       )}
 
-      {server.edition !== "TERRARIA" && (
+      {(server.edition === "JAVA" || server.edition === "BEDROCK") && (
         <section className="card stack">
           <h3>{t.slots.title}</h3>
           <p className="muted small">{t.slots.hint}</p>

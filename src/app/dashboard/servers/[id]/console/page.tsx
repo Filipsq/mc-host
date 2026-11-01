@@ -17,6 +17,20 @@ export default async function ConsolePage({ params }: { params: Promise<{ id: st
   const all = await getMessages();
   const terraria = server.edition === "TERRARIA";
   const tshock = terraria && isTerrariaKind(server.kind) && server.kind === "tshock";
+  if (server.edition === "VALHEIM" || server.edition === "HYTALE") {
+    const valheim = server.edition === "VALHEIM";
+    return (
+      <div className="stack">
+        <Console
+          id={server.id}
+          game={null}
+          input={!valheim}
+          note={valheim ? all.otherGames.valheim.consoleNote : all.otherGames.hytale.consoleNote}
+          t={all.server}
+        />
+      </div>
+    );
+  }
   return (
     <div className="stack">
       <Console

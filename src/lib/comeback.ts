@@ -52,6 +52,8 @@ export async function sendComebackReminders(now: Date, unreachable: string[]): P
       // A free server already warned it will be deleted needs no second email.
       deletionWarnedAt: null,
       adminTest: false,
+      // The agent can't yet tell who plays Hytale, so its servers always look idle.
+      edition: { not: "HYTALE" },
       node: { notIn: unreachable },
       owner: { comebackOff: false },
     },

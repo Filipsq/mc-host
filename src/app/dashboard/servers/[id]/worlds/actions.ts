@@ -24,6 +24,7 @@ import {
 import { isPreYearVersion } from "@/lib/settings";
 import { fitAddonsToVersion } from "@/lib/addonVersions";
 import type { Messages } from "@/i18n/messages";
+import { isMinecraft } from "@/lib/otherGames";
 
 export type WorldError = keyof Messages["worlds"]["errors"] | FileError;
 export type WorldState = { error?: WorldError; values?: Record<string, string> };
@@ -33,7 +34,7 @@ async function worldServer(id: string): Promise<Server | WorldError> {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const server = await getServerFor(id, session.user.id, "files");
-  if (!server || server.edition === "TERRARIA") redirect("/dashboard");
+  if (!server || !isMinecraft(server.edition)) redirect("/dashboard");
   if (!onHost(server)) return canChangeFiles(server) ? "notOnHost" : "readOnly";
   return server;
 }

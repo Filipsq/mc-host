@@ -80,6 +80,25 @@ model PushSubscription {
 }
 
 // The notice admins show across the site (one row, id 1; empty text: none).
+// The admin's Hytale account, which signs in every Hytale server (src/lib/hytale.ts).
+// Two rows: "server" (the auth:server sign-in that makes game sessions) and
+// "downloader" (the auth:downloader one that fetches the game's files). Hytale
+// rotates the refresh token on every use, so the newest one is always kept.
+model HytaleAuth {
+  id           String    @id
+  refreshToken String?
+  accessToken  String?
+  accessUntil  DateTime?
+  profileUuid  String? // the game profile servers run as ("server" only)
+  profileName  String?
+  // A sign-in in progress: the device code polled for, until it expires.
+  deviceCode   String?
+  userCode     String?
+  verifyUrl    String?
+  deviceUntil  DateTime?
+  updatedAt    DateTime  @updatedAt
+}
+
 model Announcement {
   id        Int      @id @default(1)
   text      String   @default("")
@@ -170,6 +189,8 @@ enum Edition {
   JAVA
   BEDROCK
   TERRARIA
+  VALHEIM
+  HYTALE
 }
 
 enum Plan {

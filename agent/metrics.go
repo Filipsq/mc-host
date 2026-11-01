@@ -207,6 +207,12 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		maxPlayers, _ = strconv.Atoi(info.Config.Labels["mchost.maxplayers"])
 	case "BEDROCK":
 		players = a.bedrockPlayers(ctx, name, m)
+	case "VALHEIM":
+		// No names from Steam's query; when it doesn't answer (still installing), nobody plays yet.
+		count, maxPlayers, _ = a.valheimPlayers(ctx, info.IP())
+	case "HYTALE":
+		// Hytale doesn't say who plays in a way the agent reads yet.
+		count = 0
 	default:
 		ip := info.IP()
 		run := func(cmd string) (string, error) { return a.rconRun(ctx, name, ip, m, cmd) }

@@ -242,6 +242,22 @@ export default async function Home() {
               {h.terrariaCta}
             </Link>
           </div>
+
+          {(["VALHEIM", "HYTALE"] as const).map((ed) => {
+            const g = ed === "VALHEIM" ? "valheim" : "hytale";
+            return (
+              <div key={ed} className="invite-band terraria-band" id={g}>
+                <span className="invite-band-icon"><EditionIcon edition={ed} size={36} /></span>
+                <div>
+                  <h3>{h.otherGames[g].title}</h3>
+                  <p className="muted">{h.otherGames[g].text}</p>
+                </div>
+                <Link className="button large secondary" href={session?.user ? `/dashboard/new?game=${g}` : "/signup"}>
+                  {h.otherGames[g].cta}
+                </Link>
+              </div>
+            );
+          })}
         </div>
       </section>
 

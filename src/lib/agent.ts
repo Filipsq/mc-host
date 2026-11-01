@@ -1,5 +1,6 @@
 import "server-only";
 import type { Edition } from "@prisma/client";
+import type { HytaleSpec } from "./hytale";
 import { db } from "./db";
 import { MAIN_NODE, nodeById, nodes, type GameNode } from "./nodes";
 
@@ -118,9 +119,18 @@ export type CreateServerSpec = {
   modpackLoader?: string; // the pack's mod loader (fabric, forge, neoforge, quilt), for a non-premium pack's login mod
   plugins: string[]; // Modrinth project IDs: plugins for Paper servers, mods for mod loader servers; Steam Workshop IDs on tModLoader
   links?: { name: string; host: string }[]; // Java only: linked servers players can go to (/trigger <name>)
+  hytale?: HytaleSpec; // Hytale only: added here, fresh for each new container (src/lib/hytale.ts)
 };
 
+/** A Hytale container starts with fresh sign-ins: a game session lasts an hour until the server renews it. */
+async function withSignIns(spec: CreateServerSpec): Promise<CreateServerSpec> {
+  if (spec.edition !== "HYTALE") return spec;
+  const { hytaleSpec } = await import("./hytale");
+  return { ...spec, hytale: await hytaleSpec() };
+}
+
 export async function createServer(spec: CreateServerSpec) {
+  spec = await withSignIns(spec);
   // Generous timeout: the agent may need to pull the image first.
   await agentFetch("/servers", { method: "POST", body: JSON.stringify(spec), timeoutMs: 5 * 60_000, node: await nodeOfServer(spec.id) });
 }
@@ -141,6 +151,7 @@ export type AgentState = {
  * The new container starts, unless `keepStopped` is set and the old one wasn't running.
  */
 export async function recreateServer(spec: CreateServerSpec, opts: { keepStopped?: boolean } = {}) {
+  spec = await withSignIns(spec);
   const query = opts.keepStopped ? "?start=if-running" : "";
   await agentFetch(`/servers/${spec.id}${query}`, { method: "PUT", body: JSON.stringify(spec), timeoutMs: 5 * 60_000 });
 }

@@ -60,6 +60,7 @@ import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, addonType, canCrossplay, canRunNonPremium, isProjectId, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { uninstallableProjects } from "@/lib/modrinth";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
+import { OTHER_GAME_MIN_PLAN, VALHEIM_PRESETS, isMinecraft, isOtherGame, valheimPasswordOk } from "@/lib/otherGames";
 import { SERVER_PASSWORD, TERRARIA_KINDS, TMOD_MIN_PLAN, requiredArch, WORLD_DIFFICULTIES, WORLD_SEED, WORLD_SIZES } from "@/lib/terraria";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
@@ -83,7 +84,7 @@ const createSchema = z.object({
     .string()
     .trim()
     .regex(/^[\p{L}\p{N} _-]{3,32}$/u),
-  edition: z.enum(["JAVA", "BEDROCK", "TERRARIA"]),
+  edition: z.enum(["JAVA", "BEDROCK", "TERRARIA", "VALHEIM", "HYTALE"]),
   plan: planField,
   days: daysField,
   subdomain: z.string().trim().toLowerCase().optional(),
@@ -110,6 +111,9 @@ const createSchema = z.object({
   worldDifficulty: z.enum(WORLD_DIFFICULTIES).default("classic"),
   seed: z.string().trim().max(100).default(""),
   password: z.string().max(100).default(""),
+
+  // Valheim: the world's difficulty preset (its password is the field above).
+  valheimPreset: z.enum(VALHEIM_PRESETS).default("normal"),
 });
 
 const MODPACK_PLAN_ERRORS = {
@@ -181,6 +185,10 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   const terraria = edition === "TERRARIA";
   if (terraria && parsed.data.seed && !WORLD_SEED.test(parsed.data.seed)) return { error: "invalidSeed", values };
   if (terraria && parsed.data.password && !SERVER_PASSWORD.test(parsed.data.password)) return { error: "invalidPassword", values };
+  const valheim = edition === "VALHEIM";
+  if (valheim && !valheimPasswordOk(parsed.data.password, name)) return { error: "invalidValheimPassword", values };
+  // Valheim and Hytale need a paid plan with enough memory.
+  if (isOtherGame(edition) && !planAtLeast(plan, OTHER_GAME_MIN_PLAN[edition])) return { error: "otherGamePlan", values };
 
   // An admin's test server: any plan, without paying, to try things out.
   const adminTest = form.get("adminTest") === "on" && (await isAdmin(user.id));
@@ -209,7 +217,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   // Bedrock and Terraria have no ready games or mod packs here.
   const game = gameById(edition === "JAVA" ? parsed.data.game : "survival");
   // Mods run on the loader the owner picked, on a version it supports.
-  const kind = terraria ? parsed.data.terrariaKind : game.id === "mods" ? parsed.data.loader : game.kind;
+  const kind = isOtherGame(edition) ? "vanilla" : terraria ? parsed.data.terrariaKind : game.id === "mods" ? parsed.data.loader : game.kind;
   const modVersion =
     game.id === "mods"
       ? LOADER_VERSIONS[parsed.data.loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION
@@ -254,15 +262,16 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     memoryMb,
     kind,
     plugins: edition === "JAVA" ? pluginIds(startingPlugins(game.plugins, kind, parsed.data.extraPlugins)) : [],
-    ...(parsed.data.gameMode && !terraria && { gameMode: parsed.data.gameMode }),
-    ...(parsed.data.difficulty && !terraria && { difficulty: parsed.data.difficulty }),
+    ...(parsed.data.gameMode && isMinecraft(edition) && { gameMode: parsed.data.gameMode }),
+    ...(parsed.data.difficulty && isMinecraft(edition) && { difficulty: parsed.data.difficulty }),
+    ...(valheim && { difficulty: parsed.data.valheimPreset, serverPassword: parsed.data.password }),
     ...(terraria && {
       difficulty: parsed.data.worldDifficulty,
       levelType: parsed.data.worldSize,
       levelSeed: parsed.data.seed || null,
       serverPassword: parsed.data.password || null,
     }),
-    ...(parsed.data.motd && { motd: parsed.data.motd }),
+    ...(parsed.data.motd && isMinecraft(edition) && { motd: parsed.data.motd }),
     ...(edition === "JAVA" && parsed.data.pvp && { pvp: parsed.data.pvp === "on" }),
     onlineMode: !(
       parsed.data.nonPremium === "on" &&
@@ -544,7 +553,8 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
   }
   try {
     // Plugins changed while it ran: rebuild it with the new list on the way up.
-    if (server.pluginsPending) await agent.recreateServer(agentSpec(server));
+    // Hytale: a new container brings a new game session (src/lib/hytale.ts).
+    if (server.pluginsPending || server.edition === "HYTALE") await agent.recreateServer(agentSpec(server));
     else
       await agent.startServer(server.id).catch(async (err) => {
         // Nothing on its machine (e.g. moved there before its container was built): build it now.
@@ -657,7 +667,7 @@ const settingsSchema = z.object({
 export async function saveSettingsAction(id: string, _: SettingsState, form: FormData): Promise<SettingsState> {
   const server = await serverOrThrow(id, "settings");
   const parsed = settingsSchema.safeParse(Object.fromEntries(form));
-  if (!parsed.success || server.edition === "TERRARIA") return { error: "invalidSettings" };
+  if (!parsed.success || !isMinecraft(server.edition)) return { error: "invalidSettings" };
   const s = parsed.data;
   const java = server.edition === "JAVA";
 
@@ -763,6 +773,27 @@ export async function saveTerrariaSettingsAction(id: string, _: SettingsState, f
   if (password && !SERVER_PASSWORD.test(password)) return { error: "invalidPassword" };
 
   const updated = await db.server.update({ where: { id: server.id }, data: { motd, serverPassword: password || null } });
+  try {
+    await applyToHost(updated);
+  } catch (err) {
+    console.error("apply settings failed", server.id, err);
+    return { error: "applyFailed" };
+  }
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+  redirect(`/dashboard/servers/${id}?settings=saved`);
+}
+
+const valheimSettingsSchema = z.object({ password: z.string().default(""), preset: z.enum(VALHEIM_PRESETS) });
+
+/** Saves a Valheim server's password and difficulty preset, and rebuilds it with them. */
+export async function saveValheimSettingsAction(id: string, _: SettingsState, form: FormData): Promise<SettingsState> {
+  const server = await serverOrThrow(id, "settings");
+  const parsed = valheimSettingsSchema.safeParse(Object.fromEntries(form));
+  if (server.edition !== "VALHEIM" || !parsed.success) return { error: "invalidSettings" };
+  const { password, preset } = parsed.data;
+  if (!valheimPasswordOk(password, server.name)) return { error: "invalidValheimPassword" };
+
+  const updated = await db.server.update({ where: { id: server.id }, data: { difficulty: preset, serverPassword: password } });
   try {
     await applyToHost(updated);
   } catch (err) {

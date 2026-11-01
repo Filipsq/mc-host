@@ -15,6 +15,7 @@ import { addonType, offersModPicker } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
 import { EDITION_NAMES } from "@/lib/editions";
 import { isTerrariaKind } from "@/lib/terraria";
+import { isMinecraft } from "@/lib/otherGames";
 import EditionIcon from "@/components/EditionIcon";
 import AutoRefresh from "@/components/AutoRefresh";
 import LeaveButton from "./LeaveButton";
@@ -77,7 +78,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
     {
       title: p.game,
       items: [
-        live !== "awaitingPayment" && can("files") && !terraria && { key: "worlds" as const, label: all.worlds.title, path: "/worlds" },
+        live !== "awaitingPayment" && can("files") && isMinecraft(server.edition) && { key: "worlds" as const, label: all.worlds.title, path: "/worlds" },
         addonsTitle && can("plugins") && { key: "plugins" as const, label: addonsTitle, path: "/plugins" },
         offersModPicker(server) && can("plugins") && { key: "mods" as const, label: all.mods.title, path: "/mods" },
         can("owner") && offersMinigames(server) && { key: "minigames" as const, label: all.minigamesSwitch.nav, path: "/minigames" },
