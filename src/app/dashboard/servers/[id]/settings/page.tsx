@@ -14,6 +14,7 @@ import { isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import IconForm from "./IconForm";
 import SettingsForm from "./SettingsForm";
 import TerrariaSettingsForm from "./TerrariaSettingsForm";
+import ValheimSettingsForm from "./ValheimSettingsForm";
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -23,6 +24,28 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   if (!access || !allows(access, "settings")) notFound();
   const { server } = access;
   const t = await getMessages();
+
+  if (server.edition === "VALHEIM") {
+    return (
+      <div className="wide-form stack">
+        <h2>{t.settings.title}</h2>
+        <ValheimSettingsForm
+          serverId={server.id}
+          initial={{ password: server.serverPassword ?? "", preset: server.difficulty }}
+          t={t.settings}
+          valheim={t.otherGames.valheim}
+        />
+      </div>
+    );
+  }
+  if (server.edition === "HYTALE") {
+    return (
+      <div className="wide-form stack">
+        <h2>{t.settings.title}</h2>
+        <p className="notice">{t.otherGames.hytale.settingsNote}</p>
+      </div>
+    );
+  }
 
   if (server.edition === "TERRARIA") {
     const tt = t.terraria;

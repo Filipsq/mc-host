@@ -79,6 +79,8 @@ const PLAYER_NAME: Record<Edition, RegExp> = {
   JAVA: /^[A-Za-z0-9_]{3,16}$/,
   BEDROCK: /^[\p{L}\p{N}_-][\p{L}\p{N} _-]{0,31}$/u,
   TERRARIA: /^\S.{0,19}$/u,
+  VALHEIM: /^\S.{0,19}$/u, // no allow list either
+  HYTALE: /^[A-Za-z0-9_]{3,16}$/,
 };
 
 export const isValidPlayerName = (edition: Edition, name: string) => PLAYER_NAME[edition].test(name);

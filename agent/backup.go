@@ -152,6 +152,10 @@ func (a *agent) pauseSaving(ctx context.Context, name, edition string) (resume f
 		}
 		return func() {}
 	}
+	if edition == "VALHEIM" || edition == "HYTALE" {
+		// Neither can pause saving from outside; both save as they go, and the copy takes the files as they are.
+		return func() {}
+	}
 	if edition == "BEDROCK" {
 		run(ctx, "send-command", "save hold")
 		// Bedrock finishes the save in progress within moments of "save hold".

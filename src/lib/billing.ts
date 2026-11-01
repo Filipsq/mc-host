@@ -20,6 +20,7 @@ import {
   sendPlanMail,
 } from "./planMail";
 import { sendComebackReminders } from "./comeback";
+import { keepHytaleAlive } from "./hytale";
 import { renewDueServers } from "./renewal";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type CreatorReward } from "./creator";
@@ -463,6 +464,9 @@ export async function removeLeftoverContainers(now = new Date()) {
 export async function runBillingJob(now = new Date()) {
   const result = { renewed: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
+
+  // The admin's Hytale sign-in lapses after 30 days unused (hytale.ts).
+  await keepHytaleAlive().catch((err) => console.error("hytale keep-alive failed", err));
 
   // Auto-renewing servers whose period ends within a day: charge the saved card.
   result.renewed = await renewDueServers(now).catch((err) => {

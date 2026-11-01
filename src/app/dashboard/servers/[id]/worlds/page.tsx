@@ -13,6 +13,7 @@ import { biggerPlans, canUpgrade } from "@/lib/upgrade";
 import { serverAddons } from "@/lib/addons";
 import { activeLevel, newWorldVersions, nextWorldName, worldTypes } from "@/lib/worlds";
 import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
+import { isMinecraft } from "@/lib/otherGames";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ switched?: string; uploaded?: string; deleted?: string; dropped?: string }> };
 
@@ -22,7 +23,7 @@ export default async function WorldsPage({ params, searchParams }: Props) {
   const [{ id }, done] = await Promise.all([params, searchParams]);
   const server = await getServerFor(id, session.user.id, "files");
   // Minecraft worlds only; a Terraria server's world is in its files.
-  if (!server || server.edition === "TERRARIA") notFound();
+  if (!server || !isMinecraft(server.edition)) notFound();
   const [all, { locale }, { agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetailsOnce(server.id, server.status)]);
   const t = all.worlds;
 

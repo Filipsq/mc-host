@@ -11,7 +11,23 @@ const MAX_LINES = 500;
 const ANSI = /\u001b?\[[0-9;]*m/g;
 const plain = (line: string) => line.replace(ANSI, "");
 
-export default function Console({ id, game, t }: { id: string; game: ConsoleGame; t: Messages["server"] }) {
+/**
+ * The server's console. `game: null` is a game without quick commands (Hytale);
+ * `input: false` one that takes no commands at all (Valheim). `note` explains it above the log.
+ */
+export default function Console({
+  id,
+  game,
+  t,
+  input = true,
+  note,
+}: {
+  id: string;
+  game: ConsoleGame | null;
+  t: Messages["server"];
+  input?: boolean;
+  note?: string;
+}) {
   const [lines, setLines] = useState<string[]>([]);
   const [command, setCommand] = useState("");
   const [error, setError] = useState<string>();
@@ -77,6 +93,7 @@ export default function Console({ id, game, t }: { id: string; game: ConsoleGame
   return (
     <section className="stack">
       <h2>{t.console}</h2>
+      {note && <p className="notice">{note}</p>}
       {hints.length > 0 && (
         <div className="stack console-hints" role="status">
           <strong>{t.hints.title}</strong>
@@ -108,73 +125,77 @@ export default function Console({ id, game, t }: { id: string; game: ConsoleGame
               </pre>
             </div>
           </div>
-          <form onSubmit={submit} className="row command">
-            <input
-              value={command}
-              onChange={(e) => setCommand(e.target.value)}
-              placeholder={t.commandPlaceholder}
-              aria-label={t.commandPlaceholder}
-              maxLength={500}
-            />
-            <button type="submit" disabled={sending}>{t.send}</button>
-          </form>
+          {input && (
+            <form onSubmit={submit} className="row command">
+              <input
+                value={command}
+                onChange={(e) => setCommand(e.target.value)}
+                placeholder={t.commandPlaceholder}
+                aria-label={t.commandPlaceholder}
+                maxLength={500}
+              />
+              <button type="submit" disabled={sending}>{t.send}</button>
+            </form>
+          )}
           {error && <p className="error">{error}</p>}
         </div>
 
-        <aside className="card quick-commands" aria-label={q.title}>
-          <h3>{q.title}</h3>
-          <div className="quick-group">
-            <span className="quick-label">{q.player}</span>
-            <input
-              value={nick}
-              onChange={(e) => setNick(e.target.value)}
-              placeholder={q.nick}
-              aria-label={q.nick}
-              maxLength={32}
-              autoComplete="off"
-              spellCheck={false}
-            />
-            {!player && <p className="muted small">{q.nickHint}</p>}
-            <div className="quick-buttons">
-              {PLAYER_COMMANDS[game].map((c) => (
-                <button
-                  key={c.label}
-                  type="button"
-                  className="secondary small"
-                  disabled={sending || !player}
-                  title={player ? c.command(player) : undefined}
-                  onClick={() => run(c.command(player))}
-                >
-                  {q[c.label]}
-                </button>
-              ))}
+        {game && input && (
+          <aside className="card quick-commands" aria-label={q.title}>
+            <h3>{q.title}</h3>
+            <div className="quick-group">
+              <span className="quick-label">{q.player}</span>
+              <input
+                value={nick}
+                onChange={(e) => setNick(e.target.value)}
+                placeholder={q.nick}
+                aria-label={q.nick}
+                maxLength={32}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {!player && <p className="muted small">{q.nickHint}</p>}
+              <div className="quick-buttons">
+                {PLAYER_COMMANDS[game].map((c) => (
+                  <button
+                    key={c.label}
+                    type="button"
+                    className="secondary small"
+                    disabled={sending || !player}
+                    title={player ? c.command(player) : undefined}
+                    onClick={() => run(c.command(player))}
+                  >
+                    {q[c.label]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="quick-group">
-            <span className="quick-label">{q.world}</span>
-            <div className="quick-buttons">
-              {WORLD_COMMANDS[game].map((c) => (
-                <button
-                  key={c.label}
-                  type="button"
-                  className="secondary small"
-                  disabled={sending}
-                  title={c.command("")}
-                  onClick={() => run(c.command(""))}
-                >
-                  {q[c.label]}
-                </button>
-              ))}
+            <div className="quick-group">
+              <span className="quick-label">{q.world}</span>
+              <div className="quick-buttons">
+                {WORLD_COMMANDS[game].map((c) => (
+                  <button
+                    key={c.label}
+                    type="button"
+                    className="secondary small"
+                    disabled={sending}
+                    title={c.command("")}
+                    onClick={() => run(c.command(""))}
+                  >
+                    {q[c.label]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <form onSubmit={say} className="quick-group">
-            <span className="quick-label">{q.message}</span>
-            <div className="row command">
-              <input value={message} onChange={(e) => setMessage(e.target.value)} aria-label={q.message} maxLength={200} />
-              <button type="submit" className="small" disabled={sending || !message.trim()}>{q.say}</button>
-            </div>
-          </form>
-        </aside>
+            <form onSubmit={say} className="quick-group">
+              <span className="quick-label">{q.message}</span>
+              <div className="row command">
+                <input value={message} onChange={(e) => setMessage(e.target.value)} aria-label={q.message} maxLength={200} />
+                <button type="submit" className="small" disabled={sending || !message.trim()}>{q.say}</button>
+              </div>
+            </form>
+          </aside>
+        )}
       </div>
     </section>
   );

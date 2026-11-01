@@ -43,6 +43,10 @@ func imageFor(edition, version, kind string) string {
 	switch edition {
 	case "TERRARIA":
 		return terrariaImages[kind]
+	case "VALHEIM":
+		return valheimImage
+	case "HYTALE":
+		return hytaleImage
 	case "BEDROCK":
 		return images[edition]
 	}
@@ -270,7 +274,7 @@ func main() {
 	go func() {
 		prefetch := []string{backupImage, images["JAVA"], images["BEDROCK"], terrariaImages["vanilla"], terrariaImages["tshock"]}
 		if tmodSupported() {
-			prefetch = append(prefetch, tmodImage)
+			prefetch = append(prefetch, tmodImage, valheimImage, hytaleImage)
 		}
 		for _, img := range prefetch {
 			if err := a.ensureImage(context.Background(), img); err != nil {
@@ -422,6 +426,8 @@ type createRequest struct {
 	Plugins []string `json:"plugins"`
 	// Java only: the owner's other servers players can go to from this one (links.go).
 	Links []serverLink `json:"links"`
+	// Hytale only: the sign-ins the server and its downloader use (hytale.go).
+	Hytale *hytaleAuth `json:"hytale"`
 }
 
 var (
@@ -436,11 +442,19 @@ var (
 )
 
 func (req *createRequest) validate() error {
-	if req.Edition == "TERRARIA" {
+	switch req.Edition {
+	case "TERRARIA":
 		return req.validateTerraria()
+	case "VALHEIM":
+		return req.validateValheim()
+	case "HYTALE":
+		return req.validateHytale()
+	}
+	if req.Hytale != nil {
+		return errors.New("only Hytale servers take Hytale sign-ins")
 	}
 	if _, ok := images[req.Edition]; !ok {
-		return errors.New("edition must be JAVA, BEDROCK or TERRARIA")
+		return errors.New("edition must be JAVA, BEDROCK, TERRARIA, VALHEIM or HYTALE")
 	}
 	switch {
 	case !validID.MatchString(req.ID):
@@ -612,6 +626,10 @@ func (req *createRequest) level() string {
 		return defaultBedrockLevel
 	case req.Edition == "TERRARIA":
 		return defaultTerrariaLevel
+	case req.Edition == "VALHEIM":
+		return defaultValheimWorld
+	case req.Edition == "HYTALE":
+		return "default" // Hytale keeps its own worlds in universe/worlds
 	}
 	return defaultJavaLevel
 }
@@ -684,7 +702,7 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 // run creates the server's container and, if start is set, starts it.
 func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	image := req.image()
-	if req.Edition == "TERRARIA" {
+	if req.Edition == "TERRARIA" || req.Edition == "VALHEIM" || req.Edition == "HYTALE" {
 		// Minecraft images fetch the newest game when the server starts; Terraria's
 		// images carry it, so a new container takes the newest image (players'
 		// games update themselves and only join a server on the same version).
@@ -777,6 +795,22 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		bindings := map[string]any{terrariaPort: []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}}
 		spec := serverSpec(req, image, env, labels, bindings, false, req.MemoryMb, entrypoint)
 		spec["Healthcheck"] = terrariaHealthcheck(req.Kind)
+		return spec
+	}
+	if req.Edition == "VALHEIM" {
+		// Valheim's game port, over UDP; its Steam query port stays inside (valheimPlayers).
+		labels["mchost.maxplayers"] = fmt.Sprint(valheimMaxPlayer)
+		bindings := map[string]any{valheimPort: []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}}
+		spec := serverSpec(req, image, valheimSpec(req), labels, bindings, false, req.MemoryMb+512, nil)
+		spec["HostConfig"].(map[string]any)["Mounts"] = valheimMounts(req.ID)
+		spec["Healthcheck"] = udpHealthcheck(2456, 20*time.Minute) // the first start installs the game
+		return spec
+	}
+	if req.Edition == "HYTALE" {
+		env, entrypoint := hytaleSpec(req)
+		bindings := map[string]any{hytalePort: []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}}
+		spec := serverSpec(req, image, env, labels, bindings, false, req.MemoryMb+javaHeadroomMb(req.MemoryMb), entrypoint)
+		spec["Healthcheck"] = udpHealthcheck(5520, 30*time.Minute) // the first start downloads about 3 GB
 		return spec
 	}
 	var containerPort, hostIP string
@@ -1200,6 +1234,11 @@ func (a *agent) command(w http.ResponseWriter, r *http.Request) {
 		cmd = []string{"send-command", req.Command}
 	case "TERRARIA":
 		cmd = terrariaCommand(req.Command)
+	case "HYTALE":
+		cmd = hytaleCommand(req.Command)
+	case "VALHEIM":
+		writeError(w, http.StatusConflict, "Valheim has no server console; admins use the game's own console (F5)")
+		return
 	}
 	out, err := a.docker.Exec(ctx, name, cmd)
 	if err != nil {

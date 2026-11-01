@@ -37,11 +37,12 @@ export const isTmodloader = (s: Pick<Server, "edition" | "kind">) => s.edition =
 
 /**
  * The processor a server's machine must have, if any: tModLoader and Mojang's
- * Bedrock server are x86 only. Bedrock does start emulated on an Arm machine
+ * Bedrock server are x86 only, as are Valheim's server and Hytale's downloader
+ * (src/lib/otherGames.ts). Bedrock does start emulated on an Arm machine
  * but never answers players there (seen on the main machine, 2026-10-25).
  */
 export const requiredArch = (s: Pick<Server, "edition" | "kind">) =>
-  s.edition === "BEDROCK" || isTmodloader(s) ? TMOD_ARCH : undefined;
+  s.edition === "BEDROCK" || s.edition === "VALHEIM" || s.edition === "HYTALE" || isTmodloader(s) ? TMOD_ARCH : undefined;
 
 /** tModLoader's app on Steam, whose Workshop the mods come from. */
 export const TMOD_APP_ID = 1281930;

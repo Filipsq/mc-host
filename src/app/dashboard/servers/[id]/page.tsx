@@ -18,6 +18,7 @@ import { kindLabel } from "@/lib/serverType";
 import { ArrowUpCircle, Gift } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
+import { isOtherGame, isValheimPreset } from "@/lib/otherGames";
 import AutoRefresh from "@/components/AutoRefresh";
 import DeleteServer from "./DeleteServer";
 import Stats from "./Stats";
@@ -63,8 +64,13 @@ export default async function ServerPage({ params, searchParams }: Props) {
       ? null
       : { used: formatMb(diskUsed, locale), limit: formatMb(diskLimit, locale), hard: formatMb(hardDiskLimitMb(diskLimit), locale) };
   // The Settings card's one line.
+  const og = all.otherGames;
   const settingsSummary = (
-    terraria
+    server.edition === "VALHEIM"
+      ? [isValheimPreset(server.difficulty) && og.valheim.presets[server.difficulty], og.valheim.passwordOn]
+      : server.edition === "HYTALE"
+        ? [og.hytale.summary]
+        : terraria
       ? [
           terrariaKind && tt.kinds[terrariaKind],
           format(tt.world, {
@@ -165,9 +171,22 @@ export default async function ServerPage({ params, searchParams }: Props) {
               </span>
             )}
           </div>
-          <CopyButton text={host} label={t.copy} copiedLabel={t.copied} />
+          <CopyButton text={server.edition === "VALHEIM" || server.edition === "HYTALE" ? `${host}:${port}` : host} label={t.copy} copiedLabel={t.copied} />
         </div>
         {server.edition === "BEDROCK" && <p className="muted small">{t.bedrockJoin}</p>}
+        {server.edition === "VALHEIM" && (
+          <p className="muted small">
+            {format(og.valheim.join, { address: `${host}:${port}` })}
+            {server.serverPassword && (
+              <>
+                <br />
+                {format(og.valheim.joinPassword, { password: server.serverPassword })}
+              </>
+            )}
+          </p>
+        )}
+        {server.edition === "HYTALE" && <p className="muted small">{format(og.hytale.join, { address: `${host}:${port}` })}</p>}
+        {isOtherGame(server.edition) && live === "starting" && <p className="muted small">{og[server.edition === "VALHEIM" ? "valheim" : "hytale"].firstStart}</p>}
         {terraria && (
           <p className="muted small">
             {tt.join}

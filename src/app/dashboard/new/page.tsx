@@ -9,6 +9,7 @@ import { getPackArt } from "@/lib/modrinth";
 import { curseforgeEnabled, curseforgePackOptions, resolveCurseforgePack } from "@/lib/curseforge";
 import { curseforgePackValue } from "./ModFields";
 import { CURATED_PACKS, planForRam } from "@/lib/modpacks";
+import { OTHER_GAME_MIN_PLAN, newValheimPassword } from "@/lib/otherGames";
 import { isGameId } from "@/lib/games";
 import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
 import { isAdmin } from "@/lib/admin";
@@ -59,6 +60,8 @@ export default async function NewServerPage({ searchParams }: Props) {
   const initialGame = chosen || cfPack || mrPack ? "modpack" : isGameId(game) ? game : undefined;
   const defaultPlan = gift
     ? gift.plan
+    : game === "valheim" || game === "hytale"
+      ? OTHER_GAME_MIN_PLAN[game === "valheim" ? "VALHEIM" : "HYTALE"]
     : initialGame === "modpack"
       ? planForRam(cfPack?.ramGb ?? (mrPack ? MR_PACK_RAM_GB : (chosen ?? CURATED_PACKS[0]).ramGb))
       : hasFree || freeStarters > 0
@@ -76,7 +79,9 @@ export default async function NewServerPage({ searchParams }: Props) {
         paidAddons={t.paidAddons}
         addonOptions={addonOptions(t, currency)}
         terraria={t.terraria}
-        initialEdition={game === "terraria" ? "TERRARIA" : undefined}
+        otherGames={t.otherGames}
+        valheimPassword={newValheimPassword()}
+        initialEdition={game === "terraria" ? "TERRARIA" : game === "valheim" ? "VALHEIM" : game === "hytale" ? "HYTALE" : undefined}
         settings={t.settings}
         billing={t.billing}
         legal={t.legal}

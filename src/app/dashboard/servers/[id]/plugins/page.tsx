@@ -50,7 +50,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     return (
       <div className="wide-form stack">
         <h2>{t.title}</h2>
-        <p className="notice">{{ BEDROCK: t.notBedrock, TERRARIA: t.notTerraria, JAVA: t.notModpack }[server.edition]}</p>
+        <p className="notice">{{ BEDROCK: t.notBedrock, TERRARIA: t.notTerraria, VALHEIM: t.notOtherGame, HYTALE: t.notOtherGame, JAVA: t.notModpack }[server.edition]}</p>
       </div>
     );
   }

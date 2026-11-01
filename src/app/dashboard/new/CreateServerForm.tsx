@@ -15,6 +15,7 @@ import { gameById, gamePluginTitles, isGameId, offeredGames, type GameId } from 
 import { planById } from "@/lib/plans";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { EDITION_NAMES } from "@/lib/editions";
+import { OTHER_GAMES, OTHER_GAME_MIN_PLAN, VALHEIM_PASSWORD_MAX, VALHEIM_PRESETS, isOtherGame } from "@/lib/otherGames";
 import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SIZES, isTerrariaKind, type TerrariaKind } from "@/lib/terraria";
 import type { Suggestion } from "@/lib/ai";
 import type { HelperPick } from "@/lib/planHelper";
@@ -31,7 +32,9 @@ type Props = {
   helper: Messages["helper"];
   paidAddons: Messages["paidAddons"];
   terraria: Messages["terraria"];
-  initialEdition?: Edition; // Terraria, when picked on the home page
+  otherGames: Messages["otherGames"];
+  valheimPassword: string; // a password to start with; Valheim needs one
+  initialEdition?: Edition; // Terraria, Valheim or Hytale, when picked on the home page
   settings: Messages["settings"];
   billing: Messages["billing"];
   legal: Messages["legal"];
@@ -89,11 +92,11 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
-  const [edition, setEdition] = useState(v.edition ?? initialEdition ?? "JAVA");
+  const [edition, setEditionState] = useState(v.edition ?? initialEdition ?? "JAVA");
   const [subdomain, setSubdomain] = useState(v.subdomain ?? "");
   const [subdomainEdited, setSubdomainEdited] = useState(!!v.subdomain);
   const [plan, setPlan] = useState<Plan>((v.plan as Plan | undefined) ?? defaultPlan);
@@ -123,6 +126,14 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   }, []);
   const promoTyped = !!creator.promo && creatorCode.toLowerCase().replace(/\s+/g, "") === creator.promo.code;
   const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
+  // Valheim and Hytale need a paid plan with enough memory: picking one moves the plan up if needed.
+  function setEdition(ed: string) {
+    setEditionState(ed);
+    if (isOtherGame(ed as Edition)) {
+      const min = OTHER_GAME_MIN_PLAN[ed as (typeof OTHER_GAMES)[number]];
+      setPlan((p) => (planAtLeast(p, min) ? p : min));
+    }
+  }
 
   function applySuggestion(s: Suggestion) {
     setEdition(s.edition);
@@ -171,11 +182,21 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   };
   // tModLoader needs more memory than the free plan has.
   const tmod = edition === "TERRARIA" && terrariaKind === "tmodloader";
-  const minPlan = modded ? packPlan(pack) : tmod ? TMOD_MIN_PLAN : "FREE";
+  const other = isOtherGame(edition as Edition) ? (edition as (typeof OTHER_GAMES)[number]) : null;
+  const minPlan = other ? OTHER_GAME_MIN_PLAN[other] : modded ? packPlan(pack) : tmod ? TMOD_MIN_PLAN : "FREE";
   const planChoices = plans.map((p) =>
     planAtLeast(p.id, minPlan) || p.disabledNote
       ? p
-      : { ...p, disabledNote: tmod ? terraria.tmodNoFree : p.id === "FREE" ? t.modpackNoFree : t.packTooSmall },
+      : {
+          ...p,
+          disabledNote: other
+            ? format(otherGames.planTooSmall, { game: EDITION_NAMES[other] })
+            : tmod
+              ? terraria.tmodNoFree
+              : p.id === "FREE"
+                ? t.modpackNoFree
+                : t.packTooSmall,
+        },
   );
   const planName = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
   // A ready game that's comfortable with more memory than the chosen plan has.
@@ -269,13 +290,15 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       )}
       <fieldset className="stack">
         <legend>{t.edition}</legend>
-        {(["JAVA", "BEDROCK", "TERRARIA"] as const).map((ed) => (
+        {(["JAVA", "BEDROCK", "TERRARIA", ...OTHER_GAMES] as const).map((ed) => (
           <label key={ed} className="choice">
             <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => setEdition(ed)} />
             <EditionIcon edition={ed} size={30} />
             <span>
-              <strong>{ed === "TERRARIA" ? EDITION_NAMES[ed] : `Minecraft ${EDITION_NAMES[ed]}`}</strong>{" "}
-              <span className="muted">{{ JAVA: t.javaHint, BEDROCK: t.bedrockHint, TERRARIA: terraria.hint }[ed]}</span>
+              <strong>{ed === "JAVA" || ed === "BEDROCK" ? `Minecraft ${EDITION_NAMES[ed]}` : EDITION_NAMES[ed]}</strong>{" "}
+              <span className="muted">
+                {{ JAVA: t.javaHint, BEDROCK: t.bedrockHint, TERRARIA: terraria.hint, VALHEIM: otherGames.valheim.hint, HYTALE: otherGames.hytale.hint }[ed]}
+              </span>
             </span>
           </label>
         ))}
@@ -291,6 +314,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           }}
         />
       )}
+      {edition === "VALHEIM" && <ValheimFields t={otherGames} values={v} password={valheimPassword} />}
+      {edition === "HYTALE" && <p className="notice">{otherGames.hytale.createNote}</p>}
       {edition === "JAVA" && (
         <label>
           {t.subdomain}
@@ -407,7 +432,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           {format(t.ramLow, { game: t.games[game], gb: wanted, plan: planById(plan).ramGb })}
         </p>
       )}
-      {edition !== "TERRARIA" && (
+      {(edition === "JAVA" || edition === "BEDROCK") && (
         <p className="muted small">
           {t.ramHelp}{" "}
           <Link href="/#ram" target="_blank">
@@ -473,6 +498,39 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       )}
     </form>
     </>
+  );
+}
+
+/** A Valheim server's password (Valheim needs one) and its difficulty preset. */
+function ValheimFields({ t, values, password }: { t: Messages["otherGames"]; values: Record<string, string>; password: string }) {
+  return (
+    <div className="option-row">
+      <label>
+        {t.valheim.password}
+        <input
+          name="password"
+          required
+          minLength={5}
+          maxLength={VALHEIM_PASSWORD_MAX}
+          pattern="[A-Za-z0-9]{5,20}"
+          defaultValue={values.password || password}
+          autoComplete="off"
+          spellCheck={false}
+        />
+        <span className="muted small">{t.valheim.passwordHint}</span>
+      </label>
+      <label>
+        {t.valheim.preset}
+        <select name="valheimPreset" defaultValue={values.valheimPreset ?? "normal"}>
+          {VALHEIM_PRESETS.map((p) => (
+            <option key={p} value={p}>
+              {t.valheim.presets[p]}
+            </option>
+          ))}
+        </select>
+        <span className="muted small">{t.valheim.presetHint}</span>
+      </label>
+    </div>
   );
 }
 
