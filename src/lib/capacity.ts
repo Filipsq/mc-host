@@ -1,7 +1,7 @@
 import "server-only";
 import type { Server, ServerStatus } from "@prisma/client";
 import { db } from "./db";
-import { nodes, type GameNode } from "./nodes";
+import { MAIN_NODE, nodes, type GameNode } from "./nodes";
 
 // Each game machine has room for its memory limit of plan memory (MEMORY_LIMIT_MB
 // on the main one, memoryLimitMb in NODES on the others; unset: no limit).
@@ -82,9 +82,17 @@ export async function pickNode(planMb: number, extraMb = planMb, nodeId?: string
 
 /** Every machine pickNode could choose, best first. */
 export async function rankNodes(planMb: number, extraMb = planMb, nodeId?: string, arch?: string): Promise<string[]> {
-  const candidates = (await roomByNode()).filter(
+  const all = await roomByNode();
+  // Free servers (extraMb 0) stay off the main machine, which also runs the site,
+  // whenever there's another machine for them.
+  const free = extraMb <= 0 && all.some((c) => c.node.id !== MAIN_NODE);
+  const candidates = all.filter(
     ({ node, room }) =>
-      (!nodeId || node.id === nodeId) && (!arch || node.arch === arch) && fitsMachine(node, planMb) && (extraMb <= 0 || room >= extraMb),
+      (!nodeId || node.id === nodeId) &&
+      (!arch || node.arch === arch) &&
+      !(free && node.id === MAIN_NODE) &&
+      fitsMachine(node, planMb) &&
+      (extraMb <= 0 || room >= extraMb),
   );
   // Free servers go where the most is left for the machine's size, so a small
   // machine doesn't get as many as a big one.
