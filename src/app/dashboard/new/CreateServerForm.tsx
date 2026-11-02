@@ -131,6 +131,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const [total, setTotal] = useState<string | null>(null);
   // How many play at once (PLAYER_STEPS): moving the slider picks the plan, and the price with it.
   const [step, setStep] = useState(1);
+  // The smallest plan the slider allows for that many players (null: no slider answer applied).
+  const [floor, setFloor] = useState<Plan | null>(null);
   const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
   // Valheim and Hytale need a paid plan with enough memory: picking one moves the plan up if needed.
   function setEdition(ed: string) {
@@ -168,6 +170,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     // The smallest plan from there that can be picked (the free one may be taken).
     const pick = plans.find((p) => planAtLeast(p.id, want) && !p.disabledNote)?.id ?? want;
     setStep(i);
+    setFloor(want);
     setPlan(pick);
   }
   // On a fresh form the slider's starting answer picks the plan too (not over a gift or a form sent back).
@@ -200,7 +203,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     setAddons(p.addons);
     setCrossplay(p.crossplay);
     setNonPremium(p.nonPremium);
-    setPlan(p.plan);
+    setPlan(floor && !planAtLeast(p.plan, floor) ? floor : p.plan);
     setAiRound((n) => n + 1);
     // So the player sees the form that just filled in, starting with the name it still needs.
     requestAnimationFrame(() => {
@@ -238,6 +241,12 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
                 ? t.modpackNoFree
                 : t.packTooSmall,
         },
+  );
+  // Plans too small for the players on the slider: moving it left is the way to a smaller one.
+  const choices = planChoices.map((p) =>
+    floor && !p.disabledNote && !planAtLeast(p.id, floor)
+      ? { ...p, disabledNote: format(t.playersTooMany, { players: PLAYER_STEPS[step].label }) }
+      : p,
   );
   const planName = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
   // A ready game that's comfortable with more memory than the chosen plan has.
@@ -508,7 +517,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       <PlanPicker
         // Remounted when a mod pack rules out smaller plans, so it picks up the new default.
         key={`${minPlan}-${aiRound}`}
-        plans={planChoices}
+        plans={choices}
         defaultPlan={plan}
         plan={plan}
         periodLabels={{ days: billing.periodDays, off: billing.periodOff }}

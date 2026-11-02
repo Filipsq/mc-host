@@ -64,10 +64,11 @@ const GROUP_PLAN: Plan = "STANDARD";
 const maxPlan = (a: Plan, b: Plan) => (planAtLeast(a, b) ? a : b);
 
 // The players slider on the new server form: up to how many players at once each plan
-// is suggested for. More players need a bigger plan, and on mods sooner (Fiq, 2026-11-02).
+// is allowed for. More players need a bigger plan, and on mods sooner; smaller plans can't be
+// picked for that many (Fiq, 2026-11-02: "restrykcyjny").
 const SLIDER_PLANS: Record<"survival" | "mods", [Plan, number][]> = {
-  survival: [["FREE", 4], ["STARTER", 6], ["STANDARD", 20], ["PRO", Infinity]],
-  mods: [["STARTER", 2], ["STANDARD", 8], ["PRO", Infinity]],
+  survival: [["FREE", 2], ["STARTER", 4], ["STANDARD", 10], ["PRO", Infinity]],
+  mods: [["STARTER", 2], ["STANDARD", 6], ["PRO", Infinity]],
 };
 
 /** The plan the slider suggests for up to `players` at once, never below what the memory needs. */
