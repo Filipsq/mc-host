@@ -147,7 +147,7 @@ const pl = {
     ramNote: "To przybliżenie: dużo zależy od wielkości świata, liczby pluginów i wersji gry.",
     ramStart: "Załóż serwer",
     pricingTitle: "Cennik",
-    pricingSubtitle: "Płacisz z góry za 7, 30, 60 lub 90 dni: za 60 dni 5% taniej, za 90 dni 10% taniej. Plan odnawia się sam tylko wtedy, gdy włączysz to przy płatności kartą.",
+    pricingSubtitle: "Płacisz z góry za 7, 30, 60 lub 90 dni: za 60 dni 5% taniej, za 90 dni 10% taniej. Plan odnawia się sam tylko wtedy, gdy włączysz to przy płatności kartą. Bez ceny „na start”, która po pierwszym miesiącu rośnie kilka razy.",
     perMonth: "/ 30 dni",
     longerPeriod: "albo {price} za 90 dni (−10%)",
     freeForever: "Bez karty i bez limitu czasu",

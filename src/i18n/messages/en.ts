@@ -149,7 +149,7 @@ const en: Messages = {
     ramNote: "This is an estimate: a lot depends on the world's size, the number of plugins and the game version.",
     ramStart: "Create a server",
     pricingTitle: "Pricing",
-    pricingSubtitle: "Pay up front for 7, 30, 60 or 90 days: 60 days are 5% cheaper, 90 days 10% cheaper. Plans renew by themselves only if you turn that on when paying by card.",
+    pricingSubtitle: "Pay up front for 7, 30, 60 or 90 days: 60 days are 5% cheaper, 90 days 10% cheaper. Plans renew by themselves only if you turn that on when paying by card. No intro price that jumps several times after the first month.",
     perMonth: "/ 30 days",
     longerPeriod: "or {price} for 90 days (−10%)",
     freeForever: "No card and no time limit",
