@@ -422,6 +422,11 @@ func TestPackScriptCopiesPlayersFTBMods(t *testing.T) {
 		{"path": "mods/sodium-fabric-0.5.jar", "downloads": ["https://cdn/s.jar"]},
 		{"path": "config/ftbquests/x.snbt", "downloads": ["https://cdn/x"]}
 	]}`))
+	// Better MC carries some FTB jars for players only, inside the pack.
+	w, _ = z.Create("client-overrides/mods/ftb-xmod-compat-fabric-2.1.3.jar")
+	w.Write([]byte("jar"))
+	w, _ = z.Create("client-overrides/mods/sodium-extra.jar")
+	w.Write([]byte("jar"))
 	z.Close()
 	f.Close()
 	fake := `#!/bin/bash
@@ -453,7 +458,7 @@ esac
 	for _, n := range names {
 		got = append(got, n.Name())
 	}
-	want := "chunky.jar ftb-library-fabric-2001.2.12.jar ftb-quests-fabric-2001.4.17.jar ftb-teams-fabric-2001.3.2.jar item-filters-fabric-2001.1.0-build.59.jar"
+	want := "chunky.jar ftb-library-fabric-2001.2.12.jar ftb-quests-fabric-2001.4.17.jar ftb-teams-fabric-2001.3.2.jar ftb-xmod-compat-fabric-2.1.3.jar item-filters-fabric-2001.1.0-build.59.jar"
 	if strings.Join(got, " ") != want {
 		t.Errorf("mods = %v\n%s", got, out)
 	}
