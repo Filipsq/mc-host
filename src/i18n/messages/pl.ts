@@ -154,7 +154,7 @@ const pl = {
     recommended: "Polecany",
     startFree: "Zacznij za darmo",
     choosePlan: "Wybierz plan",
-    paymentMethods: "Karta · BLIK · Przelewy24",
+    paymentMethods: "Karta · BLIK · Przelewy24 · ceny zawierają 23% VAT",
     faqTitle: "Najczęściej zadawane pytania",
     faq: [
       {
@@ -1402,6 +1402,14 @@ const pl = {
   planMail: {
     paidAutoRenew:
       "Plan {plan} jest opłacony do {date}. Odnawia się automatycznie: dzień przed końcem pobierzemy opłatę z karty {card}. Wyłączysz to w panelu, w Plan i płatności.",
+    priceChange: {
+      subject: "Nowe ceny przy odnawianiu serwera {server}",
+      paragraphs: [
+        "Od {deleteOn} automatyczne odnawianie serwera {server} pobierze za {renewDays} dni {newPrice} zamiast {oldPrice}. Ceny zawierają 23% VAT.",
+        "Do tego dnia odnowienia idą po starej cenie. Jeśli nie chcesz płacić nowej ceny, wyłącz automatyczne odnawianie w panelu, w zakładce Plan i płatności. Serwer będzie działał do końca opłaconego okresu.",
+      ],
+      button: "Plan i płatności",
+    },
     renewFailed: {
       subject: "Nie udało się przedłużyć serwera {server}",
       paragraphs: [
