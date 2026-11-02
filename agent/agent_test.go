@@ -498,11 +498,14 @@ func TestCrossplay(t *testing.T) {
 	env := specEnv(spec)
 	for _, want := range []string{
 		"MODRINTH_PROJECTS=viaversion?,gvQqBUqZ?\n",
-		"PLUGINS=" + crossplayPlugins[0] + "," + crossplayPlugins[1] + "\n",
+		"PLUGINS=\n", // Geyser and Floodgate come from the agent (crossplay.go)
 	} {
 		if !strings.Contains(env, want) {
 			t.Fatalf("missing %q in\n%s", want, env)
 		}
+	}
+	if spec["Labels"].(map[string]string)["mchost.crossplay"] != "true" {
+		t.Fatal("crossplay label missing: startServer wouldn't bring Geyser and Floodgate")
 	}
 	host := spec["HostConfig"].(map[string]any)
 	ports := host["PortBindings"].(map[string]any)

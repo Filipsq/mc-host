@@ -102,6 +102,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 	}
 	a.clearMarkers(id)
 	a.fixOwners(ctx, id)
+	a.fixCrossplay(ctx, id)
 	a.fixLogin(ctx, id)
 	if a.udp != nil {
 		a.udp.release(id) // Docker publishes the Bedrock port itself
