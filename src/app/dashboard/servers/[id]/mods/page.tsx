@@ -9,13 +9,15 @@ import { offersModPicker } from "@/lib/plugins";
 import { planAtLeast, planForRam } from "@/lib/modpacks";
 import { gameById } from "@/lib/games";
 import ModPicker from "./ModPicker";
+import PackMods from "./PackMods";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> };
 
 /**
  * Mods on a plain server, which can't run them: the owner picks them here,
  * and the end of the list says the server has to switch to Fabric (a mod
- * server has its mods under the Plugins page's path instead).
+ * server has its mods under the Plugins page's path instead). On a mod pack
+ * it lists the pack's mods (PackMods).
  */
 export default async function ModsPage({ params, searchParams }: Props) {
   const session = await getSession();
@@ -23,6 +25,7 @@ export default async function ModsPage({ params, searchParams }: Props) {
   const [{ id }, { q = "" }] = await Promise.all([params, searchParams]);
   const server = await getServerFor(id, session.user.id, "plugins");
   if (!server) notFound();
+  if (server.edition === "JAVA" && server.kind === "modpack") return <PackMods server={server} q={q} />;
   if (!offersModPicker(server)) redirect(`/dashboard/servers/${id}/plugins`);
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.modsOnPlain;

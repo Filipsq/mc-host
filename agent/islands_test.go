@@ -393,3 +393,76 @@ esac
 		t.Errorf("fetched again:\n%s", fetched)
 	}
 }
+
+// The FTB mods a pack lists for players only go to the server too, in the players' builds.
+func TestPackScriptCopiesPlayersFTBMods(t *testing.T) {
+	for _, tool := range []string{"bash", "unzip", "jq"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip("no " + tool)
+		}
+	}
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "mods")
+	if err := os.MkdirAll(mods, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"ftb-quests-fabric-2001.4.22.jar", "ftb-library-fabric-2001.2.13.jar", "ftb-teams-fabric-2001.3.2.jar", "chunky.jar"} {
+		os.WriteFile(filepath.Join(mods, name), []byte("jar"), 0o644)
+	}
+	bin := t.TempDir()
+	mrpack := filepath.Join(bin, "pack.mrpack")
+	f, _ := os.Create(mrpack)
+	z := zip.NewWriter(f)
+	w, _ := z.Create("modrinth.index.json")
+	w.Write([]byte(`{"files": [
+		{"path": "mods/ftb-quests-fabric-2001.4.17.jar", "downloads": ["https://cdn/q.jar"], "env": {"client": "required", "server": "unsupported"}},
+		{"path": "mods/ftb-library-fabric-2001.2.12.jar", "downloads": ["https://cdn/l.jar"]},
+		{"path": "mods/ftb-teams-fabric-2001.3.2.jar", "downloads": ["https://cdn/t.jar"]},
+		{"path": "mods/item-filters-fabric-2001.1.0-build.59.jar", "downloads": ["https://cdn/i.jar"]},
+		{"path": "mods/sodium-fabric-0.5.jar", "downloads": ["https://cdn/s.jar"]},
+		{"path": "config/ftbquests/x.snbt", "downloads": ["https://cdn/x"]}
+	]}`))
+	z.Close()
+	f.Close()
+	fake := `#!/bin/bash
+url="${@: -1}"; out=; prev=
+for a in "$@"; do [ "$prev" = -o ] && out=$a; prev=$a; done
+echo "$url" >>"$LOG"
+case $url in
+  *api.modrinth.com/v2/version/abc123) echo '{"files":[{"primary":true,"url":"https://cdn/pack.mrpack"}]}' ;;
+  *pack.mrpack) cp "` + mrpack + `" "$out" ;;
+  *maven-metadata.xml) echo '<versions></versions>' ;;
+  *) echo jar >"$out" ;;
+esac
+`
+	os.WriteFile(filepath.Join(bin, "curl"), []byte(fake), 0o755)
+	log := filepath.Join(bin, "log")
+	run := func() string {
+		cmd := exec.Command("bash", "-c", packScript)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "VERSION=1.20.1", "MODRINTH_VERSION=abc123", "LOG="+log)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %s", err, out)
+		}
+		return string(out)
+	}
+	out := run()
+	names, _ := os.ReadDir(mods)
+	var got []string
+	for _, n := range names {
+		got = append(got, n.Name())
+	}
+	want := "chunky.jar ftb-library-fabric-2001.2.12.jar ftb-quests-fabric-2001.4.17.jar ftb-teams-fabric-2001.3.2.jar item-filters-fabric-2001.1.0-build.59.jar"
+	if strings.Join(got, " ") != want {
+		t.Errorf("mods = %v\n%s", got, out)
+	}
+	// The next start reads nothing again.
+	os.Remove(log)
+	if out := run(); strings.Contains(out, "added") {
+		t.Errorf("added again: %s", out)
+	}
+	if fetched, _ := os.ReadFile(log); len(fetched) != 0 {
+		t.Errorf("fetched again:\n%s", fetched)
+	}
+}
