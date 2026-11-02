@@ -169,35 +169,47 @@ if [ -d mods ] && ! ls mods | grep -qi '^chunky' && command -v jq >/dev/null && 
     [ -n "$file" ] && rm -f "mods/$file"
   fi
 fi
-# FTB's mods aren't on Modrinth, so a pack lists them for players only and the
+# FTB's mods aren't on Modrinth, so a pack gives them to players only and the
 # server goes without them (Better MC: FTB Quests, Teams, XMod Compat, Filter
-# System and Item Filters; the quest book stays empty or locked). The pack's
-# own index says which builds players have, and the server gets the same
-# files, replacing other builds of them. The list is read once per pack version.
+# System and Item Filters; the quest book stays empty or "Quest locked"). A
+# pack either lists them for players in its index or carries them in its
+# client-overrides folder. Once per pack version the server reads the pack and
+# keeps those jars in .mchost-pack-ftb.d; every start puts the same builds in
+# mods/, replacing other builds of them.
 if [ -d mods ] && [ -n "$MODRINTH_VERSION" ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
-  idx=.mchost-pack-ftb
-  if [ ! -f $idx ] || [ "$(head -1 $idx)" != "version $MODRINTH_VERSION" ]; then
+  rm -f .mchost-pack-ftb # an older list of download links
+  cache=.mchost-pack-ftb.d
+  if [ "$(cat $cache/version 2>/dev/null)" != "$MODRINTH_VERSION" ]; then
+    rm -rf $cache.new && mkdir -p $cache.new
     tmp=$(mktemp)
     mrpack=$(curl -fsS "https://api.modrinth.com/v2/version/$MODRINTH_VERSION" | jq -r '([.files[] | select(.primary)] + .files)[0].url' 2>/dev/null)
-    if [ -n "$mrpack" ] && [ "$mrpack" != null ] && curl -fsSL -o "$tmp" "$mrpack" &&
-      list=$(unzip -p "$tmp" modrinth.index.json | jq -r '.files[] | select(.path | test("^mods/(ftb-|item-filters)[^/]*\\.jar$")) | (.path | ltrimstr("mods/")) + " " + .downloads[0]'); then
-      printf 'version %s\n%s\n' "$MODRINTH_VERSION" "$list" >$idx
-    fi
-    rm -f "$tmp"
-  fi
-  [ -f $idx ] && tail -n +2 $idx | while read -r file url; do
-    case "$file" in */*|"") continue ;; esac
-    [ -f "mods/$file" ] && continue
-    if [ -n "$url" ] && curl -fsSL -o "mods/$file.part" "$url" && mv "mods/$file.part" "mods/$file"; then
-      echo "[mchost] added mods/$file (players have it from the pack; the server needs it too)"
-      base=${file%%-[0-9]*}
-      for old in mods/"$base"-[0-9]*.jar; do
-        [ "$old" != "mods/$file" ] && [ -f "$old" ] && rm -f "$old" && echo "[mchost] removed $old (players have mods/$file)"
+    if [ -n "$mrpack" ] && [ "$mrpack" != null ] && curl -fsSL -o "$tmp" "$mrpack" && unzip -tqq "$tmp" >/dev/null 2>&1; then
+      ok=1
+      while read -r file url; do
+        case "$file" in */*|"") continue ;; esac
+        curl -fsSL -o "$cache.new/$file" "$url" || { rm -f "$cache.new/$file"; ok=; echo "[mchost] could not download $file"; }
+      done < <(unzip -p "$tmp" modrinth.index.json | jq -r '.files[] | select(.path | test("^mods/(ftb-|item-filters)[^/]*\\.jar$")) | (.path | ltrimstr("mods/")) + " " + .downloads[0]' 2>/dev/null)
+      unzip -Z1 "$tmp" | grep -iE '^(client-)?overrides/mods/(ftb-|item-filters)[^/]*\.jar$' | while read -r entry; do
+        unzip -p "$tmp" "$entry" >"$cache.new/${entry##*/}" || rm -f "$cache.new/${entry##*/}"
       done
+      if [ -n "$ok" ]; then
+        echo "$MODRINTH_VERSION" >$cache.new/version && rm -rf $cache && mv $cache.new $cache
+      fi
     else
-      rm -f "mods/$file.part"
-      echo "[mchost] could not download $file"
+      echo "[mchost] could not read the pack to find its FTB mods; trying again next start"
     fi
+    rm -rf "$tmp" $cache.new
+  fi
+  for jar in $cache/*.jar; do
+    [ -f "$jar" ] || continue
+    file=${jar##*/}
+    [ -f "mods/$file" ] && continue
+    cp "$jar" "mods/$file.part" && mv "mods/$file.part" "mods/$file" || { rm -f "mods/$file.part"; continue; }
+    echo "[mchost] added mods/$file (players have it from the pack; the server needs it too)"
+    base=${file%%-[0-9]*}
+    for old in mods/"$base"-[0-9]*.jar; do
+      [ "$old" != "mods/$file" ] && [ -f "$old" ] && rm -f "$old" && echo "[mchost] removed $old (players have mods/$file)"
+    done
   done
 fi
 if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/neoforged ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
