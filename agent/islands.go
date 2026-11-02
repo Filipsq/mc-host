@@ -132,7 +132,8 @@ var islandsEntrypoint = []string{"/bin/bash", "-c", "cat >" + addonsScriptPath +
 // can't load go. The image puts them back on every start, so the list in
 // .mchost-pack-removed is kept until the pack's version changes.
 //
-// It then adds Chunky, which the agent uses to generate the map ahead
+// It then gives the server the FTB mods (Quests, Teams...) the pack lists for
+// players only, in the players' exact builds, and adds Chunky, which the agent uses to generate the map ahead
 // (pregen.go): big packs build new chunks slowly while people play.
 //
 // Last, loginScript adds the password login mod on a non-premium pack.
@@ -167,6 +168,37 @@ if [ -d mods ] && ! ls mods | grep -qi '^chunky' && command -v jq >/dev/null && 
   else
     [ -n "$file" ] && rm -f "mods/$file"
   fi
+fi
+# FTB's mods aren't on Modrinth, so a pack lists them for players only and the
+# server goes without them (Better MC: FTB Quests, Teams, XMod Compat, Filter
+# System and Item Filters; the quest book stays empty or locked). The pack's
+# own index says which builds players have, and the server gets the same
+# files, replacing other builds of them. The list is read once per pack version.
+if [ -d mods ] && [ -n "$MODRINTH_VERSION" ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
+  idx=.mchost-pack-ftb
+  if [ ! -f $idx ] || [ "$(head -1 $idx)" != "version $MODRINTH_VERSION" ]; then
+    tmp=$(mktemp)
+    mrpack=$(curl -fsS "https://api.modrinth.com/v2/version/$MODRINTH_VERSION" | jq -r '([.files[] | select(.primary)] + .files)[0].url' 2>/dev/null)
+    if [ -n "$mrpack" ] && [ "$mrpack" != null ] && curl -fsSL -o "$tmp" "$mrpack" &&
+      list=$(unzip -p "$tmp" modrinth.index.json | jq -r '.files[] | select(.path | test("^mods/(ftb-|item-filters)[^/]*\\.jar$")) | (.path | ltrimstr("mods/")) + " " + .downloads[0]'); then
+      printf 'version %s\n%s\n' "$MODRINTH_VERSION" "$list" >$idx
+    fi
+    rm -f "$tmp"
+  fi
+  [ -f $idx ] && tail -n +2 $idx | while read -r file url; do
+    case "$file" in */*|"") continue ;; esac
+    [ -f "mods/$file" ] && continue
+    if [ -n "$url" ] && curl -fsSL -o "mods/$file.part" "$url" && mv "mods/$file.part" "mods/$file"; then
+      echo "[mchost] added mods/$file (players have it from the pack; the server needs it too)"
+      base=${file%%-[0-9]*}
+      for old in mods/"$base"-[0-9]*.jar; do
+        [ "$old" != "mods/$file" ] && [ -f "$old" ] && rm -f "$old" && echo "[mchost] removed $old (players have mods/$file)"
+      done
+    else
+      rm -f "mods/$file.part"
+      echo "[mchost] could not download $file"
+    fi
+  done
 fi
 if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/neoforged ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
   have=" " need=" "
