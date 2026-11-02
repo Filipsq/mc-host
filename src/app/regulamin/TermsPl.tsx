@@ -98,8 +98,13 @@ export default function TermsPl({ site }: { site: string }) {
       <h2>§5. Plany płatne i płatności</h2>
       <ol>
         <li>
-          Ceny Planów podane są w <Link href="/#cennik">Cenniku</Link> i są cenami końcowymi. Użytkownik płaci w
-          wybranej walucie: PLN, EUR, USD lub GBP.
+          Ceny Planów podane są w <Link href="/#cennik">Cenniku</Link> i są cenami końcowymi, zawierającymi podatek
+          VAT. Użytkownik płaci w wybranej walucie: PLN, EUR, USD lub GBP.
+        </li>
+        <li>
+          Na żądanie Użytkownika Usługodawca wystawia fakturę VAT i wysyła ją e-mailem. Żądanie, z danymi do faktury
+          (a w przypadku firmy także z numerem NIP), należy wysłać na adres{" "}
+          <Blank value={company.email} label="adres e-mail" />.
         </li>
         <li>
           Płatny Plan opłaca się z góry za Okres 7, 30, 60 lub 90 dni, kartą płatniczą, BLIK-iem lub przez Przelewy24 (BLIK

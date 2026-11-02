@@ -9,15 +9,16 @@ type PlanSpec = {
   maxPlayers: number | null; // null = unlimited
   alwaysOn: boolean;
   backupsKept: number;
-  // Price for 30 days, set per currency (not converted); other periods follow from it (periods.ts).
+  // Price for 30 days with VAT (consumers must see the final price), set per currency (not converted);
+  // other periods follow from it (periods.ts). Earlier prices: priceChange.ts.
   price: Record<Currency, number>;
 };
 
 export const plans: PlanSpec[] = [
   { id: "FREE", cpus: 1, ramGb: 2, diskGb: 2, maxPlayers: 10, alwaysOn: false, backupsKept: 0, price: { PLN: 0, EUR: 0, USD: 0, GBP: 0 } },
-  { id: "STARTER", cpus: 2, ramGb: 3, diskGb: 10, maxPlayers: 20, alwaysOn: true, backupsKept: 1, price: { PLN: 15, EUR: 3.5, USD: 4, GBP: 3 } },
-  { id: "STANDARD", cpus: 3, ramGb: 6, diskGb: 20, maxPlayers: 40, alwaysOn: true, backupsKept: 7, price: { PLN: 29, EUR: 7, USD: 8, GBP: 6 } },
-  { id: "PRO", cpus: 4, ramGb: 10, diskGb: 40, maxPlayers: null, alwaysOn: true, backupsKept: 14, price: { PLN: 45, EUR: 10.5, USD: 12, GBP: 9 } },
+  { id: "STARTER", cpus: 2, ramGb: 3, diskGb: 10, maxPlayers: 20, alwaysOn: true, backupsKept: 1, price: { PLN: 18.99, EUR: 4.49, USD: 4.99, GBP: 3.79 } },
+  { id: "STANDARD", cpus: 3, ramGb: 6, diskGb: 20, maxPlayers: 40, alwaysOn: true, backupsKept: 7, price: { PLN: 35.99, EUR: 8.99, USD: 9.99, GBP: 7.49 } },
+  { id: "PRO", cpus: 4, ramGb: 10, diskGb: 40, maxPlayers: null, alwaysOn: true, backupsKept: 14, price: { PLN: 54.99, EUR: 12.99, USD: 14.99, GBP: 10.99 } },
 ];
 
 export const planById = (id: Plan) => plans.find((p) => p.id === id)!;

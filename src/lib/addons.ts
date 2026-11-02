@@ -20,9 +20,9 @@ type AddonSpec = {
 };
 
 export const ADDON_SPECS: Record<AddonId, AddonSpec> = {
-  disk: { diskGb: 10, backups: 0, price: { PLN: 5, EUR: 1.2, USD: 1.3, GBP: 1 } },
-  backups: { diskGb: 0, backups: 7, price: { PLN: 5, EUR: 1.2, USD: 1.3, GBP: 1 } },
-  domain: { diskGb: 0, backups: 0, price: { PLN: 5, EUR: 1.2, USD: 1.3, GBP: 1 } },
+  disk: { diskGb: 10, backups: 0, price: { PLN: 5.99, EUR: 1.49, USD: 1.59, GBP: 1.29 } },
+  backups: { diskGb: 0, backups: 7, price: { PLN: 5.99, EUR: 1.49, USD: 1.59, GBP: 1.29 } },
+  domain: { diskGb: 0, backups: 0, price: { PLN: 5.99, EUR: 1.49, USD: 1.59, GBP: 1.29 } },
 };
 
 export const isAddonId = (a: unknown): a is AddonId => ADDONS.includes(a as AddonId);

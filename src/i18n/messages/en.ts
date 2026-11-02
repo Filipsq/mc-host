@@ -156,7 +156,7 @@ const en: Messages = {
     recommended: "Recommended",
     startFree: "Start for free",
     choosePlan: "Choose plan",
-    paymentMethods: "Card · BLIK · Przelewy24",
+    paymentMethods: "Card · BLIK · Przelewy24 · prices include VAT",
     faqTitle: "Frequently asked questions",
     faq: [
       {
@@ -1403,6 +1403,14 @@ const en: Messages = {
   planMail: {
     paidAutoRenew:
       "The {plan} plan is paid until {date}. It renews automatically: a day before it ends we charge your card {card}. Turn it off in the panel under Plan and payments.",
+    priceChange: {
+      subject: "New renewal price for {server}",
+      paragraphs: [
+        "From {deleteOn}, automatic renewal of {server} will charge {newPrice} for {renewDays} days instead of {oldPrice}. Prices include 23% VAT.",
+        "Until then renewals keep the old price. If you don't want the new price, turn automatic renewal off in the panel under Plan and payments. The server keeps running until the end of the paid period.",
+      ],
+      button: "Plan and payments",
+    },
     renewFailed: {
       subject: "We couldn't renew {server}",
       paragraphs: [
