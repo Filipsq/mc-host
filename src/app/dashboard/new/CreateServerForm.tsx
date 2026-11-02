@@ -11,13 +11,15 @@ import { format, type Messages } from "@/i18n/messages";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
 import { MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { gameById, gamePluginTitles, isGameId, offeredGames, type GameId } from "@/lib/games";
-import { planById } from "@/lib/plans";
+import { formatPrice, planById } from "@/lib/plans";
+import type { Currency } from "@/i18n/config";
+import { PLAYER_STEPS, type RamUse } from "@/lib/ram";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { EDITION_NAMES } from "@/lib/editions";
 import { OTHER_GAMES, OTHER_GAME_MIN_PLAN, VALHEIM_PASSWORD_MAX, VALHEIM_PRESETS, isOtherGame } from "@/lib/otherGames";
 import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SIZES, isTerrariaKind, type TerrariaKind } from "@/lib/terraria";
 import type { Suggestion } from "@/lib/ai";
-import type { HelperPick } from "@/lib/planHelper";
+import { playersPlan, type HelperPick } from "@/lib/planHelper";
 import { Lightbulb } from "lucide-react";
 import AiCreator from "./AiCreator";
 import PlanHelper from "./PlanHelper";
@@ -127,6 +129,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const promoTyped = !!creator.promo && creatorCode.toLowerCase().replace(/\s+/g, "") === creator.promo.code;
   // The total from the plan picker, shown on the pay button that stays on screen.
   const [total, setTotal] = useState<string | null>(null);
+  // How many play at once (PLAYER_STEPS): moving the slider picks the plan, and the price with it.
+  const [step, setStep] = useState(1);
   const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
   // Valheim and Hytale need a paid plan with enough memory: picking one moves the plan up if needed.
   function setEdition(ed: string) {
@@ -136,6 +140,41 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       setPlan((p) => (planAtLeast(p, min) ? p : min));
     }
   }
+
+  /** Picks the plan for the players slider and what the server runs (each defaults to what's chosen now). */
+  function applyPlayers(i: number, to: { edition?: string; game?: GameId; pack?: string; terrariaKind?: TerrariaKind } = {}) {
+    const ed = to.edition ?? edition;
+    const g = to.game ?? game;
+    const k = to.terrariaKind ?? terrariaKind;
+    const java = ed === "JAVA";
+    const use: RamUse =
+      (java && (g === "modpack" || g === "mods")) || (ed === "TERRARIA" && k === "tmodloader")
+        ? "mods"
+        : java && gameById(g).plugins.length > 0
+          ? "plugins"
+          : "vanilla";
+    let want = playersPlan(use, PLAYER_STEPS[i].max);
+    // A ready game that wants more memory than that.
+    const gameGb = java && g !== "modpack" ? gameById(g).ramGb : 0;
+    if (gameGb > planById(want).ramGb) want = plans.find((p) => planAtLeast(p.id, want) && planById(p.id).ramGb >= gameGb)?.id ?? "PRO";
+    const min = isOtherGame(ed as Edition)
+      ? OTHER_GAME_MIN_PLAN[ed as (typeof OTHER_GAMES)[number]]
+      : java && g === "modpack"
+        ? packPlan(to.pack ?? pack)
+        : ed === "TERRARIA" && k === "tmodloader"
+          ? TMOD_MIN_PLAN
+          : "FREE";
+    if (!planAtLeast(want, min)) want = min;
+    // The smallest plan from there that can be picked (the free one may be taken).
+    const pick = plans.find((p) => planAtLeast(p.id, want) && !p.disabledNote)?.id ?? want;
+    setStep(i);
+    setPlan(pick);
+  }
+  // On a fresh form the slider's starting answer picks the plan too (not over a gift or a form sent back).
+  useEffect(() => {
+    if (v.plan === undefined && !gift) applyPlayers(step);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function applySuggestion(s: Suggestion) {
     setEdition(s.edition);
@@ -281,7 +320,10 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         <div className="edition-tiles">
           {(["JAVA", "BEDROCK", "TERRARIA", ...OTHER_GAMES] as const).map((ed) => (
             <label key={ed} className="edition-tile">
-              <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => setEdition(ed)} />
+              <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => {
+                setEdition(ed);
+                applyPlayers(step, { edition: ed });
+              }} />
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img className={`edition-cover cover-${ed.toLowerCase()}`} src={`/art/covers/${ed.toLowerCase()}.webp`} alt="" loading="lazy" />
               <strong>
@@ -299,6 +341,37 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             </label>
           ))}
         </div>
+      </fieldset>
+      <fieldset className="card new-step stack players-step">
+        <legend className="new-step-title">
+          {t.playersTitle} <span className="players-now">{PLAYER_STEPS[step].label}</span>
+        </legend>
+        <input
+          type="range"
+          className="players-slider"
+          min={0}
+          max={PLAYER_STEPS.length - 1}
+          step={1}
+          value={step}
+          aria-valuetext={PLAYER_STEPS[step].label}
+          onChange={(e) => applyPlayers(Number(e.target.value))}
+        />
+        <div className="players-ticks" aria-hidden>
+          {PLAYER_STEPS.map((s, i) => (
+            <button key={s.label} type="button" tabIndex={-1} className={i === step ? "active" : ""} onClick={() => applyPlayers(i)}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <p className="players-result" aria-live="polite">
+          {format(plan === "FREE" ? t.playersFree : t.playersPlan, {
+            players: PLAYER_STEPS[step].label,
+            plan: planName(plan),
+            gb: planById(plan).ramGb,
+            price: formatPrice(plans.find((p) => p.id === plan)?.monthly ?? 0, money.currency as Currency, money.locale),
+          })}
+        </p>
+        <p className="muted small">{t.playersHint}</p>
       </fieldset>
       <div className="card new-step">
         <div className="new-names">
@@ -351,7 +424,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             kind={terrariaKind}
             onKind={(k) => {
               setTerrariaKind(k);
-              if (k === "tmodloader" && !planAtLeast(plan, TMOD_MIN_PLAN)) setPlan(TMOD_MIN_PLAN);
+              applyPlayers(step, { terrariaKind: k });
             }}
           />
         </div>
@@ -376,7 +449,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
                   checked={game === g.id}
                   onChange={() => {
                     setGame(g.id);
-                    if (g.kind === "modpack" && !planAtLeast(plan, packPlan(pack))) setPlan(packPlan(pack));
+                    applyPlayers(step, { game: g.id });
                   }}
                 />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -395,7 +468,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           pack={pack}
           onPack={(slug) => {
             setPack(slug);
-            if (!planAtLeast(plan, packPlan(slug))) setPlan(packPlan(slug));
+            applyPlayers(step, { pack: slug });
           }}
           packIcons={packIcons}
           cfPacks={cfPacks}
@@ -437,6 +510,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         key={`${minPlan}-${aiRound}`}
         plans={planChoices}
         defaultPlan={plan}
+        plan={plan}
         periodLabels={{ days: billing.periodDays, off: billing.periodOff }}
         labels={{ plan: t.plan, period: t.period, total: billing.total }}
         formatMoney={money}

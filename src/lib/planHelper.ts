@@ -1,6 +1,6 @@
 import type { Plan } from "@prisma/client";
 import { plans } from "./plans";
-import { planFor, ramNeeded, type PlayerGroup, type RamUse } from "./ram";
+import { planFor, playerGroup, ramNeeded, type PlayerGroup, type RamUse } from "./ram";
 import { planAtLeast } from "./modpacks";
 import { TMOD_MIN_PLAN, type TerrariaKind } from "./terraria";
 import type { GameId } from "./games";
@@ -62,6 +62,20 @@ const GROUP_PLAYERS = 10; // the "6–10" answer
 const GROUP_PLAN: Plan = "STANDARD";
 
 const maxPlan = (a: Plan, b: Plan) => (planAtLeast(a, b) ? a : b);
+
+// The players slider on the new server form: up to how many players at once each plan
+// is suggested for. More players need a bigger plan, and on mods sooner (Fiq, 2026-11-02).
+const SLIDER_PLANS: Record<"survival" | "mods", [Plan, number][]> = {
+  survival: [["FREE", 4], ["STARTER", 6], ["STANDARD", 20], ["PRO", Infinity]],
+  mods: [["STARTER", 2], ["STANDARD", 8], ["PRO", Infinity]],
+};
+
+/** The plan the slider suggests for up to `players` at once, never below what the memory needs. */
+export function playersPlan(use: RamUse, players: number): Plan {
+  const steps = SLIDER_PLANS[use === "mods" || use === "bigmods" ? "mods" : "survival"];
+  const byPlayers = steps.find(([, max]) => players <= max)![0];
+  return maxPlan(byPlayers, planFor(use, playerGroup(players)) ?? "PRO");
+}
 
 /** Which content answers make sense on a platform; Bedrock has no plugins or mods here. */
 export function contentFor(platform: HelperPlatform): readonly HelperContent[] {

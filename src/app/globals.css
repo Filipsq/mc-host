@@ -1697,3 +1697,17 @@ fieldset.new-step > legend.new-step-title { float: left; width: 100%; }
 }
 .new-side fieldset > .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .new-side fieldset > .row label.choice { padding: 10px 12px; }
+
+/* New server: players slider, picks the plan and price */
+.players-slider { width: 100%; accent-color: var(--accent); height: 28px; cursor: pointer; }
+.players-ticks { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; margin-top: -4px; }
+.players-ticks button {
+  padding: 4px 0; font-size: 0.78rem; background: none; border: 0; box-shadow: none;
+  color: var(--muted); cursor: pointer; min-width: 0; white-space: nowrap;
+}
+.players-ticks button.active { color: inherit; font-weight: 700; }
+.players-result { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.players-now { margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.95em; }
+@media (max-width: 640px) {
+  .players-ticks { display: none; }
+}
