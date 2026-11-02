@@ -175,18 +175,31 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
     have+="$(jq -r '([.id] + (.provides // [])) | join(" ")' <<<"$meta" 2>/dev/null) "
     need+="$(jq -r '(.depends // {}) | keys | join(" ")' <<<"$meta" 2>/dev/null) "
   done
-  # FTB's mods need FTB Library, but a jar whose fabric.mod.json jq can't read
-  # hides that (Better MC: certain_questing_additions only names ftbquests).
+  # FTB's own jars have fabric.mod.json files jq can't read, so they're known by name too.
+  for jar in mods/*.jar; do
+    case "${jar,,}" in
+      mods/ftb-library*|mods/ftblibrary*) have+="ftblibrary " ;;
+      mods/ftb-quests*|mods/ftbquests*) have+="ftbquests " ;;
+      mods/ftb-teams*|mods/ftbteams*) have+="ftbteams " ;;
+    esac
+  done
+  # FTB Quests runs on FTB Teams, and FTB's mods need FTB Library, but their
+  # unreadable fabric.mod.json hides that (Better MC: certain_questing_additions
+  # only names ftbquests). Better MC from Modrinth leaves FTB Quests and Teams
+  # off the server, so the quest book stays empty ("no quest book data
+  # received from server").
+  [[ "$have$need" =~ " "ftbquests" " ]] && need+="ftbquests ftbteams "
   [[ "$have$need" =~ " "ftb(quests|teams|chunks|essentials)" " ]] && need+="ftblibrary "
   for lib in ` + strings.Join(packLibs, " ") + `; do
     [[ "$need" == *" $lib "* && "$have" != *" $lib "* ]] || continue
     case $lib in
-      ftblibrary)
-        # FTB numbers its versions after Minecraft's: 2001.x is for 1.20.1.
+      ftblibrary|ftbquests|ftbteams)
+        # Not on Modrinth; from FTB's own Maven, which numbers versions after Minecraft's: 2001.x is for 1.20.1.
+        a=ftb-${lib#ftb}-fabric
         p=$(awk -F. '{printf "%d%02d", $2, $3}' <<<"$VERSION")
-        v=$(curl -fsS https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-fabric/maven-metadata.xml | grep -o "<version>$p\.[^<]*" | sed 's/<version>//' | sort -V | tail -1)
+        v=$(curl -fsS https://maven.ftb.dev/releases/dev/ftb/mods/$a/maven-metadata.xml | grep -o "<version>$p\.[^<]*" | sed 's/<version>//' | sort -V | tail -1)
         url= file=
-        [ -n "$v" ] && url=https://maven.ftb.dev/releases/dev/ftb/mods/ftb-library-fabric/$v/ftb-library-fabric-$v.jar file=ftb-library-fabric-$v.jar ;;
+        [ -n "$v" ] && url=https://maven.ftb.dev/releases/dev/ftb/mods/$a/$v/$a-$v.jar file=$a-$v.jar ;;
       *)
         read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/${lib%-fabric}/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$VERSION%22%5D" |
           jq -r '[.[0].files[] | select(.primary)][0] | .url + " " + .filename' 2>/dev/null) ;;

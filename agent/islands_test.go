@@ -236,7 +236,7 @@ esac
 	if err != nil {
 		t.Fatalf("%v: %s", err, out)
 	}
-	for _, name := range []string{"balm-fabric-1.20.1-7.3.44.jar", "ftb-library-fabric-2001.2.13.jar", "Chunky-Fabric-1.3.146.jar"} {
+	for _, name := range []string{"balm-fabric-1.20.1-7.3.44.jar", "ftb-library-fabric-2001.2.13.jar", "ftb-teams-fabric-2001.2.13.jar", "Chunky-Fabric-1.3.146.jar"} {
 		if _, err := os.Stat(filepath.Join(mods, name)); err != nil {
 			t.Errorf("%s not added: %s", name, out)
 		}
@@ -327,5 +327,69 @@ func TestPackScriptRemovesModsForgeCouldNotLoad(t *testing.T) {
 	run("newver01")
 	if got := left(); got != strings.Join([]string{"Audio Improvements v1.3.1 - Forge 1.20.1.jar", "ConnectorExtras-1.11.2+1.20.1.jar", "TwilightCaveFix-1.0.0.jar", "clientkeys-1.0.jar", "jei.jar", "needsnewer.jar"}, ",") {
 		t.Fatalf("mods left on a new version: %s", got)
+	}
+}
+
+// Better MC from Modrinth leaves FTB Quests and FTB Teams off the server, so the quest book stays empty.
+func TestPackScriptAddsFTBQuests(t *testing.T) {
+	for _, tool := range []string{"bash", "unzip", "jq"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip("no " + tool)
+		}
+	}
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "mods")
+	if err := os.MkdirAll(mods, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	f, _ := os.Create(filepath.Join(mods, "Quest Kill Task-0.2.0+1.20.1-fabric.jar"))
+	z := zip.NewWriter(f)
+	w, _ := z.Create("fabric.mod.json")
+	w.Write([]byte(`{"id": "questkilltask", "depends": {"ftbquests": "*"}}`))
+	z.Close()
+	f.Close()
+	os.WriteFile(filepath.Join(mods, "ftb-library-fabric-2001.2.13.jar"), []byte("jar"), 0o644)
+	os.WriteFile(filepath.Join(mods, "chunky.jar"), []byte("jar"), 0o644)
+
+	bin := t.TempDir()
+	fake := `#!/bin/bash
+url="${@: -1}"; out=; prev=
+for a in "$@"; do [ "$prev" = -o ] && out=$a; prev=$a; done
+echo "$url" >>"$LOG"
+case $url in
+  *ftb-quests-fabric/maven-metadata.xml) echo '<versions><version>2001.4.8</version><version>2001.4.13</version><version>2101.1.0</version></versions>' ;;
+  *ftb-teams-fabric/maven-metadata.xml) echo '<versions><version>2001.3.0</version><version>2101.1.0</version></versions>' ;;
+  *maven-metadata.xml) echo '<versions></versions>' ;;
+  *) echo jar >"$out" ;;
+esac
+`
+	os.WriteFile(filepath.Join(bin, "curl"), []byte(fake), 0o755)
+	log := filepath.Join(bin, "log")
+	run := func() string {
+		cmd := exec.Command("bash", "-c", packScript)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "VERSION=1.20.1", "LOG="+log)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("%v: %s", err, out)
+		}
+		return string(out)
+	}
+	out := run()
+	for _, name := range []string{"ftb-quests-fabric-2001.4.13.jar", "ftb-teams-fabric-2001.3.0.jar"} {
+		if _, err := os.Stat(filepath.Join(mods, name)); err != nil {
+			t.Errorf("%s not added: %s", name, out)
+		}
+	}
+	if fetched, _ := os.ReadFile(log); strings.Contains(string(fetched), "ftb-library") {
+		t.Errorf("FTB Library fetched though it's there:\n%s", fetched)
+	}
+	// The next start finds them by name and fetches nothing.
+	os.Remove(log)
+	if out := run(); strings.Contains(out, "added") {
+		t.Errorf("added again: %s", out)
+	}
+	if fetched, _ := os.ReadFile(log); len(fetched) != 0 {
+		t.Errorf("fetched again:\n%s", fetched)
 	}
 }
