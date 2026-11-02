@@ -1274,7 +1274,8 @@ var packIncludes = []string{"terrablender", "balm", "ftb-library"}
 
 // packLibs are Fabric mod IDs packScript downloads when a mod needs one and the
 // pack left it out (Better MC). Balm calls itself balm-fabric on some versions.
-var packLibs = []string{"terrablender", "balm-fabric", "balm", "ftblibrary"}
+// FTB Library, Teams and Quests come from FTB's Maven.
+var packLibs = []string{"terrablender", "balm-fabric", "balm", "ftblibrary", "ftbteams", "ftbquests"}
 
 // gameDNS answers servers' lookups (Paper, plugins, mod packs). Docker would otherwise pass them on to whatever the provider set up
 // on the host, which may sit behind the firewall that keeps servers away from
