@@ -149,14 +149,14 @@ const en: Messages = {
     ramNote: "This is an estimate: a lot depends on the world's size, the number of plugins and the game version.",
     ramStart: "Create a server",
     pricingTitle: "Pricing",
-    pricingSubtitle: "Pay up front for 7, 30, 60 or 90 days: 60 days are 5% cheaper, 90 days 10% cheaper. Plans renew by themselves only if you turn that on when paying by card.",
+    pricingSubtitle: "Pay up front for 7, 30, 60 or 90 days: 60 days are 5% cheaper, 90 days 10% cheaper. Plans renew by themselves only if you turn that on when paying by card. No intro price that jumps several times after the first month.",
     perMonth: "/ 30 days",
     longerPeriod: "or {price} for 90 days (−10%)",
     freeForever: "No card and no time limit",
     recommended: "Recommended",
     startFree: "Start for free",
     choosePlan: "Choose plan",
-    paymentMethods: "Card · BLIK · Przelewy24",
+    paymentMethods: "Card · BLIK · Przelewy24 · prices include VAT",
     faqTitle: "Frequently asked questions",
     faq: [
       {
@@ -587,6 +587,11 @@ const en: Messages = {
     crossplayHint: "Players on phones, consoles and Windows 10/11 (Bedrock) join together with Java players. You'll find the address and port for them on the server's page.",
     withPlugins: "Plugins: {list}",
     ramLow: "{game} runs best with {gb} GB RAM or more, and this plan has {plan} GB. It will run, but may lag with many players.",
+    playersTitle: "How many players at once?",
+    playersPlan: "We suggest {plan}: {gb} GB RAM for {price} / 30 days.",
+    playersFree: "The {plan} plan is enough: {gb} GB RAM, free. The server sleeps when nobody plays.",
+    playersHint: "Move the slider and the plan and price follow. You can pick a bigger plan next to it.",
+    playersTooMany: "too small for {players} players",
     ramHelp: "Not sure how much RAM you need?",
     ramHelpLink: "Try the calculator",
     packPlan: "{plan} plan or bigger",
@@ -1403,6 +1408,14 @@ const en: Messages = {
   planMail: {
     paidAutoRenew:
       "The {plan} plan is paid until {date}. It renews automatically: a day before it ends we charge your card {card}. Turn it off in the panel under Plan and payments.",
+    priceChange: {
+      subject: "New renewal price for {server}",
+      paragraphs: [
+        "From {deleteOn}, automatic renewal of {server} will charge {newPrice} for {renewDays} days instead of {oldPrice}. Prices include 23% VAT.",
+        "Until then renewals keep the old price. If you don't want the new price, turn automatic renewal off in the panel under Plan and payments. The server keeps running until the end of the paid period.",
+      ],
+      button: "Plan and payments",
+    },
     renewFailed: {
       subject: "We couldn't renew {server}",
       paragraphs: [
@@ -1818,7 +1831,13 @@ const en: Messages = {
   resourcePack: {
     title: "Resource pack",
     intro:
-      "A resource pack isn't uploaded to the server's files. The server gives players a link to the .zip, and the game downloads the pack when they join.",
+      "Upload the pack's .zip or paste a link to it. Each player's game downloads the pack when they join.",
+    sourceUpload: "Upload a file",
+    sourceLink: "Paste a link",
+    file: "Pack file (.zip)",
+    fileHint: "Up to 250 MB. The file uses the server's disk space, and players download it from our site.",
+    fileHintSaved: "A pack is already uploaded. Pick a new file to replace it, or leave this empty to change only the options below.",
+    uploading: "Uploading the pack… {percent}%",
     url: "Link to the pack (.zip)",
     urlHint:
       "It must be a direct link to the file. We fix Dropbox and Google Drive links ourselves. When you save, we download the pack once to check that it works (up to 250 MB).",
@@ -1833,19 +1852,24 @@ const en: Messages = {
     remove: "Remove pack",
     saved: "Saved. Players get the pack the next time they join.",
     removed: "Pack removed. Players join without it.",
-    howTitle: "Where do I get a link?",
+    howTitle: "How do I add a pack?",
     how: [
-      "Easiest: upload the .zip to mc-packs.net and copy its \"Download URL\".",
+      "Easiest: choose \"Upload a file\" and add the .zip from your computer. pack.mcmeta must be right inside the zip, not in an extra folder.",
+      "Pack on mc-packs.net? Choose \"Paste a link\" and paste its \"Download URL\".",
       "Dropbox: upload the file, click Share > Copy link and paste it here.",
       "Google Drive: upload the file, set access to \"Anyone with the link\" and paste the link here.",
-      "After changing the pack, upload the new version and save the link again so players get it.",
+      "After changing the pack, upload the new file here (or save the link again) so players get it.",
     ],
     bedrockNote: "Bedrock players (crossplay) don't get this pack: Bedrock uses a different pack format.",
     errors: {
       invalidUrl: "That doesn't look like a link. Paste the full address starting with https://.",
       unreachable: "We couldn't download a file from that link. Check that it's public and the file still exists.",
-      notZip: "That link leads to a web page, not a .zip file. It needs to be a direct download link.",
+      notZip: "That isn't a .zip file. A pasted link must be a direct download link, not a web page.",
       tooBig: "The pack is bigger than 250 MB. Minecraft won't accept it.",
+      noFile: "Choose the pack's .zip file.",
+      uploadFailed: "The file couldn't be uploaded. Check your connection and try again.",
+      noSpace: "The server's disk doesn't have room for this pack. Delete files you don't need or buy more space.",
+      readOnly: "The server isn't paid for, so files can't be uploaded right now.",
       promptTooLong: "The message can be at most 150 characters on one line.",
       applyFailed: "Saved, but the server couldn't be rebuilt. Try again in a moment.",
     },

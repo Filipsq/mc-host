@@ -314,6 +314,10 @@ model Server {
   renewCardLabel   String? // e.g. "Visa •••• 4242"
   // The paidUntil a renewal was last tried for, so each period is charged at most once.
   renewTriedFor    DateTime?
+  // Renewals before this date still charge the earlier prices (src/lib/priceChange.ts),
+  // so the owner gets the 14 days' notice the terms promise; when that notice went out.
+  oldPriceUntil    DateTime?
+  priceNoticeAt    DateTime?
   // Paid add-ons (src/lib/addons.ts): "disk", "backups", "domain". Paid for with the plan.
   addons           String[]       @default([])
   // With the "domain" add-on: the owner's own domain players type, e.g. graj.mojserwer.pl.

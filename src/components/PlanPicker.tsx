@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Plan } from "@prisma/client";
 import { format } from "@/i18n/messages";
 import type { Currency } from "@/i18n/config";
@@ -14,10 +14,14 @@ export type AddonOption = { id: AddonId; name: string; hint: string; monthly: nu
 type Props = {
   plans: PlanOption[];
   defaultPlan: Plan;
+  /** A plan picked elsewhere on the page (the players slider); the picker follows it. */
+  plan?: Plan;
   periodLabels: { days: string; off: string }; // "{days} days", "−{n}%"
   labels: { plan: string; period: string; total: string };
   formatMoney: { locale: string; currency: string };
   onPlanChange?: (plan: Plan) => void;
+  /** The total to pay as text (null on the free plan), for a pay button shown elsewhere. */
+  onTotalChange?: (total: string | null) => void;
   /** Paid add-ons ticked on top of a paid plan; submitted as `addons`, and counted in the total. */
   addons?: {
     options: AddonOption[];
@@ -28,14 +32,19 @@ type Props = {
 };
 
 /** Radio cards for plan + period, with a live total. Submits `plan` and `days`. */
-export default function PlanPicker({ plans, defaultPlan, periodLabels, labels, formatMoney, onPlanChange, addons }: Props) {
+export default function PlanPicker({ plans, defaultPlan, plan: outside, periodLabels, labels, formatMoney, onPlanChange, onTotalChange, addons }: Props) {
   const [plan, setPlan] = useState<Plan>(defaultPlan);
   const [days, setDays] = useState<PeriodDays>(DEFAULT_PERIOD);
+  useEffect(() => {
+    if (outside) setPlan(outside);
+  }, [outside]);
   const [ticked, setTicked] = useState<AddonId[]>(addons?.initial ?? []);
   const money = { format: (n: number) => formatPrice(n, formatMoney.currency as Currency, formatMoney.locale) };
   const selected = plans.find((p) => p.id === plan);
   const paid = plan !== "FREE";
   const extra = paid && addons ? addons.options.filter((o) => ticked.includes(o.id)).reduce((sum, o) => sum + o.monthly, 0) : 0;
+  const total = paid && selected ? money.format(periodPrice(Math.round((selected.monthly + extra) * 100) / 100, days)) : null;
+  useEffect(() => onTotalChange?.(total), [total, onTotalChange]);
 
   return (
     <div className="stack">
@@ -110,7 +119,7 @@ export default function PlanPicker({ plans, defaultPlan, periodLabels, labels, f
       )}
       {paid && selected && (
         <p className="total">
-          {labels.total}: <strong>{money.format(periodPrice(Math.round((selected.monthly + extra) * 100) / 100, days))}</strong>
+          {labels.total}: <strong>{total}</strong>
         </p>
       )}
     </div>

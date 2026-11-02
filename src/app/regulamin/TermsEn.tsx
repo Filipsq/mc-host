@@ -90,8 +90,12 @@ export default function TermsEn({ site }: { site: string }) {
       <h2>§5. Paid Plans and payments</h2>
       <ol>
         <li>
-          Plan prices are listed in the <Link href="/#cennik">Pricing</Link> and are final prices. You pay in the
-          currency you choose: PLN, EUR, USD or GBP.
+          Plan prices are listed in the <Link href="/#cennik">Pricing</Link> and are final prices, including VAT. You pay
+          in the currency you choose: PLN, EUR, USD or GBP.
+        </li>
+        <li>
+          On request, the Provider issues a VAT invoice and sends it by email. Send the request, with your invoice
+          details (and, for a business, its tax ID), to <Blank value={company.email} label="email address" />.
         </li>
         <li>
           A paid Plan is paid in advance for a Period of 7, 30, 60 or 90 days, by card, BLIK or Przelewy24 (BLIK and

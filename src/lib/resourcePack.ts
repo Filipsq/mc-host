@@ -4,6 +4,8 @@ import { lookup } from "node:dns";
 import http from "node:http";
 import https from "node:https";
 import { BlockList, isIP, type LookupFunction } from "node:net";
+import { Readable } from "node:stream";
+import { AgentError, openFile } from "./agent";
 export { PACK_PROMPT_MAX } from "./settings";
 
 // A Java server's resource pack (texture pack). It isn't put in the server's
@@ -11,12 +13,42 @@ export { PACK_PROMPT_MAX } from "./settings";
 // downloads it on joining. Before the link is saved the site downloads it once
 // to check it really is a zip (not a Dropbox or Google Drive page) and to work
 // out its SHA-1, which lets games keep a copy until the pack changes.
+//
+// An owner without a link can upload the .zip instead: it's kept in the
+// server's own files (PACK_FILE, counted in its disk space) and our site hands
+// it to games at /rp/<server>/<sha1>.zip (src/app/rp/[id]/[file]/route.ts).
 
 export const PACK_MAX_BYTES = 250 * 1024 * 1024; // what Minecraft accepts since 1.18
 const TIMEOUT_MS = 90_000;
 const MAX_REDIRECTS = 5;
 
-export type PackError = "invalidUrl" | "unreachable" | "notZip" | "tooBig";
+export type PackError = "invalidUrl" | "unreachable" | "notZip" | "tooBig" | "noFile";
+
+/** Where an uploaded pack is kept in the server's files. */
+export const PACK_FILE = ".resourcepack/pack.zip";
+
+const appUrl = () => process.env.APP_URL ?? "http://localhost:3000";
+
+/** The address games download an uploaded pack from; the SHA-1 in it changes with every new pack. */
+export const uploadedPackUrl = (serverId: string, sha1: string) => `${appUrl()}/rp/${serverId}/${sha1}.zip`;
+
+/** Whether the saved pack is one uploaded to us rather than a link elsewhere. */
+export const isUploadedPack = (url: string | null | undefined) => !!url && url.startsWith(`${appUrl()}/rp/`);
+
+/** Checks the uploaded pack in the server's files: its SHA-1 if it's a zip of an allowed size. */
+export async function checkUploadedPack(serverId: string): Promise<{ sha1: string } | { error: PackError }> {
+  let res: Response;
+  try {
+    res = await openFile(serverId, PACK_FILE, { max: PACK_MAX_BYTES, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch (err) {
+    if (err instanceof AgentError && err.status === 413) return { error: "tooBig" };
+    if (err instanceof AgentError && err.status === 404) return { error: "noFile" };
+    console.error("read uploaded resource pack failed", serverId, err);
+    return { error: "unreachable" };
+  }
+  if (!res.body) return { error: "noFile" };
+  return hashZip(Readable.fromWeb(res.body as never));
+}
 
 /** Turns a share link into the direct download link games need, where we know how. */
 export function directPackUrl(input: string): string {
@@ -90,7 +122,7 @@ export async function checkPack(link: string): Promise<{ sha1: string } | { erro
       res.destroy();
       return { error: "tooBig" };
     }
-    return readZip(res);
+    return hashZip(res);
   }
   return { error: "unreachable" };
 }
@@ -103,25 +135,25 @@ function get(url: URL, signal: AbortSignal): Promise<http.IncomingMessage> {
   });
 }
 
-function readZip(res: http.IncomingMessage): Promise<{ sha1: string } | { error: PackError }> {
-  return new Promise((resolve) => {
-    const hash = createHash("sha1");
-    let size = 0;
-    let head = Buffer.alloc(0);
-    res.on("data", (chunk: Buffer) => {
+/** The SHA-1 of a zip read chunk by chunk; stops reading once it's too big. */
+async function hashZip(chunks: Readable): Promise<{ sha1: string } | { error: PackError }> {
+  const hash = createHash("sha1");
+  let size = 0;
+  let head = Buffer.alloc(0);
+  try {
+    for await (const chunk of chunks as AsyncIterable<Buffer>) {
       size += chunk.length;
       if (size > PACK_MAX_BYTES) {
-        res.destroy();
-        return resolve({ error: "tooBig" });
+        chunks.destroy();
+        return { error: "tooBig" };
       }
       if (head.length < 4) head = Buffer.concat([head, chunk.subarray(0, 4 - head.length)]);
       hash.update(chunk);
-    });
-    res.on("error", () => resolve({ error: "unreachable" }));
-    res.on("end", () => {
-      // Every zip starts with "PK\3\4"; a web page doesn't.
-      if (head.length < 4 || head.readUInt32BE(0) !== 0x504b0304) return resolve({ error: "notZip" });
-      resolve({ sha1: hash.digest("hex") });
-    });
-  });
+    }
+  } catch {
+    return { error: "unreachable" };
+  }
+  // Every zip starts with "PK\3\4"; a web page doesn't.
+  if (head.length < 4 || head.readUInt32BE(0) !== 0x504b0304) return { error: "notZip" };
+  return { sha1: hash.digest("hex") };
 }

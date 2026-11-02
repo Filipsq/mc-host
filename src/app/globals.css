@@ -1609,3 +1609,105 @@ button.hunt-pumpkin.caught { animation: pumpkin-caught 0.5s ease-in forwards; po
 @media (prefers-reduced-motion: reduce) {
   .spider, button.hunt-pumpkin, .halloween-band-art svg { animation: none; }
 }
+
+/* New server form: game tiles on the left, plan and payment at the side */
+main.new-page { max-width: 1200px; }
+.new-layout { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 18px; align-items: start; }
+.new-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.new-step { display: flex; flex-direction: column; gap: 14px; }
+fieldset.new-step > legend.new-step-title { float: left; width: 100%; }
+.new-step-title { margin: 0 0 4px; font-family: var(--font-display); font-weight: 400; font-size: 1.5rem; line-height: 1.1; }
+.new-side { position: sticky; top: 84px; max-height: max(420px, calc(100vh - 220px)); overflow-y: auto; scrollbar-width: thin; border-color: var(--border-strong); }
+.new-side .plan-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.new-side label.plan-choice { padding: 11px 12px; gap: 9px; }
+.new-side label.plan-choice .muted.small { font-size: 0.8rem; }
+.new-side .addon-options { grid-template-columns: 1fr; }
+.new-side .addon-choice .muted.small { display: none; }
+.new-submit {
+  position: sticky; bottom: 0; z-index: 2; display: flex; flex-direction: column; gap: 8px;
+  margin: 0 -20px -20px; padding: 12px 20px 20px; background: var(--surface); border-top: 1px solid var(--border);
+  box-shadow: 0 -12px 24px rgb(0 0 0 / 0.35);
+}
+.new-submit .error { margin: 0; }
+.new-submit button { width: 100%; padding: 14px 18px; font-size: 1.05rem; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.new-submit-total { padding: 2px 9px; border-radius: 999px; background: rgb(0 0 0 / 0.18); font-size: 0.95rem; }
+.new-submit ~ button.secondary { margin-top: 4px; }
+.new-names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+
+/* Tiles: the radio is hidden, the whole tile is the choice */
+.edition-tile input, .game-tile input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.edition-tile, .game-tile {
+  position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; font-weight: 400;
+  padding: 14px 10px 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.edition-tile:hover, .game-tile:hover { border-color: var(--muted); transform: translateY(-2px); }
+.edition-tile:has(input:checked), .game-tile:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); box-shadow: 0 0 0 1px var(--accent); }
+.edition-tile:has(input:checked)::after, .game-tile:has(input:checked)::after {
+  content: "✔"; position: absolute; top: 6px; right: 7px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px;
+  background: var(--accent); color: #0b0f14; font-size: 0.72rem; font-weight: 800;
+}
+.edition-tile:has(input:focus-visible), .game-tile:has(input:focus-visible) { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.edition-tile strong, .game-tile strong { line-height: 1.2; }
+.edition-tile .muted.small { font-size: 0.78rem; line-height: 1.3; }
+.edition-tile-pre { display: block; font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.edition-tile { padding: 0 0 12px; overflow: hidden; }
+.edition-tile strong, .edition-tile .muted.small { padding: 0 10px; }
+.edition-cover { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+.cover-bedrock { object-position: top; }
+.cover-hytale { object-position: bottom; }
+.edition-tile:has(input:checked)::after { z-index: 1; }
+.edition-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.game-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
+.game-tile img { height: 56px; width: auto; image-rendering: pixelated; }
+.game-tile-short { font-size: 0.78rem; line-height: 1.3; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.game-tile .ram-pill { margin-top: auto; }
+.game-detail { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--radius-sm); background: var(--bg); border: 1px dashed var(--border-strong); }
+.game-detail img { flex-shrink: 0; image-rendering: pixelated; }
+
+@media (max-width: 1020px) {
+  .new-layout { grid-template-columns: minmax(0, 1fr); }
+  .new-side { position: static; max-height: none; overflow: visible; }
+  /* Phones and tablets: the button sits in a bar at the bottom of the screen */
+  .new-submit {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; margin: 0;
+    padding: 10px max(16px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    background: rgb(20 26 34 / 0.96); backdrop-filter: blur(6px);
+  }
+  .new-submit button { max-width: 560px; margin: 0 auto; }
+  main.new-page { padding-bottom: 110px; }
+  body:has(.new-submit) .help { bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px)); }
+}
+@media (max-width: 720px) {
+  /* Phones: games slide sideways like a carousel instead of stacking */
+  .edition-tiles { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 128px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 8px; margin: -4px -2px -8px; scrollbar-width: thin; }
+  .edition-tile { scroll-snap-align: start; }
+  .game-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .game-tile { padding: 10px 6px 9px; gap: 4px; }
+  .game-tile img { height: 40px; }
+  .game-tile strong { font-size: 0.85rem; }
+  .game-tile-short { display: none; }
+  .game-tile .ram-pill { font-size: 0.7rem; padding: 1px 6px; }
+  .new-main .card, .new-side { padding: 16px; }
+  .new-names { grid-template-columns: minmax(0, 1fr); }
+  .new-side .plan-options { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .edition-tile:hover, .game-tile:hover { transform: none; }
+}
+.new-side fieldset > .row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.new-side fieldset > .row label.choice { padding: 10px 12px; }
+
+/* New server: players slider, picks the plan and price */
+.players-slider { width: 100%; accent-color: var(--accent); height: 28px; cursor: pointer; }
+.players-ticks { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; margin-top: -4px; }
+.players-ticks button {
+  padding: 4px 0; font-size: 0.78rem; background: none; border: 0; box-shadow: none;
+  color: var(--muted); cursor: pointer; min-width: 0; white-space: nowrap;
+}
+.players-ticks button.active { color: inherit; font-weight: 700; }
+.players-result { margin: 0; font-size: 1.1rem; font-weight: 600; }
+.players-now { margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.95em; }
+@media (max-width: 640px) {
+  .players-ticks { display: none; }
+}

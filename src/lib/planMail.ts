@@ -11,9 +11,9 @@ import { periodPrice } from "./periods";
 // Emails about a server's paid plan: when a payment arrives, a few days
 // before the paid period ends (plans don't renew by themselves), when the
 // server is suspended for it, and a few days before a suspended server is
-// deleted; when its automatic renewal fails (renewal.ts). Also before a free server nobody plays on is deleted.
+// deleted; when its automatic renewal fails, and 14 days before a price change reaches its renewals (renewal.ts). Also before a free server nobody plays on is deleted.
 
-export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion" | "inactive" | "renewFailed";
+export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion" | "inactive" | "renewFailed" | "priceChange";
 export type ServerWithOwner = Server & { owner: Pick<User, "email" | "locale"> };
 
 /** How long before the end of a paid period its owner is reminded. */
@@ -30,7 +30,12 @@ export const WARN_BEFORE_IDLE_DELETE_DAYS = 3;
 export const FREE_IDLE_FROM = new Date("2026-11-01T00:00:00+01:00");
 
 /** Emails the server's owner, in their language. Reports whether it went out; never throws. */
-export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, deleteOn?: Date): Promise<boolean> {
+export async function sendPlanMail(
+  kind: PlanMailKind,
+  server: ServerWithOwner,
+  deleteOn?: Date,
+  extra: Record<string, string> = {},
+): Promise<boolean> {
   const locale = isLocale(server.owner.locale) ? server.owner.locale : defaultLocale;
   const all = messages[locale];
   const t = all.planMail[kind];
@@ -47,6 +52,7 @@ export async function sendPlanMail(kind: PlanMailKind, server: ServerWithOwner, 
     deleteOn: deleteOn ? when(deleteOn) : "",
     // A free server about to go is offered the cheapest way to keep it: a week of Starter.
     starter: starterWeekPrice(locale === "pl" ? "PLN" : "EUR", locale),
+    ...extra,
   };
   const page = `${app}/dashboard/servers/${server.id}${kind === "paid" ? "" : "/billing"}`;
   const mail = buttonMail({

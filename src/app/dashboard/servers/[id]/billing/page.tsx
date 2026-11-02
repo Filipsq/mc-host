@@ -8,10 +8,10 @@ import { getOwnedServer } from "@/lib/servers";
 import { addonOptions, planOptions } from "@/lib/planOptions";
 import { serverAddons } from "@/lib/addons";
 import { formatPrice, plans } from "@/lib/plans";
-import { priceFor } from "@/lib/billing";
 import { canUpgrade } from "@/lib/upgrade";
 import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
 import { RENEW_BEFORE_MS } from "@/lib/renewal";
+import { renewalPriceFor } from "@/lib/priceChange";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import type { Currency } from "@/i18n/config";
 import CheckoutForm from "./CheckoutForm";
@@ -56,7 +56,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
             ? format(b.autoRenewOn, {
                 card: server.renewCardLabel ?? "",
                 days: renewDays,
-                amount: formatPrice(priceFor(server.plan, renewDays, renewCurrency, serverAddons(server)), renewCurrency, locale),
+                amount: formatPrice(renewalPriceFor(server, server.plan, renewDays, renewCurrency, serverAddons(server)), renewCurrency, locale),
                 date: server.paidUntil ? dateTime.format(new Date(server.paidUntil.getTime() - RENEW_BEFORE_MS)) : "",
               })
             : format(b.autoRenewOff, { card: server.renewCardLabel ?? "" }),

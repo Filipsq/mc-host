@@ -21,7 +21,7 @@ import {
 } from "./planMail";
 import { sendComebackReminders } from "./comeback";
 import { keepHytaleAlive } from "./hytale";
-import { renewDueServers } from "./renewal";
+import { notifyPriceChange, renewDueServers } from "./renewal";
 import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./referrals";
 import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type CreatorReward } from "./creator";
 import { fulfillGiftPurchase } from "./gifts";
@@ -467,6 +467,9 @@ export async function runBillingJob(now = new Date()) {
 
   // The admin's Hytale sign-in lapses after 30 days unused (hytale.ts).
   await keepHytaleAlive().catch((err) => console.error("hytale keep-alive failed", err));
+
+  // Card renewals still on the old prices: tell the owner once what comes next (priceChange.ts).
+  await notifyPriceChange(now).catch((err) => console.error("price change notices failed", err));
 
   // Auto-renewing servers whose period ends within a day: charge the saved card.
   result.renewed = await renewDueServers(now).catch((err) => {

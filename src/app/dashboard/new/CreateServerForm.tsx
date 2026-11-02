@@ -6,19 +6,20 @@ import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type AddonOption, type PlanOption } from "@/components/PlanPicker";
 import { addonList, type AddonId } from "@/lib/addons";
-import EditionIcon from "@/components/EditionIcon";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
 import { MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { gameById, gamePluginTitles, isGameId, offeredGames, type GameId } from "@/lib/games";
-import { planById } from "@/lib/plans";
+import { formatPrice, planById } from "@/lib/plans";
+import type { Currency } from "@/i18n/config";
+import { PLAYER_STEPS, type RamUse } from "@/lib/ram";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { EDITION_NAMES } from "@/lib/editions";
 import { OTHER_GAMES, OTHER_GAME_MIN_PLAN, VALHEIM_PASSWORD_MAX, VALHEIM_PRESETS, isOtherGame } from "@/lib/otherGames";
 import { SERVER_PASSWORD_MAX, TERRARIA_KINDS, TMOD_MIN_PLAN, WORLD_DIFFICULTIES, WORLD_SIZES, isTerrariaKind, type TerrariaKind } from "@/lib/terraria";
 import type { Suggestion } from "@/lib/ai";
-import type { HelperPick } from "@/lib/planHelper";
+import { playersPlan, type HelperPick } from "@/lib/planHelper";
 import { Lightbulb } from "lucide-react";
 import AiCreator from "./AiCreator";
 import PlanHelper from "./PlanHelper";
@@ -32,6 +33,7 @@ type Props = {
   helper: Messages["helper"];
   paidAddons: Messages["paidAddons"];
   terraria: Messages["terraria"];
+  gameShort: Record<GameId, string>; // one line per ready game, shown on its tile
   otherGames: Messages["otherGames"];
   valheimPassword: string; // a password to start with; Valheim needs one
   initialEdition?: Edition; // Terraria, Valheim or Hytale, when picked on the home page
@@ -92,7 +94,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -125,6 +127,12 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const promoTyped = !!creator.promo && creatorCode.toLowerCase().replace(/\s+/g, "") === creator.promo.code;
+  // The total from the plan picker, shown on the pay button that stays on screen.
+  const [total, setTotal] = useState<string | null>(null);
+  // How many play at once (PLAYER_STEPS): moving the slider picks the plan, and the price with it.
+  const [step, setStep] = useState(1);
+  // The smallest plan the slider allows for that many players (null: no slider answer applied).
+  const [floor, setFloor] = useState<Plan | null>(null);
   const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
   // Valheim and Hytale need a paid plan with enough memory: picking one moves the plan up if needed.
   function setEdition(ed: string) {
@@ -134,6 +142,42 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       setPlan((p) => (planAtLeast(p, min) ? p : min));
     }
   }
+
+  /** Picks the plan for the players slider and what the server runs (each defaults to what's chosen now). */
+  function applyPlayers(i: number, to: { edition?: string; game?: GameId; pack?: string; terrariaKind?: TerrariaKind } = {}) {
+    const ed = to.edition ?? edition;
+    const g = to.game ?? game;
+    const k = to.terrariaKind ?? terrariaKind;
+    const java = ed === "JAVA";
+    const use: RamUse =
+      (java && (g === "modpack" || g === "mods")) || (ed === "TERRARIA" && k === "tmodloader")
+        ? "mods"
+        : java && gameById(g).plugins.length > 0
+          ? "plugins"
+          : "vanilla";
+    let want = playersPlan(use, PLAYER_STEPS[i].max);
+    // A ready game that wants more memory than that.
+    const gameGb = java && g !== "modpack" ? gameById(g).ramGb : 0;
+    if (gameGb > planById(want).ramGb) want = plans.find((p) => planAtLeast(p.id, want) && planById(p.id).ramGb >= gameGb)?.id ?? "PRO";
+    const min = isOtherGame(ed as Edition)
+      ? OTHER_GAME_MIN_PLAN[ed as (typeof OTHER_GAMES)[number]]
+      : java && g === "modpack"
+        ? packPlan(to.pack ?? pack)
+        : ed === "TERRARIA" && k === "tmodloader"
+          ? TMOD_MIN_PLAN
+          : "FREE";
+    if (!planAtLeast(want, min)) want = min;
+    // The smallest plan from there that can be picked (the free one may be taken).
+    const pick = plans.find((p) => planAtLeast(p.id, want) && !p.disabledNote)?.id ?? want;
+    setStep(i);
+    setFloor(want);
+    setPlan(pick);
+  }
+  // On a fresh form the slider's starting answer picks the plan too (not over a gift or a form sent back).
+  useEffect(() => {
+    if (v.plan === undefined && !gift) applyPlayers(step);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function applySuggestion(s: Suggestion) {
     setEdition(s.edition);
@@ -159,7 +203,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     setAddons(p.addons);
     setCrossplay(p.crossplay);
     setNonPremium(p.nonPremium);
-    setPlan(p.plan);
+    setPlan(floor && !planAtLeast(p.plan, floor) ? floor : p.plan);
     setAiRound((n) => n + 1);
     // So the player sees the form that just filled in, starting with the name it still needs.
     requestAnimationFrame(() => {
@@ -197,6 +241,12 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
                 ? t.modpackNoFree
                 : t.packTooSmall,
         },
+  );
+  // Plans too small for the players on the slider: moving it left is the way to a smaller one.
+  const choices = planChoices.map((p) =>
+    floor && !p.disabledNote && !planAtLeast(p.id, floor)
+      ? { ...p, disabledNote: format(t.playersTooMany, { players: PLAYER_STEPS[step].label }) }
+      : p,
   );
   const planName = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
   // A ready game that's comfortable with more memory than the chosen plan has.
@@ -250,7 +300,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     )}
     <form
       id="server-form"
-      className="card stack"
+      className="new-layout"
       // `action` only serves a submit made before the page's script has loaded.
       action={action}
       onSubmit={(e) => {
@@ -264,21 +314,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         startTransition(() => action(data));
       }}
     >
-      <label>
-        {t.name}
-        <input
-          name="name"
-          required
-          minLength={3}
-          maxLength={32}
-          placeholder={t.namePlaceholder}
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (!subdomainEdited) setSubdomain(slugify(e.target.value));
-          }}
-        />
-      </label>
+      <div className="new-main">
       {aiSettings && (
         <>
           <input type="hidden" name="gameMode" value={aiSettings.gameMode} />
@@ -288,95 +324,160 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           <input type="hidden" name="extraPlugins" value={aiSettings.plugins.join(",")} />
         </>
       )}
-      <fieldset className="stack">
-        <legend>{t.edition}</legend>
-        {(["JAVA", "BEDROCK", "TERRARIA", ...OTHER_GAMES] as const).map((ed) => (
-          <label key={ed} className="choice">
-            <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => setEdition(ed)} />
-            <EditionIcon edition={ed} size={30} />
-            <span>
-              <strong>{ed === "JAVA" || ed === "BEDROCK" ? `Minecraft ${EDITION_NAMES[ed]}` : EDITION_NAMES[ed]}</strong>{" "}
-              <span className="muted">
+      <fieldset className="card new-step">
+        <legend className="new-step-title">{t.edition}</legend>
+        <div className="edition-tiles">
+          {(["JAVA", "BEDROCK", "TERRARIA", ...OTHER_GAMES] as const).map((ed) => (
+            <label key={ed} className="edition-tile">
+              <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => {
+                setEdition(ed);
+                applyPlayers(step, { edition: ed });
+              }} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className={`edition-cover cover-${ed.toLowerCase()}`} src={`/art/covers/${ed.toLowerCase()}.webp`} alt="" loading="lazy" />
+              <strong>
+                {ed === "JAVA" || ed === "BEDROCK" ? (
+                  <>
+                    <span className="edition-tile-pre">Minecraft</span> {EDITION_NAMES[ed]}
+                  </>
+                ) : (
+                  EDITION_NAMES[ed]
+                )}
+              </strong>
+              <span className="muted small">
                 {{ JAVA: t.javaHint, BEDROCK: t.bedrockHint, TERRARIA: terraria.hint, VALHEIM: otherGames.valheim.hint, HYTALE: otherGames.hytale.hint }[ed]}
               </span>
-            </span>
-          </label>
-        ))}
+            </label>
+          ))}
+        </div>
       </fieldset>
-      {edition === "TERRARIA" && (
-        <TerrariaFields
-          t={terraria}
-          values={v}
-          kind={terrariaKind}
-          onKind={(k) => {
-            setTerrariaKind(k);
-            if (k === "tmodloader" && !planAtLeast(plan, TMOD_MIN_PLAN)) setPlan(TMOD_MIN_PLAN);
-          }}
+      <fieldset className="card new-step stack players-step">
+        <legend className="new-step-title">
+          {t.playersTitle} <span className="players-now">{PLAYER_STEPS[step].label}</span>
+        </legend>
+        <input
+          type="range"
+          className="players-slider"
+          min={0}
+          max={PLAYER_STEPS.length - 1}
+          step={1}
+          value={step}
+          aria-valuetext={PLAYER_STEPS[step].label}
+          onChange={(e) => applyPlayers(Number(e.target.value))}
         />
-      )}
-      {edition === "VALHEIM" && <ValheimFields t={otherGames} values={v} password={valheimPassword} />}
-      {edition === "HYTALE" && <p className="notice">{otherGames.hytale.createNote}</p>}
-      {edition === "JAVA" && (
-        <label>
-          {t.subdomain}
-          <span className="address-input">
+        <div className="players-ticks" aria-hidden>
+          {PLAYER_STEPS.map((s, i) => (
+            <button key={s.label} type="button" tabIndex={-1} className={i === step ? "active" : ""} onClick={() => applyPlayers(i)}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <p className="players-result" aria-live="polite">
+          {format(plan === "FREE" ? t.playersFree : t.playersPlan, {
+            players: PLAYER_STEPS[step].label,
+            plan: planName(plan),
+            gb: planById(plan).ramGb,
+            price: formatPrice(plans.find((p) => p.id === plan)?.monthly ?? 0, money.currency as Currency, money.locale),
+          })}
+        </p>
+        <p className="muted small">{t.playersHint}</p>
+      </fieldset>
+      <div className="card new-step">
+        <div className="new-names">
+          <label>
+            {t.name}
             <input
-              name="subdomain"
+              name="name"
               required
               minLength={3}
               maxLength={32}
-              value={subdomain}
+              placeholder={t.namePlaceholder}
+              value={name}
               onChange={(e) => {
-                setSubdomainEdited(true);
-                setSubdomain(toAddress(e.target.value));
-                e.target.setCustomValidity("");
+                setName(e.target.value);
+                if (!subdomainEdited) setSubdomain(slugify(e.target.value));
               }}
-              onBlur={() => setSubdomain((a) => a.replace(/-+$/, ""))}
-              // The browser's own "Podaj wartość w wymaganym formacie" doesn't say what's wrong.
-              onInvalid={(e) => e.currentTarget.setCustomValidity(t.errors.invalidSubdomain)}
             />
-            <span className="muted">.{domain}</span>
-          </span>
-          <span className="muted small">{t.subdomainHint}</span>
-        </label>
+          </label>
+          {edition === "JAVA" && (
+            <label>
+              {t.subdomain}
+              <span className="address-input">
+                <input
+                  name="subdomain"
+                  required
+                  minLength={3}
+                  maxLength={32}
+                  value={subdomain}
+                  onChange={(e) => {
+                    setSubdomainEdited(true);
+                    setSubdomain(toAddress(e.target.value));
+                    e.target.setCustomValidity("");
+                  }}
+                  onBlur={() => setSubdomain((a) => a.replace(/-+$/, ""))}
+                  // The browser's own "Podaj wartość w wymaganym formacie" doesn't say what's wrong.
+                  onInvalid={(e) => e.currentTarget.setCustomValidity(t.errors.invalidSubdomain)}
+                />
+                <span className="muted">.{domain}</span>
+              </span>
+              <span className="muted small">{t.subdomainHint}</span>
+            </label>
+          )}
+        </div>
+      </div>
+      {edition === "TERRARIA" && (
+        <div className="card new-step stack">
+          <TerrariaFields
+            t={terraria}
+            values={v}
+            kind={terrariaKind}
+            onKind={(k) => {
+              setTerrariaKind(k);
+              applyPlayers(step, { terrariaKind: k });
+            }}
+          />
+        </div>
       )}
+      {edition === "VALHEIM" && (
+        <div className="card new-step">
+          <ValheimFields t={otherGames} values={v} password={valheimPassword} />
+        </div>
+      )}
+      {edition === "HYTALE" && <p className="notice">{otherGames.hytale.createNote}</p>}
       {edition === "JAVA" && (
+        <div className="card new-step stack">
         <fieldset className="stack">
-          <legend>{t.game}</legend>
-          <div className="plan-options">
-            {offeredGames(halloween, initialGame).map((g) => {
-              const extras = gamePluginTitles(g.id);
-              return (
-                <label key={g.id} className="choice plan-choice">
-                  <input
-                    type="radio"
-                    name="game"
-                    value={g.id}
-                    checked={game === g.id}
-                    onChange={() => {
-                      setGame(g.id);
-                      if (g.kind === "modpack" && !planAtLeast(plan, packPlan(pack))) setPlan(packPlan(pack));
-                    }}
-                  />
-                  <span className="stack-tight">
-                    <strong>{t.games[g.id]}</strong>
-                    <span className="muted small">{t.gameHints[g.id]}</span>
-                    {extras.length > 0 && <span className="small">{format(t.withPlugins, { list: extras.join(", ") })}</span>}
-                    <span className="ram-pill">{format(t.ramFrom, { gb: g.ramGb })}</span>
-                  </span>
-                </label>
-              );
-            })}
+          <legend className="new-step-title">{t.game}</legend>
+          <div className="game-tiles">
+            {offeredGames(halloween, initialGame).map((g) => (
+              <label key={g.id} className="game-tile">
+                <input
+                  type="radio"
+                  name="game"
+                  value={g.id}
+                  checked={game === g.id}
+                  onChange={() => {
+                    setGame(g.id);
+                    applyPlayers(step, { game: g.id });
+                  }}
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/art/games/${g.id === "oneblock" ? "oneblock-grass" : g.id}.svg`} alt="" width={56} height={56} />
+                <strong>{t.games[g.id]}</strong>
+                <span className="muted small game-tile-short">{gameShort[g.id]}</span>
+                <span className="ram-pill">{format(t.ramFrom, { gb: g.ramGb })}</span>
+              </label>
+            ))}
           </div>
+          <GameDetail t={t} game={game} />
         </fieldset>
-      )}
       {modded && (
         <PackFields
           t={t}
           pack={pack}
           onPack={(slug) => {
             setPack(slug);
-            if (!planAtLeast(plan, packPlan(slug))) setPlan(packPlan(slug));
+            applyPlayers(step, { pack: slug });
           }}
           packIcons={packIcons}
           cfPacks={cfPacks}
@@ -409,15 +510,21 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           </span>
         </label>
       )}
+        </div>
+      )}
+      </div>
+      <aside className="card new-side stack">
       <PlanPicker
         // Remounted when a mod pack rules out smaller plans, so it picks up the new default.
         key={`${minPlan}-${aiRound}`}
-        plans={planChoices}
+        plans={choices}
         defaultPlan={plan}
+        plan={plan}
         periodLabels={{ days: billing.periodDays, off: billing.periodOff }}
         labels={{ plan: t.plan, period: t.period, total: billing.total }}
         formatMoney={money}
         onPlanChange={setPlan}
+        onTotalChange={setTotal}
         // A gift pays for the plan alone; add-ons can be bought later in the panel.
         addons={gifted ? undefined : {
           // The own domain is for Java addresses only.
@@ -484,10 +591,14 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           <PaymentConsent legal={legal} />
         </>
       )}
-      {state.error && <p className="error">{t.errors[state.error]}</p>}
-      <button type="submit" disabled={pending}>
-        {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
-      </button>
+      {/* Pinned to the bottom of the side card (on phones, of the screen) so it's always in sight. */}
+      <div className="new-submit">
+        {state.error && <p className="error">{t.errors[state.error]}</p>}
+        <button type="submit" disabled={pending}>
+          {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
+          {paying && total && !pending && <span className="new-submit-total">{total}</span>}
+        </button>
+      </div>
       {admin && (
         <>
           <button type="submit" className="secondary" name="adminTest" value="on" disabled={pending}>
@@ -496,8 +607,25 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           <p className="muted small">{t.adminTestHint}</p>
         </>
       )}
+      </aside>
     </form>
     </>
+  );
+}
+
+/** The picked ready game in words, under its tile: what it is and the plugins it starts with. */
+function GameDetail({ t, game }: { t: Messages["server"]; game: GameId }) {
+  const extras = gamePluginTitles(game);
+  return (
+    <div className="game-detail" aria-live="polite">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/art/games/${game === "oneblock" ? "oneblock-grass" : game}.svg`} alt="" width={40} height={40} />
+      <span className="stack-tight">
+        <strong>{t.games[game]}</strong>
+        <span className="muted small">{t.gameHints[game]}</span>
+        {extras.length > 0 && <span className="small">{format(t.withPlugins, { list: extras.join(", ") })}</span>}
+      </span>
+    </div>
   );
 }
 

@@ -147,14 +147,14 @@ const pl = {
     ramNote: "To przybliżenie: dużo zależy od wielkości świata, liczby pluginów i wersji gry.",
     ramStart: "Załóż serwer",
     pricingTitle: "Cennik",
-    pricingSubtitle: "Płacisz z góry za 7, 30, 60 lub 90 dni: za 60 dni 5% taniej, za 90 dni 10% taniej. Plan odnawia się sam tylko wtedy, gdy włączysz to przy płatności kartą.",
+    pricingSubtitle: "Płacisz z góry za 7, 30, 60 lub 90 dni: za 60 dni 5% taniej, za 90 dni 10% taniej. Plan odnawia się sam tylko wtedy, gdy włączysz to przy płatności kartą. Bez ceny „na start”, która po pierwszym miesiącu rośnie kilka razy.",
     perMonth: "/ 30 dni",
     longerPeriod: "albo {price} za 90 dni (−10%)",
     freeForever: "Bez karty i bez limitu czasu",
     recommended: "Polecany",
     startFree: "Zacznij za darmo",
     choosePlan: "Wybierz plan",
-    paymentMethods: "Karta · BLIK · Przelewy24",
+    paymentMethods: "Karta · BLIK · Przelewy24 · ceny zawierają 23% VAT",
     faqTitle: "Najczęściej zadawane pytania",
     faq: [
       {
@@ -586,6 +586,11 @@ const pl = {
     crossplayHint: "Gracze z telefonów, konsol i Windows 10/11 (Bedrock) dołączą razem z graczami z Javy. Adres i port dla nich zobaczysz na stronie serwera.",
     withPlugins: "Pluginy: {list}",
     ramLow: "{game} najlepiej działa od {gb} GB RAM, a wybrany plan ma {plan} GB. Serwer ruszy, ale przy wielu graczach może się przycinać.",
+    playersTitle: "Ilu graczy będzie grać naraz?",
+    playersPlan: "Polecamy plan {plan}: {gb} GB RAM za {price} / 30 dni.",
+    playersFree: "Wystarczy plan {plan}: {gb} GB RAM za darmo. Serwer usypia się, gdy nikt nie gra.",
+    playersHint: "Przesuń suwak, a plan i cena dobiorą się same. Większy plan możesz wybrać obok.",
+    playersTooMany: "za mały dla {players} graczy",
     ramHelp: "Nie wiesz, ile RAM-u potrzebujesz?",
     ramHelpLink: "Sprawdź w kalkulatorze",
     packPlan: "plan {plan} lub większy",
@@ -1402,6 +1407,14 @@ const pl = {
   planMail: {
     paidAutoRenew:
       "Plan {plan} jest opłacony do {date}. Odnawia się automatycznie: dzień przed końcem pobierzemy opłatę z karty {card}. Wyłączysz to w panelu, w Plan i płatności.",
+    priceChange: {
+      subject: "Nowe ceny przy odnawianiu serwera {server}",
+      paragraphs: [
+        "Od {deleteOn} automatyczne odnawianie serwera {server} pobierze za {renewDays} dni {newPrice} zamiast {oldPrice}. Ceny zawierają 23% VAT.",
+        "Do tego dnia odnowienia idą po starej cenie. Jeśli nie chcesz płacić nowej ceny, wyłącz automatyczne odnawianie w panelu, w zakładce Plan i płatności. Serwer będzie działał do końca opłaconego okresu.",
+      ],
+      button: "Plan i płatności",
+    },
     renewFailed: {
       subject: "Nie udało się przedłużyć serwera {server}",
       paragraphs: [
@@ -1817,7 +1830,13 @@ const pl = {
   resourcePack: {
     title: "Paczka tekstur",
     intro:
-      "Paczki tekstur nie wgrywa się do plików serwera. Serwer daje graczom link do pliku .zip, a gra sama pobiera paczkę przy wejściu na serwer.",
+      "Wgraj plik .zip z paczką albo wklej link do niego. Gra każdego gracza sama pobierze paczkę przy wejściu na serwer.",
+    sourceUpload: "Wgraj plik",
+    sourceLink: "Wklej link",
+    file: "Plik paczki (.zip)",
+    fileHint: "Do 250 MB. Plik zajmuje miejsce na dysku serwera, a gracze pobierają go z naszej strony.",
+    fileHintSaved: "Paczka jest już wgrana. Wybierz nowy plik, żeby ją podmienić, albo zostaw puste, żeby zmienić tylko opcje poniżej.",
+    uploading: "Wysyłanie paczki… {percent}%",
     url: "Link do paczki (.zip)",
     urlHint:
       "Musi to być bezpośredni link do pliku. Linki z Dropboxa i Google Drive poprawimy sami. Przy zapisie pobieramy paczkę raz, żeby sprawdzić, czy działa (do 250 MB).",
@@ -1832,19 +1851,24 @@ const pl = {
     remove: "Usuń paczkę",
     saved: "Zapisano. Gracze dostaną paczkę przy następnym wejściu na serwer.",
     removed: "Usunięto paczkę. Gracze wchodzą bez niej.",
-    howTitle: "Skąd wziąć link?",
+    howTitle: "Jak dodać paczkę?",
     how: [
-      "Najprościej: wgraj plik .zip na mc-packs.net i skopiuj link „Download URL”.",
+      "Najprościej: wybierz „Wgraj plik” i dodaj plik .zip z komputera. W środku pliku, od razu (nie w dodatkowym folderze), musi być pack.mcmeta.",
+      "Masz paczkę na mc-packs.net? Wybierz „Wklej link” i wklej jej „Download URL”.",
       "Dropbox: wgraj plik, kliknij Udostępnij > Kopiuj link i wklej go tutaj.",
       "Google Drive: wgraj plik, ustaw dostęp „Każda osoba mająca link” i wklej link tutaj.",
-      "Po zmianie paczki wgraj nową wersję i zapisz link jeszcze raz, żeby gracze ją pobrali.",
+      "Po zmianie paczki wgraj tutaj nowy plik (albo zapisz link jeszcze raz), żeby gracze ją pobrali.",
     ],
     bedrockNote: "Gracze z Bedrocka (crossplay) tej paczki nie dostaną, bo Bedrock używa innego formatu paczek.",
     errors: {
       invalidUrl: "To nie wygląda na link. Wklej pełny adres zaczynający się od https://.",
       unreachable: "Nie udało się pobrać pliku z tego linku. Sprawdź, czy link jest publiczny i czy plik nadal istnieje.",
-      notZip: "Pod tym linkiem jest strona, a nie plik .zip. Potrzebny jest bezpośredni link do pobrania pliku.",
+      notZip: "To nie jest plik .zip. Jeśli wklejasz link, musi to być bezpośredni link do pobrania pliku, a nie strona.",
       tooBig: "Paczka jest większa niż 250 MB. Minecraft nie przyjmie takiej paczki.",
+      noFile: "Wybierz plik .zip z paczką.",
+      uploadFailed: "Nie udało się wysłać pliku. Sprawdź internet i spróbuj ponownie.",
+      noSpace: "Na dysku serwera brakuje miejsca na tę paczkę. Usuń niepotrzebne pliki albo dokup miejsce.",
+      readOnly: "Serwer nie jest opłacony, więc nie można teraz wgrywać plików.",
       promptTooLong: "Wiadomość może mieć najwyżej 150 znaków w jednej linii.",
       applyFailed: "Zapisano, ale nie udało się przebudować serwera. Spróbuj ponownie za chwilę.",
     },

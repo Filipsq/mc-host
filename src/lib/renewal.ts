@@ -2,7 +2,11 @@ import "server-only";
 import type { Server } from "@prisma/client";
 import { db } from "./db";
 import { stripe } from "./stripe";
-import { fulfillPayment, priceFor } from "./billing";
+import { fulfillPayment } from "./billing";
+import { renewalPriceFor, oldPriceFor, keepsOldPrice } from "./priceChange";
+import { formatPrice } from "./plans";
+import { periodPrice } from "./periods";
+import { monthlyWithAddons } from "./addons";
 import { PERIOD_DAYS, type PeriodDays } from "./periods";
 import { sendPlanMail } from "./planMail";
 import { serverAddons } from "./addons";
@@ -47,7 +51,7 @@ async function renew(server: Server & { owner: { email: string; locale: string }
   const days = (PERIOD_DAYS as readonly number[]).includes(server.renewDays ?? 0) ? (server.renewDays as PeriodDays) : 30;
   const currency = (server.renewCurrency ?? "PLN") as Currency;
   const addons = serverAddons(server);
-  const amount = Math.round(priceFor(server.plan, days, currency, addons) * 100);
+  const amount = Math.round(renewalPriceFor(server, server.plan, days, currency, addons) * 100);
   const payment = await db.payment.create({
     data: { userId: server.ownerId, serverId: server.id, plan: server.plan, days, amount, currency, startConsent: true, renewal: true, addons },
   });
@@ -83,4 +87,34 @@ async function renew(server: Server & { owner: { email: string; locale: string }
   if (succeeded) await fulfillPayment(payment.id);
   console.info("renewed", server.id, days, "days");
   return true;
+}
+
+/**
+ * Tells owners whose card renewal still runs at the old prices (priceChange.ts)
+ * what the next renewals will cost and from when, once. Returns how many were told.
+ */
+export async function notifyPriceChange(now = new Date()) {
+  const due = await db.server.findMany({
+    where: { autoRenew: true, plan: { not: "FREE" }, oldPriceUntil: { gt: now }, priceNoticeAt: null },
+    include: { owner: { select: { email: true, locale: true } } },
+  });
+  let told = 0;
+  for (const s of due) {
+    if (!keepsOldPrice(s, now)) continue;
+    // Claim first so overlapping runs mail once.
+    const { count } = await db.server.updateMany({ where: { id: s.id, priceNoticeAt: null }, data: { priceNoticeAt: now } });
+    if (count === 0) continue;
+    const days = (PERIOD_DAYS as readonly number[]).includes(s.renewDays ?? 0) ? (s.renewDays as PeriodDays) : 30;
+    const currency = (s.renewCurrency ?? "PLN") as Currency;
+    const addons = serverAddons(s);
+    const locale = s.owner.locale === "en" ? "en" : "pl";
+    const price = (n: number) => formatPrice(n, currency, locale);
+    const sent = await sendPlanMail("priceChange", s, s.oldPriceUntil!, {
+      renewDays: String(days),
+      oldPrice: price(oldPriceFor(s.plan, days, currency, addons)),
+      newPrice: price(periodPrice(monthlyWithAddons(s.plan, addons, currency), days)),
+    });
+    if (sent) told++;
+  }
+  return told;
 }

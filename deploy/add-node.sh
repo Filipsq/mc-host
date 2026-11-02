@@ -67,6 +67,9 @@ CONF
 fi
 # shellcheck disable=SC1090
 source "$STATE"
+# Where to reach it, for ./update-nodes.sh.
+sed -i '/^NODE_TARGET=/d' "$STATE"
+echo "NODE_TARGET=$TARGET" >> "$STATE"
 
 MAIN_IP=$(curl -fsS4 https://api.ipify.org)
 BUNDLE=$(printf '%s\n' "$NODE_ID" "$NODE_WG" "$NODE_KEY" "$MAIN_PUB" "$MAIN_IP" "$AGENT_TOKEN" | base64 -w0)
@@ -83,14 +86,19 @@ PREBUILT=""
 arch=$("${SSH[@]}" "$TARGET" 'command -v docker >/dev/null && uname -m' || true)
 case "$arch" in x86_64) arch=amd64 ;; aarch64) arch=arm64 ;; *) arch="" ;; esac
 if [ -n "$arch" ]; then
-  echo "Building the agent for $NODE_ID ($arch)..."
-  docker build -q --platform "linux/$arch" -t "mchost-node-agent:$arch" ../agent >/dev/null
+  # update-nodes.sh builds it once for all the machines (SKIP_BUILD=1).
+  if [ -z "${SKIP_BUILD:-}" ]; then
+    echo "Building the agent for $NODE_ID ($arch)..."
+    docker build -q --platform "linux/$arch" -t "mchost-node-agent:$arch" ../agent >/dev/null
+  fi
   echo "Sending it to $NODE_ID..."
   docker save "mchost-node-agent:$arch" | gzip | "${SSH[@]}" "$TARGET" \
     "gunzip | $SUDO docker load -q >/dev/null && $SUDO docker tag mchost-node-agent:$arch mchost-agent:latest"
   PREBUILT=prebuilt
 fi
-"${SSH[@]}" -t "$TARGET" "$SUDO mc-host/deploy/node-setup.sh $BUNDLE $PREBUILT"
+TTY=()
+[ -t 0 ] && TTY=(-t)
+"${SSH[@]}" "${TTY[@]}" "$TARGET" "$SUDO mc-host/deploy/node-setup.sh $BUNDLE $PREBUILT"
 
 echo "Checking that this machine reaches it through the tunnel..."
 stats=""
@@ -106,7 +114,8 @@ fi
 # List it in NODES (replacing an earlier entry for the same id) and restart the site with it.
 # OVERBOOK=2.5 ./add-node.sh … sells this machine's memory that many times (instead of
 # MEMORY_OVERBOOK); without it an earlier entry's setting is kept.
-python3 - "$NODE_ID" "$NODE_WG" "$AGENT_TOKEN" "$NODE_ID.$DOMAIN" "$stats" "${OVERBOOK:-}" <<'PY'
+# The lock lets update-nodes.sh run this for several machines at once.
+flock .env.lock python3 - "$NODE_ID" "$NODE_WG" "$AGENT_TOKEN" "$NODE_ID.$DOMAIN" "$stats" "${OVERBOOK:-}" <<'PY'
 import json, re, sys
 node_id, wg_ip, token, host, stats, overbook = sys.argv[1:]
 node = {"id": node_id, "url": f"http://{wg_ip}:8081", "token": token, "host": host,
@@ -129,7 +138,8 @@ with open(".env", "w") as f:
     f.write("\n".join(lines) + "\n")
 print(f"{node_id} has {node['memoryLimitMb']} MB for servers" + (f", sold {node['overbook']}x." if "overbook" in node else "."))
 PY
-docker compose up -d >/dev/null
+# update-nodes.sh restarts the site once, after all the machines (NO_RESTART=1).
+[ -n "${NO_RESTART:-}" ] || docker compose up -d >/dev/null
 
 cat <<INFO
 
