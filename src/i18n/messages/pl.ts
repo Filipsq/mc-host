@@ -770,6 +770,8 @@ const pl = {
       invalidValheimPassword: "Hasło do Valheim: 5–20 liter lub cyfr, i nie może być częścią nazwy serwera",
       whitelistEmpty: "Dopisz co najmniej jednego gracza albo wyłącz listę",
       invalidPlayer: "Niepoprawny nick: {player}",
+      unknownPlayer:
+        "Nie ma konta Minecraft (premium) o nicku {player}, a serwer z takim nickiem na liście się nie uruchomi. Sprawdź pisownię albo włącz Non-premium, jeśli ten gracz gra bez konta.",
       maxPlayersRange: "Liczba graczy musi być od 1 do limitu planu",
       viewDistanceRange: "Pole widzenia jest poza zakresem dla tego planu",
       tooManyPlayers: "Lista może mieć najwyżej 100 graczy",

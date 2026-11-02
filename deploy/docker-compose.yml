@@ -56,6 +56,9 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/lib/docker/volumes:/var/lib/docker/volumes
+      # The machine's certificates, kept current by apt: the agent downloads Geyser
+      # and Floodgate (agent/crossplay.go) from a site whose chain the image's lack.
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
       - agent-state:/state
       - backups:/backups
 

@@ -90,13 +90,9 @@ const authMe = "9js4IEHC"
 
 // Crossplay: Geyser lets Bedrock players into a Java server, and Floodgate lets
 // them in without a Java account (Geyser switches to it by itself when both run
-// on the same server). Neither Paper build is on Modrinth, so they come from
-// GeyserMC. Geyser speaks the newest Java version; ViaVersion (on Modrinth)
-// lets it into a server running an older one.
-var crossplayPlugins = []string{
-	"https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot",
-	"https://download.geysermc.org/v2/projects/floodgate/versions/latest/builds/latest/downloads/spigot",
-}
+// on the same server). Neither Paper build is on Modrinth, so the agent brings
+// them from GeyserMC (crossplay.go). Geyser speaks the newest Java version;
+// ViaVersion (on Modrinth) lets it into a server running an older one.
 
 const viaVersion = "viaversion"
 
@@ -115,7 +111,7 @@ const signalingPort = "19132/tcp"
 // build for the server's version is skipped (with a warning in the console)
 // instead of keeping the server down, and doesn't hold back the version a game
 // mode picks; the login plugin isn't, so a non-premium server never runs
-// without it. Crossplay adds Geyser and Floodgate. The lists are always set,
+// without it. The lists are always set,
 // even empty, because the image removes the plugins and mods it installed
 // that are no longer listed.
 func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) []string {
@@ -151,18 +147,19 @@ func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) 
 			unique = append(unique, p)
 		}
 	}
-	env := []string{"MODRINTH_PROJECTS=" + strings.Join(unique, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
+	// A release when there is one, else the newest beta or alpha: some mods a
+	// mod needs only ever come out as betas (MezzConfig, which JEI needs), and
+	// with releases only the image stopped the start ("NoApplicableVersionsException").
+	env := []string{"MODRINTH_PROJECTS=" + strings.Join(unique, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required", "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=alpha+"}
 	if loaderTypes[kind] != "" {
 		// Always set on a mod loader, so the mods removed in the panel leave the server.
 		env = append(env, "CURSEFORGE_FILES="+strings.Join(curseforge, ","))
 	}
 	if paperKinds[kind] {
-		// Always set on Paper, so turning crossplay off removes the two plugins (and only them).
-		var urls []string
-		if crossplay {
-			urls = crossplayPlugins
-		}
-		env = append(env, "PLUGINS="+strings.Join(urls, ","))
+		// Always set (empty) on Paper: servers made before the agent brought Geyser
+		// and Floodgate itself had the image download them, and an empty list
+		// makes the image remove those copies (and only them).
+		env = append(env, "PLUGINS=")
 	}
 	return env
 }
@@ -935,6 +932,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		hostIP = "127.0.0.1" // players come in through the router, not directly
 		limitMb = req.MemoryMb + javaHeadroomMb(req.MemoryMb)
 		if req.Crossplay {
+			labels["mchost.crossplay"] = "true" // startServer puts Geyser and Floodgate in (crossplay.go)
 			// Bedrock has no hostname to route by, so Geyser gets the server's own
 			// port, open to everyone, over UDP for play and TCP for NetherNet's
 			// first step. That takes the TCP port the Java side is otherwise
