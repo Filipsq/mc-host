@@ -125,6 +125,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const promoTyped = !!creator.promo && creatorCode.toLowerCase().replace(/\s+/g, "") === creator.promo.code;
+  // The total from the plan picker, shown on the pay button that stays on screen.
+  const [total, setTotal] = useState<string | null>(null);
   const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
   // Valheim and Hytale need a paid plan with enough memory: picking one moves the plan up if needed.
   function setEdition(ed: string) {
@@ -439,6 +441,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         labels={{ plan: t.plan, period: t.period, total: billing.total }}
         formatMoney={money}
         onPlanChange={setPlan}
+        onTotalChange={setTotal}
         // A gift pays for the plan alone; add-ons can be bought later in the panel.
         addons={gifted ? undefined : {
           // The own domain is for Java addresses only.
@@ -505,10 +508,14 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           <PaymentConsent legal={legal} />
         </>
       )}
-      {state.error && <p className="error">{t.errors[state.error]}</p>}
-      <button type="submit" disabled={pending}>
-        {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
-      </button>
+      {/* Pinned to the bottom of the side card (on phones, of the screen) so it's always in sight. */}
+      <div className="new-submit">
+        {state.error && <p className="error">{t.errors[state.error]}</p>}
+        <button type="submit" disabled={pending}>
+          {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
+          {paying && total && !pending && <span className="new-submit-total">{total}</span>}
+        </button>
+      </div>
       {admin && (
         <>
           <button type="submit" className="secondary" name="adminTest" value="on" disabled={pending}>
