@@ -37,34 +37,62 @@ const crossplayRefresh = 6 * time.Hour
 
 const crossplayMaxBytes = 100 << 20
 
-var (
-	crossplayMu       sync.Mutex
-	crossplayFetching bool
-)
-
-// crossplayDownload is the HTTP client for GeyserMC; tests point it elsewhere.
+// crossplayDownload is the HTTP client for GeyserMC.
 var crossplayDownload = &http.Client{Timeout: 2 * time.Minute}
 
 func (a *agent) crossplayCacheDir() string { return filepath.Join(a.stateDir, "crossplay") }
 
-// crossplayCache returns the cached jars' paths, downloading them now if any is
-// missing and in the background when they're old. Nil if they can't be had.
-func (a *agent) crossplayCache(ctx context.Context) []string {
-	dir := a.crossplayCacheDir()
+// crossplayWait is the longest a start waits for a first download. The panel
+// gives up on a start after 15s, and a start the panel gave up on never ran
+// ("bakus" stayed off, 2026-11-02); without the jars the server starts anyway.
+var crossplayWait = 8 * time.Second
+
+var (
+	crossplayMu   sync.Mutex
+	crossplayDone chan struct{} // closed when the download running now ends; nil when none runs
+)
+
+// crossplayFetchAsync starts downloading the jars unless that's already
+// running, apart from any request (so a start that ends doesn't cut it off),
+// and returns a channel closed when it ends.
+func (a *agent) crossplayFetchAsync() <-chan struct{} {
+	crossplayMu.Lock()
+	defer crossplayMu.Unlock()
+	if crossplayDone != nil {
+		return crossplayDone
+	}
+	done := make(chan struct{})
+	crossplayDone = done
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		if err := a.fetchCrossplay(ctx); err != nil {
+			log.Printf("crossplay: downloading Geyser and Floodgate: %v", err)
+		}
+		crossplayMu.Lock()
+		crossplayDone = nil
+		crossplayMu.Unlock()
+		close(done)
+	}()
+	return done
+}
+
+// warmCrossplay fills the cache when the agent starts, so starts find it ready.
+func (a *agent) warmCrossplay() {
+	if len(a.crossplayPaths()) == 0 {
+		a.crossplayFetchAsync()
+	}
+}
+
+// crossplayPaths returns the cached jars' paths, all or none, and starts a
+// download in the background when they're old.
+func (a *agent) crossplayPaths() []string {
 	var paths []string
 	oldest := time.Now()
 	for _, j := range crossplayJars {
-		p := filepath.Join(dir, j.file)
+		p := filepath.Join(a.crossplayCacheDir(), j.file)
 		fi, err := os.Stat(p)
-		if errors.Is(err, fs.ErrNotExist) {
-			if err := a.fetchCrossplay(ctx); err != nil {
-				log.Printf("crossplay: %v", err)
-				return nil
-			}
-			fi, err = os.Stat(p)
-		}
 		if err != nil {
-			log.Printf("crossplay: %v", err)
 			return nil
 		}
 		paths = append(paths, p)
@@ -73,23 +101,24 @@ func (a *agent) crossplayCache(ctx context.Context) []string {
 		}
 	}
 	if time.Since(oldest) > crossplayRefresh {
-		crossplayMu.Lock()
-		if !crossplayFetching {
-			crossplayFetching = true
-			go func() {
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-				defer cancel()
-				if err := a.fetchCrossplay(ctx); err != nil {
-					log.Printf("crossplay refresh: %v (keeping the copies we have)", err)
-				}
-				crossplayMu.Lock()
-				crossplayFetching = false
-				crossplayMu.Unlock()
-			}()
-		}
-		crossplayMu.Unlock()
+		a.crossplayFetchAsync() // the old copies serve meanwhile
 	}
 	return paths
+}
+
+// crossplayCache returns the cached jars' paths, waiting up to crossplayWait
+// for a download when there are none yet. Nil if they can't be had now.
+func (a *agent) crossplayCache(ctx context.Context) []string {
+	if paths := a.crossplayPaths(); paths != nil {
+		return paths
+	}
+	select {
+	case <-a.crossplayFetchAsync():
+	case <-time.After(crossplayWait):
+		log.Printf("crossplay: Geyser and Floodgate are still downloading; this start goes on without them")
+	case <-ctx.Done():
+	}
+	return a.crossplayPaths()
 }
 
 // fetchCrossplay downloads every jar into the cache, each replacing its old copy only once complete.

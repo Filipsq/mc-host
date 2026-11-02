@@ -286,6 +286,7 @@ func main() {
 	go a.watchDisk(context.Background())
 	go a.watchMetrics(context.Background())
 	go a.watchBedrockPorts(context.Background())
+	go a.warmCrossplay()
 
 	gameAddr := envOr("GAME_ADDR", ":25565")
 	ln, err := net.Listen("tcp", gameAddr)
