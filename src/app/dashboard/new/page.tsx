@@ -70,7 +70,7 @@ export default async function NewServerPage({ searchParams }: Props) {
   const packIcons = Object.fromEntries(CURATED_PACKS.map((p) => [p.slug, packArt.get(p.slug)?.icon]));
 
   return (
-    <main className="wide-form stack">
+    <main className="new-page stack">
       <Link className="back" href="/dashboard">{t.server.back}</Link>
       <CreateServerForm
         title={t.server.newTitle}
@@ -79,6 +79,7 @@ export default async function NewServerPage({ searchParams }: Props) {
         paidAddons={t.paidAddons}
         addonOptions={addonOptions(t, currency)}
         terraria={t.terraria}
+        gameShort={t.home.gameShort}
         otherGames={t.otherGames}
         valheimPassword={newValheimPassword()}
         initialEdition={game === "terraria" ? "TERRARIA" : game === "valheim" ? "VALHEIM" : game === "hytale" ? "HYTALE" : undefined}

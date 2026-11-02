@@ -6,7 +6,6 @@ import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type AddonOption, type PlanOption } from "@/components/PlanPicker";
 import { addonList, type AddonId } from "@/lib/addons";
-import EditionIcon from "@/components/EditionIcon";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
@@ -32,6 +31,7 @@ type Props = {
   helper: Messages["helper"];
   paidAddons: Messages["paidAddons"];
   terraria: Messages["terraria"];
+  gameShort: Record<GameId, string>; // one line per ready game, shown on its tile
   otherGames: Messages["otherGames"];
   valheimPassword: string; // a password to start with; Valheim needs one
   initialEdition?: Edition; // Terraria, Valheim or Hytale, when picked on the home page
@@ -92,7 +92,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -250,7 +250,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     )}
     <form
       id="server-form"
-      className="card stack"
+      className="new-layout"
       // `action` only serves a submit made before the page's script has loaded.
       action={action}
       onSubmit={(e) => {
@@ -264,21 +264,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         startTransition(() => action(data));
       }}
     >
-      <label>
-        {t.name}
-        <input
-          name="name"
-          required
-          minLength={3}
-          maxLength={32}
-          placeholder={t.namePlaceholder}
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (!subdomainEdited) setSubdomain(slugify(e.target.value));
-          }}
-        />
-      </label>
+      <div className="new-main">
       {aiSettings && (
         <>
           <input type="hidden" name="gameMode" value={aiSettings.gameMode} />
@@ -288,88 +274,119 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           <input type="hidden" name="extraPlugins" value={aiSettings.plugins.join(",")} />
         </>
       )}
-      <fieldset className="stack">
-        <legend>{t.edition}</legend>
-        {(["JAVA", "BEDROCK", "TERRARIA", ...OTHER_GAMES] as const).map((ed) => (
-          <label key={ed} className="choice">
-            <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => setEdition(ed)} />
-            <EditionIcon edition={ed} size={30} />
-            <span>
-              <strong>{ed === "JAVA" || ed === "BEDROCK" ? `Minecraft ${EDITION_NAMES[ed]}` : EDITION_NAMES[ed]}</strong>{" "}
-              <span className="muted">
+      <fieldset className="card new-step">
+        <legend className="new-step-title">{t.edition}</legend>
+        <div className="edition-tiles">
+          {(["JAVA", "BEDROCK", "TERRARIA", ...OTHER_GAMES] as const).map((ed) => (
+            <label key={ed} className="edition-tile">
+              <input type="radio" name="edition" value={ed} checked={edition === ed} onChange={() => setEdition(ed)} />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className={`edition-cover cover-${ed.toLowerCase()}`} src={`/art/covers/${ed.toLowerCase()}.webp`} alt="" loading="lazy" />
+              <strong>
+                {ed === "JAVA" || ed === "BEDROCK" ? (
+                  <>
+                    <span className="edition-tile-pre">Minecraft</span> {EDITION_NAMES[ed]}
+                  </>
+                ) : (
+                  EDITION_NAMES[ed]
+                )}
+              </strong>
+              <span className="muted small">
                 {{ JAVA: t.javaHint, BEDROCK: t.bedrockHint, TERRARIA: terraria.hint, VALHEIM: otherGames.valheim.hint, HYTALE: otherGames.hytale.hint }[ed]}
               </span>
-            </span>
-          </label>
-        ))}
+            </label>
+          ))}
+        </div>
       </fieldset>
-      {edition === "TERRARIA" && (
-        <TerrariaFields
-          t={terraria}
-          values={v}
-          kind={terrariaKind}
-          onKind={(k) => {
-            setTerrariaKind(k);
-            if (k === "tmodloader" && !planAtLeast(plan, TMOD_MIN_PLAN)) setPlan(TMOD_MIN_PLAN);
-          }}
-        />
-      )}
-      {edition === "VALHEIM" && <ValheimFields t={otherGames} values={v} password={valheimPassword} />}
-      {edition === "HYTALE" && <p className="notice">{otherGames.hytale.createNote}</p>}
-      {edition === "JAVA" && (
-        <label>
-          {t.subdomain}
-          <span className="address-input">
+      <div className="card new-step">
+        <div className="new-names">
+          <label>
+            {t.name}
             <input
-              name="subdomain"
+              name="name"
               required
               minLength={3}
               maxLength={32}
-              value={subdomain}
+              placeholder={t.namePlaceholder}
+              value={name}
               onChange={(e) => {
-                setSubdomainEdited(true);
-                setSubdomain(toAddress(e.target.value));
-                e.target.setCustomValidity("");
+                setName(e.target.value);
+                if (!subdomainEdited) setSubdomain(slugify(e.target.value));
               }}
-              onBlur={() => setSubdomain((a) => a.replace(/-+$/, ""))}
-              // The browser's own "Podaj wartość w wymaganym formacie" doesn't say what's wrong.
-              onInvalid={(e) => e.currentTarget.setCustomValidity(t.errors.invalidSubdomain)}
             />
-            <span className="muted">.{domain}</span>
-          </span>
-          <span className="muted small">{t.subdomainHint}</span>
-        </label>
+          </label>
+          {edition === "JAVA" && (
+            <label>
+              {t.subdomain}
+              <span className="address-input">
+                <input
+                  name="subdomain"
+                  required
+                  minLength={3}
+                  maxLength={32}
+                  value={subdomain}
+                  onChange={(e) => {
+                    setSubdomainEdited(true);
+                    setSubdomain(toAddress(e.target.value));
+                    e.target.setCustomValidity("");
+                  }}
+                  onBlur={() => setSubdomain((a) => a.replace(/-+$/, ""))}
+                  // The browser's own "Podaj wartość w wymaganym formacie" doesn't say what's wrong.
+                  onInvalid={(e) => e.currentTarget.setCustomValidity(t.errors.invalidSubdomain)}
+                />
+                <span className="muted">.{domain}</span>
+              </span>
+              <span className="muted small">{t.subdomainHint}</span>
+            </label>
+          )}
+        </div>
+      </div>
+      {edition === "TERRARIA" && (
+        <div className="card new-step stack">
+          <TerrariaFields
+            t={terraria}
+            values={v}
+            kind={terrariaKind}
+            onKind={(k) => {
+              setTerrariaKind(k);
+              if (k === "tmodloader" && !planAtLeast(plan, TMOD_MIN_PLAN)) setPlan(TMOD_MIN_PLAN);
+            }}
+          />
+        </div>
       )}
+      {edition === "VALHEIM" && (
+        <div className="card new-step">
+          <ValheimFields t={otherGames} values={v} password={valheimPassword} />
+        </div>
+      )}
+      {edition === "HYTALE" && <p className="notice">{otherGames.hytale.createNote}</p>}
       {edition === "JAVA" && (
+        <div className="card new-step stack">
         <fieldset className="stack">
-          <legend>{t.game}</legend>
-          <div className="plan-options">
-            {offeredGames(halloween, initialGame).map((g) => {
-              const extras = gamePluginTitles(g.id);
-              return (
-                <label key={g.id} className="choice plan-choice">
-                  <input
-                    type="radio"
-                    name="game"
-                    value={g.id}
-                    checked={game === g.id}
-                    onChange={() => {
-                      setGame(g.id);
-                      if (g.kind === "modpack" && !planAtLeast(plan, packPlan(pack))) setPlan(packPlan(pack));
-                    }}
-                  />
-                  <span className="stack-tight">
-                    <strong>{t.games[g.id]}</strong>
-                    <span className="muted small">{t.gameHints[g.id]}</span>
-                    {extras.length > 0 && <span className="small">{format(t.withPlugins, { list: extras.join(", ") })}</span>}
-                    <span className="ram-pill">{format(t.ramFrom, { gb: g.ramGb })}</span>
-                  </span>
-                </label>
-              );
-            })}
+          <legend className="new-step-title">{t.game}</legend>
+          <div className="game-tiles">
+            {offeredGames(halloween, initialGame).map((g) => (
+              <label key={g.id} className="game-tile">
+                <input
+                  type="radio"
+                  name="game"
+                  value={g.id}
+                  checked={game === g.id}
+                  onChange={() => {
+                    setGame(g.id);
+                    if (g.kind === "modpack" && !planAtLeast(plan, packPlan(pack))) setPlan(packPlan(pack));
+                  }}
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/art/games/${g.id === "oneblock" ? "oneblock-grass" : g.id}.svg`} alt="" width={56} height={56} />
+                <strong>{t.games[g.id]}</strong>
+                <span className="muted small game-tile-short">{gameShort[g.id]}</span>
+                <span className="ram-pill">{format(t.ramFrom, { gb: g.ramGb })}</span>
+              </label>
+            ))}
           </div>
+          <GameDetail t={t} game={game} />
         </fieldset>
-      )}
       {modded && (
         <PackFields
           t={t}
@@ -409,6 +426,10 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           </span>
         </label>
       )}
+        </div>
+      )}
+      </div>
+      <aside className="card new-side stack">
       <PlanPicker
         // Remounted when a mod pack rules out smaller plans, so it picks up the new default.
         key={`${minPlan}-${aiRound}`}
@@ -496,8 +517,25 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           <p className="muted small">{t.adminTestHint}</p>
         </>
       )}
+      </aside>
     </form>
     </>
+  );
+}
+
+/** The picked ready game in words, under its tile: what it is and the plugins it starts with. */
+function GameDetail({ t, game }: { t: Messages["server"]; game: GameId }) {
+  const extras = gamePluginTitles(game);
+  return (
+    <div className="game-detail" aria-live="polite">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={`/art/games/${game === "oneblock" ? "oneblock-grass" : game}.svg`} alt="" width={40} height={40} />
+      <span className="stack-tight">
+        <strong>{t.games[game]}</strong>
+        <span className="muted small">{t.gameHints[game]}</span>
+        {extras.length > 0 && <span className="small">{format(t.withPlugins, { list: extras.join(", ") })}</span>}
+      </span>
+    </div>
   );
 }
 
