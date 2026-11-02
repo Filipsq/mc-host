@@ -946,6 +946,11 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .details dd { margin: 2px 0 0; word-break: break-word; }
 .pay-status { font-weight: 600; white-space: nowrap; }
 .admin-table td.over { color: var(--error); font-weight: 600; }
+.stat-value.over { color: var(--error); }
+.stat-value.good { color: var(--accent-strong); }
+.cost-input { display: flex; gap: 6px; min-width: 190px; }
+.cost-input input { width: 110px; padding: 8px 10px; }
+.cost-input select { padding: 8px 10px; }
 .machine-cell { display: flex; flex-direction: column; gap: 6px; min-width: 130px; white-space: nowrap; }
 .disk-line { display: block; margin-top: 2px; }
 .pay-status.paid { color: var(--accent-strong); }
