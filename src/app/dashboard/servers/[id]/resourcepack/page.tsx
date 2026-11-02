@@ -3,10 +3,11 @@ import { getSession } from "@/lib/session";
 import { getMessages } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
 import { getLiveDetailsOnce } from "@/lib/servers";
+import { PACK_MAX_BYTES, isUploadedPack } from "@/lib/resourcePack";
 import PackForm from "./PackForm";
 
 // The resource pack (texture pack) players' games download on joining a Java
-// server: a link to its .zip, whether players must take it, and the line the
+// server: a .zip uploaded here or a link to one, whether players must take it, and the line the
 // game shows with the question (src/lib/resourcePack.ts).
 export default async function ResourcePackPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -24,7 +25,13 @@ export default async function ResourcePackPage({ params }: { params: Promise<{ i
       <p className="muted">{t.intro}</p>
       <PackForm
         serverId={server.id}
-        initial={{ url: server.resourcePack ?? "", required: server.resourcePackRequired, prompt: server.resourcePackPrompt }}
+        initial={{
+          url: server.resourcePack ?? "",
+          uploaded: isUploadedPack(server.resourcePack),
+          required: server.resourcePackRequired,
+          prompt: server.resourcePackPrompt,
+        }}
+        maxBytes={PACK_MAX_BYTES}
         running={live === "online" || live === "starting"}
         t={t}
       />
