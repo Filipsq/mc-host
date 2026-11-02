@@ -197,8 +197,10 @@ Java router stay on the main one, which reaches it through an encrypted WireGuar
 New servers go to the machine with the most room. Java players still type `name.mchosting.pl`: the
 main machine's router passes them on through the tunnel, so a server on the second machine sees
 every player with the main machine's IP. Bedrock, Terraria and crossplay servers there join at
-`n2.mchosting.pl:port`. To update the second machine after updating the site, run the same
-`./add-node.sh` command again.
+`n2.mchosting.pl:port`. To update all the extra machines at once after updating the site, run
+`./update-nodes.sh` on the main machine: it builds the agent once and updates every machine in
+`NODES` at the same time (one that still asks for a password is done after the others). Running
+`./add-node.sh` for one machine again also still works.
 
 Terraria with mods (tModLoader) runs only on x86 machines (amd64): its image and Steam parts don't
 exist for Arm. `setup.sh` and `add-node.sh` note each machine's processor (`GAME_ARCH` in `.env`,
