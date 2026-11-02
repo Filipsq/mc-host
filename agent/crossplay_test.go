@@ -117,3 +117,26 @@ func TestFixCrossplayStartsAnywayWhenGeyserMCIsDown(t *testing.T) {
 		t.Fatal("a jar appeared without a download")
 	}
 }
+
+func TestFixCrossplayDoesNotHoldAStartOnASlowDownload(t *testing.T) {
+	a, data, _ := crossplayAgent(t, true)
+	release := make(chan struct{})
+	slow := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-release
+		w.Write([]byte("jar"))
+	}))
+	t.Cleanup(slow.Close)
+	t.Cleanup(func() { close(release) })
+	crossplayJars = []crossplayJar{{slow.URL + "/geyser", "mchost-geyser.jar"}}
+	oldWait := crossplayWait
+	crossplayWait = 100 * time.Millisecond
+	t.Cleanup(func() { crossplayWait = oldWait })
+	began := time.Now()
+	a.fixCrossplay(context.Background(), "abc12345")
+	if d := time.Since(began); d > 2*time.Second {
+		t.Fatalf("the start waited %v", d)
+	}
+	if _, err := os.Stat(filepath.Join(data, "plugins", "mchost-geyser.jar")); err == nil {
+		t.Fatal("a jar appeared before its download ended")
+	}
+}
