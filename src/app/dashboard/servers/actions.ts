@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { Plan, ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
+import { unknownJavaPlayers } from "@/lib/mojang";
 import * as agent from "@/lib/agent";
 import {
   agentSpec,
@@ -685,6 +686,13 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   if (players.length > WHITELIST_MAX) return { error: "tooManyPlayers" };
   const whitelist = s.whitelist === "on";
   if (whitelist && players.length === 0) return { error: "whitelistEmpty" };
+  // A premium Java server won't start with a name on its list that has no account.
+  const nonPremium = canRunNonPremium({ ...server, version }) && s.nonPremium === "on";
+  if (whitelist && java && !nonPremium) {
+    const added = players.filter((p) => !server.whitelistPlayers.some((q) => q.toLowerCase() === p.toLowerCase()));
+    const [unknown] = await unknownJavaPlayers(added);
+    if (unknown) return { error: "unknownPlayer", player: unknown };
+  }
   if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
   // Plugins and mods with nothing for the new version leave the list, and jars the panel
   // downloaded (CurseForge, Hangar, SpigotMC) are picked again for it (src/lib/addonVersions.ts).
@@ -720,7 +728,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       whitelist,
       whitelistPlayers: players,
       // On the version saved now: a mod server's login mod runs only on some.
-      onlineMode: !(canRunNonPremium({ ...server, version }) && s.nonPremium === "on"),
+      onlineMode: !nonPremium,
       // Kept as it was on a mod server, which has no checkbox for it.
       crossplay: canCrossplay(server) ? s.crossplay === "on" : server.crossplay,
     },

@@ -72,8 +72,14 @@ export async function addPluginAction(id: string, projectId: string): Promise<Pl
   // The image would skip it on this version, and the owner would wonder why it doesn't work.
   const { missing, version } = await withoutBuild(server, [plugin.id]);
   if (missing.length) return { error: "noVersion", name: plugin.title, version };
-  return savePlugins(server, [...server.plugins, plugin.id]);
+  // Nearly every Fabric mod runs on Fabric API, but some (JEI) don't list it on
+  // Modrinth, so the image wouldn't add it and the server wouldn't start.
+  const fabricApi = server.kind === "fabric" && plugin.id !== FABRIC_API && !server.plugins.includes(FABRIC_API) ? [FABRIC_API] : [];
+  if (server.plugins.length + 1 + fabricApi.length > PLUGINS_MAX) return { error: "tooMany" };
+  return savePlugins(server, [...server.plugins, plugin.id, ...fabricApi]);
 }
+
+const FABRIC_API = "P7dR8mSH"; // on Modrinth
 
 /** Adds a mod from a pasted CurseForge link, slug or project ID. */
 export async function addCurseforgeLinkAction(id: string, input: string): Promise<PluginResult> {
