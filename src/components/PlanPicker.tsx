@@ -14,6 +14,8 @@ export type AddonOption = { id: AddonId; name: string; hint: string; monthly: nu
 type Props = {
   plans: PlanOption[];
   defaultPlan: Plan;
+  /** A plan picked elsewhere on the page (the players slider); the picker follows it. */
+  plan?: Plan;
   periodLabels: { days: string; off: string }; // "{days} days", "−{n}%"
   labels: { plan: string; period: string; total: string };
   formatMoney: { locale: string; currency: string };
@@ -30,9 +32,12 @@ type Props = {
 };
 
 /** Radio cards for plan + period, with a live total. Submits `plan` and `days`. */
-export default function PlanPicker({ plans, defaultPlan, periodLabels, labels, formatMoney, onPlanChange, onTotalChange, addons }: Props) {
+export default function PlanPicker({ plans, defaultPlan, plan: outside, periodLabels, labels, formatMoney, onPlanChange, onTotalChange, addons }: Props) {
   const [plan, setPlan] = useState<Plan>(defaultPlan);
   const [days, setDays] = useState<PeriodDays>(DEFAULT_PERIOD);
+  useEffect(() => {
+    if (outside) setPlan(outside);
+  }, [outside]);
   const [ticked, setTicked] = useState<AddonId[]>(addons?.initial ?? []);
   const money = { format: (n: number) => formatPrice(n, formatMoney.currency as Currency, formatMoney.locale) };
   const selected = plans.find((p) => p.id === plan);
