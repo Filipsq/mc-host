@@ -31,8 +31,12 @@ export function isDiskFull(err: unknown) {
   return err instanceof AgentError && err.status === 507 && err.message === "diskFull";
 }
 
-// Which machine each server is on, until it moves (forgetServerNode).
-const serverNodes = new Map<string, string>();
+// Which machine each server is on, remembered briefly. Next.js can load this
+// module more than once (pages, actions and API routes each get a copy), so
+// forgetServerNode after a move only reaches one copy: a short life keeps the
+// others from asking the old machine (the panel showed a moved server as off).
+const NODE_TTL_MS = 10_000;
+const serverNodes = new Map<string, { node: string; at: number }>();
 
 /** Makes the next call about the server look up its machine again, after a move. */
 export function forgetServerNode(id: string) {
@@ -40,11 +44,10 @@ export function forgetServerNode(id: string) {
 }
 
 async function nodeOfServer(id: string): Promise<GameNode> {
-  let node = serverNodes.get(id);
-  if (node === undefined) {
-    node = (await db.server.findUnique({ where: { id }, select: { node: true } }))?.node ?? MAIN_NODE;
-    serverNodes.set(id, node);
-  }
+  const known = serverNodes.get(id);
+  if (known && Date.now() - known.at < NODE_TTL_MS) return nodeById(known.node);
+  const node = (await db.server.findUnique({ where: { id }, select: { node: true } }))?.node ?? MAIN_NODE;
+  serverNodes.set(id, { node, at: Date.now() });
   return nodeById(node);
 }
 
