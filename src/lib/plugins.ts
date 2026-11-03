@@ -147,6 +147,8 @@ export function withNeededPlugins(plugins: string[]) {
 
 /** Simple Voice Chat, the same project for Paper and the mod loaders; the agent opens its port (agent/voice.go). */
 export const VOICE_CHAT = { id: "9eGKb6K1", slug: "simple-voice-chat", title: "Simple Voice Chat" } as const;
+/** BlueMap, the same project for Paper and the mod loaders; the agent opens its map port (agent/webmap.go). */
+export const BLUEMAP = { id: "swbUV1cr", slug: "bluemap", title: "BlueMap" } as const;
 
 export type KnownPlugin = keyof typeof KNOWN_PLUGINS;
 

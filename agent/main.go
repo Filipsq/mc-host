@@ -537,8 +537,8 @@ func (req *createRequest) validate() error {
 		return errors.New("modpackLoader is for a modpack server")
 	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run crossplay")
-	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.voicePort() > 65535):
-		return errors.New("voiceHost needs a Java server, a valid hostname and a port that leaves room for the voice port")
+	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.webMapPort() > 65535):
+		return errors.New("voiceHost needs a Java server, a valid hostname and a port that leaves room for the voice and map ports")
 	case req.ResourcePack != nil && req.Edition != "JAVA":
 		return errors.New("only Java servers take a resource pack")
 	case req.Level != "" && !validWorldName.MatchString(req.Level):
@@ -989,7 +989,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
 	}
 	if req.Edition == "JAVA" {
-		entrypoint = withVoiceChat(req, bindings, withUnfinishedWorldCheck(entrypoint))
+		entrypoint = withWebMap(req, bindings, withVoiceChat(req, bindings, withUnfinishedWorldCheck(entrypoint)))
 	}
 	return serverSpec(req, image, env, labels, bindings, tty, limitMb, entrypoint)
 }

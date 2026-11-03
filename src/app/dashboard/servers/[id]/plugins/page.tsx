@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ExternalLink, Mic, Package, Puzzle, Search } from "lucide-react";
+import { ExternalLink, Map as MapIcon, Mic, Package, Puzzle, Search } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -14,6 +14,7 @@ import {
   KNOWN_PLUGINS,
   PLUGIN_SETS,
   VOICE_CHAT,
+  BLUEMAP,
   addonType,
   curseforgeMod,
   curseforgeModPage,
@@ -24,7 +25,7 @@ import {
   sitePlugin,
   type PluginSite,
 } from "@/lib/plugins";
-import { voiceAddress } from "@/lib/servers";
+import { voiceAddress, webMapAddress } from "@/lib/servers";
 import CopyButton from "@/components/CopyButton";
 import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
@@ -155,9 +156,11 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const forPlayers = <span className="chip small-chip">{all.mods.forPlayers}</span>;
   // Names for plugins from the sets, in case Modrinth doesn't answer.
   const knownTitle = (pid: string) =>
-    pid === VOICE_CHAT.id ? VOICE_CHAT.title : (Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title ?? (pid === FABRIC_API ? "Fabric API" : undefined));
+    pid === VOICE_CHAT.id ? VOICE_CHAT.title : pid === BLUEMAP.id ? BLUEMAP.title : (Object.values(KNOWN_PLUGINS).find((p) => p.id === pid)?.title ?? (pid === FABRIC_API ? "Fabric API" : undefined));
   const voice = voiceAddress(server);
   const tv = all.voice;
+  const webMap = webMapAddress(server);
+  const tm = all.webMap;
 
   return (
     <div className="stack">
@@ -287,6 +290,41 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           </div>
           <p className="muted small">
             {tv.addressHint} {tv.oldServer}
+          </p>
+        </section>
+      )}
+
+      {webMap && (
+        <section className="stack">
+          <h2>{tm.title}</h2>
+          <ul className="card plugin-list">
+            <li>
+              <span className="plugin-icon"><MapIcon size={20} aria-hidden /></span>
+              <span className="plugin-main">
+                <a href={pluginPage(BLUEMAP.slug, type)} target="_blank" rel="noreferrer">
+                  <strong>{BLUEMAP.title}</strong>
+                </a>
+                <span className="muted small">{tm.intro}</span>
+                {tm.steps.map((step, i) => (
+                  <span key={step} className="small">
+                    {i + 1}. {step}
+                  </span>
+                ))}
+              </span>
+              <AddPluginButton id={server.id} pluginId={BLUEMAP.id} added={server.plugins.includes(BLUEMAP.id)} t={t} />
+            </li>
+          </ul>
+          <div className="address-card">
+            <div>
+              <p className="address-label">{tm.address}</p>
+              <a className="address-value" href={webMap.url} target="_blank" rel="noreferrer">
+                {webMap.host}:{webMap.port}
+              </a>
+            </div>
+            <CopyButton text={webMap.url} label={all.server.copy} copiedLabel={all.server.copied} />
+          </div>
+          <p className="muted small">
+            {tm.addressHint} {tm.oldServer}
           </p>
         </section>
       )}
