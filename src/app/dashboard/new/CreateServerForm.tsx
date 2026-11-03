@@ -54,6 +54,7 @@ type Props = {
   cfPicked: boolean; // whether the first of cfPacks was picked on the home page
   curseforge: boolean; // whether CurseForge links work
   admin: boolean; // admins also get a button to make a test server without paying
+  paysafecard: boolean; // a second pay button for paysafecard (cashbill.ts)
   // The creator code to start with (whoever invited the user) and free Starters they earned with their own (creator.ts).
   creator: {
     t: Messages["creator"];
@@ -94,7 +95,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, paysafecard, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -599,6 +600,14 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           {paying && total && !pending && <span className="new-submit-total">{total}</span>}
         </button>
       </div>
+      {paying && paysafecard && (
+        <>
+          <button type="submit" className="secondary" name="method" value="paysafecard" disabled={pending}>
+            {billing.paysafecard}
+          </button>
+          <p className="muted small">{billing.paysafecardHint}</p>
+        </>
+      )}
       {admin && (
         <>
           <button type="submit" className="secondary" name="adminTest" value="on" disabled={pending}>

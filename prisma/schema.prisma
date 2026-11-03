@@ -388,6 +388,10 @@ model Payment {
   // Charged automatically with the saved card, without Checkout.
   renewal               Boolean       @default(false)
   stripePaymentIntentId String?       @unique
+  // Paid with paysafecard through CashBill (src/lib/cashbill.ts), not Stripe.
+  paysafecard           Boolean       @default(false)
+  // CashBill's id for the payment.
+  cashbillId            String?       @unique
   // The add-ons the server has once this is paid (all of them, not only new ones).
   addons                String[]      @default([])
   // Only add-ons bought for the time left of the period (addonCost in addons.ts): days is 0.
