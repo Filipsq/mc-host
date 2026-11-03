@@ -123,6 +123,16 @@ if ! grep -qE '^CF_API_KEY=.+' .env; then
   echo "CurseForge packs are off: set CF_API_KEY in deploy/.env (see deploy/README.md)."
 fi
 
+# paysafecard through CashBill (src/lib/cashbill.ts); see deploy/README.md.
+if ! grep -q '^CASHBILL_SHOP_ID=' .env; then
+  cat >> .env <<'ENV'
+# From the CashBill panel (payment point, Web Service): its id and key, in
+# single quotes. Without them the paysafecard button is hidden.
+CASHBILL_SHOP_ID=
+CASHBILL_SECRET=
+ENV
+fi
+
 # Phone notifications from the installed app (Web Push) are signed with this
 # key pair. Made once; changing it later would cut off every subscribed phone.
 if ! grep -qE '^VAPID_PUBLIC_KEY=.+' .env; then

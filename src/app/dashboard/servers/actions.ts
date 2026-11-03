@@ -139,6 +139,7 @@ async function checkoutUrl(
   addons: AddonId[] = [],
   creatorId?: string,
   promoCode?: string,
+  paysafecard = false,
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -157,6 +158,7 @@ async function checkoutUrl(
     addons,
     creatorId,
     promoCode,
+    paysafecard,
   });
 }
 
@@ -321,7 +323,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (paying) {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode);
+      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode, form.get("method") === "paysafecard");
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -411,6 +413,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       server.status === "AWAITING_PAYMENT" ? (server.creatorId ?? undefined) : undefined,
       // Likewise the Halloween code, while the event lasts (startCheckout checks).
       server.status === "AWAITING_PAYMENT" ? (server.promoCode ?? undefined) : undefined,
+      form.get("method") === "paysafecard",
     );
   } catch (err) {
     console.error("checkout failed", server.id, err);
