@@ -689,9 +689,9 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   // A premium Java server won't start with a name on its list that has no account.
   const nonPremium = canRunNonPremium({ ...server, version }) && s.nonPremium === "on";
   if (whitelist && java && !nonPremium) {
-    const added = players.filter((p) => !server.whitelistPlayers.some((q) => q.toLowerCase() === p.toLowerCase()));
-    const [unknown] = await unknownJavaPlayers(added);
-    if (unknown) return { error: "unknownPlayer", player: unknown };
+    // All of them, named at once: names saved before this check came in block a start too.
+    const unknown = await unknownJavaPlayers(players);
+    if (unknown.length) return { error: "unknownPlayer", player: unknown.join(", ") };
   }
   if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
   // Plugins and mods with nothing for the new version leave the list, and jars the panel

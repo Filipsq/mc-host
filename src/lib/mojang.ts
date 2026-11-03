@@ -7,7 +7,7 @@ const PREMIUM_NAME = /^[A-Za-z0-9_]{3,16}$/;
 
 /** Of these names, the ones Mojang says have no Java account; none if Mojang can't be reached. */
 export async function unknownJavaPlayers(names: string[]): Promise<string[]> {
-  const asked = names.filter((n) => PREMIUM_NAME.test(n)).slice(0, 20);
+  const asked = names.filter((n) => PREMIUM_NAME.test(n)).slice(0, 100);
   const found = await Promise.all(
     asked.map(async (name) => {
       try {
