@@ -6,6 +6,7 @@ import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type AddonOption, type PlanOption } from "@/components/PlanPicker";
 import { addonList, type AddonId } from "@/lib/addons";
+import PayBadges from "@/components/PayBadges";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
@@ -589,25 +590,28 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       {paying && (
         <>
           <p className="muted small">{billing.methods}</p>
+          {paysafecard && <p className="muted small">{billing.paysafecardHint}</p>}
           <PaymentConsent legal={legal} />
         </>
       )}
       {/* Pinned to the bottom of the side card (on phones, of the screen) so it's always in sight. */}
       <div className="new-submit">
         {state.error && <p className="error">{t.errors[state.error]}</p>}
-        <button type="submit" disabled={pending}>
-          {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
-          {paying && total && !pending && <span className="new-submit-total">{total}</span>}
+        <button type="submit" disabled={pending} className={paying ? "pay-button" : undefined}>
+          <span className="pay-label">
+            {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
+            {paying && total && !pending && <span className="new-submit-total">{total}</span>}
+          </span>
+          {paying && <PayBadges method="stripe" />}
         </button>
-      </div>
-      {paying && paysafecard && (
-        <>
-          <button type="submit" className="secondary" name="method" value="paysafecard" disabled={pending}>
-            {billing.paysafecard}
+        {/* Both ways to pay stay in sight together. */}
+        {paying && paysafecard && (
+          <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
+            <span className="pay-label">{billing.paysafecard}</span>
+            <PayBadges method="paysafecard" />
           </button>
-          <p className="muted small">{billing.paysafecardHint}</p>
-        </>
-      )}
+        )}
+      </div>
       {admin && (
         <>
           <button type="submit" className="secondary" name="adminTest" value="on" disabled={pending}>

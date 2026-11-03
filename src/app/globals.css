@@ -1637,6 +1637,14 @@ fieldset.new-step > legend.new-step-title { float: left; width: 100%; }
 .new-submit button { width: 100%; padding: 14px 18px; font-size: 1.05rem; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
 .new-submit-total { padding: 2px 9px; border-radius: 999px; background: rgb(0 0 0 / 0.18); font-size: 0.95rem; }
 .new-submit ~ button.secondary { margin-top: 4px; }
+/* Pay buttons: what it does on the left, the ways to pay on the right */
+.pay-buttons { display: flex; flex-direction: column; gap: 8px; }
+.pay-buttons button { width: 100%; padding: 14px 18px; font-size: 1.05rem; }
+button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 10px; text-align: left; padding-left: 16px; padding-right: 12px; }
+.pay-label { display: inline-flex; align-items: center; gap: 10px; white-space: nowrap; }
+/* Without room next to the words, the marks go under them, on the right. */
+.pay-badges { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: auto; }
+.pay-badges svg { display: block; border-radius: 3px; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15); }
 .new-names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 
 /* Tiles: the radio is hidden, the whole tile is the choice */
@@ -1682,6 +1690,9 @@ fieldset.new-step > legend.new-step-title { float: left; width: 100%; }
   .new-submit button { max-width: 560px; margin: 0 auto; }
   main.new-page { padding-bottom: 110px; }
   body:has(.new-submit) .help { bottom: max(92px, calc(env(safe-area-inset-bottom) + 82px)); }
+  /* Two pay buttons make the bar taller. */
+  main.new-page:has(.new-submit .pay-button + .pay-button) { padding-bottom: 170px; }
+  body:has(.new-submit .pay-button + .pay-button) .help { bottom: max(150px, calc(env(safe-area-inset-bottom) + 140px)); }
 }
 @media (max-width: 720px) {
   /* Phones: games slide sideways like a carousel instead of stacking */
