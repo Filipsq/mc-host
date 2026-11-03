@@ -3,7 +3,9 @@ import type { Server, ServerStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { heldMemoryMb, memoryLimitMb, overbook, overbookOf, salesLimitMb } from "@/lib/capacity";
-import { nodeById } from "@/lib/nodes";
+import { nodeById, nodes } from "@/lib/nodes";
+import { nbpRates, toPln } from "@/lib/exchange";
+import { saveMachineCostsAction } from "./actions";
 import { diskLimitMb } from "@/lib/disk";
 import { deletionDate, isTestPayment } from "@/lib/billing";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -15,12 +17,13 @@ import RebuildBedrock from "./RebuildBedrock";
 import { signupBuckets, signupsSince, type Bucket } from "./signups";
 
 const DAY = 24 * 60 * 60 * 1000;
+const VAT = 0.23;
 const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
 export default async function AdminOverview() {
   await requireAdmin();
   const now = new Date();
-  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, chats, ai] = await Promise.all([
+  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, chats, ai, costs, rates] = await Promise.all([
     getMessages(),
     getPreferences(),
     machineStats(),
@@ -43,6 +46,8 @@ export default async function AdminOverview() {
       select: { userId: true, lastMessageAt: true, user: { select: { email: true } } },
     }),
     aiUsageThisMonth(),
+    db.machineCost.findMany(),
+    nbpRates(),
   ]);
   const t = all.admin;
   const f = formats(locale);
@@ -62,6 +67,18 @@ export default async function AdminOverview() {
   const tests30 = last30All.filter(isTestPayment);
   const thisMonth = paid.filter((p) => !isTestPayment(p) && p.paidAt! >= monthStart(now));
   const waiting = pending.filter((p) => !isTestPayment(p));
+
+  // Costs: each machine's monthly price (net) in złoty at today's NBP rate, against the last 30 days' sales without VAT.
+  const machines = nodes().map((n) => {
+    const cost = costs.find((c) => c.node === n.id);
+    return { id: n.id, cost, pln: cost ? toPln(cost.amount, cost.currency, rates) : null };
+  });
+  const costPln = machines.reduce((sum, m) => sum + (m.pln ?? 0), 0);
+  const costMissing = machines.some((m) => m.cost && m.pln === null);
+  const revenueGross = last30.map((p) => toPln(p.amount, p.currency, rates));
+  const revenueNet = Math.round(revenueGross.reduce<number>((sum, v) => sum + (v ?? 0), 0) / (1 + VAT));
+  const profit = revenueNet - costPln;
+  const zl = (minor: number) => f.money(minor, "PLN");
 
   const crashed = servers.filter((s) => live[s.id].state === "crashed");
   const overDisk = servers.filter((s) => (live[s.id].diskMb ?? 0) > diskLimitMb(s));
@@ -230,6 +247,77 @@ export default async function AdminOverview() {
             </table>
           </div>
         )}
+      </section>
+
+      <section className="stack">
+        <h2>{t.costs.title}</h2>
+        <form action={saveMachineCostsAction} className="stack">
+          <div className="table-scroll card flush">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>{t.machine}</th>
+                  <th>{t.costs.price}</th>
+                  <th className="num">{t.costs.inPln}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {machines.map((m) => (
+                  <tr key={m.id}>
+                    <td>
+                      <strong>{m.id}</strong>
+                    </td>
+                    <td>
+                      <div className="cost-input">
+                        <input
+                          name={`amount_${m.id}`}
+                          inputMode="decimal"
+                          aria-label={`${t.costs.price} ${m.id}`}
+                          defaultValue={m.cost ? (m.cost.amount / 100).toFixed(2).replace(".", ",") : ""}
+                          placeholder="0,00"
+                        />
+                        <select name={`currency_${m.id}`} defaultValue={m.cost?.currency ?? "EUR"} aria-label={t.costs.currency}>
+                          <option value="EUR">€</option>
+                          <option value="PLN">zł</option>
+                        </select>
+                      </div>
+                    </td>
+                    <td className="num">{m.pln !== null ? zl(m.pln) : m.cost ? t.costs.noRate : <span className="muted">{t.costs.notSet}</span>}</td>
+                  </tr>
+                ))}
+                <tr>
+                  <td>
+                    <strong>{t.costs.total}</strong>
+                  </td>
+                  <td />
+                  <td className="num">
+                    <strong>{zl(costPln)}</strong>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div className="row">
+            <p className="muted small">
+              {rates
+                ? format(t.costs.rate, { eur: f.number4(rates.perPln.EUR ?? 0), date: rates.date })
+                : t.costs.rateDown}
+              {costMissing && ` ${t.costs.noRateHint}`} {t.costs.netHint}
+            </p>
+            <button type="submit" className="secondary">
+              {t.costs.save}
+            </button>
+          </div>
+        </form>
+        <div className="admin-grid">
+          <Tile label={t.costs.monthly} value={zl(costPln)} hint={format(t.costs.perDay, { amount: zl(Math.round(costPln / 30)) })} />
+          <Tile label={t.costs.revenueNet} value={zl(revenueNet)} hint={t.costs.revenueNetHint} />
+          <div className="card stat">
+            <p className="stat-label">{t.costs.profit}</p>
+            <p className={`stat-value ${profit < 0 ? "over" : "good"}`}>{zl(profit)}</p>
+            <p className="muted small">{t.costs.profitHint}</p>
+          </div>
+        </div>
       </section>
 
       <section className="stack">

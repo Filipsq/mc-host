@@ -170,3 +170,27 @@ export async function resetLinkAdminAction(userId: string): Promise<{ url?: stri
   console.log(`[admin] password link created for ${user.email}`);
   return { url };
 }
+
+const COST_CURRENCIES = ["EUR", "PLN"] as const;
+
+/** Saves what each machine costs a month (net); an empty field forgets that machine's price. */
+export async function saveMachineCostsAction(form: FormData) {
+  await requireAdmin();
+  for (const node of nodes()) {
+    const raw = String(form.get(`amount_${node.id}`) ?? "").replace(/\s/g, "").replace(",", ".");
+    const currency = String(form.get(`currency_${node.id}`));
+    if (!raw) {
+      await db.machineCost.deleteMany({ where: { node: node.id } });
+      continue;
+    }
+    const amount = Math.round(Number(raw) * 100);
+    if (!Number.isFinite(amount) || amount < 0 || amount > 10_000_000) continue;
+    if (!(COST_CURRENCIES as readonly string[]).includes(currency)) continue;
+    await db.machineCost.upsert({
+      where: { node: node.id },
+      create: { node: node.id, amount, currency },
+      update: { amount, currency },
+    });
+  }
+  revalidatePath("/admin");
+}

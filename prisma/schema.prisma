@@ -431,3 +431,13 @@ model GiftCode {
   @@index([buyerId])
   @@index([redeemedById])
 }
+
+// What a game machine (Server.node id) costs a month, net, as on the host's
+// invoice: amount in minor units (cents, grosze) of EUR or PLN. Set on the
+// admin overview, converted to złoty at the NBP rate (src/lib/exchange.ts).
+model MachineCost {
+  node      String   @id
+  amount    Int
+  currency  String
+  updatedAt DateTime @updatedAt
+}
