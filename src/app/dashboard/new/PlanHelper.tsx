@@ -50,7 +50,7 @@ export default function PlanHelper({ t, server, terraria, plans, addons, addonNa
   const plan = plans.find((p) => p.id === pick.plan)!;
   const planName = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
   const price = (n: number) => formatPrice(n, money.currency as Currency, money.locale);
-  const addonsHere = addons.filter((o) => o.id !== "domain" || platform === "java" || platform === "both");
+  const addonsHere = addons.filter((o) => (o.id !== "domain" || platform === "java" || platform === "both") && (o.id !== "xbox" || platform !== "terraria"));
   const monthly = plan.monthly + (pick.plan === "FREE" ? 0 : addons.filter((o) => pick.addons.includes(o.id)).reduce((sum, o) => sum + o.monthly, 0));
   const extrasHere = HELPER_EXTRAS.filter((e) => e !== "nonPremium" || platform === "java" || platform === "both");
   // Any change after "fill in" means the form no longer matches what's shown.

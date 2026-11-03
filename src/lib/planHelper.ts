@@ -120,7 +120,7 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
     reasons.push({ code: "backups", plan, kept: plans.find((p) => p.id === plan)!.backupsKept });
   }
   // The own domain is for Java addresses only.
-  const addons = addonList(a.addons).filter((x) => x !== "domain" || (a.platform !== "bedrock" && !terraria));
+  const addons = addonList(a.addons).filter((x) => (x !== "domain" || (a.platform !== "bedrock" && !terraria)) && (x !== "xbox" || !terraria));
   if (addons.length > 0 && plan === "FREE") {
     plan = "STARTER";
     reasons.push({ code: "addonsPaid" });

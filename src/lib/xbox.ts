@@ -1,14 +1,16 @@
 import type { Server } from "@prisma/client";
 import type { Currency } from "@/i18n/config";
 import { canCrossplay } from "./plugins";
+import { ADDON_SPECS, serverAddons } from "./addons";
 
 // Consoles (Xbox, PlayStation, Switch) can't type a server's address: they only
 // join friends. A server can sign in an Xbox account of the owner's; players
 // add it as a friend and join from the Friends tab (agent/xbox.go runs
 // MCXboxBroadcast next to the server).
 //
-// It costs us memory on the machine all the time, so a paid plan has it
-// included, while a free server buys it on its own for XBOX_DAYS at a time.
+// It costs us memory on the machine all the time, so it's paid for: on a paid
+// plan it's the "xbox" add-on (addons.ts), and a free server buys it on its own
+// for XBOX_DAYS at a time, dearer.
 
 export const XBOX_DAYS = 30;
 
@@ -20,14 +22,22 @@ export function takesBedrockPlayers(server: Pick<Server, "edition" | "kind" | "c
   return server.edition === "BEDROCK" || (server.edition === "JAVA" && server.crossplay && canCrossplay(server));
 }
 
-type XboxServer = Pick<Server, "edition" | "kind" | "crossplay" | "plan" | "xboxUntil">;
+/** The add-on's 30-day price on a paid plan, to show free servers what they'd save. */
+export const XBOX_ADDON_PRICE = ADDON_SPECS.xbox.price;
+
+type XboxServer = Pick<Server, "edition" | "kind" | "crossplay" | "plan" | "xboxUntil" | "addons">;
 
 /** Whether a free server's bought days are still running. */
 export const xboxPaidFor = (server: Pick<Server, "xboxUntil">, now = new Date()) => !!server.xboxUntil && server.xboxUntil > now;
 
-/** Whether the server may run the console sign-in: a paid plan, or a free one that paid for it. */
+/** Whether the server paid for console joining: the add-on on a paid plan, or bought days on a free one. */
+export function xboxPaid(server: Pick<Server, "plan" | "addons" | "xboxUntil">, now = new Date()) {
+  return server.plan === "FREE" ? xboxPaidFor(server, now) : serverAddons(server).includes("xbox");
+}
+
+/** Whether the server may run the console sign-in. */
 export function xboxAllowed(server: XboxServer, now = new Date()) {
-  return takesBedrockPlayers(server) && (server.plan !== "FREE" || xboxPaidFor(server, now));
+  return takesBedrockPlayers(server) && xboxPaid(server, now);
 }
 
 /** What the agent should run: the owner turned it on and the server may have it. */

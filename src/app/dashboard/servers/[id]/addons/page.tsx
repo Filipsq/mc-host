@@ -7,7 +7,7 @@ import { format } from "@/i18n/messages";
 import { getOwnedServer, javaHost } from "@/lib/servers";
 import { formatPrice } from "@/lib/plans";
 import { addonOptions } from "@/lib/planOptions";
-import { ADDONS, addonCost, canBuyAddons, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
+import { ADDONS, addonCost, addonFits, canBuyAddons, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
 import { BuyAddonsForm, DomainForm, RemoveAddonButton } from "./AddonForms";
 
 // The server's paid add-ons (src/lib/addons.ts): the ones it has, turning one
@@ -24,7 +24,7 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
   const money = (n: number) => formatPrice(n, currency, locale);
   const have = serverAddons(server);
   // The own domain is for Java addresses only.
-  const options = addonOptions(all, currency).filter((o) => o.id !== "domain" || server.edition === "JAVA");
+  const options = addonOptions(all, currency).filter((o) => addonFits(o.id, server.edition));
   const prices = Object.fromEntries(options.map((o) => [o.id, money(o.monthly)]));
   const missing = options.filter((o) => !have.includes(o.id));
   const buyable = canBuyAddons(server);

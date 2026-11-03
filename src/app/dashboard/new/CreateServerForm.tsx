@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
 import PlanPicker, { type AddonOption, type PlanOption } from "@/components/PlanPicker";
-import { addonList, type AddonId } from "@/lib/addons";
+import { addonFits, addonList, type AddonId } from "@/lib/addons";
 import PayBadges from "@/components/PayBadges";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
@@ -529,9 +529,9 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         onTotalChange={setTotal}
         // A gift pays for the plan alone; add-ons can be bought later in the panel.
         addons={gifted ? undefined : {
-          // The own domain is for Java addresses only.
-          options: addonOptions.filter((o) => o.id !== "domain" || edition === "JAVA"),
-          initial: addons.filter((a) => a !== "domain" || edition === "JAVA"),
+          // The own domain is for Java addresses only, console joining for Minecraft.
+          options: addonOptions.filter((o) => addonFits(o.id, edition)),
+          initial: addons.filter((a) => addonFits(a, edition)),
           labels: { title: paidAddons.pickTitle, hint: paidAddons.pickHint, price: paidAddons.price },
           onChange: setAddons,
         }}
