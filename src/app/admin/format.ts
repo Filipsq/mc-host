@@ -19,6 +19,8 @@ export function formats(locale: string) {
     dateTime: (d: Date) => dateTime.format(d),
     time: (d: Date) => time.format(d),
     number: (n: number) => decimal.format(n),
+    /** An exchange rate, e.g. "4,2618". */
+    number4: (n: number) => n.toLocaleString(locale, { minimumFractionDigits: 4, maximumFractionDigits: 4 }),
     gb: (mb: number) => `${decimal.format(mb / 1024)} GB`,
     size: (mb: number) => formatMb(mb, locale),
     money,
