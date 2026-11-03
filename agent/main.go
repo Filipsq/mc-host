@@ -147,11 +147,14 @@ func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) 
 			unique = append(unique, p)
 		}
 	}
-	// A release when there is one, else the newest beta or alpha: some mods a
-	// mod needs only ever come out as betas (MezzConfig, which JEI needs), and
-	// with releases only the image stopped the start ("NoApplicableVersionsException").
-	env := []string{"MODRINTH_PROJECTS=" + strings.Join(unique, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required", "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=alpha+"}
+	env := []string{"MODRINTH_PROJECTS=" + strings.Join(unique, ","), "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}
 	if loaderTypes[kind] != "" {
+		// Mods may be betas too: some a mod needs only ever come out as betas
+		// (MezzConfig, which JEI needs), and with releases only the image stopped
+		// the start ("NoApplicableVersionsException"). Only "beta" itself: the
+		// image's version lookup refuses "alpha+" and then stops every start
+		// (2026-11-03). Plugins on Paper stay on releases.
+		env = append(env, "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=beta")
 		// Always set on a mod loader, so the mods removed in the panel leave the server.
 		env = append(env, "CURSEFORGE_FILES="+strings.Join(curseforge, ","))
 	}
