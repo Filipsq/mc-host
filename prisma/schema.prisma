@@ -264,6 +264,8 @@ model Server {
   // Java on Paper only: Bedrock players (phones, consoles, Windows) join too, through the
   // Geyser plugin on the server's port over UDP.
   crossplay        Boolean        @default(false)
+  // Console players (Xbox, PlayStation, Switch) join from their Friends tab through an Xbox account the owner signs in (src/lib/xbox.ts)
+  xbox             Boolean        @default(false)
   // The world folder the server runs (the image's default if null), and the seed and
   // type it was made with (src/lib/worlds.ts). On Terraria the type is the world's size.
   level            String?

@@ -102,6 +102,7 @@ export type CreateServerSpec = {
   onlineMode: boolean; // false: non-premium (Java on Paper, or a mod loader or pack where a login mod runs)
   crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
   voiceHost?: string; // Java only: the machine players' games reach Simple Voice Chat on
+  xbox?: boolean; // Bedrock, or Java with crossplay: console players join through an Xbox account (src/lib/xbox.ts); false signs it out
   allowFlight: boolean; // Java only
   hardcore: boolean; // Java only
   commandBlocks: boolean; // Java only
@@ -311,6 +312,34 @@ export async function copyServer(id: string, from: GameNode, to: GameNode) {
     const path = `/servers/${id}/backups/${b.name}`;
     await send(path, await agentFetch(path, { node: from, timeoutMs: MOVE_TIMEOUT_MS }));
   }
+}
+
+/**
+ * The console sign-in's state (agent/xbox.go): off; starting; code (the owner
+ * signs in at url with code); signedIn; live (friends see the server); error.
+ */
+export type XboxStatus = {
+  state: "off" | "starting" | "code" | "signedIn" | "live" | "error";
+  code?: string;
+  url?: string;
+  gamertag?: string;
+  friends: number;
+  message?: string;
+};
+
+export async function getXbox(id: string): Promise<XboxStatus> {
+  const res = await agentFetch(`/servers/${id}/xbox`, { timeoutMs: 8_000 });
+  return res.json();
+}
+
+/** Starts the console sign-in next to the server (the first time its program is downloaded). */
+export async function enableXbox(id: string) {
+  await agentFetch(`/servers/${id}/xbox`, { method: "PUT", timeoutMs: 10 * 60_000 });
+}
+
+/** Stops it and forgets the account. */
+export async function disableXbox(id: string) {
+  await agentFetch(`/servers/${id}/xbox`, { method: "DELETE", timeoutMs: 60_000 });
 }
 
 export async function sendCommand(id: string, command: string): Promise<string> {

@@ -46,6 +46,9 @@ go test ./...
 | GET | `/servers/{id}/logs` | Console as Server-Sent Events (last 200 lines, then live) |
 | POST | `/servers/{id}/command` | `{command}`; Java via RCON, Bedrock via stdin, Terraria through a pipe the server reads its console from |
 | GET | `/servers/{id}/metrics?range=hour\|day` | Who is online and samples of memory, CPU, TPS and players for the Statistics card (every 30 s, kept in memory for a day; `day` gives 5-minute averages). Java is read over one kept RCON connection, Bedrock from join/leave log lines, Terraria by counting connections to its port (`online`, sent when it differs from the names it could match from join/leave lines) |
+| GET | `/servers/{id}/xbox` | Console joining (xbox.go): `{state: off\|starting\|code\|signedIn\|live\|error, code, url, gamertag, friends}`, read from the broadcaster's output |
+| PUT | `/servers/{id}/xbox` | Run MCXboxBroadcast (`mcxbox-<id>`, sign-in kept in the volume of that name) next to a Bedrock or crossplay server. The spec's `xbox` does the same on every create/rebuild (false signs out) |
+| DELETE | `/servers/{id}/xbox` | Stop it and delete its sign-in |
 | GET | `/servers/{id}/backups` | `{keep, backups: [{name, size, createdAt}]}`, newest first |
 | POST | `/servers/{id}/backups` | Back up now. 403 when the plan has no backups |
 | GET | `/servers/{id}/backups/{name}` | Download a backup (`.tar.gz` of the server's `/data`) |

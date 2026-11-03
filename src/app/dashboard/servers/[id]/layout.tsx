@@ -16,6 +16,7 @@ import { kindLabel } from "@/lib/serverType";
 import { EDITION_NAMES } from "@/lib/editions";
 import { isTerrariaKind } from "@/lib/terraria";
 import { isMinecraft } from "@/lib/otherGames";
+import { takesBedrockPlayers } from "@/lib/xbox";
 import EditionIcon from "@/components/EditionIcon";
 import AutoRefresh from "@/components/AutoRefresh";
 import LeaveButton from "./LeaveButton";
@@ -83,6 +84,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
         (offersModPicker(server) || server.kind === "modpack") && can("plugins") && { key: "mods" as const, label: all.mods.title, path: "/mods" },
         can("owner") && offersMinigames(server) && { key: "minigames" as const, label: all.minigamesSwitch.nav, path: "/minigames" },
         server.edition === "JAVA" && can("owner") && { key: "links" as const, label: all.links.title, path: "/links" },
+        can("owner") && takesBedrockPlayers(server) && { key: "xbox" as const, label: all.xbox.nav, path: "/xbox" },
         server.edition === "JAVA" && can("settings") && { key: "resourcepack" as const, label: all.resourcePack.title, path: "/resourcepack" },
       ].filter(present),
     },

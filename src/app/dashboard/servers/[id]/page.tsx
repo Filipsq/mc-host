@@ -20,6 +20,7 @@ import { activeLevel } from "@/lib/worlds";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import { isOtherGame, isValheimPreset } from "@/lib/otherGames";
 import AutoRefresh from "@/components/AutoRefresh";
+import { takesBedrockPlayers } from "@/lib/xbox";
 import DeleteServer from "./DeleteServer";
 import Stats from "./Stats";
 import CopyButton from "@/components/CopyButton";
@@ -216,6 +217,11 @@ export default async function ServerPage({ params, searchParams }: Props) {
               {t.crossplayJoin} {!planById(server.plan).alwaysOn && t.crossplaySleeping}
             </p>
           </>
+        )}
+        {can("owner") && takesBedrockPlayers(server) && !server.xbox && (
+          <p className="muted small">
+            {all.xbox.overviewHint} <Link href={`/dashboard/servers/${server.id}/xbox`}>{all.xbox.overviewLink}</Link>
+          </p>
         )}
         {islandCommand && <p className="muted small">{format(t.islandHint, { command: islandCommand })}</p>}
         {kind === "modpack" && server.modpack && (
