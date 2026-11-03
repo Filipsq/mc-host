@@ -1138,6 +1138,19 @@ const pl = {
     addressHint: "Gra łączy się z nim sama. Przyda się, gdy gracz ma zaporę albo coś nie działa.",
     oldServer: "Mod wgrany ręcznie w Plikach się nie łączy? Wejdź w Ustawienia i kliknij Zapisz: serwer dostanie port głosowy.",
   },
+  webMap: {
+    title: "Mapa świata w przeglądarce",
+    intro: "BlueMap rysuje Twój świat jako mapę 3D, którą każdy otworzy w przeglądarce, bez wchodzenia do gry. Port ustawiamy za Ciebie, nic nie trzeba zmieniać w plikach.",
+    steps: [
+      "Dodaj BlueMap i uruchom serwer ponownie.",
+      "Mapa rysuje się sama, kawałek po kawałku. Na dużym świecie trwa to od kilku minut do kilku godzin.",
+      "Otwórz adres poniżej i wyślij go znajomym.",
+    ],
+    address: "Adres mapy",
+    open: "Otwórz mapę",
+    addressHint: "Mapa działa, gdy serwer jest włączony. Śpiący darmowy serwer pokaże ją po obudzeniu.",
+    oldServer: "BlueMap wgrany ręcznie w Plikach się nie otwiera? Wejdź w Ustawienia i kliknij Zapisz: serwer dostanie port mapy.",
+  },
   workshop: {
     title: "Mody",
     manage: "Zarządzaj modami",

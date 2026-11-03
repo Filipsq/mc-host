@@ -1139,6 +1139,19 @@ const en: Messages = {
     addressHint: "The game connects to it by itself. Handy when a player has a firewall or something doesn't work.",
     oldServer: "Uploaded the mod yourself in Files and it won't connect? Open Settings and click Save: the server gets its voice port.",
   },
+  webMap: {
+    title: "World map in the browser",
+    intro: "BlueMap draws your world as a 3D map anyone can open in a browser, without joining the game. We set up the port for you, no files to change.",
+    steps: [
+      "Add BlueMap and restart the server.",
+      "The map draws itself, piece by piece. On a big world it takes from a few minutes to a few hours.",
+      "Open the address below and send it to your friends.",
+    ],
+    address: "Map address",
+    open: "Open the map",
+    addressHint: "The map works while the server is on. A sleeping free server shows it once it wakes up.",
+    oldServer: "Uploaded BlueMap yourself in Files and it won't open? Open Settings and click Save: the server gets its map port.",
+  },
   workshop: {
     title: "Mods",
     manage: "Manage mods",

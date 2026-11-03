@@ -201,6 +201,20 @@ export function voiceAddress(server: Pick<Server, "edition" | "subdomain" | "por
   return { host: bedrockHost(server), port: server.port + VOICE_PORT_OFFSET };
 }
 
+// BlueMap's web map port: the server's port plus this (agent/webmap.go keeps the same number).
+const WEB_MAP_PORT_OFFSET = 2000;
+
+/**
+ * Where BlueMap's map opens in a browser: the server's own machine, on a TCP
+ * port of its own (plain HTTP). Every Java server has it, used or not.
+ */
+export function webMapAddress(server: Pick<Server, "edition" | "subdomain" | "port" | "node">) {
+  if (server.edition !== "JAVA" || !server.port) return null;
+  const host = bedrockHost(server);
+  const port = server.port + WEB_MAP_PORT_OFFSET;
+  return { host, port, url: `http://${host}:${port}` };
+}
+
 /** Tells the main machine's router where the Java servers on the other machines are (see agent/peers.go). */
 export async function syncPeerRoutes() {
   const others = nodes().filter((n) => n.id !== MAIN_NODE);
