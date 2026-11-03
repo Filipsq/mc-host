@@ -101,6 +101,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 		return errDiskFull
 	}
 	a.clearMarkers(id)
+	a.healEnv(ctx, id)
 	a.fixOwners(ctx, id)
 	a.fixCrossplay(ctx, id)
 	a.fixLogin(ctx, id)

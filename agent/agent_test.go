@@ -382,7 +382,7 @@ func TestKindEnv(t *testing.T) {
 		mods := base
 		mods.Kind, mods.Version, mods.Plugins = kind, "1.21.1", []string{"gvQqBUqZ", "uXXizFIs"}
 		env = envOf(mods)
-		for _, want := range []string{"TYPE=" + typ + "\n", "VERSION=1.21.1\n", "MODRINTH_PROJECTS=gvQqBUqZ?,uXXizFIs?\n", "MODRINTH_DOWNLOAD_DEPENDENCIES=required\n", "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=alpha+\n"} {
+		for _, want := range []string{"TYPE=" + typ + "\n", "VERSION=1.21.1\n", "MODRINTH_PROJECTS=gvQqBUqZ?,uXXizFIs?\n", "MODRINTH_DOWNLOAD_DEPENDENCIES=required\n", "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=beta\n"} {
 			if !strings.Contains(env, want) {
 				t.Errorf("%s env missing %q:\n%s", kind, want, env)
 			}
