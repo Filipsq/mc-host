@@ -969,7 +969,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		// listens on the UDP port players type any more; it stays published
 		// for the waker, which answers older games there while the server is off.
 		first, last := req.bedrockPlayPorts()
-		env = append(env, "TRANSPORT=nethernet", fmt.Sprintf("SERVER_UDP_PORTS=<public_ip>:%d-%d:%d-%d", first, last, first, last))
+		env = append(env, "TRANSPORT=nethernet", fmt.Sprintf("SERVER_UDP_PORTS=%s:%d-%d:%d-%d", bedrockUDPAddress(), first, last, first, last))
 		bindings[signalingPort] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}
 		for p := first; p <= last; p++ {
 			bindings[fmt.Sprintf("%d/udp", p)] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(p)}}

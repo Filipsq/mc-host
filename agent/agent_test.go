@@ -82,6 +82,13 @@ func TestContainerSpecJava(t *testing.T) {
 }
 
 func TestContainerSpecBedrock(t *testing.T) {
+	realPublic := publicIPv4
+	defer func() { publicIPv4 = realPublic }()
+	publicIPv4 = func() string { return "203.0.113.7" }
+	if env := (&agent{idle: 5 * time.Minute}).containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570}, images["BEDROCK"])["Env"].([]string); !slices.Contains(env, "SERVER_UDP_PORTS=203.0.113.7:51400-51419:51400-51419") {
+		t.Fatalf("own address not used: %v", env)
+	}
+	publicIPv4 = func() string { return "" }
 	spec := (&agent{idle: 5 * time.Minute}).containerSpec(createRequest{ID: "abc12345", Name: "Test", Edition: "BEDROCK", MemoryMb: 2048, CPUs: 1, Port: 25570}, images["BEDROCK"])
 	host := spec["HostConfig"].(map[string]any)
 	ports := host["PortBindings"].(map[string]any)
@@ -100,7 +107,7 @@ func TestContainerSpecBedrock(t *testing.T) {
 	if _, ok := ports["51420/udp"]; ok {
 		t.Fatal("range too long")
 	}
-	for _, want := range []string{"TRANSPORT=nethernet", "SERVER_UDP_PORTS=<public_ip>:51400-51419:51400-51419"} {
+	for _, want := range []string{"TRANSPORT=nethernet", "SERVER_UDP_PORTS=<public_ipv4>:51400-51419:51400-51419"} {
 		if !slices.Contains(spec["Env"].([]string), want) {
 			t.Fatalf("missing %s in %v", want, spec["Env"])
 		}
