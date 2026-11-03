@@ -1856,7 +1856,15 @@ const pl = {
     title: "Gra z konsoli: Xbox, PlayStation i Switch",
     intro:
       "Na konsoli nie da się wpisać adresu serwera, można tylko dołączać do znajomych. Dlatego serwer może mieć własne konto Xbox: gracze dodają je do znajomych i wchodzą na serwer z zakładki Znajomi, jakby dołączali do kolegi.",
-    paidOnly: "Wejście z konsoli działa na płatnych serwerach (od planu Starter). Przy serwerze cały czas działa wtedy mały program, który pokazuje go znajomym na Xbox Live.",
+    freeTitle: "Wejście z konsoli na darmowym serwerze",
+    freePrice:
+      "Przy serwerze musi cały czas działać mały program, który pokazuje go znajomym na Xbox Live, dlatego na darmowym planie to dodatkowa opłata: {price} za {days} dni. W płatnych planach jest w cenie.",
+    buyTitle: "Kup wejście z konsoli: {price} za {days} dni",
+    buyMore: "Przedłuż wejście z konsoli: {price} za kolejne {days} dni",
+    buy: "Kup wejście z konsoli",
+    paidUntil: "Opłacone do {date}. Potem wyłączymy wejście z konsoli, a konto zostanie wylogowane.",
+    freeOrUpgrade: "Nie chcesz dopłacać? W płatnym planie wejście z konsoli jest w cenie.",
+    productName: "Wejście z konsoli na {days} dni – serwer {server}",
     upgrade: "Wybierz płatny plan",
     setupTitle: "Jak to włączyć?",
     setup: [

@@ -5,7 +5,11 @@ import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { allows, getServerAccess } from "@/lib/access";
 import { getXbox, type XboxStatus } from "@/lib/agent";
-import { takesBedrockPlayers, xboxAllowed } from "@/lib/xbox";
+import { XBOX_DAYS, XBOX_PRICE, takesBedrockPlayers, xboxAllowed, xboxPaidFor } from "@/lib/xbox";
+import { formatPrice } from "@/lib/plans";
+import { paysafecardEnabled } from "@/lib/cashbill";
+import { getPreferences } from "@/i18n/server";
+import BuyXbox from "./BuyXbox";
 import AutoRefresh from "@/components/AutoRefresh";
 import CopyButton from "@/components/CopyButton";
 import XboxButtons from "./XboxButtons";
@@ -20,9 +24,11 @@ export default async function XboxPage({ params }: { params: Promise<{ id: strin
   const access = await getServerAccess(id, session.user.id);
   if (!access || !allows(access, "owner") || !takesBedrockPlayers(access.server)) notFound();
   const { server } = access;
-  const all = await getMessages();
+  const [all, { locale, currency }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.xbox;
   const allowed = xboxAllowed(server);
+  const free = server.plan === "FREE";
+  const paidFor = xboxPaidFor(server);
   const on = server.xbox && allowed;
   const status: XboxStatus | null = on ? await getXbox(server.id).catch(() => null) : null;
   const waiting = status && (status.state === "starting" || status.state === "code" || status.state === "signedIn" || status.state === "off");
@@ -32,16 +38,30 @@ export default async function XboxPage({ params }: { params: Promise<{ id: strin
       <h2>{t.title}</h2>
       <p className="muted">{t.intro}</p>
 
-      {!allowed ? (
+      {free ? (
         <section className="card stack">
-          <p>{t.paidOnly}</p>
-          <p>
-            <Link className="button" href={`/dashboard/servers/${server.id}/upgrade`}>
-              {t.upgrade}
-            </Link>
+          <h3 className="card-title">{t.freeTitle}</h3>
+          <p>{format(t.freePrice, { price: formatPrice(XBOX_PRICE[currency], currency, locale), days: XBOX_DAYS })}</p>
+          {paidFor && <p className="notice success">{format(t.paidUntil, { date: server.xboxUntil!.toLocaleDateString(locale) })}</p>}
+          <BuyXbox
+            serverId={server.id}
+            price={formatPrice(XBOX_PRICE[currency], currency, locale)}
+            days={XBOX_DAYS}
+            paysafecard={paysafecardEnabled(currency)}
+            again={paidFor}
+            t={t}
+            billing={all.billing}
+            legal={all.legal}
+            errors={all.server.errors}
+          />
+          <p className="muted small">
+            {t.freeOrUpgrade}{" "}
+            <Link href={`/dashboard/servers/${server.id}/upgrade`}>{t.upgrade}</Link>
           </p>
         </section>
-      ) : (
+      ) : null}
+
+      {!allowed ? null : (
         <section className="card stack">
           {!on && (
             <>

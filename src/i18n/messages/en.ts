@@ -1857,7 +1857,15 @@ const en: Messages = {
     title: "Playing on consoles: Xbox, PlayStation and Switch",
     intro:
       "Consoles can't type in a server address, they can only join friends. So the server can have its own Xbox account: players add it as a friend and join the server from the Friends tab, as if joining a friend.",
-    paidOnly: "Console joining works on paid servers (Starter and up). A small program then runs next to the server all the time, showing it to friends on Xbox Live.",
+    freeTitle: "Console joining on a free server",
+    freePrice:
+      "A small program has to run next to the server all the time to show it to friends on Xbox Live, so on the free plan it costs extra: {price} for {days} days. Paid plans include it.",
+    buyTitle: "Buy console joining: {price} for {days} days",
+    buyMore: "Extend console joining: {price} for another {days} days",
+    buy: "Buy console joining",
+    paidUntil: "Paid for until {date}. After that we turn console joining off and the account is signed out.",
+    freeOrUpgrade: "Don't want to pay extra? A paid plan includes console joining.",
+    productName: "Console joining for {days} days – server {server}",
     upgrade: "Pick a paid plan",
     setupTitle: "How do I turn it on?",
     setup: [

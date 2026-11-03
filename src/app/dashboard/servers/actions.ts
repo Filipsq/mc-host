@@ -59,6 +59,7 @@ import { fitAddonsToVersion } from "@/lib/addonVersions";
 import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, addonType, canCrossplay, canRunNonPremium, isProjectId, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
+import { XBOX_DAYS, XBOX_PRICE, takesBedrockPlayers } from "@/lib/xbox";
 import { uninstallableProjects } from "@/lib/modrinth";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { OTHER_GAME_MIN_PLAN, VALHEIM_PRESETS, isMinecraft, isOtherGame, valheimPasswordOk } from "@/lib/otherGames";
@@ -496,6 +497,37 @@ export async function buyAddonsAction(id: string, _: CheckoutState, form: FormDa
     });
   } catch (err) {
     console.error("add-ons checkout failed", server.id, err);
+    return { error: "paymentsUnavailable" };
+  }
+  redirect(url);
+}
+
+/** Buys XBOX_DAYS of console joining for a free server (src/lib/xbox.ts). */
+export async function buyXboxAction(id: string, _: CheckoutState, form: FormData): Promise<CheckoutState> {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server) redirect("/dashboard");
+  if (!takesBedrockPlayers(server) || server.plan !== "FREE") redirect(`/dashboard/servers/${server.id}/xbox`);
+  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+
+  const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
+  let url: string;
+  try {
+    await db.user.updateMany({ where: { id: user.id }, data: { locale } });
+    url = await startCheckout({
+      user,
+      server,
+      plan: server.plan,
+      days: 0,
+      currency,
+      locale,
+      productName: format(t.xbox.productName, { days: XBOX_DAYS, server: server.name }),
+      startConsent: true,
+      xbox: { days: XBOX_DAYS, amount: XBOX_PRICE[currency] },
+      paysafecard: form.get("method") === "paysafecard",
+    });
+  } catch (err) {
+    console.error("console joining checkout failed", server.id, err);
     return { error: "paymentsUnavailable" };
   }
   redirect(url);

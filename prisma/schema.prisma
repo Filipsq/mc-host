@@ -266,6 +266,8 @@ model Server {
   crossplay        Boolean        @default(false)
   // Console players (Xbox, PlayStation, Switch) join from their Friends tab through an Xbox account the owner signs in (src/lib/xbox.ts)
   xbox             Boolean        @default(false)
+  // A free server's console joining is paid for on its own, per 30 days, until this date (paid plans have it included).
+  xboxUntil        DateTime?
   // The world folder the server runs (the image's default if null), and the seed and
   // type it was made with (src/lib/worlds.ts). On Terraria the type is the world's size.
   level            String?
@@ -398,6 +400,8 @@ model Payment {
   addons                String[]      @default([])
   // Only add-ons bought for the time left of the period (addonCost in addons.ts): days is 0.
   addonsOnly            Boolean       @default(false)
+  // Days of console joining bought for a free server (src/lib/xbox.ts): nothing else changes, and days is 0.
+  xboxDays              Int           @default(0)
   // Bought with this user's creator code, so CREATOR_DISCOUNT percent cheaper (src/lib/creator.ts).
   creatorId             String?
   // Bought with a promo code (src/lib/halloween.ts) or the start offer ("start", src/lib/startOffer.ts), so cheaper.
