@@ -116,6 +116,13 @@ export default function PrivacyPl({ site }: { site: string }) {
           poznajemy.
         </li>
         <li>
+          <strong>Microsoft Ireland Operations Limited</strong> (Irlandia), usługa Xbox Live – tylko gdy właściciel serwera
+          włączy wejście z konsoli. Właściciel loguje konto Xbox serwera bezpośrednio u Microsoftu (hasła nie poznajemy),
+          a program przy serwerze zapisuje tylko token logowania oraz nazwy (gamertagi) i identyfikatory Xbox graczy, którzy dodali
+          to konto do znajomych, żeby przyjmować zaproszenia i po 30 dniach bez gry usuwać ich ze znajomych. Wyłączenie tej
+          funkcji usuwa te dane.
+        </li>
+        <li>
           <strong>Anthropic</strong> (USA) – model AI Claude, który w kreatorze AI dobiera ustawienia serwera. Dostaje
           tylko opis wpisany do kreatora, bez adresu e-mail ani innych danych Konta. Przekazanie danych do USA odbywa
           się na podstawie standardowych klauzul umownych.

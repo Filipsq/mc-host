@@ -143,6 +143,14 @@ export default function TermsPl({ site }: { site: string }) {
           odpowiada za to, że ma prawo jej używać, i sam ustawia jej rekordy DNS.
         </li>
         <li>
+          Wejście z konsoli (Xbox, PlayStation, Switch) przez konto Xbox Serwera jest wliczone w płatne Plany. Na
+          Planie darmowym jest usługą płatną: opłata jest podana za 30 dni, jest jednorazowa (nie odnawia się sama) i
+          nie jest doliczana do żadnego Okresu. Po upływie opłaconych dni Usługodawca wyłącza tę funkcję i wylogowuje
+          konto Xbox; Użytkownik może ją wtedy opłacić ponownie. Opłata za czas już opłacony nie jest zwracana, także
+          gdy Użytkownik sam wyłączy funkcję albo usunie Serwer. Konto Xbox zakłada i loguje Użytkownik; Usługodawca
+          nie zna jego hasła i nie odpowiada za działanie usługi Xbox Live ani za zablokowanie konta przez Microsoft.
+        </li>
+        <li>
           Po upływie Okresu Serwer zostaje zawieszony: przestaje działać, ale jego świat i kopie zapasowe są
           zachowane. Usługodawca przechowuje dane zawieszonego Serwera przez co najmniej 14 dni od końca Okresu, a
           po tym czasie może je usunąć, uprzedzając o tym Użytkownika e-mailem co najmniej 3 dni wcześniej.

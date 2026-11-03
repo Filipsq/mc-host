@@ -24,6 +24,7 @@ import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
 import { addonType, canCrossplay, canRunNonPremium, sitePlugin, withNeededPlugins } from "./plugins";
 import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
+import { xboxOn } from "./xbox";
 
 export type LiveState =
   | "starting"
@@ -252,6 +253,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     onlineMode: server.onlineMode || !canRunNonPremium(server),
     crossplay: server.crossplay && canCrossplay(server),
     voiceHost: voiceAddress(server)?.host,
+    xbox: xboxOn(server),
     allowFlight: server.allowFlight,
     hardcore: server.hardcore,
     commandBlocks: server.commandBlocks,

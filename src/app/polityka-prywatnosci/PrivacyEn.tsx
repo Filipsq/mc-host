@@ -116,6 +116,13 @@ export default function PrivacyEn({ site }: { site: string }) {
           are and gives us your email address and Google account ID; we never see your Google password.
         </li>
         <li>
+          <strong>Microsoft Ireland Operations Limited</strong> (Ireland), the Xbox Live service: only when a server’s owner
+          turns on console joining. The owner signs the server’s Xbox account in with Microsoft directly (we never see the
+          password), and the program next to the server keeps only the sign-in token and the gamertags and Xbox IDs of players
+          who added that account as a friend, to accept their requests and remove them after 30 days without playing. Turning
+          the feature off deletes this data.
+        </li>
+        <li>
           <strong>Anthropic</strong> (USA): the Claude AI model that picks server settings in the AI creator. It only
           receives the description typed into the creator, not the email address or other Account data. Data is
           transferred to the USA under standard contractual clauses.
