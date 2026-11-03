@@ -157,7 +157,7 @@ export async function suggestServer(
       messages: [
         {
           role: "user",
-          content: `Write name, motd and summary in ${language}.${o.hasFree ? " The player already has a free server, so don't pick FREE." : ""}\n\nThe player's description:\n<description>\n${text}\n</description>`,
+          content: `Write name, motd and summary in ${language}.${o.hasFree ? " The player can't make another free server, so don't pick FREE." : ""}\n\nThe player's description:\n<description>\n${text}\n</description>`,
         },
       ],
       output_config: { effort: "low", format: betaZodOutputFormat(SuggestionSchema) },

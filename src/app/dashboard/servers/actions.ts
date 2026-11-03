@@ -32,6 +32,7 @@ import { addonCost, addonList, canBuyAddons, serverAddons, type AddonId } from "
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
+import { freeLimitReached } from "@/lib/freeLimit";
 import { FREE_STARTER_DAYS, checkCreatorCode, giveBackFreeStarter, takeFreeStarter } from "@/lib/creator";
 import { HALLOWEEN_CODE, isHalloweenCode } from "@/lib/halloween";
 import { redeemGift, usableGift } from "@/lib/gifts";
@@ -195,7 +196,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
 
   // An admin's test server: any plan, without paying, to try things out.
   const adminTest = form.get("adminTest") === "on" && (await isAdmin(user.id));
-  if (!adminTest && plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE", adminTest: false } }))) {
+  if (!adminTest && plan === "FREE" && (await freeLimitReached(user.id))) {
     return { error: "freeLimit", values };
   }
   // A free Starter earned with the creator code: paid for FREE_STARTER_DAYS already, without add-ons.

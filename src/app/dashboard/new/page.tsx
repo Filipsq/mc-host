@@ -13,6 +13,7 @@ import { OTHER_GAME_MIN_PLAN, newValheimPassword } from "@/lib/otherGames";
 import { isGameId } from "@/lib/games";
 import { DESCRIPTION_MAX, aiDailyLimit, aiEnabled } from "@/lib/ai";
 import { isAdmin } from "@/lib/admin";
+import { freeLimitReached } from "@/lib/freeLimit";
 import { CREATOR_DISCOUNT, FREE_STARTER_DAYS, suggestedCreatorCode } from "@/lib/creator";
 import { usableGift } from "@/lib/gifts";
 import { HALLOWEEN_CODE, HALLOWEEN_DISCOUNT, halloweenOn } from "@/lib/halloween";
@@ -31,18 +32,17 @@ export default async function NewServerPage({ searchParams }: Props) {
     const { opis } = await searchParams;
     redirect(opis ? `/login?opis=${encodeURIComponent(opis.slice(0, DESCRIPTION_MAX))}` : "/login");
   }
-  const [t, { locale, currency }, freeCount, packArt, { pack, cf, mr, game, opis, prezent, kod }, admin, code, { freeStarters }] = await Promise.all([
+  const [t, { locale, currency }, hasFree, packArt, { pack, cf, mr, game, opis, prezent, kod }, admin, code, { freeStarters }] = await Promise.all([
     getMessages(),
     getPreferences(),
-    // An admin's test servers don't use up their own free one.
-    db.server.count({ where: { ownerId: session.user.id, plan: "FREE", adminTest: false } }),
+    // No more free servers allowed (FREE_SERVERS_PER_USER); an admin's test servers don't count.
+    freeLimitReached(session.user.id),
     getPackArt(CURATED_PACKS.map((p) => p.slug)),
     searchParams,
     isAdmin(session.user.id),
     suggestedCreatorCode(session.user.id),
     db.user.findUniqueOrThrow({ where: { id: session.user.id }, select: { freeStarters: true } }),
   ]);
-  const hasFree = freeCount > 0;
   // Came from "Załóż nowy serwer z prezentem": the gift's plan, paid with its code.
   const giftFound = prezent ? await usableGift(prezent) : null;
   const gift = giftFound && "gift" in giftFound ? giftFound.gift : null;

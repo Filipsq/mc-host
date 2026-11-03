@@ -72,7 +72,7 @@ export default function TermsEn({ site }: { site: string }) {
 
       <h2>§4. Free Plan</h2>
       <ol>
-        <li>Each User can have one Server on the free Plan. The free Plan costs nothing.</li>
+        <li>The number of free Plan Servers per User is limited; the Provider shows the current limit when a Server is created. The free Plan costs nothing.</li>
         <li>
           A free Server nobody has played on for 30 days is deleted with its world. At least 3 days before, the
           Provider tells the User by email; playing on the Server before that date is enough to keep it.

@@ -190,6 +190,9 @@ RAM use; when it stays high, lower `MEMORY_OVERBOOK` or move to a bigger machine
 turns overbooking off: paid servers then keep their memory even when switched off, so their owners
 can always start them.
 
+Each account can have 3 free servers. To change that, put `FREE_SERVERS_PER_USER=5` (any number)
+in `deploy/.env`, or `FREE_SERVERS_PER_USER=0` for no limit, then run `./setup.sh` again.
+
 To change either, edit `deploy/.env` and run `docker compose up -d` in `deploy/`. Servers made
 before an update pick up the smaller starting memory the next time their settings are saved.
 
