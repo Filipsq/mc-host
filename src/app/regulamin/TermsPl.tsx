@@ -143,8 +143,9 @@ export default function TermsPl({ site }: { site: string }) {
           odpowiada za to, że ma prawo jej używać, i sam ustawia jej rekordy DNS.
         </li>
         <li>
-          Wejście z konsoli (Xbox, PlayStation, Switch) przez konto Xbox Serwera jest wliczone w płatne Plany. Na
-          Planie darmowym jest usługą płatną: opłata jest podana za 30 dni, jest jednorazowa (nie odnawia się sama) i
+          Wejście z konsoli (Xbox, PlayStation, Switch) przez konto Xbox Serwera jest przy płatnym Planie
+          dodatkiem opisanym wyżej. Na Planie darmowym jest osobną usługą płatną, droższą niż dodatek: opłata jest
+          podana za 30 dni, jest jednorazowa (nie odnawia się sama) i
           nie jest doliczana do żadnego Okresu. Po upływie opłaconych dni Usługodawca wyłącza tę funkcję i wylogowuje
           konto Xbox; Użytkownik może ją wtedy opłacić ponownie. Opłata za czas już opłacony nie jest zwracana, także
           gdy Użytkownik sam wyłączy funkcję albo usunie Serwer. Konto Xbox zakłada i loguje Użytkownik; Usługodawca

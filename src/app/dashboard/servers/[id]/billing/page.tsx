@@ -6,7 +6,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getOwnedServer } from "@/lib/servers";
 import { addonOptions, planOptions } from "@/lib/planOptions";
-import { serverAddons } from "@/lib/addons";
+import { addonFits, serverAddons } from "@/lib/addons";
 import { formatPrice, plans } from "@/lib/plans";
 import { canUpgrade } from "@/lib/upgrade";
 import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
@@ -137,7 +137,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         paysafecard={paysafecardEnabled(currency)}
         addons={{
           // The own domain is for Java addresses only.
-          options: addonOptions(t, currency).filter((o) => o.id !== "domain" || server.edition === "JAVA"),
+          options: addonOptions(t, currency).filter((o) => addonFits(o.id, server.edition)),
           initial: serverAddons(server),
           labels: { title: t.paidAddons.pickTitle, hint: t.paidAddons.pickHint, price: t.paidAddons.price },
         }}

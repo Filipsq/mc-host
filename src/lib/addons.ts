@@ -3,13 +3,14 @@ import type { Currency } from "@/i18n/config";
 import { planById } from "./plans";
 
 // Paid add-ons on top of a paid plan, each for a price per 30 days: more disk
-// space, more backups kept, and the server's own domain (players type e.g.
-// graj.mojserwer.pl instead of the mchosting.pl address; agent/aliases.go).
+// space, more backups kept, the server's own domain (players type e.g.
+// graj.mojserwer.pl instead of the mchosting.pl address; agent/aliases.go), and
+// console joining (xbox.ts; a free server buys that one on its own, dearer).
 // They're paid for with the plan, for the same period: buying a plan or
 // extending it pays for the add-ons the server has; one bought in the middle of
 // a period costs its share of the time left (addonCost). Free servers have none.
 
-export const ADDONS = ["disk", "backups", "domain"] as const;
+export const ADDONS = ["disk", "backups", "domain", "xbox"] as const;
 export type AddonId = (typeof ADDONS)[number];
 
 type AddonSpec = {
@@ -23,7 +24,19 @@ export const ADDON_SPECS: Record<AddonId, AddonSpec> = {
   disk: { diskGb: 10, backups: 0, price: { PLN: 5.99, EUR: 1.49, USD: 1.59, GBP: 1.29 } },
   backups: { diskGb: 0, backups: 7, price: { PLN: 5.99, EUR: 1.49, USD: 1.59, GBP: 1.29 } },
   domain: { diskGb: 0, backups: 0, price: { PLN: 5.99, EUR: 1.49, USD: 1.59, GBP: 1.29 } },
+  xbox: { diskGb: 0, backups: 0, price: { PLN: 5.99, EUR: 1.49, USD: 1.59, GBP: 1.29 } },
 };
+
+/**
+ * Whether an add-on means anything for a game: the own domain is for Java
+ * addresses only (players of other games join by IP and port), console joining
+ * for Minecraft (Bedrock, or Java with crossplay).
+ */
+export function addonFits(id: AddonId, edition: string) {
+  if (id === "domain") return edition === "JAVA";
+  if (id === "xbox") return edition === "JAVA" || edition === "BEDROCK";
+  return true;
+}
 
 export const isAddonId = (a: unknown): a is AddonId => ADDONS.includes(a as AddonId);
 

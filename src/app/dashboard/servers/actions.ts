@@ -28,7 +28,7 @@ import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout, syncDiskLimits } from "@/lib/billing";
 import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
-import { addonCost, addonList, canBuyAddons, serverAddons, type AddonId } from "@/lib/addons";
+import { addonCost, addonFits, addonList, canBuyAddons, serverAddons, type AddonId } from "@/lib/addons";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
@@ -166,7 +166,7 @@ async function checkoutUrl(
 /** Add-ons ticked in a form: none on the free plan, and the own domain only for Java (players of other games join by IP and port). */
 function formAddons(form: FormData, plan: Plan, edition: string) {
   if (plan === "FREE") return [];
-  return addonList(form.getAll("addons").map(String)).filter((a) => a !== "domain" || edition === "JAVA");
+  return addonList(form.getAll("addons").map(String)).filter((a) => addonFits(a, edition));
 }
 
 export async function createServerAction(_: CreateServerState, form: FormData): Promise<CreateServerState> {
@@ -547,6 +547,11 @@ export async function removeAddonAction(id: string, addon: AddonId) {
       ...(addon === "backups" && server.status === "RUNNING" && { pluginsPending: true }),
     },
   });
+  // Console joining dropped: the broadcaster goes, with its sign-in.
+  if (addon === "xbox") {
+    await db.server.update({ where: { id: server.id }, data: { xbox: false } });
+    await agent.disableXbox(server.id).catch((err) => console.error("xbox not stopped", server.id, err));
+  }
   if (addon === "domain") await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
   if (addon === "disk") await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
   revalidatePath(`/dashboard/servers/${id}/addons`);

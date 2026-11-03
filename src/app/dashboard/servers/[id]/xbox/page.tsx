@@ -5,7 +5,8 @@ import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { allows, getServerAccess } from "@/lib/access";
 import { getXbox, type XboxStatus } from "@/lib/agent";
-import { XBOX_DAYS, XBOX_PRICE, takesBedrockPlayers, xboxAllowed, xboxPaidFor } from "@/lib/xbox";
+import { XBOX_ADDON_PRICE, XBOX_DAYS, XBOX_PRICE, takesBedrockPlayers, xboxAllowed, xboxPaidFor } from "@/lib/xbox";
+import { canBuyAddons } from "@/lib/addons";
 import { formatPrice } from "@/lib/plans";
 import { paysafecardEnabled } from "@/lib/cashbill";
 import { getPreferences } from "@/i18n/server";
@@ -54,9 +55,18 @@ export default async function XboxPage({ params }: { params: Promise<{ id: strin
             legal={all.legal}
             errors={all.server.errors}
           />
-          <p className="muted small">
-            {t.freeOrUpgrade}{" "}
-            <Link href={`/dashboard/servers/${server.id}/upgrade`}>{t.upgrade}</Link>
+          <p className="notice">
+            {format(t.freeOrUpgrade, { addonPrice: formatPrice(XBOX_ADDON_PRICE[currency], currency, locale) })}{" "}
+            <Link href={`/dashboard/servers/${server.id}/billing`}>{t.upgrade}</Link>
+          </p>
+        </section>
+      ) : !allowed ? (
+        <section className="card stack">
+          <p>{format(t.paidAddon, { price: formatPrice(XBOX_ADDON_PRICE[currency], currency, locale) })}</p>
+          <p>
+            <Link className="button" href={`/dashboard/servers/${server.id}/${canBuyAddons(server) ? "addons" : "billing"}`}>
+              {canBuyAddons(server) ? t.addonLink : all.billing.manage}
+            </Link>
           </p>
         </section>
       ) : null}

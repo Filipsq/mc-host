@@ -28,7 +28,7 @@ import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type Cr
 import { fulfillGiftPurchase } from "./gifts";
 import { isHalloweenCode, withHalloweenDiscount } from "./halloween";
 import { startOffers, startOfferEnds, withStartOfferDiscount } from "./startOffer";
-import { xboxUntilAfter } from "./xbox";
+import { xboxAllowed, xboxUntilAfter } from "./xbox";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
@@ -205,6 +205,11 @@ export async function fulfillPayment(paymentId: string) {
   if (addonsChanged) {
     await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
     await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
+  }
+  // Renewed without console joining: the broadcaster goes, with its sign-in.
+  if (server.xbox && !xboxAllowed(server)) {
+    await db.server.update({ where: { id: server.id }, data: { xbox: false } });
+    await agent.disableXbox(server.id).catch((err) => console.error("xbox not stopped", server.id, err));
   }
   if (server.status === "PROVISIONING") await provision(server);
 }
