@@ -6,7 +6,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getOwnedServer } from "@/lib/servers";
 import { addonOptions, planOptions } from "@/lib/planOptions";
-import { serverAddons } from "@/lib/addons";
+import { addonFits, serverAddons } from "@/lib/addons";
 import { formatPrice, plans } from "@/lib/plans";
 import { canUpgrade } from "@/lib/upgrade";
 import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
@@ -15,6 +15,7 @@ import { renewalPriceFor } from "@/lib/priceChange";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import type { Currency } from "@/i18n/config";
 import CheckoutForm from "./CheckoutForm";
+import { paysafecardEnabled } from "@/lib/cashbill";
 import AutoRenewButton from "./AutoRenewButton";
 
 const HOUR = 60 * 60 * 1000;
@@ -133,9 +134,10 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         legal={t.legal}
         money={{ locale, currency }}
         autoRenew={server.autoRenew}
+        paysafecard={paysafecardEnabled(currency)}
         addons={{
           // The own domain is for Java addresses only.
-          options: addonOptions(t, currency).filter((o) => o.id !== "domain" || server.edition === "JAVA"),
+          options: addonOptions(t, currency).filter((o) => addonFits(o.id, server.edition)),
           initial: serverAddons(server),
           labels: { title: t.paidAddons.pickTitle, hint: t.paidAddons.pickHint, price: t.paidAddons.price },
         }}

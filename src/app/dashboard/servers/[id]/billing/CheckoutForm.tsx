@@ -6,6 +6,7 @@ import { checkoutAction } from "../../actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import type { ComponentProps } from "react";
 import PaymentConsent from "@/components/PaymentConsent";
+import PayBadges from "@/components/PayBadges";
 import type { Messages } from "@/i18n/messages";
 
 type Props = {
@@ -20,9 +21,10 @@ type Props = {
   money: { locale: string; currency: string };
   autoRenew: boolean; // ticked to start with
   addons: ComponentProps<typeof PlanPicker>["addons"];
+  paysafecard: boolean; // offered too (cashbill.ts)
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, paysafecard }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -43,9 +45,21 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
         </span>
       </label>
       <p className="muted small">{t.methods}</p>
+      {paysafecard && <p className="muted small">{t.paysafecardHint}</p>}
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
-      <button type="submit" disabled={pending}>{pending ? t.redirecting : t.checkout}</button>
+      <div className="pay-buttons">
+        <button type="submit" className="pay-button" disabled={pending}>
+          <span className="pay-label">{pending ? t.redirecting : t.checkout}</span>
+          <PayBadges method="stripe" />
+        </button>
+        {paysafecard && (
+          <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
+            <span className="pay-label">{t.paysafecard}</span>
+            <PayBadges method="paysafecard" />
+          </button>
+        )}
+      </div>
     </form>
   );
 }

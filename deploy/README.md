@@ -52,7 +52,7 @@ Minecraft server in Docker. See the "Hosting setup" section of the plan for why.
    `setup.sh` asks for the domain: type `mchosting.pl`.
 
 It installs Docker, opens only the needed ports (SSH, 80, 443, 25565, 30000–30999/UDP for
-Bedrock and crossplay, and 30000–30999/TCP for Terraria, 31000–31999/UDP for Simple Voice Chat, 40000–59999/UDP for Bedrock servers over NetherNet), generates passwords into `deploy/.env`, and starts everything. The first build takes a
+Bedrock and crossplay, and 30000–30999/TCP for Terraria, 31000–31999/UDP for Simple Voice Chat, 32000–32999/TCP for BlueMap web maps, 40000–59999/UDP for Bedrock servers over NetherNet), generates passwords into `deploy/.env`, and starts everything. The first build takes a
 few minutes. The site is then live at `https://mchosting.pl`; HTTPS is set up automatically as soon
 as the DNS records from step 1 work.
 
@@ -79,6 +79,16 @@ publishable key (`pk_live_…`) isn't used: checkout happens on Stripe's own pag
 Also turn on **Successful payments** under Settings → Customer emails, so every buyer gets a receipt by
 email. Polish consumer law expects a confirmation of the purchase on a "durable medium", and the receipt
 covers that until the site sends its own emails.
+
+### paysafecard (CashBill)
+
+Stripe doesn't take paysafecard, so it goes through CashBill (cashbill.pl). In the CashBill panel,
+make a payment point for `mchosting.pl` with the "Web Service" interface and the server confirmation
+address `https://mchosting.pl/api/cashbill/notify`. Put the point's id and key into `deploy/.env` as
+`CASHBILL_SHOP_ID='…'` and `CASHBILL_SECRET='…'`, then run `docker compose up -d` in `deploy/` again.
+A "Pay with paysafecard" button then shows next to the Stripe one when paying in złoty (new servers
+and the Plan page; upgrades and add-ons stay on Stripe). `CASHBILL_TEST=1` uses CashBill's test
+environment; `CASHBILL_CHANNEL` picks the payment channel if paysafecard isn't found by name.
 
 ## Emails
 

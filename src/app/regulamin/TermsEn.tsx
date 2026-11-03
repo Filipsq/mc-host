@@ -130,6 +130,16 @@ export default function TermsEn({ site }: { site: string }) {
           sets its DNS records themselves.
         </li>
         <li>
+          Console joining (Xbox, PlayStation, Switch) through the Server’s Xbox account is, on a paid Plan, an
+          add-on as described above. On the free Plan it is a separate paid service, dearer than the add-on: its
+          price is given per 30 days, it is a one-off payment (it
+          does not renew by itself) and it is not added to any Period. Once the days paid for are over, the Provider
+          turns the feature off and signs the Xbox account out; the User can then pay for it again. Time already paid
+          for is not refunded, including when the User turns the feature off or deletes the Server. The User creates
+          and signs in the Xbox account; the Provider never sees its password and is not responsible for the Xbox
+          Live service or for Microsoft blocking the account.
+        </li>
+        <li>
           When you change Plans, the unused days of your current Plan are converted into days of the new Plan by
           the ratio of their prices and added to the paid Period.
         </li>

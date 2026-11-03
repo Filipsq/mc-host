@@ -2,6 +2,7 @@ import "server-only";
 import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
+import { createCashbillPayment, paysafecardEnabled } from "./cashbill";
 import * as agent from "./agent";
 import { agentSpec, changePort, destroyServer, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
@@ -27,6 +28,7 @@ import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type Cr
 import { fulfillGiftPurchase } from "./gifts";
 import { isHalloweenCode, withHalloweenDiscount } from "./halloween";
 import { startOffers, startOfferEnds, withStartOfferDiscount } from "./startOffer";
+import { xboxAllowed, xboxUntilAfter } from "./xbox";
 import type { Currency, Locale } from "@/i18n/config";
 
 // Paid plans are prepaid for 7 to 90 days (periods.ts) rather than auto-renewing
@@ -55,21 +57,27 @@ export async function startCheckout(opts: {
   upgrade?: { from: Plan; amount: number }; // the price difference for the time left (upgrade.ts); days is 0
   addons?: readonly AddonId[]; // every add-on the server has once paid (addons.ts)
   addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
+  xbox?: { days: number; amount: number }; // console joining for a free server (xbox.ts); days is 0 and nothing else changes
   creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
   promoCode?: string; // the Halloween code (halloween.ts): the same, without a creator
+  paysafecard?: boolean; // paid with paysafecard through CashBill (cashbill.ts) instead of Stripe
 }) {
-  const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly } = opts;
+  const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly, xbox } = opts;
   const addons = addonList(opts.addons);
-  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly;
+  const paysafecard = !!opts.paysafecard;
+  if (paysafecard && !paysafecardEnabled(currency)) throw new Error("paysafecard is not set up");
+  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !xbox && !paysafecard;
   // Test keys take no money, so only admins may check out with them (to try the site).
-  if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
+  if (!paysafecard && stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
-  const full = Math.round((upgrade || addonsOnly || !days ? (upgrade?.amount ?? addonsOnly?.amount ?? 0) : priceFor(plan, days, currency, addons)) * 100);
-  const creatorId = days && !upgrade && !addonsOnly ? opts.creatorId : undefined;
-  const promoCode = days && !upgrade && !addonsOnly && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
+  const oneOff = upgrade?.amount ?? addonsOnly?.amount ?? xbox?.amount ?? 0;
+  const full = Math.round((upgrade || addonsOnly || xbox || !days ? oneOff : priceFor(plan, days, currency, addons)) * 100);
+  const plain = !!days && !upgrade && !addonsOnly && !xbox; // a plan bought or extended: codes and offers apply
+  const creatorId = plain ? opts.creatorId : undefined;
+  const promoCode = plain && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
   // Without a code, a first payment while the user's start offer runs (startOffer.ts) is cheaper too.
-  const startOffer = days && !upgrade && !addonsOnly && !creatorId && !promoCode && (await startOfferEnds(user.id)) ? "start" : undefined;
+  const startOffer = plain && !creatorId && !promoCode && (await startOfferEnds(user.id)) ? "start" : undefined;
   const amount = creatorId ? withCreatorDiscount(full) : promoCode ? withHalloweenDiscount(full) : startOffer ? withStartOfferDiscount(full) : full;
   const payment = await db.payment.create({
     data: {
@@ -84,13 +92,20 @@ export async function startCheckout(opts: {
       upgradeFrom: upgrade?.from,
       addons,
       addonsOnly: !!addonsOnly,
+      xboxDays: xbox?.days ?? 0,
       creatorId,
       promoCode: promoCode ?? startOffer,
+      paysafecard,
     },
   });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const back = `${appUrl}/dashboard/servers/${server.id}`;
+  if (paysafecard) {
+    const cb = await createCashbillPayment(payment, { title: opts.productName, returnUrl: `${back}?payment=success`, email: user.email });
+    await db.payment.update({ where: { id: payment.id }, data: { cashbillId: cb.id } });
+    return cb.url;
+  }
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
     // Card, BLIK and Przelewy24 are switched on in the Stripe Dashboard;
@@ -136,6 +151,8 @@ export async function stripeCustomer(user: Pick<User, "id" | "email">) {
 export async function fulfillPayment(paymentId: string) {
   // A gift code bought for someone (gifts.ts): no server to change yet.
   if (await fulfillGiftPurchase(paymentId)) return;
+  // Console joining for a free server (xbox.ts): only its own days change.
+  if (await fulfillXboxPayment(paymentId)) return;
   const now = new Date();
   let inviter: Inviter | null = null;
   let creator: CreatorReward | null = null;
@@ -189,7 +206,53 @@ export async function fulfillPayment(paymentId: string) {
     await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
     await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
   }
+  // Renewed without console joining: the broadcaster goes, with its sign-in.
+  if (server.xbox && !xboxAllowed(server)) {
+    await db.server.update({ where: { id: server.id }, data: { xbox: false } });
+    await agent.disableXbox(server.id).catch((err) => console.error("xbox not stopped", server.id, err));
+  }
   if (server.status === "PROVISIONING") await provision(server);
+}
+
+/**
+ * A payment for a free server's console joining: adds its days, turns the
+ * feature on and starts the broadcaster. Safe to call more than once.
+ */
+async function fulfillXboxPayment(paymentId: string): Promise<boolean> {
+  const payment = await db.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { xboxDays: true, serverId: true } });
+  if (payment.xboxDays <= 0) return false;
+  const now = new Date();
+  const claimed = await db.payment.updateMany({ where: { id: paymentId, status: "PENDING" }, data: { status: "PAID", paidAt: now } });
+  if (claimed.count === 0) return true;
+  const server = payment.serverId ? await db.server.findUnique({ where: { id: payment.serverId } }) : null;
+  if (!server) return true; // deleted before the payment went through
+  const updated = await db.server.update({
+    where: { id: server.id },
+    data: { xbox: true, xboxUntil: xboxUntilAfter(server, payment.xboxDays, now) },
+  });
+  console.info("xbox paid", server.id, payment.xboxDays, "days, until", updated.xboxUntil?.toISOString());
+  // Not made on its machine yet (never started): it starts with the server.
+  await agent.enableXbox(server.id).catch((err) => {
+    if (!(err instanceof agent.AgentError && err.status === 404)) console.error("xbox not started after payment", server.id, err);
+  });
+  return true;
+}
+
+/**
+ * Free servers whose bought console joining has run out: it's turned off and
+ * the broadcaster, with its sign-in, is removed (paid plans have it included).
+ */
+async function stopExpiredXbox(now: Date) {
+  const over = await db.server.findMany({ where: { plan: "FREE", xbox: true, xboxUntil: { lt: now } }, include: OWNER });
+  let stopped = 0;
+  for (const s of over) {
+    const { count } = await db.server.updateMany({ where: { id: s.id, xbox: true, xboxUntil: { lt: now } }, data: { xbox: false } });
+    if (count === 0) continue;
+    await agent.disableXbox(s.id).catch((err) => console.error("xbox not stopped", s.id, err));
+    console.info("xbox ran out", s.id, "paid until", s.xboxUntil?.toISOString());
+    stopped++;
+  }
+  return stopped;
 }
 
 /** Tells the machines every server's disk limit (also servers made before there were limits, and after an agent lost its state). */
@@ -462,7 +525,7 @@ export async function removeLeftoverContainers(now = new Date()) {
 }
 
 export async function runBillingJob(now = new Date()) {
-  const result = { renewed: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
+  const result = { renewed: 0, xboxStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // The admin's Hytale sign-in lapses after 30 days unused (hytale.ts).
@@ -474,6 +537,12 @@ export async function runBillingJob(now = new Date()) {
   // Auto-renewing servers whose period ends within a day: charge the saved card.
   result.renewed = await renewDueServers(now).catch((err) => {
     console.error("automatic renewals failed", err);
+    return 0;
+  });
+
+  // A free server's bought console joining has run out.
+  result.xboxStopped = await stopExpiredXbox(now).catch((err) => {
+    console.error("expired console joining not stopped", err);
     return 0;
   });
 

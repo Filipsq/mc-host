@@ -26,6 +26,35 @@ func (req *createRequest) bedrockPlayPorts() (first, last int) {
 	return first, first + bedrockPlayPortsEach - 1
 }
 
+// publicIPv4 is this machine's own public IPv4 address, "" if it can't tell:
+// the address it sends from to the internet (the agent shares the machine's
+// network, and our machines have their public address on the interface).
+// Mojang's server tells it to the game. Without it the image asks ipify at
+// every start, and when ipify doesn't answer the server never starts
+// ("Unable to resolve public IP", n5 on 2026-11-03).
+var publicIPv4 = func() string {
+	conn, err := net.Dial("udp4", "1.1.1.1:53") // UDP: no packet is sent
+	if err != nil {
+		log.Printf("nethernet: own address: %v", err)
+		return ""
+	}
+	defer conn.Close()
+	ip := conn.LocalAddr().(*net.UDPAddr).IP.To4()
+	if ip == nil || ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() {
+		return ""
+	}
+	return ip.String()
+}
+
+// bedrockUDPAddress is what the server hands the game to play on: our own
+// address, or the image's placeholder for it (IPv4: game ports are IPv4 here).
+func bedrockUDPAddress() string {
+	if ip := publicIPv4(); ip != "" {
+		return ip
+	}
+	return "<public_ipv4>"
+}
+
 // lookupIPv4 is the machine's public address for a host name, "" if unknown.
 var lookupIPv4 = func(host string) string {
 	ips, err := net.LookupIP(host)

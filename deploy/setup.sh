@@ -20,6 +20,7 @@ ufw allow 25565/tcp >/dev/null       # Java players, through the agent's router
 ufw allow 30000:30999/udp >/dev/null # Bedrock players (and crossplay), one port per server
 ufw allow 30000:30999/tcp >/dev/null # Terraria players, one port per server
 ufw allow 31000:31999/udp >/dev/null # Simple Voice Chat, the server's port + 1000
+ufw allow 32000:32999/tcp >/dev/null # BlueMap's web map, the server's port + 2000 (agent/webmap.go)
 ufw allow 40000:59999/udp >/dev/null # Bedrock servers play over NetherNet, 20 ports each (agent/nethernet.go)
 ufw --force enable >/dev/null
 ./game-firewall.sh install
@@ -121,6 +122,16 @@ ENV
 fi
 if ! grep -qE '^CF_API_KEY=.+' .env; then
   echo "CurseForge packs are off: set CF_API_KEY in deploy/.env (see deploy/README.md)."
+fi
+
+# paysafecard through CashBill (src/lib/cashbill.ts); see deploy/README.md.
+if ! grep -q '^CASHBILL_SHOP_ID=' .env; then
+  cat >> .env <<'ENV'
+# From the CashBill panel (payment point, Web Service): its id and key, in
+# single quotes. Without them the paysafecard button is hidden.
+CASHBILL_SHOP_ID=
+CASHBILL_SECRET=
+ENV
 fi
 
 # Phone notifications from the installed app (Web Push) are signed with this

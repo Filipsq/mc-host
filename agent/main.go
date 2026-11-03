@@ -321,6 +321,9 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("DELETE /servers/{id}", a.remove)
 	mux.HandleFunc("DELETE /servers/{id}/container", a.removeContainer)
 	mux.HandleFunc("GET /servers/{id}/logs", a.logs)
+	mux.HandleFunc("GET /servers/{id}/xbox", a.xboxGet)
+	mux.HandleFunc("PUT /servers/{id}/xbox", a.xboxPut)
+	mux.HandleFunc("DELETE /servers/{id}/xbox", a.xboxDelete)
 	mux.HandleFunc("POST /servers/{id}/command", a.command)
 	mux.HandleFunc("GET /servers/{id}/metrics", a.metricsHandler)
 	mux.HandleFunc("GET /servers/{id}/backups", a.backupsList)
@@ -429,6 +432,10 @@ type createRequest struct {
 	Links []serverLink `json:"links"`
 	// Hytale only: the sign-ins the server and its downloader use (hytale.go).
 	Hytale *hytaleAuth `json:"hytale"`
+	// Bedrock, or Java with crossplay: console players join through the
+	// owner's Xbox account in their Friends tab (xbox.go). False also signs it
+	// out; missing (an older site) leaves it as it is.
+	Xbox *bool `json:"xbox"`
 }
 
 var (
@@ -530,8 +537,8 @@ func (req *createRequest) validate() error {
 		return errors.New("modpackLoader is for a modpack server")
 	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run crossplay")
-	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.voicePort() > 65535):
-		return errors.New("voiceHost needs a Java server, a valid hostname and a port that leaves room for the voice port")
+	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.webMapPort() > 65535):
+		return errors.New("voiceHost needs a Java server, a valid hostname and a port that leaves room for the voice and map ports")
 	case req.ResourcePack != nil && req.Edition != "JAVA":
 		return errors.New("only Java servers take a resource pack")
 	case req.Level != "" && !validWorldName.MatchString(req.Level):
@@ -735,6 +742,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 		a.prepareEnd(ctx, req)
 		a.prepareLinks(ctx, req.ID, req.level(), req.Links)
 	}
+	a.syncXboxLater(ctx, req)
 	if !start {
 		return nil
 	}
@@ -969,7 +977,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		// listens on the UDP port players type any more; it stays published
 		// for the waker, which answers older games there while the server is off.
 		first, last := req.bedrockPlayPorts()
-		env = append(env, "TRANSPORT=nethernet", fmt.Sprintf("SERVER_UDP_PORTS=<public_ip>:%d-%d:%d-%d", first, last, first, last))
+		env = append(env, "TRANSPORT=nethernet", fmt.Sprintf("SERVER_UDP_PORTS=%s:%d-%d:%d-%d", bedrockUDPAddress(), first, last, first, last))
 		bindings[signalingPort] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(req.Port)}}
 		for p := first; p <= last; p++ {
 			bindings[fmt.Sprintf("%d/udp", p)] = []map[string]string{{"HostIp": "", "HostPort": fmt.Sprint(p)}}
@@ -981,7 +989,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		bindings[containerPort] = []map[string]string{{"HostIp": hostIP, "HostPort": fmt.Sprint(req.Port)}}
 	}
 	if req.Edition == "JAVA" {
-		entrypoint = withVoiceChat(req, bindings, withUnfinishedWorldCheck(entrypoint))
+		entrypoint = withWebMap(req, bindings, withVoiceChat(req, bindings, withUnfinishedWorldCheck(entrypoint)))
 	}
 	return serverSpec(req, image, env, labels, bindings, tty, limitMb, entrypoint)
 }
@@ -1118,6 +1126,9 @@ func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	if err := a.removeXbox(ctx, id, true); err != nil {
+		log.Printf("xbox %s: %v", id, err)
+	}
 	// The world lives in the volume; deleting the server deletes it and its backups too.
 	if err := a.docker.RemoveVolume(ctx, name); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -1171,6 +1182,10 @@ func (a *agent) removeContainer(w http.ResponseWriter, r *http.Request) {
 	if err := a.docker.RemoveContainer(r.Context(), containerName(id)); err != nil && !errors.Is(err, errNotFound) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	// Its broadcaster too: a moved server signs in again on its new machine.
+	if err := a.removeXbox(r.Context(), id, true); err != nil {
+		log.Printf("xbox %s: %v", id, err)
 	}
 	log.Printf("removed leftover container %s (files kept)", containerName(id))
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

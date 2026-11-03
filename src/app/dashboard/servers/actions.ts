@@ -28,7 +28,7 @@ import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout, syncDiskLimits } from "@/lib/billing";
 import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
-import { addonCost, addonList, canBuyAddons, serverAddons, type AddonId } from "@/lib/addons";
+import { addonCost, addonFits, addonList, canBuyAddons, serverAddons, type AddonId } from "@/lib/addons";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
@@ -59,6 +59,7 @@ import { fitAddonsToVersion } from "@/lib/addonVersions";
 import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, addonType, canCrossplay, canRunNonPremium, isProjectId, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
+import { XBOX_DAYS, XBOX_PRICE, takesBedrockPlayers } from "@/lib/xbox";
 import { uninstallableProjects } from "@/lib/modrinth";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { OTHER_GAME_MIN_PLAN, VALHEIM_PRESETS, isMinecraft, isOtherGame, valheimPasswordOk } from "@/lib/otherGames";
@@ -139,6 +140,7 @@ async function checkoutUrl(
   addons: AddonId[] = [],
   creatorId?: string,
   promoCode?: string,
+  paysafecard = false,
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -157,13 +159,14 @@ async function checkoutUrl(
     addons,
     creatorId,
     promoCode,
+    paysafecard,
   });
 }
 
 /** Add-ons ticked in a form: none on the free plan, and the own domain only for Java (players of other games join by IP and port). */
 function formAddons(form: FormData, plan: Plan, edition: string) {
   if (plan === "FREE") return [];
-  return addonList(form.getAll("addons").map(String)).filter((a) => a !== "domain" || edition === "JAVA");
+  return addonList(form.getAll("addons").map(String)).filter((a) => addonFits(a, edition));
 }
 
 export async function createServerAction(_: CreateServerState, form: FormData): Promise<CreateServerState> {
@@ -321,7 +324,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (paying) {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode);
+      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode, form.get("method") === "paysafecard");
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -411,6 +414,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       server.status === "AWAITING_PAYMENT" ? (server.creatorId ?? undefined) : undefined,
       // Likewise the Halloween code, while the event lasts (startCheckout checks).
       server.status === "AWAITING_PAYMENT" ? (server.promoCode ?? undefined) : undefined,
+      form.get("method") === "paysafecard",
     );
   } catch (err) {
     console.error("checkout failed", server.id, err);
@@ -498,6 +502,37 @@ export async function buyAddonsAction(id: string, _: CheckoutState, form: FormDa
   redirect(url);
 }
 
+/** Buys XBOX_DAYS of console joining for a free server (src/lib/xbox.ts). */
+export async function buyXboxAction(id: string, _: CheckoutState, form: FormData): Promise<CheckoutState> {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server) redirect("/dashboard");
+  if (!takesBedrockPlayers(server) || server.plan !== "FREE") redirect(`/dashboard/servers/${server.id}/xbox`);
+  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+
+  const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
+  let url: string;
+  try {
+    await db.user.updateMany({ where: { id: user.id }, data: { locale } });
+    url = await startCheckout({
+      user,
+      server,
+      plan: server.plan,
+      days: 0,
+      currency,
+      locale,
+      productName: format(t.xbox.productName, { days: XBOX_DAYS, server: server.name }),
+      startConsent: true,
+      xbox: { days: XBOX_DAYS, amount: XBOX_PRICE[currency] },
+      paysafecard: form.get("method") === "paysafecard",
+    });
+  } catch (err) {
+    console.error("console joining checkout failed", server.id, err);
+    return { error: "paymentsUnavailable" };
+  }
+  redirect(url);
+}
+
 /** Drops an add-on now (what's paid isn't given back); the next payment no longer includes it. */
 export async function removeAddonAction(id: string, addon: AddonId) {
   const user = await requireUser();
@@ -512,6 +547,11 @@ export async function removeAddonAction(id: string, addon: AddonId) {
       ...(addon === "backups" && server.status === "RUNNING" && { pluginsPending: true }),
     },
   });
+  // Console joining dropped: the broadcaster goes, with its sign-in.
+  if (addon === "xbox") {
+    await db.server.update({ where: { id: server.id }, data: { xbox: false } });
+    await agent.disableXbox(server.id).catch((err) => console.error("xbox not stopped", server.id, err));
+  }
   if (addon === "domain") await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
   if (addon === "disk") await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
   revalidatePath(`/dashboard/servers/${id}/addons`);

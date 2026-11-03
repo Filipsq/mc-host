@@ -31,8 +31,12 @@ export function isDiskFull(err: unknown) {
   return err instanceof AgentError && err.status === 507 && err.message === "diskFull";
 }
 
-// Which machine each server is on, until it moves (forgetServerNode).
-const serverNodes = new Map<string, string>();
+// Which machine each server is on, remembered briefly. Next.js can load this
+// module more than once (pages, actions and API routes each get a copy), so
+// forgetServerNode after a move only reaches one copy: a short life keeps the
+// others from asking the old machine (the panel showed a moved server as off).
+const NODE_TTL_MS = 10_000;
+const serverNodes = new Map<string, { node: string; at: number }>();
 
 /** Makes the next call about the server look up its machine again, after a move. */
 export function forgetServerNode(id: string) {
@@ -40,11 +44,10 @@ export function forgetServerNode(id: string) {
 }
 
 async function nodeOfServer(id: string): Promise<GameNode> {
-  let node = serverNodes.get(id);
-  if (node === undefined) {
-    node = (await db.server.findUnique({ where: { id }, select: { node: true } }))?.node ?? MAIN_NODE;
-    serverNodes.set(id, node);
-  }
+  const known = serverNodes.get(id);
+  if (known && Date.now() - known.at < NODE_TTL_MS) return nodeById(known.node);
+  const node = (await db.server.findUnique({ where: { id }, select: { node: true } }))?.node ?? MAIN_NODE;
+  serverNodes.set(id, { node, at: Date.now() });
   return nodeById(node);
 }
 
@@ -99,6 +102,7 @@ export type CreateServerSpec = {
   onlineMode: boolean; // false: non-premium (Java on Paper, or a mod loader or pack where a login mod runs)
   crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
   voiceHost?: string; // Java only: the machine players' games reach Simple Voice Chat on
+  xbox?: boolean; // Bedrock, or Java with crossplay: console players join through an Xbox account (src/lib/xbox.ts); false signs it out
   allowFlight: boolean; // Java only
   hardcore: boolean; // Java only
   commandBlocks: boolean; // Java only
@@ -308,6 +312,34 @@ export async function copyServer(id: string, from: GameNode, to: GameNode) {
     const path = `/servers/${id}/backups/${b.name}`;
     await send(path, await agentFetch(path, { node: from, timeoutMs: MOVE_TIMEOUT_MS }));
   }
+}
+
+/**
+ * The console sign-in's state (agent/xbox.go): off; starting; code (the owner
+ * signs in at url with code); signedIn; live (friends see the server); error.
+ */
+export type XboxStatus = {
+  state: "off" | "starting" | "code" | "signedIn" | "live" | "error";
+  code?: string;
+  url?: string;
+  gamertag?: string;
+  friends: number;
+  message?: string;
+};
+
+export async function getXbox(id: string): Promise<XboxStatus> {
+  const res = await agentFetch(`/servers/${id}/xbox`, { timeoutMs: 8_000 });
+  return res.json();
+}
+
+/** Starts the console sign-in next to the server (the first time its program is downloaded). */
+export async function enableXbox(id: string) {
+  await agentFetch(`/servers/${id}/xbox`, { method: "PUT", timeoutMs: 10 * 60_000 });
+}
+
+/** Stops it and forgets the account. */
+export async function disableXbox(id: string) {
+  await agentFetch(`/servers/${id}/xbox`, { method: "DELETE", timeoutMs: 60_000 });
 }
 
 export async function sendCommand(id: string, command: string): Promise<string> {
