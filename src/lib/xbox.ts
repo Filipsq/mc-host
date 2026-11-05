@@ -15,7 +15,7 @@ import { ADDON_SPECS, serverAddons } from "./addons";
 export const XBOX_DAYS = 30;
 
 /** What XBOX_DAYS of console joining cost a free server, like the plans' prices. */
-export const XBOX_PRICE: Record<Currency, number> = { PLN: 9.99, EUR: 2.49, USD: 2.69, GBP: 2.19 };
+export const XBOX_PRICE: Record<Currency, number> = { PLN: 10, EUR: 2.5, USD: 2.7, GBP: 2.2 };
 
 /** A server Bedrock players join: Bedrock itself, or Java with crossplay on. */
 export function takesBedrockPlayers(server: Pick<Server, "edition" | "kind" | "crossplay">) {
