@@ -6,6 +6,8 @@ scoreboard objectives add lobby trigger
 scoreboard objectives add mg_die deathCount
 scoreboard objectives add mg_cp dummy
 scoreboard objectives add mg_pkt dummy
+scoreboard objectives add mg_wins dummy {"text":"Wygrane","color":"gold","bold":true}
+scoreboard objectives setdisplay sidebar mg_wins
 team add mg_seek
 team add mg_hide
 scoreboard players set #20 mg 20

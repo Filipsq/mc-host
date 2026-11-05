@@ -222,3 +222,46 @@ func TestMinigamesSpec(t *testing.T) {
 		t.Error("no minigames label")
 	}
 }
+
+// Before each start the pack is written again, on Minigames servers only.
+func TestRefreshMinigames(t *testing.T) {
+	tmp := t.TempDir()
+	volumes := filepath.Join(tmp, "volumes")
+	data := filepath.Join(volumes, "mc-abc12345", "_data")
+	os.MkdirAll(data, 0o755)
+	sock := filepath.Join(tmp, "docker.sock")
+	ln, err := net.Listen("unix", sock)
+	if err != nil {
+		t.Fatal(err)
+	}
+	labels := map[string]string{"mchost.minigames": "true", "mchost.level": "world-3"}
+	fake := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/volumes/mc-abc12345":
+			writeJSON(w, 200, map[string]string{"Mountpoint": data})
+		case "/containers/mc-abc12345/json":
+			writeJSON(w, 200, map[string]any{"Config": map[string]any{"Labels": labels}, "State": map[string]any{"Status": "exited"}})
+		default:
+			writeError(w, 404, "no such thing")
+		}
+	})}
+	go fake.Serve(ln)
+	t.Cleanup(func() { fake.Close() })
+	a := &agent{docker: NewDocker(sock), token: "t", volumesDir: volumes}
+
+	old := filepath.Join(data, "world-3", minigamesPackDir, "data", "mg", "function", "tick.mcfunction")
+	os.MkdirAll(filepath.Dir(old), 0o755)
+	os.WriteFile(old, []byte("say old"), 0o644)
+	a.refreshMinigames(context.Background(), "abc12345")
+	want, _ := minigamesPack.ReadFile("minigames/data/mg/function/tick.mcfunction")
+	if got, _ := os.ReadFile(old); string(got) != string(want) {
+		t.Fatalf("tick = %q", got)
+	}
+
+	delete(labels, "mchost.minigames")
+	os.WriteFile(old, []byte("say mine"), 0o644)
+	a.refreshMinigames(context.Background(), "abc12345")
+	if got, _ := os.ReadFile(old); string(got) != "say mine" {
+		t.Fatal("touched a server that isn't Minigames")
+	}
+}
