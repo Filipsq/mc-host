@@ -10,19 +10,19 @@ import { ADDON_SPECS, serverAddons } from "./addons";
 //
 // It costs us memory on the machine all the time, so it's paid for: on a paid
 // plan it's the "xbox" add-on (addons.ts), and a free server buys it on its own
-// for XBOX_DAYS at a time, dearer.
+// for XBOX_DAYS at a time, at the same price.
 
 export const XBOX_DAYS = 30;
 
 /** What XBOX_DAYS of console joining cost a free server, like the plans' prices. */
-export const XBOX_PRICE: Record<Currency, number> = { PLN: 10, EUR: 2.5, USD: 2.7, GBP: 2.2 };
+export const XBOX_PRICE: Record<Currency, number> = ADDON_SPECS.xbox.price;
 
 /** A server Bedrock players join: Bedrock itself, or Java with crossplay on. */
 export function takesBedrockPlayers(server: Pick<Server, "edition" | "kind" | "crossplay">) {
   return server.edition === "BEDROCK" || (server.edition === "JAVA" && server.crossplay && canCrossplay(server));
 }
 
-/** The add-on's 30-day price on a paid plan, to show free servers what they'd save. */
+/** The add-on's 30-day price on a paid plan (the same as on a free server). */
 export const XBOX_ADDON_PRICE = ADDON_SPECS.xbox.price;
 
 type XboxServer = Pick<Server, "edition" | "kind" | "crossplay" | "plan" | "xboxUntil" | "addons">;

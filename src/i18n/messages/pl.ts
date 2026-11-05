@@ -1876,7 +1876,6 @@ const pl = {
     buyMore: "Przedłuż wejście z konsoli: {price} za kolejne {days} dni",
     buy: "Kup wejście z konsoli",
     paidUntil: "Opłacone do {date}. Potem wyłączymy wejście z konsoli, a konto zostanie wylogowane.",
-    freeOrUpgrade: "Taniej z płatnym planem: tam wejście z konsoli to zwykły dodatek za {addonPrice} / 30 dni, prawie o połowę mniej.",
     paidAddon: "Wejście z konsoli to płatny dodatek: {price} / 30 dni, opłacany razem z planem.",
     addonLink: "Kup w Dodatkach",
     productName: "Wejście z konsoli na {days} dni – serwer {server}",

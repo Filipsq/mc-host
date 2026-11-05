@@ -55,10 +55,6 @@ export default async function XboxPage({ params }: { params: Promise<{ id: strin
             legal={all.legal}
             errors={all.server.errors}
           />
-          <p className="notice">
-            {format(t.freeOrUpgrade, { addonPrice: formatPrice(XBOX_ADDON_PRICE[currency], currency, locale) })}{" "}
-            <Link href={`/dashboard/servers/${server.id}/billing`}>{t.upgrade}</Link>
-          </p>
         </section>
       ) : !allowed ? (
         <section className="card stack">
