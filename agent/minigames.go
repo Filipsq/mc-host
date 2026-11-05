@@ -28,7 +28,7 @@ import (
 //go:embed minigames
 var minigamesPack embed.FS
 
-// The data pack's folder in the world; written over on every new container, so an agent update brings the newer games.
+// The data pack's folder in the world; written over on every new container and every start, so an agent update brings the newer games.
 const minigamesPackDir = "datapacks/mchost-minigry"
 
 const minigamesMarker = ".mchost-minigames"
@@ -103,6 +103,23 @@ func (a *agent) prepareMinigames(ctx context.Context, id, kind, level string) {
 	if err != nil {
 		log.Printf("minigames %s: %v", id, err)
 	}
+}
+
+// refreshMinigames writes the data pack again before a Minigames server
+// starts, so an agent update brings the newer games to servers made before it.
+func (a *agent) refreshMinigames(ctx context.Context, id string) {
+	if a.volumesDir == "" {
+		return
+	}
+	info, err := a.docker.InspectContainer(ctx, containerName(id))
+	if err != nil || info.Config.Labels["mchost.minigames"] != "true" {
+		return
+	}
+	level := info.Config.Labels["mchost.level"]
+	if level == "" {
+		level = defaultJavaLevel
+	}
+	a.prepareMinigames(ctx, id, "minigames", level)
 }
 
 // minigames sets the rules once per start and builds the map the first time

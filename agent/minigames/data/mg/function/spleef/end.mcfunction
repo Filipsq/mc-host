@@ -3,6 +3,8 @@ execute if score #sp_n mg matches 2.. if score #sp_alive mg matches 1 run scoreb
 execute if score #win mg matches 1 run tellraw @a [{"text":"[Minigry] ","color":"gold"},{"selector":"@a[tag=mg_sp]","color":"yellow"},{"text":" wygrywa Spleefa!","color":"green"}]
 execute if score #win mg matches 1 run title @a[tag=mg_sp] title {"text":"Wygrana!","color":"gold"}
 execute if score #win mg matches 0 run tellraw @a [{"text":"[Minigry] ","color":"gold"},{"text":"Spleef: koniec rundy.","color":"gray"}]
+execute if score #win mg matches 1 run scoreboard players add @a[tag=mg_sp] mg_wins 1
+execute if score #win mg matches 1 as @a[tag=mg_sp] at @s run function mg:won
 execute as @a[tag=mg_sp] run function mg:to_lobby
 function mg:spleef/reset
 scoreboard players set #sp mg 0

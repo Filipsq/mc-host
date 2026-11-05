@@ -8,7 +8,7 @@ execute as @a[tag=mg_tr] if score #tr mg matches 0 run function mg:to_lobby
 execute as @a[tag=mg_sw] if score #sw mg matches 0 run function mg:to_lobby
 execute as @a[tag=mg_hs] if score #hs mg matches 0 run function mg:to_lobby
 # Fell off the lobby.
-execute as @a[tag=!mg_game,y=-200,dy=279] run function mg:to_lobby
+execute as @a[tag=!mg_game,y=-200,dy=296] run function mg:to_lobby
 
 # Buttons. A button stays pressed for a second, so one press is one start.
 execute if score #btn mg matches 1.. run scoreboard players remove #btn mg 1
