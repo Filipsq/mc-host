@@ -21,10 +21,10 @@ type AddonSpec = {
 };
 
 export const ADDON_SPECS: Record<AddonId, AddonSpec> = {
-  disk: { diskGb: 10, backups: 0, price: { PLN: 6, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
-  backups: { diskGb: 0, backups: 7, price: { PLN: 6, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
-  domain: { diskGb: 0, backups: 0, price: { PLN: 6, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
-  xbox: { diskGb: 0, backups: 0, price: { PLN: 6, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
+  disk: { diskGb: 10, backups: 0, price: { PLN: 5, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
+  backups: { diskGb: 0, backups: 7, price: { PLN: 5, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
+  domain: { diskGb: 0, backups: 0, price: { PLN: 5, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
+  xbox: { diskGb: 0, backups: 0, price: { PLN: 5, EUR: 1.5, USD: 1.6, GBP: 1.3 } },
 };
 
 /**
