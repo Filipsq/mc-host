@@ -13,6 +13,8 @@ const OLD_PLAN: Record<Exclude<Plan, "FREE">, Record<Currency, number>> = {
   STARTER: { PLN: 15, EUR: 3.5, USD: 4, GBP: 3 },
   STANDARD: { PLN: 29, EUR: 7, USD: 8, GBP: 6 },
   PRO: { PLN: 45, EUR: 10.5, USD: 12, GBP: 9 },
+  // Max came after the change, so its "old" price is today's.
+  MAX: { PLN: 89, EUR: 21, USD: 24, GBP: 18 },
 };
 /** Each add-on's 30-day price before the change (all three cost the same). */
 const OLD_ADDON: Record<Currency, number> = { PLN: 5, EUR: 1.2, USD: 1.3, GBP: 1 };

@@ -16,7 +16,7 @@ export type GiftErrorCode = keyof Messages["gifts"]["errors"];
 export type BuyGiftState = { error?: GiftErrorCode };
 
 const buySchema = z.object({
-  plan: z.enum(["STARTER", "STANDARD", "PRO"]),
+  plan: z.enum(["STARTER", "STANDARD", "PRO", "MAX"]),
   days: z.coerce
     .number()
     .refine((d): d is PeriodDays => (PERIOD_DAYS as readonly number[]).includes(d))

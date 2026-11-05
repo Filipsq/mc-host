@@ -52,7 +52,7 @@ export const SPAWN_PROTECTION_MAX = 64;
 // More chunks cost RAM and CPU, so the free plan may raise it less.
 export const VIEW_DISTANCE_MIN = 4;
 export const viewDistanceDefault = (plan: Plan) => (plan === "FREE" ? 8 : 10);
-const VIEW_DISTANCE_MAX: Record<Plan, number> = { FREE: 12, STARTER: 16, STANDARD: 20, PRO: 24 };
+const VIEW_DISTANCE_MAX: Record<Plan, number> = { FREE: 12, STARTER: 16, STANDARD: 20, PRO: 24, MAX: 28 };
 export const viewDistanceMax = (plan: Plan) => VIEW_DISTANCE_MAX[plan];
 export const PACK_PROMPT_MAX = 150; // the resource pack's line, as the agent allows
 export const ICON_SIZE = 64; // Minecraft shows only a 64×64 PNG

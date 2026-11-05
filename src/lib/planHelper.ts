@@ -75,7 +75,7 @@ const SLIDER_PLANS: Record<"survival" | "mods", [Plan, number][]> = {
 export function playersPlan(use: RamUse, players: number): Plan {
   const steps = SLIDER_PLANS[use === "mods" || use === "bigmods" ? "mods" : "survival"];
   const byPlayers = steps.find(([, max]) => players <= max)![0];
-  return maxPlan(byPlayers, planFor(use, playerGroup(players)) ?? "PRO");
+  return maxPlan(byPlayers, planFor(use, playerGroup(players)) ?? "MAX");
 }
 
 /** Which content answers make sense on a platform; Bedrock has no plugins or mods here. */
@@ -93,7 +93,7 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
   const reasons: HelperReason[] = [];
 
   const fits = planFor(use, a.players);
-  let plan: Plan = fits ?? "PRO";
+  let plan: Plan = fits ?? "MAX";
   if (!fits) reasons.push({ code: "tooBig" });
   else if (a.players >= GROUP_PLAYERS && !planAtLeast(fits, GROUP_PLAN)) {
     plan = GROUP_PLAN;
@@ -108,7 +108,7 @@ export function recommend(a: HelperAnswers, freeTaken: boolean): HelperPick {
   }
   if (modded && !terraria) {
     reasons.push({ code: "modsPaid" });
-    if (use === "bigmods" && plan !== "PRO") reasons.push({ code: "bigPacks" });
+    if (use === "bigmods" && !planAtLeast(plan, "PRO")) reasons.push({ code: "bigPacks" });
   }
   if (terraria && content === "tmodloader") plan = maxPlan(plan, TMOD_MIN_PLAN);
 

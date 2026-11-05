@@ -36,12 +36,12 @@ export type CuratedSlug = (typeof CURATED_PACKS)[number]["slug"];
 /** Mod packs need a paid plan: free servers have too little memory and sleep. */
 export const MODPACK_MIN_PLAN: Plan = "STARTER";
 
-const PLAN_ORDER: Plan[] = ["FREE", "STARTER", "STANDARD", "PRO"];
+const PLAN_ORDER: Plan[] = ["FREE", "STARTER", "STANDARD", "PRO", "MAX"];
 export const planAtLeast = (plan: Plan, min: Plan) => PLAN_ORDER.indexOf(plan) >= PLAN_ORDER.indexOf(min);
 
-/** The smallest paid plan with at least `gb` of memory (Pro when none has enough). */
+/** The smallest paid plan with at least `gb` of memory (the biggest when none has enough). */
 export function planForRam(gb: number): Plan {
-  return plans.find((p) => p.id !== "FREE" && p.ramGb >= gb)?.id ?? "PRO";
+  return plans.find((p) => p.id !== "FREE" && p.ramGb >= gb)?.id ?? "MAX";
 }
 
 /**

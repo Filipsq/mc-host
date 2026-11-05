@@ -61,7 +61,7 @@ const SuggestionSchema = z.object({
   edition: z.enum(["JAVA", "BEDROCK"]),
   game: z.enum(GAME_IDS),
   pack: z.enum([...PACK_SLUGS, "none"]),
-  plan: z.enum(["FREE", "STARTER", "STANDARD", "PRO"]),
+  plan: z.enum(["FREE", "STARTER", "STANDARD", "PRO", "MAX"]),
   name: z.string(),
   gameMode: z.enum(GAME_MODES),
   difficulty: z.enum(DIFFICULTIES),

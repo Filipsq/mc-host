@@ -57,7 +57,7 @@ export default async function AdminOverview() {
   const online = servers.filter((s) => ["online", "starting", "restarting"].includes(live[s.id].state)).length;
   // Admins' test servers aren't sales, so they're counted on their own.
   const tests = servers.filter((s) => s.adminTest).length;
-  const byPlan = (["FREE", "STARTER", "STANDARD", "PRO"] as const).map((plan) => ({
+  const byPlan = (["FREE", "STARTER", "STANDARD", "PRO", "MAX"] as const).map((plan) => ({
     plan,
     n: servers.filter((s) => s.plan === plan && !s.adminTest).length,
   }));
