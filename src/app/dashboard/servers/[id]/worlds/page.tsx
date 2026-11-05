@@ -14,6 +14,8 @@ import { serverAddons } from "@/lib/addons";
 import { activeLevel, newWorldVersions, nextWorldName, worldTypes } from "@/lib/worlds";
 import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
 import { isMinecraft } from "@/lib/otherGames";
+import { shownVersion } from "@/lib/serverType";
+import { latestVersionNumber } from "@/lib/addonVersions";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ switched?: string; uploaded?: string; deleted?: string; dropped?: string }> };
 
@@ -24,7 +26,12 @@ export default async function WorldsPage({ params, searchParams }: Props) {
   const server = await getServerFor(id, session.user.id, "files");
   // Minecraft worlds only; a Terraria server's world is in its files.
   if (!server || !isMinecraft(server.edition)) notFound();
-  const [all, { locale }, { agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetailsOnce(server.id, server.status)]);
+  const [all, { locale }, { agent }, latest] = await Promise.all([
+    getMessages(),
+    getPreferences(),
+    getLiveDetailsOnce(server.id, server.status),
+    server.edition === "JAVA" ? latestVersionNumber(server.kind) : undefined,
+  ]);
   const t = all.worlds;
 
   // Unpaid servers aren't on the game host yet; suspended ones are, but only for downloads.
@@ -140,7 +147,7 @@ export default async function WorldsPage({ params, searchParams }: Props) {
               types={worldTypes(server.edition)}
               versions={newWorldVersions(server)}
               version={server.version}
-              latest={all.settings.latest}
+              latest={shownVersion("LATEST", all.settings.latest, latest)}
               t={t}
               files={all.files.errors}
             />

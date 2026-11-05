@@ -7,6 +7,8 @@ import { DIFFICULTIES, GAME_MODES, MOTD_MAX, SPAWN_PROTECTION_MAX, VIEW_DISTANCE
 import { format, type Messages } from "@/i18n/messages";
 
 type Props = {
+  /** How "Najnowsza" reads in the picker, with its number when known: "Najnowsza (26.1.2)". */
+  latestLabel?: string;
   serverId: string;
   edition: Edition;
   name: string;
@@ -40,14 +42,14 @@ type Props = {
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, versionNote, versionHint, playerLimit, viewDistance, nonPremium, crossplay, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, latestLabel, versionNote, versionHint, playerLimit, viewDistance, nonPremium, crossplay, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
   const [view, setView] = useState(initial.viewDistance);
   const java = edition === "JAVA";
   const nonPremiumOffered = nonPremium?.versions ? nonPremium.versions.includes(version) : nonPremium?.offered;
-  const label = (v: string) => (v === "LATEST" ? t.latest : v);
+  const label = (v: string) => (v === "LATEST" ? (latestLabel ?? t.latest) : v);
 
   return (
     <form

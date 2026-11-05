@@ -62,6 +62,26 @@ export async function versionsToCheck(kind: string, version: string): Promise<st
   return found.length ? found : null;
 }
 
+/**
+ * The number behind "Najnowsza" for a server of `kind`, for showing it in the
+ * panel ("Najnowsza (26.1.2)"): the newest Paper for Paper servers, the newest
+ * release for mod loaders. Undefined when it can't be told.
+ */
+export async function latestVersionNumber(kind: string): Promise<string | undefined> {
+  const key = isModLoader(kind) ? "mods" : versionsFor(kind).length ? "paper" : "";
+  if (!key) return undefined;
+  const known = latestCache.get(key);
+  if (known && known.until > Date.now()) return known.number;
+  // A label only: it never holds a page up for long, and a miss isn't asked again for 10 minutes.
+  const number = await Promise.race([
+    versionsToCheck(kind, "LATEST").then((v) => v?.[0]),
+    new Promise<undefined>((resolve) => setTimeout(resolve, 3000)),
+  ]);
+  latestCache.set(key, { number, until: Date.now() + (number ? 3_600_000 : 600_000) });
+  return number;
+}
+const latestCache = new Map<string, { number: string | undefined; until: number }>();
+
 /** The one version to download a jar for: what the server runs (for LATEST, the newest Paper, which it starts on). */
 export const downloadVersion = (versions: string[]) => versions[0];
 

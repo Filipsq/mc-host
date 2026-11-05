@@ -10,6 +10,7 @@ import { plans } from "@/lib/plans";
 import { PLUGINS_MAX, isProjectId, supportsPlugins } from "@/lib/plugins";
 import { onHost } from "@/lib/servers";
 import { kindLabel, typeOfKind, usesMods } from "@/lib/serverType";
+import { latestVersionNumber } from "@/lib/addonVersions";
 import TypeForm from "./TypeForm";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ type?: string; mods?: string }> };
@@ -22,11 +23,12 @@ export default async function ServerTypePage({ params, searchParams }: Props) {
   const pickedMods = query.type === "mods" ? [...new Set((query.mods ?? "").split(","))].filter(isProjectId).slice(0, PLUGINS_MAX) : [];
   const server = await getServerFor(id, session.user.id, "owner");
   if (!server || server.edition !== "JAVA") notFound();
-  const [t, { locale }, packArt, cfPacks] = await Promise.all([
+  const [t, { locale }, packArt, cfPacks, latest] = await Promise.all([
     getMessages(),
     getPreferences(),
     getPackArt(CURATED_PACKS.map((p) => p.slug)),
     curseforgeEnabled() ? curseforgePackOptions() : [],
+    server.version === "LATEST" ? latestVersionNumber(server.kind) : undefined,
   ]);
 
   return (
@@ -35,7 +37,7 @@ export default async function ServerTypePage({ params, searchParams }: Props) {
       <header className="stack-tight">
         <h2>{t.serverType.pageTitle}</h2>
         <p className="muted">
-          {t.serverType.title}: <strong>{kindLabel(server, t)}</strong>
+          {t.serverType.title}: <strong>{kindLabel(server, t, latest)}</strong>
         </p>
         <p className="muted">{t.serverType.intro}</p>
       </header>
