@@ -8,7 +8,8 @@ import { bedrockHost } from "@/lib/servers";
 import { maxPlayersFor, serverPlayerLimit, versionsFor, viewDistanceDefault, viewDistanceMax } from "@/lib/settings";
 import { planById } from "@/lib/plans";
 import { isModLoader } from "@/lib/modpacks";
-import { kindLabel } from "@/lib/serverType";
+import { kindLabel, shownVersion } from "@/lib/serverType";
+import { latestVersionNumber } from "@/lib/addonVersions";
 import { format } from "@/i18n/messages";
 import { isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import IconForm from "./IconForm";
@@ -71,6 +72,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   // Keep a version that's no longer offered selectable, so saving doesn't change it.
   const offered = versionsFor(server.kind);
   const versions = offered.includes(server.version) ? offered : [server.version, ...offered];
+  // The number "Najnowsza" stands for right now, so the owner sees which version it is.
+  const latest = versions.includes("LATEST") ? await latestVersionNumber(server.kind) : undefined;
   // Game modes and mod packs decide the version themselves.
   const versionNote =
     server.kind === "modpack"
@@ -90,7 +93,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         <div className="card row">
           <span className="stack-tight">
             <span>
-              <strong>{t.serverType.title}</strong> <span className="muted">· {kindLabel(server, t)}</span>
+              <strong>{t.serverType.title}</strong> <span className="muted">· {kindLabel(server, t, latest)}</span>
             </span>
             <span className="muted small">{t.serverType.cardText}</span>
           </span>
@@ -104,6 +107,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         edition={server.edition}
         name={server.name}
         versions={versions}
+        latestLabel={shownVersion("LATEST", t.settings.latest, latest)}
         versionNote={versionNote}
         versionHint={isModLoader(server.kind) ? `${t.settings.versionHint} ${t.settings.versionMods}` : undefined}
         playerLimit={serverPlayerLimit(server, planById(server.plan))}

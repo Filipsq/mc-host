@@ -28,6 +28,7 @@ import {
 import { voiceAddress, webMapAddress } from "@/lib/servers";
 import CopyButton from "@/components/CopyButton";
 import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
+import { shownVersion } from "@/lib/serverType";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
 import { getWorkshopTitles } from "@/lib/steam";
 import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
@@ -166,7 +167,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     <div className="stack">
       <h2>{t.title}</h2>
       <p className="muted">
-        {type === "mod" ? format(all.mods.introMods, { loader, version: server.version === "LATEST" ? all.settings.latest : server.version }) : t.intro}
+        {type === "mod" ? format(all.mods.introMods, { loader, version: shownVersion(server.version, all.settings.latest, server.version === "LATEST" ? runsOn : undefined) }) : t.intro}
       </p>
       {type === "mod" && (
         <p className="notice">

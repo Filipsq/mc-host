@@ -14,7 +14,8 @@ import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
 import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
-import { kindLabel } from "@/lib/serverType";
+import { kindLabel, shownVersion } from "@/lib/serverType";
+import { latestVersionNumber } from "@/lib/addonVersions";
 import { ArrowUpCircle, Gift } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
@@ -42,11 +43,13 @@ export default async function ServerPage({ params, searchParams }: Props) {
   // Friends see what the owner let them use; the rest of the panel stays hidden.
   const can = (need: ServerNeed) => allows(access, need);
 
-  const [all, { locale, currency }, { live, agent }] = await Promise.all([
+  const [all, { locale, currency }, { live, agent }, latest] = await Promise.all([
     getMessages(),
     getPreferences(),
     getLiveDetailsOnce(server.id, server.status),
+    server.edition === "JAVA" && server.version === "LATEST" ? latestVersionNumber(server.kind) : undefined,
   ]);
+  const version = shownVersion(server.version, all.settings.latest, latest);
   const t = all.server;
   const b = all.billing;
   const tt = all.terraria;
@@ -83,11 +86,9 @@ export default async function ServerPage({ params, searchParams }: Props) {
       : [
           server.edition === "JAVA" &&
             (kind === "vanilla"
-              ? server.version === "LATEST"
-                ? all.settings.latest
-                : server.version
+              ? version
               : kind === "modpack" || isModLoader(kind)
-                ? `${t.kinds[kind]} · ${server.version === "LATEST" ? all.settings.latest : server.version}`
+                ? `${t.kinds[kind]} · ${version}`
                 : t.kinds[kind]),
           all.settings.modes[server.gameMode as GameMode],
           all.settings.difficulties[server.difficulty as Difficulty],
@@ -114,7 +115,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
         <p className="notice warn">{format(all.plugins.droppedOnVersion, { list: dropped.slice(0, 300) })}</p>
       )}
       {typeChanged === "changed" && server.edition === "JAVA" && (
-        <p className="notice success">{format(all.serverType.done, { type: kindLabel(server, all), world: activeLevel(server) })}</p>
+        <p className="notice success">{format(all.serverType.done, { type: kindLabel(server, all, latest), world: activeLevel(server) })}</p>
       )}
       {payment === "cancelled" && unpaid && <p className="notice">{b.cancelled}</p>}
       {live === "awaitingPayment" && payment !== "success" && <p className="notice">{b.awaiting}</p>}
@@ -242,7 +243,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
           <p className="muted small">
             {format(t.modsInfo, {
               loader: LOADER_NAMES[kind],
-              version: server.version === "LATEST" ? all.settings.latest : server.version,
+              version,
             })}
           </p>
         )}

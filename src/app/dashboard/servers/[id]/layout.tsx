@@ -13,6 +13,7 @@ import { maxPlayersFor } from "@/lib/settings";
 import { canUpgrade } from "@/lib/upgrade";
 import { addonType, offersModPicker } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
+import { latestVersionNumber } from "@/lib/addonVersions";
 import { EDITION_NAMES } from "@/lib/editions";
 import { isTerrariaKind } from "@/lib/terraria";
 import { isMinecraft } from "@/lib/otherGames";
@@ -36,7 +37,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
   const { server } = access;
   const can = (need: ServerNeed) => allows(access, need);
 
-  const [all, { live }, others, owner] = await Promise.all([
+  const [all, { live }, others, owner, latest] = await Promise.all([
     getMessages(),
     getLiveDetailsOnce(server.id, server.status),
     db.server.findMany({
@@ -46,6 +47,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
       take: 20,
     }),
     access.role === "owner" ? null : db.user.findUnique({ where: { id: server.ownerId }, select: { email: true } }),
+    server.edition === "JAVA" && server.version === "LATEST" ? latestVersionNumber(server.kind) : undefined,
   ]);
   const players = live === "online" ? await getMetrics(server.id, "hour").catch(() => null) : null;
   const maxPlayers = players?.maxPlayers ?? maxPlayersFor(server, planById(server.plan));
@@ -56,7 +58,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
   const terrariaKind = terraria && isTerrariaKind(server.kind) ? server.kind : null;
   const gameLabel =
     server.edition === "JAVA"
-      ? kindLabel(server, all)
+      ? kindLabel(server, all, latest)
       : terrariaKind && terrariaKind !== "vanilla"
         ? all.terraria.kinds[terrariaKind]
         : EDITION_NAMES[server.edition];

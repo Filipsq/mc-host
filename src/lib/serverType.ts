@@ -32,9 +32,15 @@ export function ramFor(type: ServerType, pack?: string) {
 /** Kinds whose servers keep their mods in the mods folder. */
 export const usesMods = (kind: string) => kind === "modpack" || isModLoader(kind);
 
+/** A server's version for the panel: "1.21.11", or "Najnowsza (26.1.2)" when the number behind LATEST is known. */
+export function shownVersion(version: string, latestText: string, latestNumber?: string) {
+  if (version !== "LATEST") return version;
+  return latestNumber ? `${latestText} (${latestNumber})` : latestText;
+}
+
 /** What a Java server runs, for the panel: "NeoForge · 1.21.1", "Z modami: Cobblemon". */
-export function kindLabel(server: Pick<Server, "kind" | "version" | "modpack" | "modpackTitle">, t: Messages) {
-  const version = server.version === "LATEST" ? t.settings.latest : server.version;
+export function kindLabel(server: Pick<Server, "kind" | "version" | "modpack" | "modpackTitle">, t: Messages, latestNumber?: string) {
+  const version = shownVersion(server.version, t.settings.latest, latestNumber);
   if (isModLoader(server.kind)) return `${LOADER_NAMES[server.kind]} · ${version}`;
   if (server.kind === "modpack") return `${t.server.kinds.modpack}: ${server.modpackTitle ?? server.modpack ?? ""}`;
   if (server.kind === "skyblock" || server.kind === "oneblock") return t.server.kinds[server.kind];
