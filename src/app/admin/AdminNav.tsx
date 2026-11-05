@@ -11,6 +11,7 @@ const LINKS = [
   ["/admin/payments", "payments"],
   ["/admin/support", "support"],
   ["/admin/announcement", "announcement"],
+  ["/admin/reviews", "reviews"],
   ["/admin/hytale", "hytale"],
 ] as const;
 

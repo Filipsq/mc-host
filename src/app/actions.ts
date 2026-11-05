@@ -19,6 +19,7 @@ import { linkInvites } from "@/lib/access";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 import { PUSH_COOKIE } from "@/lib/pushEndpoint";
 import { GIFT_COOKIE } from "@/lib/giftCookie";
+import { START_PACK_COOKIE, startPackQuery } from "@/lib/startPack";
 import { LOGIN_PER_EMAIL, RESETS_PER_IP, SIGNUPS_PER_IP, clientIp, hit, isLimited, loginLimited } from "@/lib/rateLimit";
 
 export type AuthErrorCode = keyof Messages["auth"]["errors"];
@@ -30,8 +31,15 @@ export type FormState = { error?: AuthErrorCode; email?: string; sent?: boolean 
 async function afterSignIn(form: FormData) {
   const opis = String(form.get("opis") ?? "").trim().slice(0, 500);
   if (opis) return `/dashboard/new?opis=${encodeURIComponent(opis)}`;
+  const jar = await cookies();
+  // Picked a mod pack on the home page before signing up: the create page with it.
+  const pack = startPackQuery(jar.get(START_PACK_COOKIE)?.value);
+  if (pack) {
+    jar.delete(START_PACK_COOKIE);
+    return `/dashboard/new?${pack}`;
+  }
   // Opened a gift code before signing in: back to it.
-  const gift = (await cookies()).get(GIFT_COOKIE)?.value;
+  const gift = jar.get(GIFT_COOKIE)?.value;
   return gift ? `/prezent/odbierz?kod=${encodeURIComponent(gift)}` : "/dashboard";
 }
 

@@ -13,15 +13,16 @@ export async function generateMetadata(): Promise<Metadata> {
 // Every page checks for an admin too: a layout alone doesn't guard what its pages return.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   await requireAdmin();
-  const [t, waiting] = await Promise.all([
+  const [t, waiting, unchecked] = await Promise.all([
     getMessages().then((all) => all.admin),
     db.supportChat.count({ where: { staffUnread: { gt: 0 } } }),
+    db.review.count({ where: { checkedAt: null } }),
   ]);
   return (
     <main className="stack admin">
       <h1>{t.title}</h1>
       <SupportWatch />
-      <AdminNav labels={t.nav} counts={{ support: waiting }} />
+      <AdminNav labels={t.nav} counts={{ support: waiting, reviews: unchecked }} />
       {stripeTestMode() && <p className="notice warn">{t.testMode}</p>}
       {children}
     </main>
