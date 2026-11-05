@@ -1877,7 +1877,6 @@ const en: Messages = {
     buyMore: "Extend console joining: {price} for another {days} days",
     buy: "Buy console joining",
     paidUntil: "Paid for until {date}. After that we turn console joining off and the account is signed out.",
-    freeOrUpgrade: "Cheaper with a paid plan: there console joining is a regular add-on for {addonPrice} / 30 days, almost half the price.",
     paidAddon: "Console joining is a paid add-on: {price} / 30 days, paid together with the plan.",
     addonLink: "Buy it in Add-ons",
     productName: "Console joining for {days} days – server {server}",
