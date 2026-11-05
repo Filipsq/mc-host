@@ -160,7 +160,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     let want = playersPlan(use, PLAYER_STEPS[i].max);
     // A ready game that wants more memory than that.
     const gameGb = java && g !== "modpack" ? gameById(g).ramGb : 0;
-    if (gameGb > planById(want).ramGb) want = plans.find((p) => planAtLeast(p.id, want) && planById(p.id).ramGb >= gameGb)?.id ?? "PRO";
+    if (gameGb > planById(want).ramGb) want = plans.find((p) => planAtLeast(p.id, want) && planById(p.id).ramGb >= gameGb)?.id ?? "MAX";
     const min = isOtherGame(ed as Edition)
       ? OTHER_GAME_MIN_PLAN[ed as (typeof OTHER_GAMES)[number]]
       : java && g === "modpack"

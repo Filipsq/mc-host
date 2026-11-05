@@ -67,7 +67,7 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
     // A CurseForge pack's size is only known now.
     const need = resolved.ramGb ? planForRam(resolved.ramGb) : "STARTER";
     if (!planAtLeast(server.plan, need)) {
-      return { error: need === "PRO" ? "modpackNeedsPro" : need === "STANDARD" ? "modpackNeedsStandard" : "needsPlan", values };
+      return { error: need === "MAX" ? "modpackNeedsMax" : need === "PRO" ? "modpackNeedsPro" : need === "STANDARD" ? "modpackNeedsStandard" : "needsPlan", values };
     }
     pack = resolved;
     version = pack.gameVersion;

@@ -198,6 +198,7 @@ enum Plan {
   STARTER
   STANDARD
   PRO
+  MAX
 }
 
 enum ServerStatus {

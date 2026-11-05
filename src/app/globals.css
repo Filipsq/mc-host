@@ -395,7 +395,7 @@ button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-colo
 }
 
 /* Home: pricing */
-.plans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: stretch; }
+.plans { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; align-items: stretch; }
 .plan {
   position: relative; display: flex; flex-direction: column; gap: 16px;
   padding: 26px 22px 22px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border);
@@ -980,6 +980,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
   .hero-art { max-width: 420px; margin: 0 auto; }
   .feature-grid { grid-template-columns: repeat(2, 1fr); }
   .plans { grid-template-columns: repeat(2, 1fr); row-gap: 24px; }
+  .plans > .plan:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 @media (max-width: 640px) {
   .topbar-inner { gap: 10px; padding: 10px 16px; }

@@ -75,7 +75,7 @@ const DAY = 24 * 60 * 60 * 1000;
 // What redeeming a gift on a new server can fail with that the form explains.
 const GIFT_FORM_ERRORS = { giftInvalid: 1, giftUsed: 1, giftExpired: 1, giftUnpaid: 1, soldOut: 1 } as const;
 
-const planField = z.enum(["FREE", "STARTER", "STANDARD", "PRO"]);
+const planField = z.enum(["FREE", "STARTER", "STANDARD", "PRO", "MAX"]);
 const daysField = z.coerce
   .number()
   .refine((d): d is PeriodDays => (PERIOD_DAYS as readonly number[]).includes(d))
@@ -123,6 +123,7 @@ const MODPACK_PLAN_ERRORS = {
   STARTER: "modpackPaidOnly",
   STANDARD: "modpackNeedsStandard",
   PRO: "modpackNeedsPro",
+  MAX: "modpackNeedsMax",
 } as const satisfies Record<Plan, ServerErrorCode>;
 
 async function requireUser() {

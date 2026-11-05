@@ -15,7 +15,7 @@ export type ServerRow = Server & { owner: { id: string; email: string } };
 
 type Props = { rows: ServerRow[]; live: Record<string, Live>; all: Messages; f: Formats; showOwner?: boolean };
 
-const PLAN_ORDER = { FREE: 0, STARTER: 1, STANDARD: 2, PRO: 3 } as const;
+const PLAN_ORDER = { FREE: 0, STARTER: 1, STANDARD: 2, PRO: 3, MAX: 4 } as const;
 
 export default function ServerTable({ rows, live, all, f, showOwner = true }: Props) {
   const t = all.admin;
