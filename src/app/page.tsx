@@ -18,7 +18,9 @@ import Clouds from "@/components/Clouds";
 import PauseOffscreen from "@/components/PauseOffscreen";
 import EditionIcon from "@/components/EditionIcon";
 import HalloweenGames from "@/components/HalloweenGames";
-import { FeatureArt, GameArt, StepArt } from "@/components/HomeArt";
+import { FeatureArt, GameArt, PanelDemo, StepArt } from "@/components/HomeArt";
+import ShowMore from "@/components/ShowMore";
+import StickyCta from "@/components/StickyCta";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
 import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
@@ -59,6 +61,7 @@ export default async function Home() {
   return (
     <main className="home">
       <PauseOffscreen />
+      <StickyCta href={start} label={h.cta} />
       <section className="hero">
         <Clouds />
         <div className="container hero-grid">
@@ -156,6 +159,13 @@ export default async function Home() {
               </li>
             ))}
           </ol>
+          <PanelDemo
+            demo={h.demo}
+            games={[t.server.games.survival, t.server.games.lifesteal, t.server.games.mods]}
+            freePlan={t.plans.FREE}
+            online={t.server.live.online}
+            domain={domain}
+          />
         </div>
       </section>
 
@@ -185,52 +195,54 @@ export default async function Home() {
             })}
           </ul>
 
-          <div className="stack">
-            <h3 className="subsection-title"><Package size={20} aria-hidden /> {h.packsTitle}</h3>
-            <p className="muted">{h.packsSubtitle}</p>
-            <PackCarousel
-              t={t.server}
-              planNames={t.plans}
-              art={packArt}
-              label={h.packsTitle}
-              link={(slug) => (session?.user ? `/dashboard/new?pack=${slug}` : "/signup")}
-            />
-            <p className="muted small">{h.packsMore}</p>
-          </div>
-
-          {cfPacks && cfPacks.length > 0 && (
-            <div className="stack" id="curseforge">
-              <h3 className="subsection-title"><Flame size={20} aria-hidden /> {h.cfTitle}</h3>
-              <p className="muted">{h.cfSubtitle}</p>
-              <CurseforgeTop
-                packs={cfPacks}
-                t={h}
-                server={t.server}
+          <ShowMore show={h.moreShow} hide={h.moreHide}>
+            <div className="stack">
+              <h3 className="subsection-title"><Package size={20} aria-hidden /> {h.packsTitle}</h3>
+              <p className="muted">{h.packsSubtitle}</p>
+              <PackCarousel
+                t={t.server}
                 planNames={t.plans}
-                locale={locale}
-                link={(slug) => (session?.user ? `/dashboard/new?cf=${slug}` : "/signup")}
+                art={packArt}
+                label={h.packsTitle}
+                link={(slug) => (session?.user ? `/dashboard/new?pack=${slug}` : "/signup")}
               />
-              <p className="muted small">
-                <a href="https://www.curseforge.com/minecraft/search?class=modpacks" target="_blank" rel="noreferrer">
-                  {h.cfSource}
-                </a>
-              </p>
+              <p className="muted small">{h.packsMore}</p>
             </div>
-          )}
 
-          <div className="stack">
-            <h3 className="subsection-title">{h.setsTitle}</h3>
-            <p className="muted">{h.setsSubtitle}</p>
-            <ul className="pack-grid">
-              {PLUGIN_SETS.map((set) => (
-                <li key={set.id} className="pack-card">
-                  <strong>{t.plugins.setNames[set.id]}</strong>
-                  <span className="muted small">{t.plugins.setHints[set.id]}</span>
-                  <span className="small">{set.plugins.map((p) => KNOWN_PLUGINS[p].title).join(" · ")}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+            {cfPacks && cfPacks.length > 0 && (
+              <div className="stack" id="curseforge">
+                <h3 className="subsection-title"><Flame size={20} aria-hidden /> {h.cfTitle}</h3>
+                <p className="muted">{h.cfSubtitle}</p>
+                <CurseforgeTop
+                  packs={cfPacks}
+                  t={h}
+                  server={t.server}
+                  planNames={t.plans}
+                  locale={locale}
+                  link={(slug) => (session?.user ? `/dashboard/new?cf=${slug}` : "/signup")}
+                />
+                <p className="muted small">
+                  <a href="https://www.curseforge.com/minecraft/search?class=modpacks" target="_blank" rel="noreferrer">
+                    {h.cfSource}
+                  </a>
+                </p>
+              </div>
+            )}
+
+            <div className="stack">
+              <h3 className="subsection-title">{h.setsTitle}</h3>
+              <p className="muted">{h.setsSubtitle}</p>
+              <ul className="pack-grid">
+                {PLUGIN_SETS.map((set) => (
+                  <li key={set.id} className="pack-card">
+                    <strong>{t.plugins.setNames[set.id]}</strong>
+                    <span className="muted small">{t.plugins.setHints[set.id]}</span>
+                    <span className="small">{set.plugins.map((p) => KNOWN_PLUGINS[p].title).join(" · ")}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </ShowMore>
 
           <div className="invite-band terraria-band" id="terraria">
             <span className="invite-band-icon"><EditionIcon edition="TERRARIA" size={36} /></span>

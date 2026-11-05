@@ -2,7 +2,7 @@
 // Small pictures for the home page: one per feature, per step and per ready game.
 // They're drawn with the site's block art and plain HTML, and only animate
 // transform and opacity so they stay smooth on phones.
-import { Check, Gamepad2, Mail, Monitor, Smartphone } from "lucide-react";
+import { Check, Copy, Gamepad2, Mail, Monitor, MousePointer2, Smartphone } from "lucide-react";
 import type { GameId } from "@/lib/games";
 import type { Messages } from "@/i18n/messages";
 
@@ -150,5 +150,47 @@ export function GameArt({ id }: { id: GameId }) {
       )}
       {badge && <img className={`game-badge badge-${badge}`} src={`/art/${badge}.svg`} alt="" width={30} height={30} />}
     </div>
+  );
+}
+
+type Demo = Messages["home"]["demo"];
+
+/** A ten-second loop of creating a server in the panel: pick a game and the free plan,
+ *  press the button, watch it install, and it's online with its address. */
+export function PanelDemo({ demo, games, freePlan, online, domain }: { demo: Demo; games: [string, string, string]; freePlan: string; online: string; domain: string }) {
+  return (
+    <figure className="demo" aria-label={demo.title}>
+      <div className="demo-window" aria-hidden>
+        <div className="demo-bar"><i /><i /><i /><span>mchosting.pl/dashboard/new</span></div>
+        <div className="demo-stage">
+          <div className="demo-scene demo-form">
+            <b className="demo-title">{demo.newServer}</b>
+            <span className="demo-label demo-label-game">{demo.game}</span>
+            <span className="demo-tiles">
+              <span className="demo-tile"><img src="/art/games/survival.svg" alt="" width={44} height={44} />{games[0]}</span>
+              <span className="demo-tile"><img src="/art/games/lifesteal.svg" alt="" width={44} height={44} />{games[1]}</span>
+              <span className="demo-tile"><img src="/art/games/mods.svg" alt="" width={44} height={44} />{games[2]}</span>
+              <span className="demo-pick demo-pick-game" />
+            </span>
+            <span className="demo-label demo-label-plan">{demo.plan}</span>
+            <span className="demo-plan">{freePlan} · 0 zł<span className="demo-pick demo-pick-plan" /></span>
+            <span className="demo-create">{demo.create}</span>
+          </div>
+          <div className="demo-scene demo-install">
+            <img src="/art/block-server.svg" alt="" width={56} height={64} />
+            <b>{demo.installing}</b>
+            <span className="demo-progress"><span /></span>
+          </div>
+          <div className="demo-scene demo-online">
+            <img src="/art/games/survival.svg" alt="" width={72} height={72} />
+            <b>{demo.ready}</b>
+            <span className="demo-address"><span className="dot online" /> ekipa.{domain} <span className="badge online">{online}</span></span>
+            <span className="demo-copy"><Copy size={14} /> {demo.copy}</span>
+          </div>
+          <MousePointer2 className="demo-cursor" size={22} />
+        </div>
+      </div>
+      <figcaption className="muted small">{demo.title}</figcaption>
+    </figure>
   );
 }

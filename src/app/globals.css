@@ -1370,7 +1370,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 }
 
 /* Ready games */
-.game-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.game-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .game-card { padding: 16px 16px 18px; gap: 6px; }
 .game-card h3 { margin: 4px 0 0; }
 .game-card > p { font-size: 0.92rem; }
@@ -1726,4 +1726,101 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .players-now { margin-left: 6px; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.95em; }
 @media (max-width: 640px) {
   .players-ticks { display: none; }
+}
+
+/* Home: ten-second panel demo under "Jak to działa" (PanelDemo in HomeArt.tsx).
+   The stage is a fixed 480x250 so the cursor's path lines up; phones scale it down. */
+.demo { margin: 32px auto 0; display: grid; justify-items: center; gap: 10px; }
+.demo-window { width: 480px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-strong); background: var(--surface); box-shadow: 0 20px 50px rgb(0 0 0 / 0.4); }
+.demo-bar { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); font-size: 0.72rem; color: var(--muted); }
+.demo-bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--border-strong); }
+.demo-bar span { margin-left: 8px; font-family: var(--font-mono); }
+.demo-stage { position: relative; width: 480px; height: 250px; overflow: hidden; contain: paint; }
+.demo-scene { position: absolute; inset: 0; will-change: opacity; }
+.demo-scene img { display: block; height: auto; }
+.demo-form { animation: demo-form 10s linear infinite; }
+.demo-install, .demo-online { display: grid; place-content: center; justify-items: center; gap: 10px; opacity: 0; }
+.demo-install { animation: demo-install 10s linear infinite; }
+.demo-online { animation: demo-online 10s linear infinite; }
+.demo-title { position: absolute; left: 20px; top: 12px; font-size: 1rem; }
+.demo-label { position: absolute; left: 20px; font-size: 0.72rem; color: var(--muted); }
+.demo-label-game { top: 40px; }
+.demo-label-plan { top: 146px; }
+.demo-tiles { position: absolute; left: 20px; top: 58px; display: flex; gap: 10px; }
+.demo-tile { display: grid; justify-items: center; gap: 4px; width: 96px; height: 80px; padding-top: 6px; align-content: start; border-radius: 9px; background: var(--surface-2); border: 1px solid var(--border-strong); font-size: 0.72rem; font-weight: 600; }
+.demo-tile img { width: auto; height: 46px; }
+.demo-pick { position: absolute; border: 2px solid var(--accent); border-radius: 10px; opacity: 0; will-change: opacity; }
+.demo-pick-game { left: -1px; top: -1px; width: 98px; height: 82px; animation: demo-pick-game 10s linear infinite; }
+.demo-plan { position: absolute; left: 20px; top: 164px; display: flex; align-items: center; height: 32px; padding: 0 14px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border-strong); font-size: 0.8rem; font-weight: 600; }
+.demo-pick-plan { inset: -2px; animation: demo-pick-plan 10s linear infinite; }
+.demo-create {
+  position: absolute; right: 20px; bottom: 16px; padding: 8px 16px; border-radius: 8px; font-size: 0.82rem; font-weight: 700;
+  color: var(--accent-ink); background: var(--accent); box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.25); animation: demo-press 10s linear infinite; will-change: transform;
+}
+.demo-install b, .demo-online b { font-size: 0.95rem; }
+.demo-progress { width: 220px; height: 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+.demo-progress span { display: block; width: 100%; height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); animation: demo-progress 10s linear infinite; will-change: transform; }
+.demo-install img { width: 52px; }
+.demo-online img { width: 70px; }
+.demo-address { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 9px; background: var(--bg); border: 1px solid var(--border-strong); font-family: var(--font-mono); font-size: 0.8rem; }
+.demo-copy { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border-strong); font-size: 0.78rem; font-weight: 600; animation: demo-copy 10s linear infinite; will-change: transform; }
+.demo-cursor { position: absolute; left: 0; top: 0; color: #fff; fill: #fff; stroke: #0b0f14; stroke-width: 1.5; animation: demo-cursor 10s ease-in-out infinite; will-change: transform, opacity; }
+@keyframes demo-form { 0%, 49% { opacity: 1; } 52%, 97% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes demo-install { 0%, 50% { opacity: 0; } 53%, 75% { opacity: 1; } 78%, 100% { opacity: 0; } }
+@keyframes demo-online { 0%, 76% { opacity: 0; } 79%, 96% { opacity: 1; } 99%, 100% { opacity: 0; } }
+@keyframes demo-pick-game { 0%, 20% { opacity: 0; } 21%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+@keyframes demo-pick-plan { 0%, 38% { opacity: 0; } 39%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+@keyframes demo-press { 0%, 47% { transform: none; } 48.5% { transform: scale(0.93); } 50%, 100% { transform: none; } }
+@keyframes demo-progress { 0%, 54% { transform: scaleX(0); } 74%, 100% { transform: scaleX(1); } }
+@keyframes demo-copy { 0%, 90% { transform: none; } 91.5% { transform: scale(0.93); } 93%, 100% { transform: none; } }
+@keyframes demo-cursor {
+  0%, 8% { opacity: 1; transform: translate3d(400px, 40px, 0); }
+  18%, 24% { opacity: 1; transform: translate3d(66px, 100px, 0); }
+  34%, 40% { opacity: 1; transform: translate3d(84px, 176px, 0); }
+  47%, 51% { opacity: 1; transform: translate3d(410px, 222px, 0); }
+  54%, 77% { opacity: 0; transform: translate3d(410px, 222px, 0); }
+  80% { opacity: 1; transform: translate3d(330px, 60px, 0); }
+  90%, 97% { opacity: 1; transform: translate3d(268px, 196px, 0); }
+  100% { opacity: 1; transform: translate3d(400px, 40px, 0); }
+}
+.demo.paused * { animation-play-state: paused !important; }
+@media (max-width: 520px) {
+  /* Scale the fixed stage to the phone: 480px wide becomes about 340px. */
+  .demo-window { zoom: 0.72; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo * { animation: none !important; }
+  .demo-install, .demo-cursor { display: none; }
+  .demo-form { opacity: 0; }
+  .demo-online { opacity: 1; }
+}
+
+/* Home: on two columns an odd last ready-game card spans both */
+@media (max-width: 760px) { .game-grid > .game-card:last-child:nth-child(odd) { grid-column: 1 / -1; } }
+@media (max-width: 360px) { .game-grid > .game-card:last-child:nth-child(odd) { grid-column: auto; } }
+
+/* Home: on phones, mod packs and plugin sets fold away behind a button */
+.show-more { display: flex; flex-direction: column; gap: 48px; }
+.show-more-body { display: flex; flex-direction: column; gap: 48px; }
+.show-more-toggle { display: none; align-self: center; gap: 6px; }
+@media (max-width: 640px) {
+  .show-more { gap: 16px; }
+  .show-more:not(.open) .show-more-body { display: none; }
+  .show-more-toggle { display: inline-flex; }
+  .show-more.open .show-more-toggle svg { transform: rotate(180deg); }
+}
+
+/* Home: "create a server" pinned to the bottom of phone screens */
+.sticky-cta { display: none; }
+@media (max-width: 640px) {
+  .sticky-cta {
+    display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+    padding: 10px max(16px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+    background: rgb(20 26 34 / 0.96); border-top: 1px solid var(--border);
+    transform: translate3d(0, 110%, 0); transition: transform 0.25s ease; will-change: transform;
+  }
+  .sticky-cta.show { transform: none; }
+  .sticky-cta .button { width: 100%; }
+  body:has(.sticky-cta.show) .help { bottom: max(84px, calc(env(safe-area-inset-bottom) + 74px)); }
+  main.home { padding-bottom: 76px; }
 }
