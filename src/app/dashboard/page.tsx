@@ -16,6 +16,8 @@ import { REFERRAL_DAYS } from "@/lib/referrals";
 import { pushPublicKey } from "@/lib/push";
 import AppInstall from "@/components/AppInstall";
 import TestPaymentNotice from "@/components/TestPaymentNotice";
+import { REVIEW_NAME_MAX, REVIEW_TEXT_MAX, shouldAskReview } from "@/lib/reviews";
+import ReviewAsk from "./ReviewAsk";
 
 type Props = { searchParams: Promise<{ haslo?: string }> };
 
@@ -23,7 +25,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [all, servers, shared, { haslo }, admin, me, { locale }] = await Promise.all([
+  const [all, servers, shared, { haslo }, admin, me, { locale }, askReview] = await Promise.all([
     getMessages(),
     db.server.findMany({
       where: { ownerId: session.user.id },
@@ -34,6 +36,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     isAdmin(session.user.id),
     db.user.findUnique({ where: { id: session.user.id }, select: { bonusDays: true } }),
     getPreferences(),
+    shouldAskReview(session.user.id),
   ]);
   const [states, sharedStates] = await Promise.all([
     Promise.all(servers.map((s) => getLiveState(s))),
@@ -124,6 +127,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           </ul>
         </section>
       )}
+      {askReview && <ReviewAsk t={all.reviews} textMax={REVIEW_TEXT_MAX} nameMax={REVIEW_NAME_MAX} />}
       <div className="card row invite-card">
         <span className="row invite-days">
           <Gift size={24} aria-hidden />

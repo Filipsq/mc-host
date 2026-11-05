@@ -60,6 +60,9 @@ model User {
   // Gift codes (src/lib/gifts.ts) the user bought, and the ones they used.
   giftsBought        GiftCode[]         @relation("GiftsBought")
   giftsRedeemed      GiftCode[]         @relation("GiftsRedeemed")
+  // Their opinion of the site (src/lib/reviews.ts), and when they closed the panel's request for one.
+  review             Review?
+  reviewDismissedAt  DateTime?
 
   @@index([referredById])
 }
@@ -451,4 +454,26 @@ model MachineCost {
   amount    Int
   currency  String
   updatedAt DateTime @updatedAt
+}
+
+// A player's opinion, asked for in the panel once they've played for a while
+// (src/lib/reviews.ts). The home page shows it only after an admin lets it;
+// the average there counts every opinion, shown or not.
+model Review {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String    @unique
+  stars     Int
+  text      String
+  // The signature they picked (a nick or first name), shown under the text.
+  name      String
+  // The game of their oldest server, shown as "Survival" etc. under the name.
+  game      String?
+  shown     Boolean   @default(false)
+  // When an admin last looked at it: unchecked ones are counted on the admin tab.
+  checkedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([shown, createdAt])
 }

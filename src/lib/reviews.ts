@@ -1,0 +1,68 @@
+import "server-only";
+import type { Edition } from "@prisma/client";
+import { db } from "./db";
+
+// Players' opinions for the home page. The panel asks once a player has kept
+// playing on a server for a while, so the opinion comes from real use; an admin
+// decides which ones the home page shows (never edits them), and the average
+// there counts all of them, so picking only the good ones can't lift it.
+
+export const REVIEW_TEXT_MAX = 300;
+export const REVIEW_NAME_MAX = 30;
+const ASK_AFTER_DAYS = 7; // the server is at least this old
+const PLAYED_DAYS = 3; // and someone played on it at least this long after it was made
+const HOME_MIN = 3; // fewer shown opinions than this and the home page leaves the section out
+const HOME_MAX = 6; // three or six, so the rows stay full
+
+const DAY = 24 * 60 * 60 * 1000;
+
+export const EDITION_LABEL: Record<Edition, string> = {
+  JAVA: "Minecraft Java",
+  BEDROCK: "Minecraft Bedrock",
+  TERRARIA: "Terraria",
+  VALHEIM: "Valheim",
+  HYTALE: "Hytale",
+};
+
+/** Whether the panel should ask this user for an opinion now. */
+export async function shouldAskReview(userId: string) {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { reviewDismissedAt: true, review: { select: { id: true } } } });
+  if (!user || user.review || user.reviewDismissedAt) return false;
+  const servers = await db.server.findMany({
+    where: { ownerId: userId, createdAt: { lte: new Date(Date.now() - ASK_AFTER_DAYS * DAY) } },
+    select: { createdAt: true, lastPlayedAt: true },
+  });
+  return servers.some((s) => s.lastPlayedAt.getTime() - s.createdAt.getTime() >= PLAYED_DAYS * DAY);
+}
+
+/** The edition of the user's oldest server, shown under their name. */
+export async function reviewEdition(userId: string): Promise<Edition | null> {
+  const s = await db.server.findFirst({ where: { ownerId: userId }, orderBy: { createdAt: "asc" }, select: { edition: true } });
+  return s?.edition ?? null;
+}
+
+export type HomeReviews = {
+  average: number; // every opinion, shown or not
+  count: number;
+  items: { id: string; stars: number; text: string; name: string; game: string | null; createdAt: Date }[];
+};
+
+/** What the home page shows, or null while there are too few shown opinions. */
+export async function homeReviews(): Promise<HomeReviews | null> {
+  const [all, items] = await Promise.all([
+    db.review.aggregate({ _avg: { stars: true }, _count: true }),
+    db.review.findMany({
+      where: { shown: true },
+      orderBy: { createdAt: "desc" },
+      take: HOME_MAX,
+      select: { id: true, stars: true, text: true, name: true, game: true, createdAt: true },
+    }),
+  ]);
+  if (items.length < HOME_MIN) return null;
+  const full = items.slice(0, items.length >= HOME_MAX ? HOME_MAX : HOME_MIN);
+  return {
+    average: Math.round((all._avg.stars ?? 0) * 10) / 10,
+    count: all._count,
+    items: full.map((r) => ({ ...r, game: r.game && r.game in EDITION_LABEL ? EDITION_LABEL[r.game as Edition] : null })),
+  };
+}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Plan } from "@prisma/client";
-import { Check, CreditCard, Flame, Gift, Globe, MoonStar, Package, Smartphone, Sparkles, SquareTerminal } from "lucide-react";
+import { Check, CreditCard, Flame, Gift, Globe, MoonStar, Smartphone, Sparkles, SquareTerminal } from "lucide-react";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -11,7 +11,9 @@ import { gamePluginTitles, offeredGames } from "@/lib/games";
 import { CURATED_PACKS } from "@/lib/modpacks";
 import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
 import RamCalculator from "@/components/RamCalculator";
-import PackCarousel from "@/components/PackCarousel";
+import PackGallery from "@/components/PackGallery";
+import { Archive, Cpu, MapPin, RotateCcw, Star } from "lucide-react";
+import { homeReviews } from "@/lib/reviews";
 import CurseforgeTop from "@/components/CurseforgeTop";
 import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
@@ -40,13 +42,14 @@ const featureIcons = {
 
 
 export default async function Home() {
-  const [{ locale, currency }, t, session, packArt, cfPacks, jar] = await Promise.all([
+  const [{ locale, currency }, t, session, packArt, cfPacks, jar, reviews] = await Promise.all([
     getPreferences(),
     getMessages(),
     auth(),
     getPackArt(CURATED_PACKS.map((p) => p.slug)),
     topCurseforgePacks(),
     cookies(),
+    homeReviews().catch(() => null),
   ]);
   // Came through a friend's invite link (/r/<code>) and hasn't signed up yet.
   const invited = !session?.user && jar.has(REFERRAL_COOKIE);
@@ -122,6 +125,17 @@ export default async function Home() {
         </HalloweenBand>
       )}
 
+      <section className="section hunt-spot" id="paczki">
+        <div className="container stack-large">
+          <header className="section-head">
+            <h2 className="display">{h.galleryTitle}</h2>
+            <p className="muted">{h.gallerySubtitle}</p>
+          </header>
+          <PackGallery t={t.server} cta={h.galleryCta} planNames={t.plans} art={packArt} cf={cfPacks} />
+          <p className="muted small center">{h.galleryMore}</p>
+        </div>
+      </section>
+
       <section className="section hunt-spot">
         {pumpkin("features")}
         <div className="container">
@@ -196,19 +210,6 @@ export default async function Home() {
           </ul>
 
           <ShowMore show={h.moreShow} hide={h.moreHide}>
-            <div className="stack">
-              <h3 className="subsection-title"><Package size={20} aria-hidden /> {h.packsTitle}</h3>
-              <p className="muted">{h.packsSubtitle}</p>
-              <PackCarousel
-                t={t.server}
-                planNames={t.plans}
-                art={packArt}
-                label={h.packsTitle}
-                link={(slug) => (session?.user ? `/dashboard/new?pack=${slug}` : "/signup")}
-              />
-              <p className="muted small">{h.packsMore}</p>
-            </div>
-
             {cfPacks && cfPacks.length > 0 && (
               <div className="stack" id="curseforge">
                 <h3 className="subsection-title"><Flame size={20} aria-hidden /> {h.cfTitle}</h3>
@@ -219,7 +220,7 @@ export default async function Home() {
                   server={t.server}
                   planNames={t.plans}
                   locale={locale}
-                  link={(slug) => (session?.user ? `/dashboard/new?cf=${slug}` : "/signup")}
+                  link={(slug) => `/graj?cf=${slug}`}
                 />
                 <p className="muted small">
                   <a href="https://www.curseforge.com/minecraft/search?class=modpacks" target="_blank" rel="noreferrer">
@@ -362,6 +363,55 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      <section className="section alt" id="sprzet">
+        <div className="container stack-large">
+          <header className="section-head">
+            <h2 className="display">{h.hardwareTitle}</h2>
+            <p className="muted">{h.hardwareSubtitle}</p>
+          </header>
+          <ul className="hardware-grid">
+            {([["where", MapPin], ["cores", Cpu], ["backups", Archive], ["restart", RotateCcw]] as const).map(([key, Icon]) => (
+              <li key={key} className="hardware-item">
+                <span className="hardware-icon"><Icon size={24} aria-hidden /></span>
+                <strong>{h.hardware[key].title}</strong>
+                <span className="muted small">{h.hardware[key].text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      {reviews && (
+        <section className="section" id="opinie">
+          <div className="container stack-large">
+            <header className="section-head">
+              <h2 className="display">{h.reviewsTitle}</h2>
+              <p className="review-average">
+                <span className="review-stars" aria-hidden>
+                  {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={20} className={n <= Math.round(reviews.average) ? "on" : undefined} />)}
+                </span>
+                <strong>{format(h.reviewsAverage, { avg: reviews.average.toLocaleString(locale), n: reviews.count })}</strong>
+              </p>
+            </header>
+            <ul className="review-grid">
+              {reviews.items.map((r) => (
+                <li key={r.id} className="card review-card">
+                  <span className="review-stars" aria-label={format(t.reviews.starsAria, { n: r.stars })}>
+                    {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={16} className={n <= r.stars ? "on" : undefined} aria-hidden />)}
+                  </span>
+                  <p>{r.text}</p>
+                  <p className="muted small">
+                    <strong>{r.name}</strong>
+                    {r.game && ` · ${r.game}`}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <p className="muted small center">{h.reviewsNote}</p>
+          </div>
+        </section>
+      )}
 
       <section className="section hunt-spot" id="faq">
         {pumpkin("faq")}
