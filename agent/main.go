@@ -137,6 +137,12 @@ func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) 
 		}
 		projects = append(projects, p+"?")
 	}
+	// Nearly every Fabric mod runs on Fabric API, but some don't list it on
+	// Modrinth or CurseForge (JEI, Disabilities), so the image wouldn't add it and
+	// the server wouldn't start ("requires fabric-api, which is missing").
+	if kind == "fabric" && len(plugins) > 0 {
+		projects = append(projects, fabricAPI+"?")
+	}
 	// The image refuses a project listed twice ("Duplicate key"), e.g. AuthMe from
 	// non-premium and from the owner's plugins; the first, required one stays.
 	seen := map[string]bool{}
