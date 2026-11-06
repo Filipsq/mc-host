@@ -131,8 +131,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const promoTyped = !!creator.promo && creatorCode.toLowerCase().replace(/\s+/g, "") === creator.promo.code;
   // The total from the plan picker, shown on the pay button that stays on screen.
   const [total, setTotal] = useState<string | null>(null);
-  // How many play at once (PLAYER_STEPS): moving the slider picks the plan, and the price with it.
-  const [step, setStep] = useState(1);
+  // How many play at once (PLAYER_STEPS): moving the slider picks the plan, and the price with it. Starts at 1–2, so the free plan is picked.
+  const [step, setStep] = useState(0);
   // The smallest plan the slider allows for that many players (null: no slider answer applied).
   const [floor, setFloor] = useState<Plan | null>(null);
   const [useGift, setUseGift] = useState(!!gift && (v.name === undefined || v.giftCode === gift.code));
