@@ -787,6 +787,9 @@ const pl = {
       "Przy pierwszym wejściu każdy gracz ustawi hasło komendą /register, a potem loguje się przez /login, więc nikt nie zagra pod cudzym nickiem. Po zmianie trybu gracze zaczynają z pustym ekwipunkiem, bo zmieniają się ich identyfikatory. Świat zostaje.",
     nonPremiumPaperOnly:
       "Non-premium nie działa na tym serwerze: nie mamy dla niego sprawdzonego moda z logowaniem hasłem, więc ktoś mógłby wejść pod cudzym nickiem. Działa na serwerach bez modów oraz na modach i paczkach modów na Fabricu, Forge i NeoForge w niektórych wersjach.",
+    ownLogin: "Mam własny plugin logowania (bez AuthMe)",
+    ownLoginHint:
+      "Nie wgrywamy AuthMe ani moda z logowaniem. Wgraj swój plugin (np. nLogin, LibreLogin) w Pluginach. Bez żadnego logowania każdy może wejść pod Twoim nickiem.",
     nonPremiumModVersions:
       "Non-premium działa na tym silniku tylko w wersjach Minecrafta: {versions}. Tylko tam jest sprawdzony mod z logowaniem hasłem; bez niego ktoś mógłby wejść pod cudzym nickiem.",
     nonPremiumOn: "non-premium",

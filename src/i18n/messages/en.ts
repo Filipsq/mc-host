@@ -788,6 +788,9 @@ const en: Messages = {
       "On first join every player sets a password with /register, then logs in with /login, so nobody can play under someone else's name. After switching, players start with an empty inventory because their IDs change. The world stays.",
     nonPremiumPaperOnly:
       "Non-premium doesn't work on this server: we have no tested password login mod for it, so someone could join under another player's name. It works on servers without mods, and on mods and mod packs on Fabric, Forge and NeoForge on some versions.",
+    ownLogin: "I use my own login plugin (no AuthMe)",
+    ownLoginHint:
+      "We don't add AuthMe or a login mod. Add your own plugin (e.g. nLogin, LibreLogin) under Plugins. With no login at all, anyone can join under your name.",
     nonPremiumModVersions:
       "On this loader non-premium works only on Minecraft {versions}. Only there is a tested password login mod; without it someone could join under another player's name.",
     nonPremiumOn: "non-premium",

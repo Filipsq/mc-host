@@ -265,6 +265,7 @@ export function agentSpec(server: Server): CreateServerSpec {
     whitelist: server.whitelist && (server.edition === "JAVA" || server.edition === "BEDROCK"),
     whitelistPlayers: server.whitelistPlayers,
     onlineMode: server.onlineMode || !canRunNonPremium(server),
+    ownLogin: !server.onlineMode && server.ownLogin,
     crossplay: server.crossplay && canCrossplay(server),
     voiceHost: voiceAddress(server)?.host,
     xbox: xboxOn(server),

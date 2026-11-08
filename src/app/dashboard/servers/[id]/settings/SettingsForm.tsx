@@ -18,7 +18,7 @@ type Props = {
   playerLimit: number; // the most the plan allows
   viewDistance: { max: number; def: number }; // the plan's range and default, in chunks
   // Java only; offered on Paper servers, and on mod loaders only on the versions their login mod runs on
-  nonPremium?: { offered: boolean; on: boolean; versions?: readonly string[] };
+  nonPremium?: { offered: boolean; on: boolean; ownLogin?: boolean; versions?: readonly string[] };
   crossplay?: { offered: boolean; on: boolean; host: string; port: number }; // the same, with where Bedrock players join
   initial: {
     version: string;
@@ -46,6 +46,7 @@ export default function SettingsForm({ serverId, edition, name, versions, latest
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
+  const [nonPremiumOn, setNonPremiumOn] = useState(nonPremium?.on ?? false);
   const [view, setView] = useState(initial.viewDistance);
   const java = edition === "JAVA";
   const nonPremiumOffered = nonPremium?.versions ? nonPremium.versions.includes(version) : nonPremium?.offered;
@@ -187,10 +188,19 @@ export default function SettingsForm({ serverId, edition, name, versions, latest
       )}
       {nonPremium && nonPremiumOffered && (
         <label className="check">
-          <input type="checkbox" name="nonPremium" defaultChecked={nonPremium.on} />
+          <input type="checkbox" name="nonPremium" checked={nonPremiumOn} onChange={(e) => setNonPremiumOn(e.target.checked)} />
           <span className="stack-tight">
             <span>{t.nonPremium}</span>
             <span className="muted small">{t.nonPremiumHint}</span>
+          </span>
+        </label>
+      )}
+      {nonPremium && nonPremiumOffered && nonPremiumOn && (
+        <label className="check">
+          <input type="checkbox" name="ownLogin" defaultChecked={nonPremium.ownLogin} />
+          <span className="stack-tight">
+            <span>{t.ownLogin}</span>
+            <span className="muted small">{t.ownLoginHint}</span>
           </span>
         </label>
       )}

@@ -107,19 +107,20 @@ const signalingPort = "19132/tcp"
 
 // pluginEnv has the image install a Paper server's plugins, or a mod loader's
 // mods, from Modrinth: the game mode's own, the login plugin or mod a
-// non-premium server needs (loginAddon), then the owner's. The owner's are optional, so one without a
+// non-premium server needs (loginAddon; login is false when the owner brings
+// their own), then the owner's. The owner's are optional, so one without a
 // build for the server's version is skipped (with a warning in the console)
 // instead of keeping the server down, and doesn't hold back the version a game
 // mode picks; the login plugin isn't, so a non-premium server never runs
 // without it. The lists are always set,
 // even empty, because the image removes the plugins and mods it installed
 // that are no longer listed.
-func pluginEnv(kind, version string, plugins []string, offline, crossplay bool) []string {
+func pluginEnv(kind, version string, plugins []string, login, crossplay bool) []string {
 	var projects []string
 	if base := gameModePlugins[kind]; base != "" {
 		projects = strings.Split(base, ",")
 	}
-	if offline {
+	if login {
 		projects = append(projects, loginAddon(kind, version))
 	}
 	if crossplay {
@@ -389,6 +390,8 @@ type createRequest struct {
 	// Java on Paper only: false lets in players without a bought Minecraft
 	// ("non-premium"); they log in with a password instead. On if missing.
 	OnlineMode *bool `json:"onlineMode"`
+	// Non-premium with the owner's own login plugin or mod: we add no login addon (loginAddon).
+	OwnLogin bool `json:"ownLogin"`
 	// Java on Paper only: Bedrock players (phones, consoles, Windows) join too,
 	// through the Geyser plugin on the server's port over UDP.
 	Crossplay bool `json:"crossplay"`
@@ -609,6 +612,9 @@ func (req *createRequest) validateTerraria() error {
 // offline reports whether the server lets in players without a bought Minecraft.
 func (req *createRequest) offline() bool { return req.OnlineMode != nil && !*req.OnlineMode }
 
+// ourLogin is whether we add the login addon: a non-premium server whose owner didn't pick their own.
+func (req *createRequest) ourLogin() bool { return req.offline() && !req.OwnLogin }
+
 // image is the server's container image: imageFor, except that a non-premium
 // Fabric pack runs on Java 21, as a Fabric server of its version does. Fabric
 // packs on 1.20.4 or older otherwise get Java 17 (with Forge packs), but
@@ -739,7 +745,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	if err := a.docker.CreateContainer(ctx, name, spec); err != nil {
 		return err
 	}
-	if req.offline() {
+	if req.ourLogin() {
 		a.prepareLogin(ctx, req.ID, loginAddon(req.loginKind(), req.Version))
 	}
 	if req.Edition == "JAVA" {
@@ -880,7 +886,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}
 		if req.Kind != "modpack" {
-			env = append(env, pluginEnv(req.Kind, req.Version, req.Plugins, req.offline(), req.Crossplay)...)
+			env = append(env, pluginEnv(req.Kind, req.Version, req.Plugins, req.ourLogin(), req.Crossplay)...)
 		}
 		// Always set: the image only writes the properties it's given, so going back
 		// from non-premium has to say so.

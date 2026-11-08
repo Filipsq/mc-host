@@ -100,6 +100,7 @@ export type CreateServerSpec = {
   whitelist: boolean;
   whitelistPlayers: string[];
   onlineMode: boolean; // false: non-premium (Java on Paper, or a mod loader or pack where a login mod runs)
+  ownLogin?: boolean; // non-premium with the owner's own login plugin: no AuthMe/EasyAuth/EasyLogin from us
   crossplay?: boolean; // Bedrock players join too, through Geyser (Java on Paper only)
   voiceHost?: string; // Java only: the machine players' games reach Simple Voice Chat on
   xbox?: boolean; // Bedrock, or Java with crossplay: console players join through an Xbox account (src/lib/xbox.ts); false signs it out

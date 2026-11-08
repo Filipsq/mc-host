@@ -117,6 +117,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
             ? {
                 offered: canRunNonPremium(server),
                 on: !server.onlineMode,
+                ownLogin: server.ownLogin,
                 ...(loginLoader(server) && { versions: LOGIN_MODS[loginLoader(server)!].versions }),
               }
             : undefined
