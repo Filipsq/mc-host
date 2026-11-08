@@ -54,6 +54,14 @@ func TestNonPremiumAndWorldEnv(t *testing.T) {
 		t.Errorf("no level set means the image's default world:\n%s %v", env, labels)
 	}
 
+	// The owner's own login plugin: still non-premium, but no AuthMe from us.
+	own := java
+	own.OwnLogin = true
+	env, _ = envOf(own)
+	if !strings.Contains(env, "ONLINE_MODE=false\n") || strings.Contains(env, authMe) || !strings.Contains(env, "MODRINTH_PROJECTS=Vebnzrzj?\n") {
+		t.Errorf("own login plugin env:\n%s", env)
+	}
+
 	premium := java
 	premium.OnlineMode = nil
 	env, _ = envOf(premium)

@@ -328,7 +328,7 @@ var loginEntrypoint = []string{"/bin/bash", "-c", "cat >" + loginScriptPath + " 
 // packLoginEnv tells loginScript which login mod a non-premium mod pack needs;
 // none (so it removes the one it added) when the pack isn't non-premium.
 func packLoginEnv(req *createRequest) []string {
-	if !req.offline() {
+	if !req.ourLogin() {
 		return nil
 	}
 	return []string{"MCHOST_LOGIN=" + loginAddon(req.loginKind(), req.Version), "MCHOST_LOGIN_LOADER=" + req.ModpackLoader, "MCHOST_LOGIN_VERSION=" + req.Version}

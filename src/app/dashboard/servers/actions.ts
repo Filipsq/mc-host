@@ -702,6 +702,7 @@ const settingsSchema = z.object({
   whitelist: z.literal("on").optional(),
   players: z.string().default(""),
   nonPremium: z.literal("on").optional(),
+  ownLogin: z.literal("on").optional(),
   crossplay: z.literal("on").optional(),
 });
 
@@ -770,6 +771,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       whitelistPlayers: players,
       // On the version saved now: a mod server's login mod runs only on some.
       onlineMode: !nonPremium,
+      ownLogin: nonPremium && s.ownLogin === "on",
       // Kept as it was on a mod server, which has no checkbox for it.
       crossplay: canCrossplay(server) ? s.crossplay === "on" : server.crossplay,
     },
