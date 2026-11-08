@@ -886,7 +886,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}
 		if req.Kind != "modpack" {
-			env = append(env, pluginEnv(req.Kind, req.Version, req.Plugins, req.ourLogin(), req.Crossplay)...)
+			env = append(env, fitPluginEnv(&req, image, pluginEnv(req.Kind, req.Version, req.Plugins, req.ourLogin(), req.Crossplay))...)
 		}
 		// Always set: the image only writes the properties it's given, so going back
 		// from non-premium has to say so.
