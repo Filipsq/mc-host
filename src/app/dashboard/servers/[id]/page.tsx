@@ -14,6 +14,7 @@ import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
 import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
+import { usesClassicPanel } from "@/lib/panelView";
 import { kindLabel, shownVersion } from "@/lib/serverType";
 import { latestVersionNumber } from "@/lib/addonVersions";
 import { ArrowUpCircle, Gift } from "lucide-react";
@@ -23,6 +24,7 @@ import { isOtherGame, isValheimPreset } from "@/lib/otherGames";
 import AutoRefresh from "@/components/AutoRefresh";
 import { takesBedrockPlayers } from "@/lib/xbox";
 import DeleteServer from "./DeleteServer";
+import ClassicOverview from "./ClassicOverview";
 import Stats from "./Stats";
 import CopyButton from "@/components/CopyButton";
 import TestPaymentNotice from "@/components/TestPaymentNotice";
@@ -43,11 +45,12 @@ export default async function ServerPage({ params, searchParams }: Props) {
   // Friends see what the owner let them use; the rest of the panel stays hidden.
   const can = (need: ServerNeed) => allows(access, need);
 
-  const [all, { locale, currency }, { live, agent }, latest] = await Promise.all([
+  const [all, { locale, currency }, { live, agent }, latest, classic] = await Promise.all([
     getMessages(),
     getPreferences(),
     getLiveDetailsOnce(server.id, server.status),
     server.edition === "JAVA" && server.version === "LATEST" ? latestVersionNumber(server.kind) : undefined,
+    usesClassicPanel(session.user.id),
   ]);
   const version = shownVersion(server.version, all.settings.latest, latest);
   const t = all.server;
@@ -277,7 +280,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
         )}
       </div>
 
-      {!unpaid && (
+      {!unpaid && !classic && (
         <Stats
           id={server.id}
           java={server.edition === "JAVA"}
@@ -305,6 +308,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
           )}
         </div>
       </div>
+
+      {classic && <ClassicOverview server={server} live={live} can={can} locale={locale} />}
 
       {can("owner") && (
         <section className="card danger-zone row">

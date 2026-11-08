@@ -834,6 +834,9 @@ const pl = {
     join: "Jak dołączyć",
     danger: "Usunięcie serwera",
     dangerText: "Usuwa serwer razem ze światem i kopiami zapasowymi. Tego nie da się cofnąć.",
+    more: "Więcej opcji",
+    toClassic: "Stary wygląd panelu",
+    toMenu: "Nowy wygląd z menu",
   },
   files: {
     title: "Pliki",

@@ -864,3 +864,11 @@ export async function sendCommandAction(id: string, command: string): Promise<Co
     return { error: "commandFailed" };
   }
 }
+
+/** Switches this user's server panel between the menu on the left and the classic one-page look. */
+export async function setClassicPanelAction(on: boolean) {
+  const session = await getSession();
+  if (!session?.user?.id) return;
+  await db.user.update({ where: { id: session.user.id }, data: { classicPanel: on === true } });
+  revalidatePath("/dashboard/servers", "layout");
+}

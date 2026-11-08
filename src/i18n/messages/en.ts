@@ -835,6 +835,9 @@ const en: Messages = {
     join: "How to join",
     danger: "Delete the server",
     dangerText: "Deletes the server with its world and backups. This can't be undone.",
+    more: "More options",
+    toClassic: "Classic panel look",
+    toMenu: "New look with a menu",
   },
   files: {
     title: "Files",
