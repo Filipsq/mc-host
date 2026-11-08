@@ -57,12 +57,10 @@ type Props = {
   // The user's other servers, to jump between them like between tabs.
   others: { id: string; name: string }[];
   t: { menu: string; servers: string; switchServer: string };
-  /** Shown under the menu: the switch to the classic look. */
-  footer?: React.ReactNode;
 };
 
 /** The server panel's menu: down the left on a computer, folded under a button on a phone. */
-export default function ServerNav({ id, name, groups, others, t, footer }: Props) {
+export default function ServerNav({ id, name, groups, others, t }: Props) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const base = `/dashboard/servers/${id}`;
@@ -120,7 +118,6 @@ export default function ServerNav({ id, name, groups, others, t, footer }: Props
             })}
           </div>
         ))}
-        {footer}
       </nav>
     </aside>
   );

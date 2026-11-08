@@ -839,9 +839,6 @@ const pl = {
     more: "Więcej opcji",
     toClassic: "Stary wygląd panelu",
     toMenu: "Nowy wygląd z menu",
-    viewTitle: "Wygląd panelu",
-    viewClassic: "Używasz starego wyglądu: wszystko na jednej stronie, bez menu po lewej.",
-    viewMenu: "Wolisz, jak było wcześniej? Stary wygląd ma konsolę, kopie zapasowe i przyciski do reszty na jednej stronie. Zapamiętamy wybór na Twoim koncie.",
   },
   files: {
     title: "Pliki",

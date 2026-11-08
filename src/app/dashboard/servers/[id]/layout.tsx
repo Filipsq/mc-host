@@ -163,6 +163,11 @@ export default async function ServerLayout({ children, params }: { children: Rea
   return (
     <main className="server-panel">
       {banners}
+      {/* The same spot as in the classic look, so switching back and forth stays under the cursor. */}
+      <div className="row classic-top">
+        <span />
+        <PanelViewToggle classic={false} t={p} />
+      </div>
       <header className="card server-head">
         <div className="server-head-title">
           <span className="server-head-icon">
@@ -193,7 +198,6 @@ export default async function ServerLayout({ children, params }: { children: Rea
           groups={groups}
           others={others}
           t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer }}
-          footer={<PanelViewToggle classic={false} t={p} className="secondary small server-nav-view" />}
         />
         <div className="server-content">{children}</div>
       </div>

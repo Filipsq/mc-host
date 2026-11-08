@@ -840,9 +840,6 @@ const en: Messages = {
     more: "More options",
     toClassic: "Classic panel look",
     toMenu: "New look with a menu",
-    viewTitle: "Panel look",
-    viewClassic: "You're using the classic look: everything on one page, no menu on the left.",
-    viewMenu: "Prefer how it was before? The classic look has the console, backups and buttons to the rest on one page. We'll remember it on your account.",
   },
   files: {
     title: "Files",
