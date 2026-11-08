@@ -737,6 +737,7 @@ const pl = {
   },
   settings: {
     rename: {
+      button: "Zmień nazwę",
       title: "Nazwa i adres serwera",
       name: "Nazwa serwera",
       address: "Adres serwera",

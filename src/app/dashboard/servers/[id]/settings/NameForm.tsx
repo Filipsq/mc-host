@@ -20,7 +20,7 @@ export default function NameForm({
 }) {
   const [state, action, pending] = useActionState(renameServerAction.bind(null, serverId), {});
   return (
-    <form action={action} className="card stack">
+    <form id="nazwa" action={action} className="card stack">
       <h2 className="card-title">{t.title}</h2>
       <label>
         {t.name}

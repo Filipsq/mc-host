@@ -136,7 +136,14 @@ export default async function ServerLayout({ children, params }: { children: Rea
           <div className="page-title">
             <EditionIcon edition={server.edition} size={52} />
             <div>
-              <h1>{server.name}</h1>
+              <h1 className="row">
+              {server.name}
+              {can("owner") && (
+                <Link className="button secondary small" href={`/dashboard/servers/${id}/settings#nazwa`}>
+                  {all.settings.rename.button}
+                </Link>
+              )}
+            </h1>
               <div className="meta">
                 <span className="chip">{gameLabel}</span>
                 <span className="chip">{all.plans[server.plan]}</span>
@@ -174,7 +181,14 @@ export default async function ServerLayout({ children, params }: { children: Rea
             <EditionIcon edition={server.edition} size={44} />
           </span>
           <div>
-            <h1>{server.name}</h1>
+            <h1 className="row">
+              {server.name}
+              {can("owner") && (
+                <Link className="button secondary small" href={`/dashboard/servers/${id}/settings#nazwa`}>
+                  {all.settings.rename.button}
+                </Link>
+              )}
+            </h1>
             <div className="meta">
               <span className={`badge ${live}`}>{t.live[live]}</span>
               <span className="chip">{gameLabel}</span>

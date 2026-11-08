@@ -738,6 +738,7 @@ const en: Messages = {
   },
   settings: {
     rename: {
+      button: "Rename",
       title: "Server name and address",
       name: "Server name",
       address: "Server address",
