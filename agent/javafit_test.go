@@ -14,6 +14,7 @@ import (
 func TestMain(m *testing.M) {
 	// Tests never ask the real Modrinth; the ones about it point modrinthAPI at a stand-in.
 	modrinthAPI = ""
+	mojangAPI = ""
 	os.Exit(m.Run())
 }
 

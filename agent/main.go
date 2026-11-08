@@ -923,15 +923,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000 -XX:MaxDirectMemorySize="+fmt.Sprint(directMemoryMb)+"m", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
-			players := req.Players
-			if req.offline() {
-				// Non-premium players have no Mojang account to look up; the image
-				// gives them the IDs an offline server uses instead.
-				players = make([]string, len(req.Players))
-				for i, p := range req.Players {
-					players[i] = p + ":offline"
-				}
-			}
+			players := whitelistEntries(&req)
 			// The panel's list replaces whatever the server had, so removing a player works.
 			env = append(env, "WHITELIST="+strings.Join(players, ","), "EXISTING_WHITELIST_FILE=SYNCHRONIZE", "ENFORCE_WHITELIST=TRUE")
 		}

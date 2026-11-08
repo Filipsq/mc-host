@@ -7,7 +7,6 @@ import { z } from "zod";
 import type { Plan, ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { unknownJavaPlayers } from "@/lib/mojang";
 import * as agent from "@/lib/agent";
 import {
   agentSpec,
@@ -728,13 +727,9 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   if (players.length > WHITELIST_MAX) return { error: "tooManyPlayers" };
   const whitelist = s.whitelist === "on";
   if (whitelist && players.length === 0) return { error: "whitelistEmpty" };
-  // A premium Java server won't start with a name on its list that has no account.
+  // Names without a Minecraft account are fine too: the agent lists them by
+  // their offline ID (agent/whitelist.go), so the server still starts.
   const nonPremium = canRunNonPremium({ ...server, version }) && s.nonPremium === "on";
-  if (whitelist && java && !nonPremium) {
-    // All of them, named at once: names saved before this check came in block a start too.
-    const unknown = await unknownJavaPlayers(players);
-    if (unknown.length) return { error: "unknownPlayer", player: unknown.join(", ") };
-  }
   if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
   // Plugins and mods with nothing for the new version leave the list, and jars the panel
   // downloaded (CurseForge, Hangar, SpigotMC) are picked again for it (src/lib/addonVersions.ts).

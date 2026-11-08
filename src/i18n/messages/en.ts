@@ -810,8 +810,6 @@ const en: Messages = {
       invalidValheimPassword: "Valheim password: 5–20 letters or digits, and not part of the server's name",
       whitelistEmpty: "Add at least one player or turn the list off",
       invalidPlayer: "Invalid name: {player}",
-      unknownPlayer:
-        "These names have no (premium) Minecraft account: {player}. The server won't start with them on its list. Remove them or fix the spelling, or turn on Non-premium if these players have no account.",
       maxPlayersRange: "The player count must be between 1 and the plan's limit",
       viewDistanceRange: "The view distance is outside this plan's range",
       tooManyPlayers: "The list can have at most 100 players",
