@@ -16,6 +16,8 @@ import IconForm from "./IconForm";
 import SettingsForm from "./SettingsForm";
 import TerrariaSettingsForm from "./TerrariaSettingsForm";
 import ValheimSettingsForm from "./ValheimSettingsForm";
+import PanelViewToggle from "../PanelViewToggle";
+import { usesClassicPanel } from "@/lib/panelView";
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -24,12 +26,23 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   const access = await getServerAccess(id, session.user.id);
   if (!access || !allows(access, "settings")) notFound();
   const { server } = access;
-  const t = await getMessages();
+  const [t, classic] = await Promise.all([getMessages(), usesClassicPanel(session.user.id)]);
+  // Some found the panel easier before the menu on the left; this brings it back, per account.
+  const viewCard = (
+    <div className="card row">
+      <span className="stack-tight">
+        <strong>{t.panel.viewTitle}</strong>
+        <span className="muted small">{classic ? t.panel.viewClassic : t.panel.viewMenu}</span>
+      </span>
+      <PanelViewToggle classic={classic} t={t.panel} />
+    </div>
+  );
 
   if (server.edition === "VALHEIM") {
     return (
       <div className="wide-form stack">
         <h2>{t.settings.title}</h2>
+      {viewCard}
         <ValheimSettingsForm
           serverId={server.id}
           initial={{ password: server.serverPassword ?? "", preset: server.difficulty }}
@@ -43,6 +56,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     return (
       <div className="wide-form stack">
         <h2>{t.settings.title}</h2>
+      {viewCard}
         <p className="notice">{t.otherGames.hytale.settingsNote}</p>
       </div>
     );
@@ -57,6 +71,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     return (
       <div className="wide-form stack">
         <h2>{t.settings.title}</h2>
+      {viewCard}
         <TerrariaSettingsForm
           serverId={server.id}
           name={server.name}
@@ -89,6 +104,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   return (
     <div className="wide-form stack">
       <h2>{t.settings.title}</h2>
+      {viewCard}
       {server.edition === "JAVA" && allows(access, "owner") && (
         <div className="card row">
           <span className="stack-tight">

@@ -583,6 +583,17 @@ button.stop:hover:not(:disabled) { background: rgb(248 113 113 / 0.1); color: va
   color: var(--fg); text-decoration: none; overflow-wrap: anywhere;
 }
 .server-switch-list a:hover { background: var(--surface); }
+/* The classic panel (src/lib/panelView.ts): one page, no menu on the left. */
+.classic-top { justify-content: space-between; }
+.classic-state { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.classic-content > .wide-form { max-width: 720px; }
+.classic-content h2:first-child, .classic-content > .stack > h2:first-child { margin: 0; }
+.server-nav-view { margin-top: 4px; width: 100%; justify-content: center; }
+@media (max-width: 640px) {
+  .classic-state, .classic-state .server-controls, .classic-state .controls { width: 100%; align-items: stretch; }
+  .classic-state .controls button { flex: 1; }
+  .classic-state .badge { align-self: flex-start; }
+}
 .danger-zone { border-color: rgb(248 113 113 / 0.3); }
 .danger-zone > span { min-width: 0; flex: 1 1 260px; }
 @media (max-width: 900px) {

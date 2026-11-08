@@ -836,6 +836,12 @@ const pl = {
     join: "Jak dołączyć",
     danger: "Usunięcie serwera",
     dangerText: "Usuwa serwer razem ze światem i kopiami zapasowymi. Tego nie da się cofnąć.",
+    more: "Więcej opcji",
+    toClassic: "Stary wygląd panelu",
+    toMenu: "Nowy wygląd z menu",
+    viewTitle: "Wygląd panelu",
+    viewClassic: "Używasz starego wyglądu: wszystko na jednej stronie, bez menu po lewej.",
+    viewMenu: "Wolisz, jak było wcześniej? Stary wygląd ma konsolę, kopie zapasowe i przyciski do reszty na jednej stronie. Zapamiętamy wybór na Twoim koncie.",
   },
   files: {
     title: "Pliki",

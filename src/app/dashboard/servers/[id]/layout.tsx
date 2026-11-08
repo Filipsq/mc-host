@@ -23,6 +23,9 @@ import AutoRefresh from "@/components/AutoRefresh";
 import LeaveButton from "./LeaveButton";
 import ServerControls from "./ServerControls";
 import ServerNav, { type NavGroup } from "./ServerNav";
+import ClassicBack from "./ClassicBack";
+import PanelViewToggle from "./PanelViewToggle";
+import { usesClassicPanel } from "@/lib/panelView";
 
 // Every page of a server's panel sits in one frame: the server's name, state
 // and Start/Stop buttons on top, and its menu down the left. Someone opening
@@ -37,7 +40,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
   const { server } = access;
   const can = (need: ServerNeed) => allows(access, need);
 
-  const [all, { live }, others, owner, latest] = await Promise.all([
+  const [all, { live }, others, owner, latest, classic] = await Promise.all([
     getMessages(),
     getLiveDetailsOnce(server.id, server.status),
     db.server.findMany({
@@ -48,6 +51,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
     }),
     access.role === "owner" ? null : db.user.findUnique({ where: { id: server.ownerId }, select: { email: true } }),
     server.edition === "JAVA" && server.version === "LATEST" ? latestVersionNumber(server.kind) : undefined,
+    usesClassicPanel(userId),
   ]);
   const players = live === "online" ? await getMetrics(server.id, "hour").catch(() => null) : null;
   const maxPlayers = players?.maxPlayers ?? maxPlayersFor(server, planById(server.plan));
@@ -102,8 +106,8 @@ export default async function ServerLayout({ children, params }: { children: Rea
     },
   ].filter((g) => g.items.length > 0);
 
-  return (
-    <main className="server-panel">
+  const banners = (
+    <>
       {access.role === "admin" && owner && (
         <p className="notice warn">
           {format(all.admin.viewing, { email: owner.email })} <Link href={`/admin/servers/${id}`}>{all.admin.openAdmin}</Link>
@@ -115,6 +119,50 @@ export default async function ServerLayout({ children, params }: { children: Rea
           <LeaveButton id={id} t={all.access} />
         </div>
       )}
+    </>
+  );
+
+  // The classic look, for those who found it easier: no menu, everything on the
+  // overview with a card for each section, and a way back on every other page.
+  if (classic) {
+    return (
+      <main className="stack classic-panel">
+        {banners}
+        <div className="row classic-top">
+          <ClassicBack id={server.id} name={server.name} back={t.back} />
+          <PanelViewToggle classic t={p} />
+        </div>
+        <header className="page-head">
+          <div className="page-title">
+            <EditionIcon edition={server.edition} size={52} />
+            <div>
+              <h1>{server.name}</h1>
+              <div className="meta">
+                <span className="chip">{gameLabel}</span>
+                <span className="chip">{all.plans[server.plan]}</span>
+                <span className="chip">{server.memoryMb / 1024} GB RAM</span>
+                {players && (
+                  <span className="chip" title={p.playersLabel}>
+                    <Users size={14} aria-hidden /> {format(p.players, { n: players.online ?? players.players.length, max: maxPlayers })}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="classic-state">
+            <span className={`badge ${live}`}>{t.live[live]}</span>
+            <ServerControls id={server.id} live={live} t={t} />
+          </div>
+        </header>
+        <div className="classic-content">{children}</div>
+        {(live === "starting" || live === "restarting") && <AutoRefresh />}
+      </main>
+    );
+  }
+
+  return (
+    <main className="server-panel">
+      {banners}
       <header className="card server-head">
         <div className="server-head-title">
           <span className="server-head-icon">
@@ -145,6 +193,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
           groups={groups}
           others={others}
           t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer }}
+          footer={<PanelViewToggle classic={false} t={p} className="secondary small server-nav-view" />}
         />
         <div className="server-content">{children}</div>
       </div>

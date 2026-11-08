@@ -23,6 +23,9 @@ model User {
   locale             String             @default("pl")
   // Can open the admin panel and every server's panel. Set on the server with deploy/admin.sh.
   admin              Boolean            @default(false)
+  // The server panel as it was before the left menu: everything on one page with
+  // buttons to the rest. Some find it easier; switched under the menu (src/lib/panelView.ts).
+  classicPanel       Boolean            @default(false)
   servers            Server[]
   payments           Payment[]
   passwordResets     PasswordReset[]
