@@ -13,6 +13,7 @@ import { latestVersionNumber } from "@/lib/addonVersions";
 import { format } from "@/i18n/messages";
 import { isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import IconForm from "./IconForm";
+import NameForm from "./NameForm";
 import SettingsForm from "./SettingsForm";
 import TerrariaSettingsForm from "./TerrariaSettingsForm";
 import ValheimSettingsForm from "./ValheimSettingsForm";
@@ -149,6 +150,15 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         t={t.settings}
       />
       {server.edition === "JAVA" && <IconForm serverId={server.id} t={t.settings} />}
+      {access.role !== "friend" && (
+        <NameForm
+          serverId={server.id}
+          name={server.name}
+          subdomain={server.edition === "JAVA" ? (server.subdomain ?? "") : null}
+          domain={process.env.GAME_DOMAIN ?? "mchosting.pl"}
+          t={t.settings.rename}
+        />
+      )}
     </div>
   );
 }

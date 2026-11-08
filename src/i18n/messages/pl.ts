@@ -736,6 +736,21 @@ const pl = {
     },
   },
   settings: {
+    rename: {
+      button: "Zmień nazwę",
+      title: "Nazwa i adres serwera",
+      name: "Nazwa serwera",
+      address: "Adres serwera",
+      addressHint: "Gracze wpiszą ten adres w Minecraft. Po zmianie stary adres przestaje działać, a włączony serwer uruchomi się ponownie (świat i pliki zostają).",
+      save: "Zapisz nazwę i adres",
+      saving: "Zapisywanie…",
+      errors: {
+        invalidName: "Nazwa musi mieć 3–32 znaki: litery, cyfry, spacje, - i _.",
+        invalidSubdomain: "Adres może mieć 3–32 znaki: małe litery, cyfry i myślniki.",
+        subdomainTaken: "Ten adres jest już zajęty",
+        applyFailed: "Nie udało się zmienić adresu na serwerze. Spróbuj ponownie.",
+      },
+    },
     title: "Ustawienia",
     edit: "Zmień ustawienia",
     version: "Wersja Minecrafta",

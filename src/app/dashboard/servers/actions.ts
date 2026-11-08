@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { Plan, ServerStatus } from "@prisma/client";
+import { Prisma, type Plan, type ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
@@ -783,6 +783,53 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   }
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   redirect(`/dashboard/servers/${id}?settings=saved${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
+}
+
+export type NameState = { error?: "invalidName" | "invalidSubdomain" | "subdomainTaken" | "applyFailed" };
+
+const renameSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .regex(/^[\p{L}\p{N} _-]{3,32}$/u),
+  subdomain: z.string().trim().toLowerCase().optional(),
+});
+
+/**
+ * Renames the server and, on Java, changes its address. The router finds a
+ * Java container by its address label, so a new address rebuilds the container
+ * (files and world stay) and the routes to the other machines and own domains
+ * are sent again. The old address stops working at once.
+ */
+export async function renameServerAction(id: string, _: NameState, form: FormData): Promise<NameState> {
+  const server = await serverOrThrow(id, "owner");
+  const parsed = renameSchema.safeParse(Object.fromEntries(form));
+  if (!parsed.success) return { error: "invalidName" };
+  const { name } = parsed.data;
+  const java = server.edition === "JAVA";
+  const subdomain = java ? (parsed.data.subdomain ?? server.subdomain ?? "").replace(/-+$/, "") : server.subdomain;
+  const moved = java && subdomain !== server.subdomain;
+  if (moved && !isValidSubdomain(subdomain ?? "")) return { error: "invalidSubdomain" };
+  if (name === server.name && !moved) return {};
+  let updated;
+  try {
+    updated = await db.server.update({ where: { id: server.id }, data: { name, subdomain } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return { error: "subdomainTaken" };
+    throw err;
+  }
+  if (moved) {
+    try {
+      if (onHost(updated)) await applyToHost(updated);
+      if (updated.node !== MAIN_NODE) await syncPeerRoutes();
+      if (updated.customDomain) await syncHostAliases();
+    } catch (err) {
+      console.error("address change not applied", server.id, err);
+      return { error: "applyFailed" };
+    }
+  }
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+  redirect(`/dashboard/servers/${id}?settings=saved`);
 }
 
 export type IconState = { error?: "iconInvalid" | "applyFailed"; saved?: boolean };

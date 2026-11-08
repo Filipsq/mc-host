@@ -737,6 +737,21 @@ const en: Messages = {
     },
   },
   settings: {
+    rename: {
+      button: "Rename",
+      title: "Server name and address",
+      name: "Server name",
+      address: "Server address",
+      addressHint: "Players type this address in Minecraft. After a change the old address stops working, and a running server restarts (world and files stay).",
+      save: "Save name and address",
+      saving: "Saving…",
+      errors: {
+        invalidName: "The name needs 3–32 characters: letters, digits, spaces, - and _.",
+        invalidSubdomain: "The address needs 3–32 characters: lowercase letters, digits and hyphens.",
+        subdomainTaken: "That address is already taken",
+        applyFailed: "Couldn't change the address on the server. Try again.",
+      },
+    },
     title: "Settings",
     edit: "Change settings",
     version: "Minecraft version",
