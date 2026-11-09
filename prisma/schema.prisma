@@ -477,6 +477,11 @@ model Review {
   shown     Boolean   @default(false)
   // When an admin last looked at it: unchecked ones are counted on the admin tab.
   checkedAt DateTime?
+  // The admin's public answer, shown under the opinion on the home page.
+  reply          String?
+  repliedAt      DateTime?
+  // When the author saw the answer in the panel; until then the panel shows it.
+  replySeenAt    DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 

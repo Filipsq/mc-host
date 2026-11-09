@@ -40,3 +40,11 @@ export async function dismissReviewAction() {
   await db.user.update({ where: { id: session.user.id }, data: { reviewDismissedAt: new Date() } });
   revalidatePath("/dashboard");
 }
+
+/** "OK, przeczytane" on the admin's answer: the panel stops showing it. */
+export async function seenReviewReplyAction() {
+  const session = await getSession();
+  if (!session?.user?.id) return;
+  await db.review.updateMany({ where: { userId: session.user.id }, data: { replySeenAt: new Date() } });
+  revalidatePath("/dashboard");
+}

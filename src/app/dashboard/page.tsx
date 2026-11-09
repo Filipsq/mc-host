@@ -16,8 +16,9 @@ import { REFERRAL_DAYS } from "@/lib/referrals";
 import { pushPublicKey } from "@/lib/push";
 import AppInstall from "@/components/AppInstall";
 import TestPaymentNotice from "@/components/TestPaymentNotice";
-import { REVIEW_NAME_MAX, REVIEW_TEXT_MAX, shouldAskReview } from "@/lib/reviews";
+import { REVIEW_NAME_MAX, REVIEW_TEXT_MAX, shouldAskReview, unseenReviewReply } from "@/lib/reviews";
 import ReviewAsk from "./ReviewAsk";
+import ReviewReply from "./ReviewReply";
 
 type Props = { searchParams: Promise<{ haslo?: string }> };
 
@@ -25,7 +26,7 @@ export default async function DashboardPage({ searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [all, servers, shared, { haslo }, admin, me, { locale }, askReview] = await Promise.all([
+  const [all, servers, shared, { haslo }, admin, me, { locale }, askReview, reviewReply] = await Promise.all([
     getMessages(),
     db.server.findMany({
       where: { ownerId: session.user.id },
@@ -37,6 +38,7 @@ export default async function DashboardPage({ searchParams }: Props) {
     db.user.findUnique({ where: { id: session.user.id }, select: { bonusDays: true } }),
     getPreferences(),
     shouldAskReview(session.user.id),
+    unseenReviewReply(session.user.id),
   ]);
   const [states, sharedStates] = await Promise.all([
     Promise.all(servers.map((s) => getLiveState(s))),
@@ -62,6 +64,7 @@ export default async function DashboardPage({ searchParams }: Props) {
       </header>
       {haslo === "zmienione" && <p className="notice success">{t.passwordChanged}</p>}
       <TestPaymentNotice userId={session.user.id} all={all} locale={locale} />
+      {reviewReply && <ReviewReply t={all.reviews} review={reviewReply} />}
       {servers.length === 0 ? (
         <div className="card stack empty">
           <span className="empty-art">

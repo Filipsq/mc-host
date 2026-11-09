@@ -14,6 +14,7 @@ import RamCalculator from "@/components/RamCalculator";
 import PackGallery from "@/components/PackGallery";
 import { Archive, Cpu, MapPin, RotateCcw, Star } from "lucide-react";
 import { homeReviews } from "@/lib/reviews";
+import { BRAND_NAME } from "@/lib/brand";
 import CurseforgeTop from "@/components/CurseforgeTop";
 import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
@@ -405,6 +406,12 @@ export default async function Home() {
                     <strong>{r.name}</strong>
                     {r.game && ` · ${r.game}`}
                   </p>
+                  {r.reply && (
+                    <div className="review-reply">
+                      <strong className="small">{format(t.reviews.replyFrom, { brand: BRAND_NAME })}</strong>
+                      <p>{r.reply}</p>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

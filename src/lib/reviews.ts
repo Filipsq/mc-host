@@ -1,6 +1,11 @@
 import "server-only";
 import type { Edition } from "@prisma/client";
 import { db } from "./db";
+import { messages, format } from "@/i18n/messages";
+import { defaultLocale, isLocale } from "@/i18n/config";
+import { BRAND_NAME } from "./brand";
+import { buttonMail, sendMail } from "./mail";
+import { sendPush } from "./push";
 
 // Players' opinions for the home page. The panel asks once a player has kept
 // playing on a server for a while, so the opinion comes from real use; an admin
@@ -9,6 +14,7 @@ import { db } from "./db";
 
 export const REVIEW_TEXT_MAX = 300;
 export const REVIEW_NAME_MAX = 30;
+export const REVIEW_REPLY_MAX = 500;
 const ASK_AFTER_DAYS = 7; // the server is at least this old
 const PLAYED_DAYS = 3; // and someone played on it at least this long after it was made
 const HOME_MIN = 3; // fewer shown opinions than this and the home page leaves the section out
@@ -44,7 +50,7 @@ export async function reviewEdition(userId: string): Promise<Edition | null> {
 export type HomeReviews = {
   average: number; // every opinion, shown or not
   count: number;
-  items: { id: string; stars: number; text: string; name: string; game: string | null; createdAt: Date }[];
+  items: { id: string; stars: number; text: string; name: string; game: string | null; reply: string | null; createdAt: Date }[];
 };
 
 /** What the home page shows, or null while there are too few shown opinions. */
@@ -55,7 +61,7 @@ export async function homeReviews(): Promise<HomeReviews | null> {
       where: { shown: true },
       orderBy: { createdAt: "desc" },
       take: HOME_MAX,
-      select: { id: true, stars: true, text: true, name: true, game: true, createdAt: true },
+      select: { id: true, stars: true, text: true, name: true, game: true, reply: true, createdAt: true },
     }),
   ]);
   if (items.length < HOME_MIN) return null;
@@ -65,4 +71,41 @@ export async function homeReviews(): Promise<HomeReviews | null> {
     count: all._count,
     items: full.map((r) => ({ ...r, game: r.game && r.game in EDITION_LABEL ? EDITION_LABEL[r.game as Edition] : null })),
   };
+}
+
+/** The author's opinion with an admin answer they haven't seen yet, for the panel. */
+export async function unseenReviewReply(userId: string) {
+  const r = await db.review.findUnique({
+    where: { userId },
+    select: { stars: true, text: true, reply: true, repliedAt: true, replySeenAt: true },
+  });
+  if (!r?.reply || !r.repliedAt || (r.replySeenAt && r.replySeenAt >= r.repliedAt)) return null;
+  return { stars: r.stars, text: r.text, reply: r.reply };
+}
+
+/** Tells the author by email and push that an admin answered their opinion. Never throws. */
+export async function notifyReviewReply(reviewId: string) {
+  const r = await db.review.findUnique({
+    where: { id: reviewId },
+    select: { text: true, reply: true, user: { select: { id: true, email: true, locale: true } } },
+  });
+  if (!r?.reply) return;
+  const all = messages[isLocale(r.user.locale) ? r.user.locale : defaultLocale];
+  const t = all.reviews.replyMail;
+  const app = process.env.APP_URL ?? "http://localhost:3000";
+  const url = `${app}/dashboard`;
+  const mail = buttonMail({
+    to: r.user.email,
+    subject: format(t.subject, { brand: BRAND_NAME }),
+    paragraphs: [t.intro, `„${r.text}”`, t.answer, ...r.reply.split("\n").map((l) => l.trim()).filter(Boolean)],
+    button: t.button,
+    url,
+    footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
+  });
+  await sendPush([r.user.id], { title: mail.subject, body: r.reply.slice(0, 160), url });
+  try {
+    await sendMail(mail);
+  } catch (err) {
+    console.error(`[mail] review reply email for review ${reviewId} failed:`, err);
+  }
 }

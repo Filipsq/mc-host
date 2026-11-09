@@ -3,8 +3,8 @@ import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { EDITION_LABEL } from "@/lib/reviews";
-import { setReviewShownAction } from "./actions";
+import { EDITION_LABEL, REVIEW_REPLY_MAX } from "@/lib/reviews";
+import { saveReviewReplyAction, setReviewShownAction } from "./actions";
 
 export default async function AdminReviewsPage() {
   await requireAdmin();
@@ -43,6 +43,21 @@ export default async function AdminReviewsPage() {
                   </form>
                 )}
               </div>
+              <form action={saveReviewReplyAction.bind(null, r.id)} className="stack-tight admin-review-reply">
+                <label className="small">
+                  {t.replyLabel}
+                  <textarea name="reply" rows={2} maxLength={REVIEW_REPLY_MAX} defaultValue={r.reply ?? ""} placeholder={t.replyPlaceholder} />
+                </label>
+                <div className="row">
+                  <button className="secondary">{r.reply ? t.replyUpdate : t.replySend}</button>
+                  {r.reply && r.repliedAt && (
+                    <span className="muted small">
+                      {format(r.replySeenAt && r.replySeenAt >= r.repliedAt ? t.replySeen : t.replySent, { date: date.format(r.repliedAt) })}
+                    </span>
+                  )}
+                </div>
+                <p className="muted small">{t.replyHint}</p>
+              </form>
             </li>
           ))}
         </ul>
