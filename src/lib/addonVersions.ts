@@ -6,7 +6,7 @@ import { canChangeFiles } from "./files";
 import { isModLoader } from "./modpacks";
 import { PAPER_INSTALL_LOADERS, getPluginInfos, newestGameRelease, projectsWithoutBuild } from "./modrinth";
 import { addonType, isProjectId, sitePlugin, sitePluginFile } from "./plugins";
-import { versionsFor } from "./settings";
+import { isPreYearVersion, versionsFor } from "./settings";
 import { apiTooNew, downloadSitePlugin, getSitePluginInfos, pluginApiVersion } from "./sitePlugins";
 
 // Plugins and mods follow the server's Minecraft version. The image installs
@@ -26,8 +26,8 @@ function compareVersions(a: string, b: string) {
   return 0;
 }
 
-/** The newest Minecraft version Paper has builds for (kept for an hour); undefined if it doesn't answer. */
-async function newestPaperVersion(): Promise<string | undefined> {
+/** Every Minecraft version Paper has builds for, oldest first (kept for an hour); undefined if it doesn't answer. */
+async function paperVersions(): Promise<string[] | undefined> {
   try {
     const res = await fetch(`${process.env.PAPER_API_URL ?? "https://fill.papermc.io"}/v3/projects/paper`, {
       headers: { Accept: "application/json", "User-Agent": "Filipsq/mc-host (mchosting.pl)" },
@@ -40,11 +40,55 @@ async function newestPaperVersion(): Promise<string | undefined> {
     const all = (Array.isArray(versions) ? versions : Object.values(versions ?? {}).flat()).filter(
       (v): v is string => typeof v === "string" && RELEASE.test(v),
     );
-    return all.sort(compareVersions).at(-1);
+    return all.sort(compareVersions);
   } catch (err) {
     console.error("paper version list failed", err);
     return undefined;
   }
+}
+
+/** The newest Minecraft version Paper has builds for; undefined if it doesn't answer. */
+async function newestPaperVersion(): Promise<string | undefined> {
+  return (await paperVersions())?.at(-1);
+}
+
+/**
+ * The year-based versions (26.1 onwards) older than the newest one, newest
+ * first, each family by its last fix: ["26.2.1", "26.1.2"]. "Najnowsza" covers
+ * the newest family. Taken from Paper's list, so only versions Paper runs show
+ * up; empty when Paper doesn't answer within 3 seconds.
+ */
+export async function olderYearVersions(): Promise<string[]> {
+  const known = yearCache;
+  if (known && known.until > Date.now()) return known.versions;
+  const all = await Promise.race([paperVersions(), new Promise<undefined>((resolve) => setTimeout(resolve, 3000))]);
+  const newest = new Map<string, string>(); // family ("26.2") -> its last fix
+  for (const v of all ?? []) if (!isPreYearVersion(v)) newest.set(v.split(".").slice(0, 2).join("."), v);
+  const families = [...newest.keys()].sort(compareVersions);
+  const versions = families.slice(0, -1).reverse().map((f) => newest.get(f)!);
+  yearCache = { versions, until: Date.now() + (all ? 3_600_000 : 600_000) };
+  return versions;
+}
+/**
+ * The versions a new world can start on: the version that first saves a world
+ * decides which can open it (26.x worlds never go back to 1.x), so it's picked
+ * with the world. Mod loaders change version in Settings, where their mods follow.
+ */
+export const newWorldVersions = async (s: Pick<Server, "edition" | "kind">) =>
+  s.edition === "JAVA" && !isModLoader(s.kind) ? offeredVersions(s.kind) : [];
+
+let yearCache: { versions: string[]; until: number } | undefined;
+
+/**
+ * Versions the owner may pick for a server of this kind: versionsFor, with the
+ * older 26.x versions after "Najnowsza" wherever Najnowsza is offered.
+ */
+export async function offeredVersions(kind: string): Promise<string[]> {
+  const base = versionsFor(kind);
+  if (!base.includes("LATEST")) return base;
+  const older = (await olderYearVersions()).filter((v) => !base.includes(v));
+  const at = base.indexOf("LATEST") + 1;
+  return [...base.slice(0, at), ...older, ...base.slice(at)];
 }
 
 /**

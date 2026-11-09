@@ -9,7 +9,7 @@ import * as agent from "@/lib/agent";
 import { getServerFor } from "@/lib/access";
 import { applyToHost, onHost } from "@/lib/servers";
 import { planById } from "@/lib/plans";
-import { versionsFor } from "@/lib/settings";
+import { offeredVersions } from "@/lib/addonVersions";
 import { activeLevel, nextWorldName, randomSeed } from "@/lib/worlds";
 import { MINIGAMES_FROM, minigamesBack, type MinigamesBack } from "@/lib/minigamesSwitch";
 
@@ -52,7 +52,7 @@ export async function enableMinigamesAction(id: string) {
       where: { id: server.id },
       data: {
         kind: "minigames",
-        version: versionsFor("minigames").includes(server.version) ? server.version : "LATEST",
+        version: (await offeredVersions("minigames")).includes(server.version) ? server.version : "LATEST",
         // The owner's plugins (homes, spawns) would get in the games' way; they come back with the world.
         plugins: [],
         pluginsPending: false,

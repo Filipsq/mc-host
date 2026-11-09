@@ -11,11 +11,11 @@ import { diskLimitMb, formatMb } from "@/lib/disk";
 import { planById } from "@/lib/plans";
 import { biggerPlans, canUpgrade } from "@/lib/upgrade";
 import { serverAddons } from "@/lib/addons";
-import { activeLevel, newWorldVersions, nextWorldName, worldTypes } from "@/lib/worlds";
+import { activeLevel, nextWorldName, worldTypes } from "@/lib/worlds";
 import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
 import { isMinecraft } from "@/lib/otherGames";
 import { shownVersion } from "@/lib/serverType";
-import { latestVersionNumber } from "@/lib/addonVersions";
+import { latestVersionNumber, newWorldVersions } from "@/lib/addonVersions";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ switched?: string; uploaded?: string; deleted?: string; dropped?: string }> };
 
@@ -145,7 +145,7 @@ export default async function WorldsPage({ params, searchParams }: Props) {
               id={server.id}
               initialName={nextWorldName([...worlds.map((w) => w.name), active])}
               types={worldTypes(server.edition)}
-              versions={newWorldVersions(server)}
+              versions={await newWorldVersions(server)}
               version={server.version}
               latest={shownVersion("LATEST", all.settings.latest, latest)}
               t={t}

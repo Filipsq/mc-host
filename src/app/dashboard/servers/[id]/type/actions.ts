@@ -10,8 +10,8 @@ import { getServerFor } from "@/lib/access";
 import { applyToHost, onHost } from "@/lib/servers";
 import { planById } from "@/lib/plans";
 import { MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
-import { fitAddonsToVersion } from "@/lib/addonVersions";
-import { LOADER_VERSIONS, MOD_DEFAULT_VERSION, versionsFor } from "@/lib/settings";
+import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
+import { LOADER_VERSIONS, MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { PLUGINS_MAX, canRunNonPremium, isProjectId, supportsPlugins } from "@/lib/plugins";
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { SERVER_TYPES, minPlanFor, usesMods } from "@/lib/serverType";
@@ -74,7 +74,7 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
   } else if (type === "mods") {
     version = LOADER_VERSIONS[loader].find((v) => v === parsed.data.modVersion) ?? MOD_DEFAULT_VERSION;
   } else if (type === "vanilla") {
-    version = versionsFor("vanilla").includes(server.version) ? server.version : "LATEST";
+    version = (await offeredVersions("vanilla")).includes(server.version) ? server.version : "LATEST";
   }
   const same =
     kind === server.kind &&
