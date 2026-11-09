@@ -7,6 +7,7 @@ import {
   CornerLeftUp,
   Download,
   File,
+  FilePlus,
   FileArchive,
   FileText,
   Folder,
@@ -49,7 +50,7 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [progress, setProgress] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<"folder" | "file" | null>(null);
   const [dragging, setDragging] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
 
@@ -69,7 +70,7 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
         return;
       }
       setRenaming(null);
-      setCreating(false);
+      setCreating(null);
       if (done) setMessage({ text: done(res.files), error: false });
     });
   }
@@ -136,7 +137,10 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
               e.target.value = "";
             }}
           />
-          <button className="secondary" disabled={busy} onClick={() => setCreating(true)}>
+          <button className="secondary" disabled={busy} onClick={() => setCreating("file")}>
+            <FilePlus size={16} aria-hidden /> {t.newFile}
+          </button>
+          <button className="secondary" disabled={busy} onClick={() => setCreating("folder")}>
             <FolderPlus size={16} aria-hidden /> {t.newFolder}
           </button>
         </div>
@@ -147,14 +151,31 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
           onSubmit={(e) => {
             e.preventDefault();
             const name = String(new FormData(e.currentTarget).get("name") ?? "").trim();
-            if (name) run({ mkdir: inDir(name) });
+            if (!name) return;
+            if (creating === "folder") return run({ mkdir: inDir(name) });
+            const path = inDir(name);
+            setMessage(null);
+            startTransition(async () => {
+              const res = await fileAction(id, { newFile: path });
+              if (res.error) return setMessage({ text: t.errors[res.error], error: true });
+              router.push(edit(path));
+            });
           }}
         >
-          <input name="name" required autoFocus maxLength={255} aria-label={t.folderName} placeholder={t.folderName} />
+          <input
+            key={creating}
+            name="name"
+            required
+            autoFocus
+            maxLength={255}
+            aria-label={creating === "file" ? t.fileName : t.folderName}
+            placeholder={creating === "file" ? t.fileName : t.folderName}
+          />
           <button disabled={pending}>{t.create}</button>
-          <button type="button" className="secondary" onClick={() => setCreating(false)}>
+          <button type="button" className="secondary" onClick={() => setCreating(null)}>
             {t.cancel}
           </button>
+          {creating === "file" && <span className="muted small">{t.newFileHint}</span>}
         </form>
       )}
       {progress && <p className="muted small">{progress}</p>}
