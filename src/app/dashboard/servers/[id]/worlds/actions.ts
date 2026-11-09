@@ -15,14 +15,13 @@ import {
   isValidSeed,
   isValidWorldName,
   javaWorldFolders,
-  newWorldVersions,
   randomSeed,
   WORLD_UPLOAD_DIR,
   worldTypes,
   type WorldType,
 } from "@/lib/worlds";
 import { isPreYearVersion } from "@/lib/settings";
-import { fitAddonsToVersion } from "@/lib/addonVersions";
+import { fitAddonsToVersion, newWorldVersions } from "@/lib/addonVersions";
 import type { Messages } from "@/i18n/messages";
 import { isMinecraft } from "@/lib/otherGames";
 
@@ -99,7 +98,7 @@ export async function newWorldAction(id: string, _: WorldState, form: FormData):
   if (await nameTaken(server, name)) return { error: "nameTaken", values };
   // A new world is made by the version it starts on, and one made by 26.x can't go back
   // to 1.x, so the version is picked here. Mod loaders change it in Settings (mods follow it).
-  const version = newWorldVersions(server).find((v) => v === values.version);
+  const version = (await newWorldVersions(server)).find((v) => v === values.version);
   let dropped: string[];
   try {
     // An empty seed is made up here: a seed left unset would keep the last world's.

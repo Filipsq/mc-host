@@ -50,11 +50,10 @@ import {
   WHITELIST_MAX,
   isValidPlayerName,
   parsePlayers,
-  versionsFor,
 } from "@/lib/settings";
 import { activeLevel } from "@/lib/worlds";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
-import { fitAddonsToVersion } from "@/lib/addonVersions";
+import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
 import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
 import { KNOWN_PLUGINS, PLUGIN_SETS, addonType, canCrossplay, canRunNonPremium, isProjectId, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
@@ -715,7 +714,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
 
   // Bedrock always runs the newest version, game modes follow their plugins and mod packs
   // their pack; plain Java and mod loaders keep their version unless a listed one is picked.
-  const offered = java ? versionsFor(server.kind) : [];
+  const offered = java ? await offeredVersions(server.kind) : [];
   const version = s.version && (offered.includes(s.version) || s.version === server.version) ? s.version : server.version;
   if (s.motd.length > MOTD_MAX || /[\p{Cc}]/u.test(s.motd)) return { error: "motdTooLong" };
   const limit = serverPlayerLimit(server, planById(server.plan));
