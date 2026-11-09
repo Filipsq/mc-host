@@ -44,6 +44,7 @@ export default async function FilesPage({ params, searchParams }: Props) {
           {(live === "online" || live === "starting") && dir === "." && <p className="notice">{t.runningWarn}</p>}
           {modServer && crumbs[0] === "plugins" && <p className="notice warn">{t.pluginsIgnored}</p>}
           {modServer && crumbs[0] === "mods" && <p className="notice">{t.modsOnly}</p>}
+          {crumbs.join("/").toLowerCase() === "plugins/skript/scripts" && <p className="notice">{t.skriptHint}</p>}
           <nav className="crumbs" aria-label={t.top}>
             <Link href={`/dashboard/servers/${server.id}/files`}>{t.top}</Link>
             {crumbs.map((part, i) => (
