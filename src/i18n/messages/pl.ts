@@ -904,6 +904,8 @@ const pl = {
     editing: "Edycja pliku",
     saving: "Zapisywanie...",
     saved: "Zapisano. Zmiany zadziałają po ponownym uruchomieniu serwera.",
+    nbtNote: "To plik danych Minecrafta (NBT), pokazany jako tekst. Zatrzymaj serwer przed zapisem, inaczej serwer nadpisze zmiany przy wyłączaniu. Liczby mają typy: 1b, 1s, 1, 1L, 1.0f, 1.0d: nie zmieniaj liter za liczbami.",
+    nbtLine: "Linia {n}:",
     notText: "Tego pliku nie da się edytować w przeglądarce: nie jest tekstowy albo ma ponad 1 MB. Możesz go pobrać.",
     unsaved: "Masz niezapisane zmiany. Na pewno wyjść?",
     errors: {
@@ -916,6 +918,7 @@ const pl = {
       badName: "Niepoprawna nazwa.",
       badArchive: "To nie jest archiwum ZIP, które umiemy rozpakować.",
       readOnly: "Pliki zawieszonego serwera można tylko pobierać.",
+      badNbt: "Tekst ma błąd, plik nie został zapisany.",
       failed: "Nie udało się. Spróbuj ponownie za chwilę.",
     },
   },
