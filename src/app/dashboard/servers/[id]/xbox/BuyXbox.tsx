@@ -26,18 +26,18 @@ export default function BuyXbox({ serverId, price, days, paysafecard, again, t, 
       <p>
         <strong>{format(again ? t.buyMore : t.buyTitle, { price, days })}</strong>
       </p>
-      <p className="muted small">{billing.methods}</p>
+      <p className="muted small">{paysafecard ? billing.methodsCashbill : billing.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <div className="pay-buttons">
         <button type="submit" className="pay-button" disabled={pending}>
           <span className="pay-label">{pending ? billing.redirecting : t.buy}</span>
-          <PayBadges method="stripe" />
+          <PayBadges method={paysafecard ? "cards" : "stripe"} />
         </button>
         {paysafecard && (
           <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
             <span className="pay-label">{billing.paysafecard}</span>
-            <PayBadges method="paysafecard" />
+            <PayBadges method="cashbill" />
           </button>
         )}
       </div>

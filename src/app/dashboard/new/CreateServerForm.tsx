@@ -589,7 +589,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       )}
       {paying && (
         <>
-          <p className="muted small">{billing.methods}</p>
+          <p className="muted small">{paysafecard ? billing.methodsCashbill : billing.methods}</p>
           {paysafecard && <p className="muted small">{billing.paysafecardHint}</p>}
           <PaymentConsent legal={legal} />
         </>
@@ -602,13 +602,13 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
             {paying && total && !pending && <span className="new-submit-total">{total}</span>}
           </span>
-          {paying && <PayBadges method="stripe" />}
+          {paying && <PayBadges method={paysafecard ? "cards" : "stripe"} />}
         </button>
         {/* Both ways to pay stay in sight together. */}
         {paying && paysafecard && (
           <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
             <span className="pay-label">{billing.paysafecard}</span>
-            <PayBadges method="paysafecard" />
+            <PayBadges method="cashbill" />
           </button>
         )}
       </div>

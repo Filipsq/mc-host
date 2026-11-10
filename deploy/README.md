@@ -80,15 +80,18 @@ Also turn on **Successful payments** under Settings → Customer emails, so ever
 email. Polish consumer law expects a confirmation of the purchase on a "durable medium", and the receipt
 covers that until the site sends its own emails.
 
-### paysafecard (CashBill)
+### BLIK, transfers and paysafecard (CashBill)
 
-Stripe doesn't take paysafecard, so it goes through CashBill (cashbill.pl). In the CashBill panel,
+Stripe doesn't take paysafecard, and CashBill charges far less for BLIK and bank transfers on small
+amounts, so those go through CashBill (cashbill.pl) and cards stay with Stripe. In the CashBill panel,
 make a payment point for `mchosting.pl` with the "Web Service" interface and the server confirmation
-address `https://mchosting.pl/api/cashbill/notify`. Put the point's id and key into `deploy/.env` as
-`CASHBILL_SHOP_ID='…'` and `CASHBILL_SECRET='…'`, then run `docker compose up -d` in `deploy/` again.
-A "Pay with paysafecard" button then shows next to the Stripe one when paying in złoty (new servers
-and the Plan page; upgrades and add-ons stay on Stripe). `CASHBILL_TEST=1` uses CashBill's test
-environment; `CASHBILL_CHANNEL` picks the payment channel if paysafecard isn't found by name.
+address `https://mchosting.pl/api/cashbill/notify`, and ask CashBill to turn on the paysafecard channel.
+Put the point's id and key into `deploy/.env` as `CASHBILL_SHOP_ID='…'` and `CASHBILL_SECRET='…'`, then
+run `docker compose up -d --force-recreate web` in `deploy/`. When paying in złoty a second button,
+"BLIK, przelew, paysafecard", then shows next to the card one (new servers, the Plan page and console
+joining), and Stripe Checkout offers cards only there. Upgrades and add-ons stay on Stripe with all its
+methods. `CASHBILL_TEST=1` uses CashBill's test environment; `CASHBILL_CHANNEL` sends every buyer to one
+CashBill channel.
 
 ## Emails
 

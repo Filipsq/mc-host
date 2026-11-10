@@ -47,18 +47,24 @@ function Paysafecard() {
   );
 }
 
-/** The marks for one pay button: Stripe's (cards and BLIK) or paysafecard's. */
-export default function PayBadges({ method }: { method: "stripe" | "paysafecard" }) {
+/**
+ * The marks for one pay button: Stripe's (cards, and BLIK unless CashBill is
+ * offered beside it) or CashBill's (BLIK and paysafecard).
+ */
+export default function PayBadges({ method }: { method: "stripe" | "cards" | "cashbill" }) {
   return (
     <span className="pay-badges">
-      {method === "stripe" ? (
+      {method === "cashbill" ? (
+        <>
+          <Blik />
+          <Paysafecard />
+        </>
+      ) : (
         <>
           <Visa />
           <Mastercard />
-          <Blik />
+          {method === "stripe" && <Blik />}
         </>
-      ) : (
-        <Paysafecard />
       )}
     </span>
   );
