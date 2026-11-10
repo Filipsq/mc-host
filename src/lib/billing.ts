@@ -101,6 +101,7 @@ export async function startCheckout(opts: {
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const back = `${appUrl}/dashboard/servers/${server.id}`;
+  const cardsOnly = paysafecardEnabled(currency) && !upgrade && !addonsOnly;
   if (paysafecard) {
     const cb = await createCashbillPayment(payment, { title: opts.productName, returnUrl: `${back}?payment=success`, email: user.email });
     await db.payment.update({ where: { id: payment.id }, data: { cashbillId: cb.id } });
@@ -110,6 +111,9 @@ export async function startCheckout(opts: {
     mode: "payment",
     // Card, BLIK and Przelewy24 are switched on in the Stripe Dashboard;
     // Stripe shows the ones that work for this currency (BLIK needs PLN).
+    // Where CashBill is offered next to it, Stripe takes cards only: BLIK and
+    // transfers cost much less there. Upgrades and add-ons only go through Stripe.
+    ...(cardsOnly && { payment_method_types: ["card" as const] }),
     line_items: [
       {
         quantity: 1,

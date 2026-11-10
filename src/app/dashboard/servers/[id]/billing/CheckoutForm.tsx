@@ -44,19 +44,19 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
           <span className="muted small">{t.autoRenewHint}</span>
         </span>
       </label>
-      <p className="muted small">{t.methods}</p>
+      <p className="muted small">{paysafecard ? t.methodsCashbill : t.methods}</p>
       {paysafecard && <p className="muted small">{t.paysafecardHint}</p>}
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <div className="pay-buttons">
         <button type="submit" className="pay-button" disabled={pending}>
           <span className="pay-label">{pending ? t.redirecting : t.checkout}</span>
-          <PayBadges method="stripe" />
+          <PayBadges method={paysafecard ? "cards" : "stripe"} />
         </button>
         {paysafecard && (
           <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
             <span className="pay-label">{t.paysafecard}</span>
-            <PayBadges method="paysafecard" />
+            <PayBadges method="cashbill" />
           </button>
         )}
       </div>

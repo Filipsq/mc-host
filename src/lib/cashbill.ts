@@ -3,8 +3,9 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import type { Payment } from "@prisma/client";
 import type { Currency } from "@/i18n/config";
 
-// paysafecard through CashBill (cashbill.pl, "Web Service" REST), since Stripe
-// doesn't take it. startCheckout asks CashBill for a payment page and sends the
+// BLIK, bank transfers and paysafecard through CashBill (cashbill.pl, "Web
+// Service" REST): Stripe doesn't take paysafecard, and CashBill charges far
+// less for BLIK and transfers on small amounts. Cards stay with Stripe. startCheckout asks CashBill for a payment page and sends the
 // buyer there; when the payment's status changes CashBill calls
 // /api/cashbill/notify, which reads the payment back from CashBill and applies
 // it as Stripe's webhook does.
@@ -23,7 +24,7 @@ function config() {
   return { shopId, secret, api: process.env.CASHBILL_TEST === "1" ? TEST_API : API };
 }
 
-/** Whether paysafecard can be offered: CashBill is set up, and the price is in złoty. */
+/** Whether CashBill (BLIK, transfers, paysafecard) can be offered: it is set up, and the price is in złoty. */
 export function paysafecardEnabled(currency: Currency | string) {
   return !!process.env.CASHBILL_SHOP_ID && !!process.env.CASHBILL_SECRET && currency === "PLN";
 }
@@ -33,18 +34,6 @@ const md5 = (s: string) => createHash("md5").update(s).digest("hex");
 
 /** An amount in grosze as CashBill writes it, e.g. 1500 → "15.00". */
 const cashbillAmount = (grosze: number) => (grosze / 100).toFixed(2);
-
-/** CashBill's id of its paysafecard channel, so the buyer lands straight on it; none if it isn't listed. */
-async function paysafecardChannel(api: string, shopId: string) {
-  if (process.env.CASHBILL_CHANNEL) return process.env.CASHBILL_CHANNEL;
-  try {
-    const res = await fetch(`${api}/paymentchannels/${shopId}/pl`, { signal: AbortSignal.timeout(10_000) });
-    const channels = (await res.json()) as { id: string; name?: string }[];
-    return channels.find((c) => /paysafe/i.test(`${c.id} ${c.name ?? ""}`))?.id ?? "";
-  } catch {
-    return ""; // the buyer picks paysafecard on CashBill's page
-  }
-}
 
 /** Makes CashBill's payment page for `payment`; returns CashBill's id and the page's address. */
 export async function createCashbillPayment(
@@ -60,7 +49,8 @@ export async function createCashbillPayment(
     description: opts.title.slice(0, 100),
     negativeReturnUrl: "",
     additionalData: payment.id,
-    paymentChannel: await paysafecardChannel(api, shopId),
+    // Empty: the buyer picks BLIK, a bank transfer or paysafecard on CashBill's page.
+    paymentChannel: process.env.CASHBILL_CHANNEL ?? "",
     languageCode: "PL",
     referer: "",
     "personalData.email": opts.email,
