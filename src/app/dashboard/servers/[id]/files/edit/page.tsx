@@ -5,6 +5,7 @@ import { getMessages } from "@/i18n/server";
 import { getServerFor } from "@/lib/access";
 import { AgentError, openFile } from "@/lib/agent";
 import { canChangeFiles, EDIT_MAX_BYTES } from "@/lib/files";
+import { NBT_FILE, NbtError, toSnbt, unpackNbt } from "@/lib/nbt";
 import FileEditor from "./FileEditor";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ path?: string }> };
@@ -19,7 +20,7 @@ export default async function EditFilePage({ params, searchParams }: Props) {
 
   const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
   const back = `/dashboard/servers/${server.id}/files${folder ? `?path=${encodeURIComponent(folder)}` : ""}`;
-  const text = await readText(server.id, path);
+  const text = NBT_FILE.test(path) ? await readNbtText(server.id, path) : await readText(server.id, path);
 
   return (
     <div className="stack">
@@ -43,11 +44,29 @@ export default async function EditFilePage({ params, searchParams }: Props) {
       ) : (
         <>
           {!canChangeFiles(server) && <p className="notice warn">{t.readOnly}</p>}
-          <FileEditor id={server.id} path={path} initial={text.content} readOnly={!canChangeFiles(server)} t={t} />
+          {text.nbt && <p className="notice">{t.nbtNote}</p>}
+          <FileEditor id={server.id} path={path} initial={text.content} nbt={text.nbt} readOnly={!canChangeFiles(server)} t={t} />
         </>
       )}
     </div>
   );
+}
+
+/** A Minecraft data file (level.dat, playerdata, .nbt) as SNBT text, plus how to save it back. */
+async function readNbtText(id: string, path: string) {
+  try {
+    const res = await openFile(id, path, { max: EDIT_MAX_BYTES });
+    const { packing, root, version } = await unpackNbt(new Uint8Array(await res.arrayBuffer()));
+    return { content: toSnbt(root.tag) + "\n", nbt: { packing, root: root.name, version } };
+  } catch (err) {
+    if (err instanceof NbtError) return "notText" as const;
+    if (err instanceof AgentError) {
+      if (err.status === 404) return "notFound" as const;
+      if (err.status === 413 || err.status === 400) return "notText" as const;
+    }
+    console.error("open nbt file failed", id, path, err);
+    return "failed" as const;
+  }
 }
 
 /** The file as text, or why it can't be edited here. */
@@ -56,7 +75,7 @@ async function readText(id: string, path: string) {
     const res = await openFile(id, path, { max: EDIT_MAX_BYTES });
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (bytes.includes(0)) return "notText" as const;
-    return { content: new TextDecoder("utf-8", { fatal: true }).decode(bytes) };
+    return { content: new TextDecoder("utf-8", { fatal: true }).decode(bytes), nbt: undefined };
   } catch (err) {
     if (err instanceof TypeError) return "notText" as const; // not UTF-8
     if (err instanceof AgentError) {

@@ -2,6 +2,7 @@ import { getSession } from "@/lib/session";
 import { openFile, writeFile } from "@/lib/agent";
 import { getServerFor } from "@/lib/access";
 import { fileError, canChangeFiles } from "@/lib/files";
+import { fromSnbt, NbtError, packNbt, type NbtPacking } from "@/lib/nbt";
 
 // Downloads and uploads for the file manager, streamed between the browser
 // and the agent after checking that the user may use the server's files.
@@ -46,8 +47,37 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (!found || !req.body) return Response.json({ error: "notFound" }, { status: 404 });
   if (!canChangeFiles(found.server)) return Response.json({ error: "readOnly" }, { status: 403 });
   const length = Number(req.headers.get("content-length") ?? NaN);
+  const nbt = new URL(req.url).searchParams.get("nbt");
+  if (nbt) return saveNbt(found.server.id, found.path, req, nbt);
   try {
     await writeFile(found.server.id, found.path, req.body, Number.isFinite(length) ? length : undefined);
+    return Response.json({ ok: true });
+  } catch (err) {
+    return Response.json({ error: fileError(err) }, { status: 400 });
+  }
+}
+
+const PACKINGS: NbtPacking[] = ["gzip", "zlib", "raw", "bedrock", "le"];
+const NBT_TEXT_MAX = 32 * 1024 * 1024;
+
+/** An edit of a binary NBT file (level.dat etc.): the editor sends text, the file gets NBT packed like before. */
+async function saveNbt(id: string, path: string, req: Request, packing: string) {
+  if (!PACKINGS.includes(packing as NbtPacking)) return Response.json({ error: "failed" }, { status: 400 });
+  const query = new URL(req.url).searchParams;
+  const root = query.get("root") ?? "";
+  const version = Number(query.get("v") ?? 10);
+  if (!Number.isInteger(version) || version < 0 || version > 0xffffffff) return Response.json({ error: "failed" }, { status: 400 });
+  const text = await req.text();
+  if (text.length > NBT_TEXT_MAX) return Response.json({ error: "tooBig" }, { status: 413 });
+  let bytes: Uint8Array<ArrayBuffer>;
+  try {
+    bytes = await packNbt({ name: root, tag: fromSnbt(text) }, packing as NbtPacking, version);
+  } catch (err) {
+    if (err instanceof NbtError) return Response.json({ error: "badNbt", detail: err.message, line: err.line }, { status: 400 });
+    throw err;
+  }
+  try {
+    await writeFile(id, path, bytes, bytes.length);
     return Response.json({ ok: true });
   } catch (err) {
     return Response.json({ error: fileError(err) }, { status: 400 });

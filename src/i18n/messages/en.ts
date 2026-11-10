@@ -905,6 +905,8 @@ const en: Messages = {
     editing: "Editing",
     saving: "Saving...",
     saved: "Saved. Changes take effect when the server restarts.",
+    nbtNote: "This is a Minecraft data file (NBT) shown as text. Stop the server before saving, or it overwrites your changes when it shuts down. Numbers carry types: 1b, 1s, 1, 1L, 1.0f, 1.0d: keep the letters after numbers.",
+    nbtLine: "Line {n}:",
     notText: "This file can't be edited in the browser: it isn't text or it's over 1 MB. You can download it.",
     unsaved: "You have unsaved changes. Leave anyway?",
     errors: {
@@ -917,6 +919,7 @@ const en: Messages = {
       badName: "That name isn't valid.",
       badArchive: "That isn't a ZIP archive we can unpack.",
       readOnly: "A suspended server's files can only be downloaded.",
+      badNbt: "The text has an error, the file was not saved.",
       failed: "That didn't work. Please try again in a moment.",
     },
   },

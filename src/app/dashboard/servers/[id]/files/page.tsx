@@ -1,3 +1,4 @@
+import { NBT_FILE } from "@/lib/nbt";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
@@ -99,7 +100,7 @@ function fileRows(entries: FileEntry[], dir: string, locale: string): FileRow[] 
     file: e.type === "file",
     size: e.type === "file" ? size(e.size) : "",
     modified: dates.format(new Date(e.modified)),
-    editable: e.type === "file" && e.size <= EDIT_MAX_BYTES && TEXT.test(e.name),
+    editable: e.type === "file" && e.size <= EDIT_MAX_BYTES && (TEXT.test(e.name) || NBT_FILE.test(e.name)),
     zip: e.type === "file" && /\.zip$/i.test(e.name),
   }));
 }
