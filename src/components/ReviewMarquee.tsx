@@ -5,7 +5,7 @@ import type { HomeReviews } from "@/lib/reviews";
 type Props = { items: HomeReviews["items"]; starsAria: string; replyFrom: string; label: string };
 
 const MIN_PER_ROW = 6; // enough cards that one copy of the row is wider than a wide screen
-const SECONDS_PER_CARD = 7;
+const SECONDS_PER_CARD = 12; // slow enough to read a card with a reply
 
 /**
  * Players' opinions as small cards sliding right to left without end. The row is
