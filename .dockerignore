@@ -4,3 +4,4 @@ node_modules
 agent
 deploy
 *.md
+.claude
