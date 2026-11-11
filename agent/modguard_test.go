@@ -43,7 +43,7 @@ func modGuardAgent(t *testing.T, logLines string) (*agent, string) {
 		"nightfallmods/lifesteal/command/Revive.class": "x",
 	})
 	writeJar(t, filepath.Join(data, "mods", "jei.jar"), map[string]string{
-		"fabric.mod.json": `{"id":"jei"}`,
+		"fabric.mod.json":    `{"id":"jei"}`,
 		"mezz/jei/Jei.class": "x",
 	})
 	return a, data
