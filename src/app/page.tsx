@@ -12,6 +12,7 @@ import { CURATED_PACKS } from "@/lib/modpacks";
 import { KNOWN_PLUGINS, PLUGIN_SETS } from "@/lib/plugins";
 import RamCalculator from "@/components/RamCalculator";
 import PackGallery from "@/components/PackGallery";
+import ReviewMarquee from "@/components/ReviewMarquee";
 import { Archive, Cpu, MapPin, RotateCcw, Star } from "lucide-react";
 import { homeReviews } from "@/lib/reviews";
 import { BRAND_NAME } from "@/lib/brand";
@@ -124,6 +125,24 @@ export default async function Home() {
         <HalloweenBand t={t.halloween} signedIn={!!session?.user}>
           <HalloweenGames />
         </HalloweenBand>
+      )}
+
+      {reviews && (
+        <section className="section reviews-band" id="opinie">
+          <div className="container stack">
+            <header className="reviews-head">
+              <h2>{h.reviewsTitle}</h2>
+              <p className="review-average">
+                <span className="review-stars" aria-hidden>
+                  {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={18} className={n <= Math.round(reviews.average) ? "on" : undefined} />)}
+                </span>
+                <strong>{format(h.reviewsAverage, { avg: reviews.average.toLocaleString(locale), n: reviews.count })}</strong>
+              </p>
+            </header>
+            <ReviewMarquee items={reviews.items} starsAria={t.reviews.starsAria} replyFrom={format(t.reviews.replyFrom, { brand: BRAND_NAME })} label={h.reviewsTitle} />
+            <p className="muted small center">{h.reviewsNote}</p>
+          </div>
+        </section>
       )}
 
       <section className="section hunt-spot" id="paczki">
@@ -383,42 +402,6 @@ export default async function Home() {
         </div>
       </section>
 
-      {reviews && (
-        <section className="section" id="opinie">
-          <div className="container stack-large">
-            <header className="section-head">
-              <h2 className="display">{h.reviewsTitle}</h2>
-              <p className="review-average">
-                <span className="review-stars" aria-hidden>
-                  {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={20} className={n <= Math.round(reviews.average) ? "on" : undefined} />)}
-                </span>
-                <strong>{format(h.reviewsAverage, { avg: reviews.average.toLocaleString(locale), n: reviews.count })}</strong>
-              </p>
-            </header>
-            <ul className="review-grid">
-              {reviews.items.map((r) => (
-                <li key={r.id} className="card review-card">
-                  <span className="review-stars" aria-label={format(t.reviews.starsAria, { n: r.stars })}>
-                    {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={16} className={n <= r.stars ? "on" : undefined} aria-hidden />)}
-                  </span>
-                  <p>{r.text}</p>
-                  <p className="muted small">
-                    <strong>{r.name}</strong>
-                    {r.game && ` · ${r.game}`}
-                  </p>
-                  {r.reply && (
-                    <div className="review-reply">
-                      <strong className="small">{format(t.reviews.replyFrom, { brand: BRAND_NAME })}</strong>
-                      <p>{r.reply}</p>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <p className="muted small center">{h.reviewsNote}</p>
-          </div>
-        </section>
-      )}
 
       <section className="section hunt-spot" id="faq">
         {pumpkin("faq")}
