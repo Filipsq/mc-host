@@ -14,6 +14,7 @@ export const HINTS: { id: HintId; pattern: RegExp }[] = [
   { id: "missingDependency", pattern: /Missing or unsupported mandatory dependencies|Mod resolution failed|requires .{1,80} which is missing|Unknown\/missing dependency|Incompatible mods found/i },
   { id: "pluginOnModServer", pattern: /Bukkit or Bukkit-implementor/ },
   { id: "clientMod", pattern: /for invalid dist DEDICATED_SERVER|Environment type CLIENT|net\/minecraft\/client\// },
+  { id: "modWrongVersion", pattern: /NoSuchMethodError|NoSuchFieldError|AbstractMethodError|IncompatibleClassChangeError|NoClassDefFoundError: net\/minecraft\// },
   { id: "javaTooOld", pattern: /UnsupportedClassVersionError|compiled by a more recent version of the Java Runtime/ },
   { id: "outOfMemory", pattern: /OutOfMemoryError/ },
   { id: "diskFull", pattern: /No space left on device/ },

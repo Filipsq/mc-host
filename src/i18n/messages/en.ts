@@ -498,6 +498,10 @@ const en: Messages = {
           title: "A mod only works in the game, not on a server",
           fix: "There's a player-only mod on the server (e.g. visuals, a minimap or menus). Remove it in Mods. On a mod pack server just click Start again, we take such a mod out ourselves. Players can keep it in their own game.",
         },
+        modWrongVersion: {
+          title: "A mod is for another Minecraft version",
+          fix: "A mod (or plugin) is made for another Minecraft version than the server. Its name is in the red lines above, right under the error (e.g. \"at modname...\"). Click Start: a mod you uploaded yourself in Files is moved to the mods-disabled folder by us and the server starts without it. A mod added on the Mods page: remove it there or wait for its build for your Minecraft version.",
+        },
         javaTooOld: {
           title: "A plugin or mod is for a newer version",
           fix: "A plugin or mod needs a newer Minecraft version than the server's. Change the version in Settings or remove that plugin or mod.",
