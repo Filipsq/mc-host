@@ -1638,6 +1638,7 @@ const en: Messages = {
       reject: "Reject",
       replyLabel: "Your reply (shown under the review on the home page)",
       replyPlaceholder: "e.g. Thanks! Glad you and your friends enjoy it.",
+      censored: "Has swear words, the home page shows them masked:",
       replySend: "Reply",
       replyUpdate: "Save reply",
       replySent: "Sent {date}, not seen by the player yet",
