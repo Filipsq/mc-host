@@ -1897,3 +1897,28 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .review-reply { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-left: 3px solid var(--accent); border-radius: 6px; background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .review-reply p { margin: 0; white-space: pre-line; }
 .review-reply-card .review-reply p { color: inherit; }
+
+/* Home: players' opinions as small cards sliding right to left in a loop, above the packs */
+.section.reviews-band { padding-top: 48px; padding-bottom: 0; }
+.reviews-head { display: flex; align-items: baseline; justify-content: center; gap: 8px 18px; flex-wrap: wrap; text-align: center; }
+.reviews-head h2 { margin: 0; font-size: 1.4rem; }
+.review-marquee {
+  overflow: hidden; margin: 0 -8px; padding: 6px 8px 10px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent);
+}
+.review-track { display: flex; align-items: stretch; gap: 14px; width: max-content; animation: review-slide 60s linear infinite; }
+.review-marquee:hover .review-track, .review-marquee:focus-within .review-track { animation-play-state: paused; }
+/* Half the row plus half a gap: the copy then sits exactly where the original started. */
+@keyframes review-slide { to { transform: translateX(calc(-50% - 7px)); } }
+.review-slide { flex: 0 0 260px; gap: 8px; padding: 14px 16px; }
+.review-slide .review-text { flex: 1; font-size: 0.92rem; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.review-slide .review-reply { padding: 6px 10px; }
+.review-slide .review-reply p { font-size: 0.85rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+@media (max-width: 640px) { .review-slide { flex-basis: 220px; } }
+@media (prefers-reduced-motion: reduce) {
+  .review-track { animation: none; }
+  .review-marquee { overflow-x: auto; -webkit-mask-image: none; mask-image: none; scroll-snap-type: x mandatory; }
+  .review-slide { scroll-snap-align: start; }
+  .review-copy { display: none; }
+}

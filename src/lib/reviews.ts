@@ -18,7 +18,7 @@ export const REVIEW_REPLY_MAX = 500;
 const ASK_AFTER_DAYS = 7; // the server is at least this old
 const PLAYED_DAYS = 3; // and someone played on it at least this long after it was made
 const HOME_MIN = 3; // fewer shown opinions than this and the home page leaves the section out
-const HOME_MAX = 6; // three or six, so the rows stay full
+const HOME_MAX = 12; // the newest ones, sliding in a loop on the home page
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -65,11 +65,10 @@ export async function homeReviews(): Promise<HomeReviews | null> {
     }),
   ]);
   if (items.length < HOME_MIN) return null;
-  const full = items.slice(0, items.length >= HOME_MAX ? HOME_MAX : HOME_MIN);
   return {
     average: Math.round((all._avg.stars ?? 0) * 10) / 10,
     count: all._count,
-    items: full.map((r) => ({ ...r, game: r.game && r.game in EDITION_LABEL ? EDITION_LABEL[r.game as Edition] : null })),
+    items: items.map((r) => ({ ...r, game: r.game && r.game in EDITION_LABEL ? EDITION_LABEL[r.game as Edition] : null })),
   };
 }
 
