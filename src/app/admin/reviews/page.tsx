@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
+import { hasProfanity, censor } from "@/lib/profanity";
 import { EDITION_LABEL, REVIEW_REPLY_MAX } from "@/lib/reviews";
 import { saveReviewReplyAction, setReviewShownAction } from "./actions";
 
@@ -29,6 +30,11 @@ export default async function AdminReviewsPage() {
                 {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={16} className={n <= r.stars ? "on" : undefined} aria-hidden />)}
               </span>
               <p>{r.text}</p>
+              {(hasProfanity(r.text) || hasProfanity(r.name)) && (
+                <p className="muted small">
+                  {t.censored} „{censor(r.text)}” · {censor(r.name)}
+                </p>
+              )}
               <p className="muted small">
                 {r.name} · {r.game ? EDITION_LABEL[r.game as keyof typeof EDITION_LABEL] ?? r.game : "—"} · {r.user.email} · {date.format(r.createdAt)}
               </p>

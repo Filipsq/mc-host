@@ -1637,6 +1637,7 @@ const pl = {
       reject: "Odrzuć",
       replyLabel: "Twoja odpowiedź (widać ją pod opinią na stronie głównej)",
       replyPlaceholder: "np. Dzięki! Cieszymy się, że gracie u nas z ekipą.",
+      censored: "Ma wulgaryzmy, strona główna pokaże je z gwiazdkami:",
       replySend: "Odpowiedz",
       replyUpdate: "Zapisz odpowiedź",
       replySent: "Wysłano {date}, gracz jeszcze nie widział",

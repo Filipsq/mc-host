@@ -1,6 +1,7 @@
 import "server-only";
 import type { Edition } from "@prisma/client";
 import { db } from "./db";
+import { censor } from "./profanity";
 import { messages, format } from "@/i18n/messages";
 import { defaultLocale, isLocale } from "@/i18n/config";
 import { BRAND_NAME } from "./brand";
@@ -68,7 +69,7 @@ export async function homeReviews(): Promise<HomeReviews | null> {
   return {
     average: Math.round((all._avg.stars ?? 0) * 10) / 10,
     count: all._count,
-    items: items.map((r) => ({ ...r, game: r.game && r.game in EDITION_LABEL ? EDITION_LABEL[r.game as Edition] : null })),
+    items: items.map((r) => ({ ...r, text: censor(r.text), name: censor(r.name), game: r.game && r.game in EDITION_LABEL ? EDITION_LABEL[r.game as Edition] : null })),
   };
 }
 
