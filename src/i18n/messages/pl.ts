@@ -497,6 +497,10 @@ const pl = {
           title: "Mod działa tylko w grze, nie na serwerze",
           fix: "Na serwerze jest mod tylko dla gracza (np. od wyglądu, minimapy lub menu). Usuń go w Modach. Na serwerze z gotową paczką kliknij po prostu Uruchom jeszcze raz, taki mod usuniemy sami. Gracze mogą go mieć u siebie.",
         },
+        modWrongVersion: {
+          title: "Mod jest na inną wersję Minecrafta",
+          fix: "Któryś mod (albo plugin) jest zrobiony na inną wersję Minecrafta niż serwer. Jego nazwa jest w czerwonych liniach powyżej, zaraz pod błędem (np. „at nazwamoda...”). Kliknij Uruchom: mod wgrany przez Ciebie w Plikach przeniesiemy sami do folderu mods-disabled i serwer wstanie bez niego. Mod dodany w Modach usuń tam albo poczekaj na jego wersję dla Twojego Minecrafta.",
+        },
         javaTooOld: {
           title: "Plugin lub mod jest na nowszą wersję",
           fix: "Któryś plugin lub mod wymaga nowszej wersji Minecrafta, niż ma serwer. Zmień wersję w Ustawieniach albo usuń ten plugin lub mod.",
