@@ -168,12 +168,24 @@ function formAddons(form: FormData, plan: Plan, edition: string) {
   return addonList(form.getAll("addons").map(String)).filter((a) => addonFits(a, edition));
 }
 
+/** An address for a server made without one, like serwer-k3x9qa. */
+function randomAddress() {
+  const chars = "abcdefghijkmnpqrstuvwxyz23456789";
+  let tail = "";
+  for (let i = 0; i < 6; i++) tail += chars[Math.floor(Math.random() * chars.length)];
+  return `serwer-${tail}`;
+}
+
 export async function createServerAction(_: CreateServerState, form: FormData): Promise<CreateServerState> {
   const user = await requireUser();
   const values = Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
   // Several ticked add-ons share a name; kept together so the form can come back with them.
   values.addons = form.getAll("addons").map(String).join(",");
-  const parsed = createSchema.safeParse(values);
+  // Name and address may be left empty so the server can be made in one tap; both can be changed later.
+  const input = { ...values };
+  if (!input.name?.trim()) input.name = (await getMessages()).server.defaultName;
+  if (!input.subdomain?.trim()) input.subdomain = randomAddress();
+  const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
     const field = parsed.error.issues[0].path[0];
     const error =
