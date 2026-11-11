@@ -245,7 +245,10 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         },
   );
   // Plans too small for the players on the slider: moving it left is the way to a smaller one.
-  const choices = planChoices.map((p) =>
+  // The free plan isn't a tile: it has its own button, always in sight next to the pay one.
+  const freeNote = planChoices.find((p) => p.id === "FREE")?.disabledNote;
+  const freeOk = plans.some((p) => p.id === "FREE") && !freeNote;
+  const choices = planChoices.filter((p) => p.id !== "FREE").map((p) =>
     floor && !p.disabledNote && !planAtLeast(p.id, floor)
       ? { ...p, disabledNote: format(t.playersTooMany, { players: PLAYER_STEPS[step].label }) }
       : p,
@@ -312,6 +315,12 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         // With the button pressed, so an admin's test button sends its adminTest field.
         const submitter = (e.nativeEvent as SubmitEvent).submitter;
         const data = new FormData(e.currentTarget, submitter);
+        // The free button: whatever paid plan is ticked, this one is made free (nothing to pay for).
+        if (submitter?.getAttribute("value") === "FREE") {
+          data.set("plan", "FREE");
+          for (const k of ["addons", "creatorCode", "freeStarter", "giftCode", "method"]) data.delete(k);
+          setPlan("FREE");
+        }
         setTesting(submitter?.getAttribute("name") === "adminTest");
         startTransition(() => action(data));
       }}
@@ -390,7 +399,6 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             {t.name}
             <input
               name="name"
-              required
               minLength={3}
               maxLength={32}
               placeholder={t.namePlaceholder}
@@ -400,6 +408,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
                 if (!subdomainEdited) setSubdomain(slugify(e.target.value));
               }}
             />
+            <span className="muted small">{t.nameOptional}</span>
           </label>
           {edition === "JAVA" && (
             <label>
@@ -407,7 +416,6 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
               <span className="address-input">
                 <input
                   name="subdomain"
-                  required
                   minLength={3}
                   maxLength={32}
                   value={subdomain}
@@ -516,6 +524,15 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       )}
       </div>
       <aside className="card new-side stack">
+      {/* The free plan has no tile: with none of the paid ones ticked, the form sends this. */}
+      {plan === "FREE" && <input type="hidden" name="plan" value="FREE" />}
+      {plan === "FREE" && freeOk && (
+        <p className="free-picked">
+          <strong>{t.freePicked}</strong>
+          <span className="muted small">{format(t.freePickedHint, { gb: planById("FREE").ramGb })}</span>
+        </p>
+      )}
+      {!freeOk && freeNote && <p className="muted small">{format(t.freeUnavailable, { why: freeNote })}</p>}
       <PlanPicker
         // Remounted when a mod pack rules out smaller plans, so it picks up the new default.
         key={`${minPlan}-${aiRound}`}
@@ -523,7 +540,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         defaultPlan={plan}
         plan={plan}
         periodLabels={{ days: billing.periodDays, off: billing.periodOff }}
-        labels={{ plan: t.plan, period: t.period, total: billing.total }}
+        labels={{ plan: plan === "FREE" ? t.paidPlans : t.plan, period: t.period, total: billing.total }}
         formatMoney={money}
         onPlanChange={setPlan}
         onTotalChange={setTotal}
@@ -597,6 +614,12 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       {/* Pinned to the bottom of the side card (on phones, of the screen) so it's always in sight. */}
       <div className="new-submit">
         {state.error && <p className="error">{t.errors[state.error]}</p>}
+        {plan === "FREE" ? (
+          <button type="submit" name="plan" value="FREE" formNoValidate disabled={pending} className="free-button">
+            {pending && !testing ? t.creating : t.createFree}
+            {!pending && <span className="new-submit-total">{formatPrice(0, money.currency as Currency, money.locale)}</span>}
+          </button>
+        ) : (
         <button type="submit" disabled={pending} className={paying ? "pay-button" : undefined}>
           <span className="pay-label">
             {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
@@ -604,11 +627,18 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           </span>
           {paying && <PayBadges method={paysafecard ? "cards" : "stripe"} />}
         </button>
+        )}
         {/* Both ways to pay stay in sight together. */}
         {paying && paysafecard && (
           <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
             <span className="pay-label">{billing.paysafecard}</span>
             <PayBadges method="cashbill" />
+          </button>
+        )}
+        {/* A paid plan is ticked, but the free server is still one tap away. */}
+        {plan !== "FREE" && freeOk && !gifted && (
+          <button type="submit" name="plan" value="FREE" formNoValidate disabled={pending} className="secondary free-alt">
+            {format(t.createFreeAlt, { gb: planById("FREE").ramGb })}
           </button>
         )}
       </div>
