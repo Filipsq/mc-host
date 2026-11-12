@@ -7,7 +7,7 @@
   --border: #243041;
   --border-strong: #33425a;
   --fg: #e8eef5;
-  --muted: #94a3b8;
+  --muted: #a3b1c4; /* small grey notes stay readable on every surface */
   --accent: #5bc236;
   --accent-strong: #72d94b;
   --accent-ink: #0a1a06;
@@ -56,6 +56,9 @@ a:hover { color: var(--accent-strong); }
 img { max-width: 100%; }
 
 h1, h2, h3 { margin: 0 0 12px; line-height: 1.2; letter-spacing: -0.01em; }
+/* No lonely last word: headings split into even lines, paragraphs avoid a one-word last line. */
+h1, h2, h3, h4 { text-wrap: balance; }
+p, li, figcaption { text-wrap: pretty; }
 h1 { font-family: var(--font-display); font-weight: 400; font-size: 2.9rem; line-height: 1; letter-spacing: 0.01em; }
 h2 { font-size: 1.35rem; }
 h3 { font-size: 1.1rem; }
@@ -157,7 +160,7 @@ button.option:hover:not(:disabled) { background: var(--surface-2); color: var(--
 button.option[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 
 /* Footer */
-.footer { border-top: 1px solid var(--border); background: var(--bg-alt); padding: 40px 0 96px; /* room for the help bubble */ margin-top: auto; }
+.footer { border-top: 1px solid var(--border); background: url("/art/pixel-noise.svg") 0 0 / 96px 96px, var(--bg-alt); padding: 40px 0 96px; /* room for the help bubble */ margin-top: auto; }
 .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
 .footer-grid p { margin: 0; max-width: 320px; }
 .footer-col { display: flex; flex-direction: column; gap: 8px; }
@@ -215,7 +218,7 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 
 /* Home: sections */
 .section { padding: 80px 0; }
-.section.alt { background: var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.section.alt { background: url("/art/pixel-noise.svg") 0 0 / 96px 96px, var(--bg-alt); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .section-head { text-align: center; max-width: 640px; margin: 0 auto 44px; }
 .section-head h2 { font-size: clamp(2.3rem, 4.2vw, 3.2rem); }
 .section-head p { margin: 0; font-size: 1.05rem; }
@@ -228,13 +231,6 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 .feature:hover { border-color: var(--border-strong); transform: translateY(-2px); }
 .feature h3 { margin: 16px 0 6px; }
 .feature p { margin: 0; }
-.feature-icon {
-  display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 12px;
-  color: var(--accent); background: var(--accent-soft); border: 1px solid rgb(91 194 54 / 0.3);
-}
-.feature-sleep .feature-icon { color: var(--sky); background: rgb(96 165 250 / 0.12); border-color: rgb(96 165 250 / 0.3); }
-.feature-address .feature-icon, .feature-console .feature-icon { color: var(--diamond); background: rgb(77 208 225 / 0.1); border-color: rgb(77 208 225 / 0.3); }
-.feature-payments .feature-icon { color: var(--gold); background: rgb(242 193 78 / 0.1); border-color: rgb(242 193 78 / 0.3); }
 
 /* Home: ready games, packs and plugin sets */
 .stack-large { display: flex; flex-direction: column; gap: 48px; }
@@ -436,11 +432,26 @@ button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-colo
 .invite-band > div { flex: 1 1 320px; }
 .invite-band h2 { margin: 0 0 6px; font-size: 1.6rem; }
 .invite-band p { margin: 0; }
-.terraria-band h3 { margin: 0 0 6px; font-size: 1.35rem; }
 .invite-band-icon {
   display: grid; place-items: center; width: 60px; height: 60px; border-radius: 16px; flex: none;
   color: var(--accent); background: var(--accent-soft);
 }
+
+/* Home: the other games, side by side */
+.more-games h3 { margin: 0 0 14px; font-size: 1.35rem; }
+.more-games ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.more-game {
+  display: flex; flex-direction: column; gap: 8px; padding: 20px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface);
+}
+.more-game h4 { margin: 6px 0 0; font-size: 1.1rem; }
+.more-game p { margin: 0 0 6px; flex: 1; }
+.more-game .button { align-self: flex-start; }
+.more-game-icon {
+  display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px;
+  background: var(--accent-soft);
+}
+@media (max-width: 760px) { .more-games ul { grid-template-columns: 1fr; } }
 
 /* Home: closing call to action */
 .cta-band {
@@ -1244,7 +1255,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
    Only transform and opacity animate, and nothing animated carries a filter. */
 .art {
   position: relative; display: grid; place-items: center; height: 132px; margin: -8px -8px 18px;
-  border-radius: 10px; overflow: hidden; border: 1px solid var(--border);
+  border-radius: 6px; /* the card's 14px corner minus the 8px left around the picture */ overflow: hidden; border: 1px solid var(--border);
   background:
     linear-gradient(rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / 16px 16px,
     linear-gradient(90deg, rgb(255 255 255 / 0.03) 1px, transparent 1px) 0 0 / 16px 16px,
@@ -1254,7 +1265,6 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .art, .game-art { contain: paint; }
 .art.paused *, .art.paused::after, .game-art.paused * { animation-play-state: paused !important; }
 .feature h3 { display: flex; align-items: center; gap: 10px; margin: 0 0 6px; }
-.feature h3 .feature-icon { width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0; }
 .art-bob { animation: bob 5s ease-in-out infinite; will-change: transform; backface-visibility: hidden; }
 @keyframes bob { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -7px, 0); } }
 
@@ -1391,7 +1401,7 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .game-card h3 { margin: 4px 0 0; }
 .game-card > p { font-size: 0.92rem; }
 .game-art {
-  position: relative; display: grid; place-items: center; height: 140px; margin-bottom: 6px; border-radius: 10px; overflow: hidden;
+  position: relative; display: grid; place-items: center; height: 140px; margin-bottom: 6px; border-radius: 6px; overflow: hidden;
   background: radial-gradient(110% 80% at 50% 110%, var(--glow, rgb(91 194 54 / 0.22)), transparent 70%), var(--surface-2);
 }
 .game-art > img { width: 104px; max-height: 88%; object-fit: contain; }
@@ -1952,3 +1962,14 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .start-steps > p { margin: 0; }
 .spin { animation: spin 1s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+/* Numbers that line up and don't jiggle when they change: prices, counters, stats. */
+.price, .price-note, .ram-result, .ram-pill, .chip, .badge, .count-badge, table, .demo-progress, .stats-value, .plans-common { font-variant-numeric: tabular-nums; }
+
+/* Fingers, not mouse pointers: buttons and tap chips at least about 44px tall. */
+@media (pointer: coarse) {
+  .button, button[type="submit"], .server-controls button, .more-game .button { min-height: 44px; }
+  .button.small, button.small { min-height: 40px; }
+  .ai-hero-try .chip, .faq summary { min-height: 44px; }
+  .help-tip-close { width: 36px; height: 36px; top: 2px; right: 2px; }
+}

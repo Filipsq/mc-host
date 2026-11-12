@@ -23,7 +23,6 @@ import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import { isOtherGame, isValheimPreset } from "@/lib/otherGames";
 import AutoRefresh from "@/components/AutoRefresh";
 import { takesBedrockPlayers } from "@/lib/xbox";
-import DeleteServer from "./DeleteServer";
 import ClassicOverview from "./ClassicOverview";
 import Stats from "./Stats";
 import StartSteps from "./StartSteps";
@@ -313,15 +312,6 @@ export default async function ServerPage({ params, searchParams }: Props) {
 
       {classic && <ClassicOverview server={server} live={live} can={can} locale={locale} />}
 
-      {can("owner") && (
-        <section className="card danger-zone row">
-          <span>
-            <strong>{all.panel.danger}</strong>
-            <span className="disk-line muted small">{all.panel.dangerText}</span>
-          </span>
-          <DeleteServer id={server.id} t={t} />
-        </section>
-      )}
       {waiting && <AutoRefresh />}
     </div>
   );

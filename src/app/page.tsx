@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Plan } from "@prisma/client";
-import { Check, CreditCard, Flame, Gift, Globe, MoonStar, Smartphone, Sparkles, SquareTerminal } from "lucide-react";
+import { Check, CreditCard, Flame, Gift, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -32,14 +32,8 @@ import HalloweenBand from "@/components/HalloweenBand";
 import { HuntPumpkin } from "@/components/Halloween";
 import { REFERRAL_COOKIE, REFERRAL_DAYS, REFERRAL_MIN_DAYS } from "@/lib/referrals";
 
-const featureIcons = {
-  free: Gift,
-  editions: Smartphone,
-  sleep: MoonStar,
-  address: Globe,
-  console: SquareTerminal,
-  payments: CreditCard,
-} as const;
+// The order of the feature cards; each card has its own picture, so no extra icon.
+const featureKeys = ["free", "editions", "sleep", "address", "console", "payments"] as const;
 
 
 export default async function Home() {
@@ -171,12 +165,11 @@ export default async function Home() {
             <p className="muted">{h.featuresSubtitle}</p>
           </header>
           <ul className="feature-grid">
-            {(Object.keys(featureIcons) as (keyof typeof featureIcons)[]).map((key) => {
-              const Icon = featureIcons[key];
+            {featureKeys.map((key) => {
               return (
                 <li key={key} className={`feature feature-${key}`}>
                   <FeatureArt kind={key} art={h.art} domain={domain} online={t.server.live.online} zero={formatPrice(0, currency, locale)} />
-                  <h3><span className="feature-icon"><Icon size={18} aria-hidden /></span> {h.features[key].title}</h3>
+                  <h3>{h.features[key].title}</h3>
                   <p className="muted">{format(h.features[key].text, { domain })}</p>
                 </li>
               );
@@ -265,32 +258,26 @@ export default async function Home() {
             </div>
           </ShowMore>
 
-          <div className="invite-band terraria-band" id="terraria">
-            <span className="invite-band-icon"><EditionIcon edition="TERRARIA" size={36} /></span>
-            <div>
-              <h3>{h.terrariaTitle}</h3>
-              <p className="muted">{h.terrariaText}</p>
-            </div>
-            <Link className="button large secondary" href={session?.user ? "/dashboard/new?game=terraria" : "/signup"}>
-              {h.terrariaCta}
-            </Link>
+          {/* The other games side by side, one card each, all with the same button. */}
+          <div className="more-games">
+            <h3>{h.moreGamesTitle}</h3>
+            <ul>
+              {([
+                { ed: "TERRARIA", id: "terraria", title: h.terrariaTitle, text: h.terrariaText, cta: h.terrariaCta },
+                { ed: "VALHEIM", id: "valheim", ...h.otherGames.valheim },
+                { ed: "HYTALE", id: "hytale", ...h.otherGames.hytale },
+              ] as const).map((g) => (
+                <li key={g.id} id={g.id} className="more-game">
+                  <span className="more-game-icon"><EditionIcon edition={g.ed} size={32} /></span>
+                  <h4>{g.title}</h4>
+                  <p className="muted">{g.text}</p>
+                  <Link className="button secondary" href={session?.user ? `/dashboard/new?game=${g.id}` : "/signup"}>
+                    {g.cta}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
-
-          {(["VALHEIM", "HYTALE"] as const).map((ed) => {
-            const g = ed === "VALHEIM" ? "valheim" : "hytale";
-            return (
-              <div key={ed} className="invite-band terraria-band" id={g}>
-                <span className="invite-band-icon"><EditionIcon edition={ed} size={36} /></span>
-                <div>
-                  <h3>{h.otherGames[g].title}</h3>
-                  <p className="muted">{h.otherGames[g].text}</p>
-                </div>
-                <Link className="button large secondary" href={session?.user ? `/dashboard/new?game=${g}` : "/signup"}>
-                  {h.otherGames[g].cta}
-                </Link>
-              </div>
-            );
-          })}
         </div>
       </section>
 
