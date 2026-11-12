@@ -193,37 +193,25 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
   background: var(--accent-soft); border: 1px solid rgb(91 194 54 / 0.35); color: var(--accent-strong);
   font-weight: 600; font-size: 0.85rem;
 }
-.hero h1 { font-size: clamp(3.2rem, 6.4vw, 5rem); line-height: 0.98; margin-bottom: 20px; }
+.hero h1 { font-size: clamp(2.5rem, 4.3vw, 3.6rem); line-height: 1.02; margin-bottom: 20px; text-wrap: balance; }
 .lead { font-size: 1.15rem; color: #c3cfdd; margin: 0 0 28px; max-width: 540px; }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .perks { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 24px; color: var(--muted); font-size: 0.95rem; }
 .perks li { display: inline-flex; align-items: center; gap: 6px; }
 .perks svg { color: var(--accent); }
-.hero-art { position: relative; display: flex; justify-content: center; }
-/* The island moves as one ready-drawn layer: no filter on it, so the browser
-   only shifts the picture each frame instead of redrawing its ~1700 shapes and
-   a blurred shadow. The shadow is a separate soft ellipse that stays put. */
-.island { position: relative; width: min(100%, 520px); animation: float 6s ease-in-out infinite; will-change: transform; }
-.island img { display: block; width: 100%; height: auto; }
-.island-shadow {
-  position: absolute; left: 50%; bottom: 2%; width: min(70%, 380px); aspect-ratio: 4 / 1; margin-left: max(-35%, -190px);
-  border-radius: 50%; background: radial-gradient(closest-side, rgb(0 0 0 / 0.6), transparent);
-  animation: float-shadow 6s ease-in-out infinite; will-change: transform, opacity;
+.hero-art { position: relative; display: flex; justify-content: center; padding-top: 60px; }
+/* The island peeks out from behind the panel window: brand art, but the
+   product itself is what the eye lands on. It floats as one ready-drawn layer
+   (no filter on an animated element). */
+.hero-island {
+  position: absolute; right: -36px; top: -34px; width: 170px; z-index: 2; pointer-events: none;
+  animation: float 6s ease-in-out infinite; will-change: transform;
 }
-.hero-card {
-  position: absolute; left: 0; bottom: 8%; display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: 12px; background: rgb(20 26 34 / 0.92); border: 1px solid var(--border-strong);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.45); font-size: 0.9rem; animation: float 6s ease-in-out infinite reverse; will-change: transform;
-}
+.hero-island img { display: block; width: 100%; height: auto; }
+.hero-art .demo { position: relative; z-index: 1; margin: 0; }
+.hero-art .demo-window { zoom: 1.12; box-shadow: 0 30px 70px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(91 194 54 / 0.18); }
 @keyframes float { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -12px, 0); } }
-@keyframes float-shadow { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(0.9); opacity: 0.75; } }
-.hero-address { white-space: nowrap; }
-.caret {
-  display: inline-block; width: 2px; height: 1.05em; margin: 0 -1px; vertical-align: -0.15em;
-  background: var(--accent); animation: blink 1s steps(1) infinite;
-}
-@keyframes blink { 50% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .island, .island-shadow, .hero-card, .caret { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hero-island { animation: none; } }
 
 /* Home: sections */
 .section { padding: 80px 0; }
@@ -395,6 +383,13 @@ button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-colo
 }
 
 /* Home: pricing */
+.plans-common {
+  display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 20px;
+  margin: -12px auto 26px; color: var(--fg); font-weight: 600; font-size: 0.95rem;
+}
+.plans-common > span:first-child { color: var(--muted); font-weight: 500; }
+.plans-common span { display: inline-flex; align-items: center; gap: 6px; }
+.plans-common svg { color: var(--accent); }
 .plans { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; align-items: stretch; }
 .plan {
   position: relative; display: flex; flex-direction: column; gap: 16px;
@@ -1006,7 +1001,6 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
   .section { padding: 56px 0; }
   .feature-grid, .steps, .plans { grid-template-columns: 1fr; }
   .hero-actions .button { flex: 1; }
-  .hero-card { left: 50%; transform: translateX(-50%); bottom: 0; animation: none; }
   .cta-band { flex-direction: column; text-align: center; padding: 32px 20px; }
   .cta-band .button { width: 100%; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
@@ -1124,6 +1118,10 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .ai-title svg { color: var(--diamond); }
 .ai-input { min-height: 84px; }
 .ai-examples { justify-content: flex-start; margin-top: 0; }
+/* Ready descriptions under the home AI box: picking beats coming up with one. */
+.ai-hero-try { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ai-hero-try .chip { text-decoration: none; font-size: 0.82rem; font-weight: 500; padding: 6px 12px; min-height: 32px; display: inline-flex; align-items: center; transition: border-color 0.15s, color 0.15s; }
+.ai-hero-try .chip:hover { color: var(--fg); border-color: var(--accent); }
 .ai-privacy { flex: 1 1 260px; margin: 0; }
 .ai-result { padding: 14px 16px; border-radius: var(--radius-sm); background: var(--bg-alt); border: 1px solid var(--border); }
 .ai-result p { margin: 0; }
@@ -1173,6 +1171,10 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
   background: none; border: 0; box-shadow: none; color: var(--muted); border-radius: 50%;
 }
 .help-tip-close:hover:not(:disabled) { background: var(--surface); color: var(--fg); }
+@media (max-width: 640px) {
+  .help-tip { width: min(230px, calc(100vw - 96px)); }
+  .help-tip-body { font-size: 0.82rem; padding: 10px 30px 10px 12px; }
+}
 /* No admin on the site: a sleeping Steve sits on the bubble and says so. */
 .help-sleep {
   display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-right: 8px; margin-bottom: -10px; padding: 0; height: auto;
@@ -1809,7 +1811,8 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .demo.paused * { animation-play-state: paused !important; }
 @media (max-width: 520px) {
   /* Scale the fixed stage to the phone: 480px wide becomes about 340px. */
-  .demo-window { zoom: 0.72; }
+  .demo-window, .hero-art .demo-window { zoom: 0.72; }
+  .hero-island { width: 120px; right: -8px; top: -20px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .demo * { animation: none !important; }
@@ -1931,3 +1934,21 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   .review-slide { scroll-snap-align: start; }
   .review-copy { display: none; }
 }
+
+/* Server overview: the steps of a start, so a slow start visibly moves. */
+.start-steps { display: grid; gap: 12px; }
+.start-steps ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.start-steps li { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.start-steps li.now { color: var(--fg); font-weight: 600; }
+.start-steps li.done { color: #c3cfdd; }
+.start-step-mark {
+  display: inline-grid; place-items: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  border: 1px solid var(--border-strong); background: var(--surface-2);
+}
+.start-steps li.done .start-step-mark { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.start-steps li.now .start-step-mark { border-color: var(--accent); color: var(--accent); }
+.start-steps-last { display: flex; gap: 8px; align-items: baseline; margin: 0; font-size: 0.85rem; min-width: 0; }
+.start-steps-last code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; color: #c3cfdd; }
+.start-steps > p { margin: 0; }
+.spin { animation: spin 1s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }

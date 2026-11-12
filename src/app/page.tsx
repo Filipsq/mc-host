@@ -17,7 +17,6 @@ import { Archive, Cpu, MapPin, RotateCcw, Star } from "lucide-react";
 import { homeReviews } from "@/lib/reviews";
 import { BRAND_NAME } from "@/lib/brand";
 import CurseforgeTop from "@/components/CurseforgeTop";
-import HeroAddress from "@/components/HeroAddress";
 import Clouds from "@/components/Clouds";
 import PauseOffscreen from "@/components/PauseOffscreen";
 import EditionIcon from "@/components/EditionIcon";
@@ -92,6 +91,12 @@ export default async function Home() {
                   <input id="ai-hero-input" name="opis" required maxLength={DESCRIPTION_MAX} placeholder={t.ai.heroPlaceholder} autoComplete="off" />
                   <button type="submit">{t.ai.heroButton}</button>
                 </div>
+                <p className="ai-hero-try muted small">
+                  <span>{t.ai.heroTry}</span>
+                  {t.ai.examples.slice(0, 3).map((ex) => (
+                    <Link key={ex} className="chip" href={`${session?.user ? "/dashboard/new" : "/signup"}?opis=${encodeURIComponent(ex)}`}>{ex}</Link>
+                  ))}
+                </p>
                 <p className="muted small">{t.ai.heroHint}</p>
               </form>
             )}
@@ -105,18 +110,20 @@ export default async function Home() {
               ))}
             </ul>
           </div>
-          <div className="hero-art" aria-hidden>
-            <span className="island-shadow" />
-            <div className="island">
+          <div className="hero-art">
+            {/* The real flow, big and first: pick a game, it installs, the address is online. */}
+            <div className="hero-island" aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/art/island.svg" alt="" width={560} height={520} />
             </div>
             {pumpkin("hero")}
-            <div className="hero-card">
-              <span className="dot online" />
-              <HeroAddress names={h.heroNames} domain={domain} />
-              <span className="badge online">{t.server.live.online}</span>
-            </div>
+            <PanelDemo
+              demo={h.demo}
+              games={[t.server.games.survival, t.server.games.lifesteal, t.server.games.mods]}
+              freePlan={t.plans.FREE}
+              online={t.server.live.online}
+              domain={domain}
+            />
           </div>
         </div>
       </section>
@@ -193,13 +200,6 @@ export default async function Home() {
               </li>
             ))}
           </ol>
-          <PanelDemo
-            demo={h.demo}
-            games={[t.server.games.survival, t.server.games.lifesteal, t.server.games.mods]}
-            freePlan={t.plans.FREE}
-            online={t.server.live.online}
-            domain={domain}
-          />
         </div>
       </section>
 
@@ -301,6 +301,12 @@ export default async function Home() {
             <h2 className="display">{h.pricingTitle}</h2>
             <p className="muted">{h.pricingSubtitle}</p>
           </header>
+          {/* Said once here instead of on every card, so the cards only show what differs. */}
+          <p className="plans-common">
+            <span>{h.allPlans}</span>
+            <span><Check size={16} aria-hidden /> {t.plans.support}</span>
+            <span><Check size={16} aria-hidden /> {t.plans.ddos}</span>
+          </p>
           <ul className="plans">
             {plans.map((p) => {
               const recommended = p.id === "STANDARD";
@@ -328,8 +334,6 @@ export default async function Home() {
                       <Check size={16} aria-hidden />{" "}
                       {p.backupsKept === 0 ? t.plans.noBackups : format(t.plans.backups, { n: p.backupsKept })}
                     </li>
-                    <li><Check size={16} aria-hidden /> {t.plans.support}</li>
-                    <li><Check size={16} aria-hidden /> {t.plans.ddos}</li>
                   </ul>
                   <Link className={`button${recommended ? "" : " secondary"}`} href={start}>
                     {p.id === "FREE" ? h.startFree : h.choosePlan}

@@ -17,7 +17,7 @@ const pl = {
   },
   home: {
     eyebrow: "Crossplay Java i Bedrock · darmowy plan bez limitu czasu",
-    title: "Serwer Minecraft w jedno kliknięcie",
+    title: "Darmowy serwer Minecraft, który budzi się, gdy wchodzisz",
     subtitle:
       "Postaw serwer na Javę lub Bedrock za darmo albo przejdź na plan płatny, by mieć więcej graczy i serwer działający 24/7.",
     cta: "Utwórz serwer za darmo",
@@ -25,7 +25,6 @@ const pl = {
     perkNoCard: "Bez karty płatniczej",
     perkBlik: "Płatność BLIK-iem",
     perkAddress: "Krótki adres serwera",
-    heroNames: ["ekipa", "survival", "klasa3b", "lifesteal", "skyblock"],
     featuresTitle: "Wszystko, czego potrzebujesz do gry ze znajomymi",
     featuresSubtitle: "Prosty panel, który robi za Ciebie to, co nudne.",
     features: {
@@ -175,6 +174,7 @@ const pl = {
     ramStart: "Załóż serwer",
     pricingTitle: "Cennik",
     pricingSubtitle: "Płacisz z góry za 7, 30, 60 lub 90 dni: za 60 dni 5% taniej, za 90 dni 10% taniej. Plan odnawia się sam tylko wtedy, gdy włączysz to przy płatności kartą. Bez ceny „na start”, która po pierwszym miesiącu rośnie kilka razy.",
+    allPlans: "W każdym planie:",
     perMonth: "/ 30 dni",
     longerPeriod: "albo {price} za 90 dni (−10%)",
     freeForever: "Bez karty i bez limitu czasu",
@@ -687,6 +687,12 @@ const pl = {
       upgrade: "Zobacz plany",
       suspendedNote: "Serwer jest zawieszony, ale nadal możesz pobrać jego kopie.",
       unavailable: "Nie udało się wczytać kopii. Odśwież stronę za chwilę.",
+    },
+    startSteps: {
+      title: "Uruchamiamy serwer",
+      steps: ["Pobieranie gry, pluginów i modów", "Włączanie serwera", "Ładowanie pluginów i modów", "Przygotowanie świata", "Gotowe"],
+      lastLine: "Teraz:",
+      dontRestart: "Pierwsze uruchomienie z wieloma pluginami albo modami może trwać kilka minut. Nie klikaj „Uruchom” jeszcze raz, bo serwer zacznie od początku.",
     },
     live: {
       starting: "Uruchamianie",
@@ -2234,6 +2240,7 @@ const pl = {
     heroTitle: "Stwórz serwer z AI",
     heroPlaceholder: "np. survival dla ekipy, bez PvP",
     heroButton: "Stwórz z AI",
+    heroTry: "Albo kliknij:",
     heroHint: "AI dobierze grę, plan, pluginy i ustawienia. Ty tylko sprawdzasz i klikasz „Utwórz”.",
     formTitle: "Opisz serwer, a AI ustawi resztę",
     formHint: "Napisz, w co chcecie grać, ilu was jest i co jest dla was ważne. AI dobierze grę, plan, pluginy i ustawienia, a Ty możesz jeszcze wszystko zmienić.",

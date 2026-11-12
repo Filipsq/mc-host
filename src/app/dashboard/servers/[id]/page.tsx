@@ -26,6 +26,7 @@ import { takesBedrockPlayers } from "@/lib/xbox";
 import DeleteServer from "./DeleteServer";
 import ClassicOverview from "./ClassicOverview";
 import Stats from "./Stats";
+import StartSteps from "./StartSteps";
 import CopyButton from "@/components/CopyButton";
 import TestPaymentNotice from "@/components/TestPaymentNotice";
 
@@ -164,6 +165,7 @@ export default async function ServerPage({ params, searchParams }: Props) {
         <p className="notice">{server.edition === "JAVA" ? t.sleepingJava : server.edition === "BEDROCK" ? t.sleepingBedrock : t.sleepingTerraria}</p>
       )}
 
+      {server.edition === "JAVA" && live === "starting" && can("console") && <StartSteps id={server.id} t={t.startSteps} />}
       <div className="card stack">
         <div className="address-card">
           <div>

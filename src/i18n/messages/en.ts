@@ -19,7 +19,7 @@ const en: Messages = {
   },
   home: {
     eyebrow: "Java and Bedrock crossplay · free plan with no time limit",
-    title: "Minecraft servers in one click",
+    title: "A free Minecraft server that wakes up when you join",
     subtitle:
       "Host a Java or Bedrock server for free, or upgrade for more players and always-on uptime.",
     cta: "Create a free server",
@@ -27,7 +27,6 @@ const en: Messages = {
     perkNoCard: "No card needed",
     perkBlik: "Pay with BLIK",
     perkAddress: "Short server address",
-    heroNames: ["crew", "survival", "smp", "lifesteal", "skyblock"],
     featuresTitle: "Everything you need to play with friends",
     featuresSubtitle: "A simple panel that handles the boring parts for you.",
     features: {
@@ -177,6 +176,7 @@ const en: Messages = {
     ramStart: "Create a server",
     pricingTitle: "Pricing",
     pricingSubtitle: "Pay up front for 7, 30, 60 or 90 days: 60 days are 5% cheaper, 90 days 10% cheaper. Plans renew by themselves only if you turn that on when paying by card. No intro price that jumps several times after the first month.",
+    allPlans: "Every plan includes:",
     perMonth: "/ 30 days",
     longerPeriod: "or {price} for 90 days (−10%)",
     freeForever: "No card and no time limit",
@@ -688,6 +688,12 @@ const en: Messages = {
       upgrade: "See plans",
       suspendedNote: "The server is suspended, but you can still download its backups.",
       unavailable: "Couldn't load backups. Refresh the page in a moment.",
+    },
+    startSteps: {
+      title: "Starting your server",
+      steps: ["Downloading the game, plugins and mods", "Starting the server", "Loading plugins and mods", "Preparing the world", "Ready"],
+      lastLine: "Now:",
+      dontRestart: "A first start with many plugins or mods can take a few minutes. Don't click Start again, or the server begins from scratch.",
     },
     live: {
       starting: "Starting",
@@ -2235,6 +2241,7 @@ const en: Messages = {
     heroTitle: "Create a server with AI",
     heroPlaceholder: "e.g. survival for friends, no PvP",
     heroButton: "Create with AI",
+    heroTry: "Or just pick one:",
     heroHint: "AI picks the game, plan, plugins and settings. You just check them and click Create.",
     formTitle: "Describe your server and AI sets up the rest",
     formHint: "Say what you want to play, how many of you there are and what matters to you. AI picks the game, plan, plugins and settings, and you can still change all of it.",
