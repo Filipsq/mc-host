@@ -1507,6 +1507,22 @@ const pl = {
       button: "Przedłuż serwer",
     },
     footer: "Ten mail dotyczy Twojego serwera w {brand}. Masz pytania? Napisz do nas: {contact}",
+    adminCreated: {
+      subject: "Mamy dla Ciebie serwer {server}",
+      paragraphs: [
+        "Administrator założył dla Ciebie serwer {server} z planem {plan}, za darmo na próbę.",
+        "Działa do {date}. Jeśli Ci się spodoba, przedłużysz go w panelu, w zakładce Plan i płatności. Kilka dni przed końcem przypomnimy Ci o tym mailem.",
+      ],
+      button: "Przejdź do serwera",
+    },
+    adminCreatedFree: {
+      subject: "Mamy dla Ciebie serwer {server}",
+      paragraphs: [
+        "Administrator założył dla Ciebie darmowy serwer {server}.",
+        "Znajdziesz go w panelu. Usypia się, gdy nikt nie gra, i budzi, gdy ktoś dołącza.",
+      ],
+      button: "Przejdź do serwera",
+    },
     paid: {
       subject: "Opłacono serwer {server}",
       paragraphs: [
@@ -1846,6 +1862,14 @@ const pl = {
     paidWithGift: "(z prezentu)",
     adminChip: "admin",
     details: "Szczegóły",
+    createFor: {
+      title: "Serwer dla klienta",
+      hint: "Załóż serwer na koncie tego klienta: dowolna gra, mody lub gotowa mapa. Płatny plan dostaje na wybrany okres za darmo (na próbę), potem klient sam przedłuża. Klient dostanie e-mail.",
+      open: "Utwórz serwer dla klienta",
+      banner: "Tworzysz serwer dla {email}. Serwer będzie na jego koncie, a on dostanie e-mail.",
+      bannerHint: "Płatny plan działa za darmo przez wybrany okres. Potem klient dostanie przypomnienie i sam przedłuży. Darmowy plan działa jak zwykły darmowy serwer.",
+      submit: "Utwórz serwer dla klienta",
+    },
     resetLink: {
       title: "Link do ustawienia hasła",
       hint: "Gdy e-mail z resetem nie dochodzi: utwórz link i wyślij go klientowi na czacie. Klient sam ustawi nowe hasło. Link działa {hours} godzin i tylko raz.",

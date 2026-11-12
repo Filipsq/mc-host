@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, Plus } from "lucide-react";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
@@ -67,6 +67,15 @@ export default async function AdminUser({ params }: Props) {
             </div>
           ))}
         </dl>
+      </section>
+      <section className="card stack">
+        <h3>{t.createFor.title}</h3>
+        <p className="muted">{t.createFor.hint}</p>
+        <div className="row">
+          <Link className="button small" href={`/dashboard/new?dla=${user.id}`}>
+            <Plus size={16} aria-hidden /> {t.createFor.open}
+          </Link>
+        </div>
       </section>
       <section className="card stack">
         <h3>{t.resetLink.title}</h3>

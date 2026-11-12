@@ -26,6 +26,7 @@ import { MAIN_NODE } from "@/lib/nodes";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout, syncDiskLimits } from "@/lib/billing";
+import { sendPlanMail } from "@/lib/planMail";
 import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
 import { addonCost, addonFits, addonList, canBuyAddons, serverAddons, type AddonId } from "@/lib/addons";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
@@ -177,7 +178,13 @@ function randomAddress() {
 }
 
 export async function createServerAction(_: CreateServerState, form: FormData): Promise<CreateServerState> {
-  const user = await requireUser();
+  const me = await requireUser();
+  // An admin making the server on a customer's account (admin user page): it's theirs, nothing to pay.
+  const forUserId = String(form.get("forUser") ?? "").trim();
+  const forUser =
+    forUserId && (await isAdmin(me.id)) ? await db.user.findUnique({ where: { id: forUserId }, select: { id: true, email: true } }) : null;
+  if (forUserId && !forUser) return { error: "invalidPlan", values: Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)])) };
+  const user = forUser ?? me;
   const values = Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
   // Several ticked add-ons share a name; kept together so the form can come back with them.
   values.addons = form.getAll("addons").map(String).join(",");
@@ -206,21 +213,23 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (isOtherGame(edition) && !planAtLeast(plan, OTHER_GAME_MIN_PLAN[edition])) return { error: "otherGamePlan", values };
 
   // An admin's test server: any plan, without paying, to try things out.
-  const adminTest = form.get("adminTest") === "on" && (await isAdmin(user.id));
-  if (!adminTest && plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE", adminTest: false } }))) {
+  const adminTest = !forUser && form.get("adminTest") === "on" && (await isAdmin(user.id));
+  // Made by an admin: a paid plan runs free for the chosen days (a trial), then renews like any other.
+  const byAdmin = !!forUser;
+  if (!adminTest && !byAdmin && plan === "FREE" && (await db.server.count({ where: { ownerId: user.id, plan: "FREE", adminTest: false } }))) {
     return { error: "freeLimit", values };
   }
   // A free Starter earned with the creator code: paid for FREE_STARTER_DAYS already, without add-ons.
   // A gift code (gifts.ts): the gift's plan, paid for with it once the server exists.
-  const giftCode = adminTest ? "" : String(form.get("giftCode") ?? "").trim();
+  const giftCode = adminTest || byAdmin ? "" : String(form.get("giftCode") ?? "").trim();
   if (giftCode) {
     const found = await usableGift(giftCode);
     if ("error" in found) return { error: found.error, values };
     if (found.gift.plan !== plan) return { error: "giftPlan", values };
   }
-  const freeStarter = !adminTest && !giftCode && form.get("freeStarter") === "on";
+  const freeStarter = !adminTest && !byAdmin && !giftCode && form.get("freeStarter") === "on";
   if (freeStarter && plan !== "STARTER") return { error: "freeStarterPlan", values };
-  const paying = plan !== "FREE" && !adminTest && !freeStarter && !giftCode;
+  const paying = plan !== "FREE" && !adminTest && !byAdmin && !freeStarter && !giftCode;
   if (paying && form.get("startNow") !== "on") return { error: "consentRequired", values };
   // Someone's creator code: a tenth off this first payment, and the server counts for them.
   // Or the Halloween code (halloween.ts), typed in the same field: a fifth off.
@@ -249,7 +258,8 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
 
   const memoryMb = planById(plan).ramGb * 1024;
   // Admins may go over the sales limit to test buying; a plan still has to fit on the machine.
-  const extraMb = (await isAdmin(user.id)) ? 0 : memoryMb;
+  // A customer's server made by an admin is a real sale, so it needs room to sell.
+  const extraMb = !byAdmin && (await isAdmin(user.id)) ? 0 : memoryMb;
   // The machine it goes on: the one with the most room (paid plans need room to sell).
   // Bedrock and tModLoader need an x86 machine.
   const candidates = await rankNodes(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, requiredArch({ edition, kind }));
@@ -300,6 +310,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     status: paying || giftCode ? "AWAITING_PAYMENT" : "PROVISIONING",
     ...(adminTest && { adminTest, addons, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
     ...(freeStarter && { paidUntil: new Date(Date.now() + FREE_STARTER_DAYS * DAY) }),
+    ...(byAdmin && { addons, ...(plan !== "FREE" && { paidUntil: new Date(Date.now() + days * DAY) }) }),
     ...(creator && { creatorId: creator.creatorId }),
     ...(promoCode && { promoCode }),
   });
@@ -376,7 +387,15 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
     }
   }
 
-  await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" } });
+  const running = await db.server.update({ where: { id: server.id }, data: { status: "RUNNING" }, include: { owner: { select: { email: true, locale: true } } } });
+  if (byAdmin) {
+    console.info("admin", me.id, "made server", server.id, "for", user.id, plan, plan === "FREE" ? "" : `${days} days`);
+    await sendPlanMail(plan === "FREE" ? "adminCreatedFree" : "adminCreated", running);
+    if (addons.length) {
+      await syncDiskLimits().catch((err) => console.error("disk limits not sent", err));
+      await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
+    }
+  }
   redirect(`/dashboard/servers/${server.id}`);
 }
 

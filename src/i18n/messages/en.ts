@@ -1508,6 +1508,22 @@ const en: Messages = {
       button: "Renew server",
     },
     footer: "This email is about your server at {brand}. Questions? Write to us: {contact}",
+    adminCreated: {
+      subject: "We made the server {server} for you",
+      paragraphs: [
+        "An administrator made the server {server} on the {plan} plan for you, free to try.",
+        "It runs until {date}. If you like it, extend it in the panel under Plan and payments. We'll remind you by email a few days before the end.",
+      ],
+      button: "Go to the server",
+    },
+    adminCreatedFree: {
+      subject: "We made the server {server} for you",
+      paragraphs: [
+        "An administrator made the free server {server} for you.",
+        "You'll find it in the panel. It sleeps when nobody plays and wakes up when someone joins.",
+      ],
+      button: "Go to the server",
+    },
     paid: {
       subject: "{server} is paid for",
       paragraphs: [
@@ -1847,6 +1863,14 @@ const en: Messages = {
     paidWithGift: "(from a gift)",
     adminChip: "admin",
     details: "Details",
+    createFor: {
+      title: "Server for the customer",
+      hint: "Make a server on this customer's account: any game, mods or ready map. A paid plan is free for the chosen period (a trial); then the customer extends it. The customer gets an email.",
+      open: "Create a server for the customer",
+      banner: "You're making a server for {email}. It will be on their account, and they'll get an email.",
+      bannerHint: "A paid plan runs free for the chosen period. Then the customer gets a reminder and extends it. The free plan works like any free server.",
+      submit: "Create the server for the customer",
+    },
     resetLink: {
       title: "Password link",
       hint: "When the reset email doesn't arrive: create a link and send it to the customer in the chat. They set a new password themselves. The link works for {hours} hours, once.",

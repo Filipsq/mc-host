@@ -13,7 +13,7 @@ import { periodPrice } from "./periods";
 // server is suspended for it, and a few days before a suspended server is
 // deleted; when its automatic renewal fails, and 14 days before a price change reaches its renewals (renewal.ts). Also before a free server nobody plays on is deleted.
 
-export type PlanMailKind = "paid" | "reminder" | "suspended" | "deletion" | "inactive" | "renewFailed" | "priceChange";
+export type PlanMailKind = "paid" | "adminCreated" | "adminCreatedFree" | "reminder" | "suspended" | "deletion" | "inactive" | "renewFailed" | "priceChange";
 export type ServerWithOwner = Server & { owner: Pick<User, "email" | "locale"> };
 
 /** How long before the end of a paid period its owner is reminded. */
@@ -54,7 +54,7 @@ export async function sendPlanMail(
     starter: starterWeekPrice(locale === "pl" ? "PLN" : "EUR", locale),
     ...extra,
   };
-  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" ? "" : "/billing"}`;
+  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" || kind.startsWith("adminCreated") ? "" : "/billing"}`;
   const mail = buttonMail({
     to: server.owner.email,
     subject: format(t.subject, vars),

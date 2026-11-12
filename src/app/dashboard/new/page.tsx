@@ -22,7 +22,7 @@ import { paysafecardEnabled } from "@/lib/cashbill";
 // What a pack from a Modrinth link is guessed to need (Modrinth doesn't say): most big packs run on Standard.
 const MR_PACK_RAM_GB = 6;
 
-type Props = { searchParams: Promise<{ pack?: string; cf?: string; mr?: string; game?: string; opis?: string; prezent?: string; kod?: string }> };
+type Props = { searchParams: Promise<{ pack?: string; cf?: string; mr?: string; game?: string; opis?: string; prezent?: string; kod?: string; dla?: string }> };
 
 export default async function NewServerPage({ searchParams }: Props) {
   const session = await getSession();
@@ -31,7 +31,7 @@ export default async function NewServerPage({ searchParams }: Props) {
     const { opis } = await searchParams;
     redirect(opis ? `/login?opis=${encodeURIComponent(opis.slice(0, DESCRIPTION_MAX))}` : "/login");
   }
-  const [t, { locale, currency }, freeCount, packArt, { pack, cf, mr, game, opis, prezent, kod }, admin, code, { freeStarters }] = await Promise.all([
+  const [t, { locale, currency }, ownFreeCount, packArt, { pack, cf, mr, game, opis, prezent, kod, dla }, admin, code, { freeStarters }] = await Promise.all([
     getMessages(),
     getPreferences(),
     // An admin's test servers don't use up their own free one.
@@ -42,9 +42,12 @@ export default async function NewServerPage({ searchParams }: Props) {
     suggestedCreatorCode(session.user.id),
     db.user.findUniqueOrThrow({ where: { id: session.user.id }, select: { freeStarters: true } }),
   ]);
+  // An admin making a server on a customer's account (admin user page): any plan, nothing to pay.
+  const forUser = admin && dla ? await db.user.findUnique({ where: { id: dla }, select: { id: true, email: true } }) : null;
+  const freeCount = forUser ? 0 : ownFreeCount;
   const hasFree = freeCount > 0;
   // Came from "Załóż nowy serwer z prezentem": the gift's plan, paid with its code.
-  const giftFound = prezent ? await usableGift(prezent) : null;
+  const giftFound = prezent && !forUser ? await usableGift(prezent) : null;
   const gift = giftFound && "gift" in giftFound ? giftFound.gift : null;
   const plans = planOptions(t, currency).map((p) =>
     p.id === "FREE" && hasFree ? { ...p, disabledNote: t.server.freeTaken } : p,
@@ -65,14 +68,14 @@ export default async function NewServerPage({ searchParams }: Props) {
       ? OTHER_GAME_MIN_PLAN[game === "valheim" ? "VALHEIM" : "HYTALE"]
     : initialGame === "modpack"
       ? planForRam(cfPack?.ramGb ?? (mrPack ? MR_PACK_RAM_GB : (chosen ?? CURATED_PACKS[0]).ramGb))
-      : hasFree || freeStarters > 0
+      : !forUser && (hasFree || freeStarters > 0)
         ? "STARTER"
         : "FREE";
   const packIcons = Object.fromEntries(CURATED_PACKS.map((p) => [p.slug, packArt.get(p.slug)?.icon]));
 
   return (
     <main className="new-page stack">
-      <Link className="back" href="/dashboard">{t.server.back}</Link>
+      <Link className="back" href={forUser ? `/admin/users/${forUser.id}` : "/dashboard"}>{t.server.back}</Link>
       <CreateServerForm
         title={t.server.newTitle}
         t={t.server}
@@ -100,12 +103,22 @@ export default async function NewServerPage({ searchParams }: Props) {
         domain={process.env.GAME_DOMAIN ?? "localhost"}
         money={{ locale, currency }}
         admin={admin}
+        forUser={
+          forUser
+            ? {
+                id: forUser.id,
+                banner: format(t.admin.createFor.banner, { email: forUser.email }),
+                hint: t.admin.createFor.bannerHint,
+                submit: t.admin.createFor.submit,
+              }
+            : undefined
+        }
         paysafecard={paysafecardEnabled(currency)}
         creator={{
           t: t.creator,
           // A code from a link (the Halloween band on the home page) before the inviter's.
           code: kod?.trim().slice(0, 20) || code,
-          freeStarters,
+          freeStarters: forUser ? 0 : freeStarters,
           discount: CREATOR_DISCOUNT,
           days: FREE_STARTER_DAYS,
           promo: halloweenOn() ? { code: HALLOWEEN_CODE, discount: HALLOWEEN_DISCOUNT, hint: t.halloween.codeApplied, label: t.halloween.codeField } : undefined,

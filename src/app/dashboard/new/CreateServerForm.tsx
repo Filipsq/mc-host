@@ -55,6 +55,8 @@ type Props = {
   cfPicked: boolean; // whether the first of cfPacks was picked on the home page
   curseforge: boolean; // whether CurseForge links work
   admin: boolean; // admins also get a button to make a test server without paying
+  // An admin making the server on a customer's account: nothing to pay, one button.
+  forUser?: { id: string; banner: string; hint: string; submit: string };
   paysafecard: boolean; // a second pay button for paysafecard (cashbill.ts)
   // The creator code to start with (whoever invited the user) and free Starters they earned with their own (creator.ts).
   creator: {
@@ -96,7 +98,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, paysafecard, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, forUser, paysafecard, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -261,7 +263,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const giftPlan = !!gift && plan === gift.plan;
   const gifted = giftPlan && useGift;
   const rewarded = !gifted && plan === "STARTER" && creator.freeStarters > 0 && freeStarter;
-  const paying = plan !== "FREE" && !rewarded && !gifted;
+  const paying = plan !== "FREE" && !rewarded && !gifted && !forUser;
   const c = creator.t;
 
   return (
@@ -325,7 +327,14 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         startTransition(() => action(data));
       }}
     >
+      {forUser && <input type="hidden" name="forUser" value={forUser.id} />}
       <div className="new-main">
+      {forUser && (
+        <p className="notice warn stack-tight">
+          <strong>{forUser.banner}</strong>
+          <span className="small">{forUser.hint}</span>
+        </p>
+      )}
       {aiSettings && (
         <>
           <input type="hidden" name="gameMode" value={aiSettings.gameMode} />
@@ -616,13 +625,13 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         {state.error && <p className="error">{t.errors[state.error]}</p>}
         {plan === "FREE" ? (
           <button type="submit" name="plan" value="FREE" formNoValidate disabled={pending} className="free-button">
-            {pending && !testing ? t.creating : t.createFree}
+            {pending && !testing ? t.creating : forUser ? forUser.submit : t.createFree}
             {!pending && <span className="new-submit-total">{formatPrice(0, money.currency as Currency, money.locale)}</span>}
           </button>
         ) : (
         <button type="submit" disabled={pending} className={paying ? "pay-button" : undefined}>
           <span className="pay-label">
-            {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : t.create}
+            {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : forUser ? forUser.submit : t.create}
             {paying && total && !pending && <span className="new-submit-total">{total}</span>}
           </span>
           {paying && <PayBadges method={paysafecard ? "cards" : "stripe"} />}
@@ -636,13 +645,13 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
           </button>
         )}
         {/* A paid plan is ticked, but the free server is still one tap away. */}
-        {plan !== "FREE" && freeOk && !gifted && (
+        {plan !== "FREE" && freeOk && !gifted && !forUser && (
           <button type="submit" name="plan" value="FREE" formNoValidate disabled={pending} className="secondary free-alt">
             {format(t.createFreeAlt, { gb: planById("FREE").ramGb })}
           </button>
         )}
       </div>
-      {admin && (
+      {admin && !forUser && (
         <>
           <button type="submit" className="secondary" name="adminTest" value="on" disabled={pending}>
             {pending && testing ? t.creating : t.adminTest}
