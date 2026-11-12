@@ -19,17 +19,20 @@ type Props = {
 };
 
 const CHECK_MS = 30_000;
-const TIP_DELAY_MS = 1500;
+/** Late enough that the visitor has read the page first, so the note doesn't cover what they came for. */
+const TIP_DELAY_MS = 20_000;
+/** The note tidies itself away; the round button stays. */
+const TIP_SHOW_MS = 12_000;
 /** The chat loads this long after the page, so it doesn't compete with the page's own requests. */
 const PRELOAD_DELAY_MS = 1000;
-/** Shown once per browser session, so it greets visitors without nagging on every page. */
+/** Shown once per browser (kept in localStorage), so it greets a visitor once and never nags again. */
 const TIP_KEY = "help-tip-shown";
 /** Set when a signed-out visitor goes to log in from the bubble, so the chat opens once they are back. */
 const OPEN_KEY = "help-open-after-login";
 
-function storage(fn: (s: Storage) => string | null | void) {
+function storage(fn: (s: Storage) => string | null | void, kind: "session" | "local" = "session") {
   try {
-    return fn(window.sessionStorage);
+    return fn(kind === "local" ? window.localStorage : window.sessionStorage);
   } catch {
     return null; // Private mode or blocked storage: the bubble still works, the tip just shows again.
   }
@@ -91,15 +94,22 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
     };
   }, [check]);
 
-  // Greet a visitor once per browser session.
+  // Greet a visitor once per browser, a while after the page loads and never on
+  // a server's panel, where it would sit on top of the console and charts.
+  const panelPage = path.startsWith("/dashboard/servers/");
   useEffect(() => {
-    if (admin || hidden || storage((s) => s.getItem(TIP_KEY))) return;
+    if (admin || hidden || panelPage || storage((s) => s.getItem(TIP_KEY), "local")) return;
+    let hide: ReturnType<typeof setTimeout> | undefined;
     const timer = setTimeout(() => {
       setTip(true);
-      storage((s) => s.setItem(TIP_KEY, "1"));
+      storage((s) => s.setItem(TIP_KEY, "1"), "local");
+      hide = setTimeout(() => setTip(false), TIP_SHOW_MS);
     }, TIP_DELAY_MS);
-    return () => clearTimeout(timer);
-  }, [admin, hidden]);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(hide);
+    };
+  }, [admin, hidden, panelPage]);
 
   // Back from logging in through the bubble: open the chat right away.
   useEffect(() => {
