@@ -491,6 +491,10 @@ const en: Messages = {
           title: "The same plugin or mod is added twice",
           fix: "Remove the repeated plugin or mod in Plugins (or Mods) and start the server again.",
         },
+        missingMod: {
+          title: "A mod is missing: {mods}",
+          fix: "You didn't add {mods}, which another mod on the server needs. Click Start and we download it for you. If the server still won't start, add it in Mods or remove the mod that needs it.",
+        },
         missingDependency: {
           title: "A mod needs another mod or another version",
           fix: "A mod needs a mod that's missing, or is for another Minecraft version. The names are in the red lines above. Add the missing mod in Mods or remove the one that needs it.",

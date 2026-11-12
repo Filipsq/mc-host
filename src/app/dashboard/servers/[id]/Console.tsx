@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { sendCommandAction } from "../actions";
 import type { Messages } from "@/i18n/messages";
 import { PLAYER_COMMANDS, WORLD_COMMANDS, cleanNick, type ConsoleGame } from "./quickCommands";
-import { hintFor, isErrorLine, type HintId } from "./consoleHints";
+import { hintFor, isErrorLine, missingMods, type HintId } from "./consoleHints";
 
 const MAX_LINES = 500;
 // Colour codes some plugins print (often without the escape character), which a browser shows as "[0;39m".
@@ -87,8 +87,10 @@ export default function Console({
       const h = hintFor(lines[i]);
       if (h && !found.includes(h)) found.push(h);
     }
-    return found;
+    // Named missing mods say all the general hint would.
+    return found.includes("missingMod") ? found.filter((h) => h !== "missingDependency") : found;
   }, [lines]);
+  const missing = useMemo(() => missingMods(lines).map((m) => `„${m}”`).join(", "), [lines]);
 
   return (
     <section className="stack">
@@ -99,9 +101,9 @@ export default function Console({
           <strong>{t.hints.title}</strong>
           {hints.map((h) => (
             <p key={h} className="notice warn">
-              <strong>{t.hints.list[h].title}</strong>
+              <strong>{t.hints.list[h].title.replace("{mods}", missing)}</strong>
               <br />
-              {t.hints.list[h].fix}
+              {t.hints.list[h].fix.replace("{mods}", missing)}
             </p>
           ))}
         </div>

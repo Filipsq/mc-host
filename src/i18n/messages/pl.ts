@@ -490,6 +490,10 @@ const pl = {
           title: "Ten sam plugin lub mod jest dodany dwa razy",
           fix: "Usuń powtórzony plugin lub mod w Pluginach (albo Modach) i uruchom serwer jeszcze raz.",
         },
+        missingMod: {
+          title: "Brakuje moda: {mods}",
+          fix: "Nie dodałeś moda {mods}, którego potrzebuje inny mod na serwerze. Kliknij Uruchom, a system sam go pobierze. Jeśli serwer dalej nie wstaje, dodaj go w Modach albo usuń mod, który go wymaga.",
+        },
         missingDependency: {
           title: "Mod potrzebuje innego moda albo innej wersji",
           fix: "Któryś mod wymaga moda, którego brakuje, albo jest na inną wersję Minecrafta. Nazwy są w czerwonych liniach powyżej. Dodaj brakujący mod w Modach albo usuń ten, który go wymaga.",
