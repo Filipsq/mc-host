@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -84,5 +85,47 @@ func TestHealedEnvGivesFabricServersFabricAPI(t *testing.T) {
 		if strings.Join(got, " ") != tc.want || why == "" {
 			t.Errorf("%v: got %v (%q), want %s", tc.env, got, why, tc.want)
 		}
+	}
+}
+
+func TestMissingModIDsReadsFabricsMissingMods(t *testing.T) {
+	lines := []string{
+		"[17:27:11] ain/INFO]: Immediate reason: [HARD_DEP_NO_CANDIDATE viaversion 5.12.3-SNAPSHOT {depends viafabric @ [>=0.4.14]}, ROOT_FORCELOAD_SINGLE viaversion 5.12.3-SNAPSHOT]",
+		"\t - Mod 'ViaVersion' (viaversion) 5.12.3-SNAPSHOT requires version 0.4.14 or later of viafabric, which is missing!",
+		"\t - Mod 'X' (x) 1.0 requires any version of 'Cloth Config API' (cloth-config), which is missing!",
+		"\t - Mod 'Y' (y) 1.0 requires version 1.21.9 of 'Minecraft' (minecraft), but only the wrong version is present: 1.21.11!",
+	}
+	if got := strings.Join(missingModIDs(lines), ","); got != "viafabric,cloth-config" {
+		t.Fatalf("got %q", got)
+	}
+	if got := missingModIDs(append(lines, "[17:30:00] [Server thread/INFO]: Done (5.0s)!")); len(got) != 0 {
+		t.Fatalf("a later start was fine, got %v", got)
+	}
+}
+
+func TestMissingFabricModsAddsWhatModrinthHas(t *testing.T) {
+	mr := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/project/viafabric/version" && strings.Contains(r.URL.Query().Get("game_versions"), "1.21.4") {
+			w.Write([]byte(`[{"id":"a","files":[]}]`))
+			return
+		}
+		w.WriteHeader(404)
+	}))
+	defer mr.Close()
+	old := modrinthAPI
+	modrinthAPI = mr.URL
+	defer func() { modrinthAPI = old }()
+	a, _ := paperConfigAgent(t, "[HARD_DEP_NO_CANDIDATE viaversion 5.12.3-SNAPSHOT {depends viafabric @ [>=0.4.14]}]\n"+
+		"\t - Mod 'X' (x) 1.0 requires any version of nosuchmod, which is missing!\n")
+	got := a.missingFabricMods(context.Background(), "abc12345", []string{"TYPE=FABRIC", "VERSION=1.21.4", "MODRINTH_PROJECTS=P7dR8mSH?"})
+	if strings.Join(got, ",") != "viafabric" {
+		t.Fatalf("got %v", got)
+	}
+	env := addProjects([]string{"TYPE=FABRIC", "MODRINTH_PROJECTS=P7dR8mSH?"}, got)
+	if env[1] != "MODRINTH_PROJECTS=P7dR8mSH?,viafabric?" {
+		t.Fatalf("env %v", env)
+	}
+	if got := a.missingFabricMods(context.Background(), "abc12345", []string{"TYPE=FABRIC", "VERSION=1.21.4", "MODRINTH_PROJECTS=viafabric?"}); len(got) != 0 {
+		t.Fatalf("already listed, got %v", got)
 	}
 }
