@@ -625,12 +625,17 @@ main.classic-panel { max-width: 1240px; }
 }
 
 .server-list { display: flex; flex-direction: column; gap: 10px; }
-.server-link {
-  display: flex; align-items: center; gap: 16px; padding: 16px 18px; color: var(--fg); text-decoration: none;
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+/* One card per server: the card opens the panel, the copy button sits on it without opening it. */
+.server-card {
+  display: flex; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   transition: border-color 0.15s, transform 0.15s;
 }
-.server-link:hover { border-color: var(--accent); color: var(--fg); transform: translateY(-1px); }
+.server-card:has(.server-link:hover) { border-color: var(--accent); transform: translateY(-1px); }
+.server-link { flex: 1; min-width: 0; display: flex; align-items: center; gap: 16px; padding: 16px 18px; color: var(--fg); text-decoration: none; border-radius: var(--radius); }
+.server-link:hover { color: var(--fg); }
+.server-meta { color: #c3cfdd; font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+.server-card-copy { padding-right: 16px; flex-shrink: 0; }
+.server-card-copy button { background: var(--surface-2); color: var(--fg); border: 1px solid var(--border-strong); box-shadow: none; padding: 8px 12px; font-size: 0.88rem; }
 .server-link img { flex-shrink: 0; }
 .server-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .server-main strong { font-size: 1.05rem; }
@@ -764,7 +769,11 @@ main.compare { max-width: 1080px; }
 .invite-card { justify-content: space-between; }
 .app-card { gap: 12px; }
 .app-card > p { margin: 0; }
-.app-card-head { gap: 14px; flex-wrap: nowrap; }
+.app-card-head { gap: 14px; flex-wrap: nowrap; justify-content: flex-start; }
+.app-qr { display: flex; align-items: center; gap: 16px; }
+.app-qr p { margin: 0; max-width: 340px; }
+.app-qr-code { flex: none; width: 112px; height: 112px; padding: 6px; border-radius: var(--radius-sm); background: #fff; }
+.app-qr-code svg { display: block; width: 100%; height: 100%; }
 .app-card-head > svg { color: var(--accent); flex: none; }
 .app-card-actions { gap: 10px; }
 .app-card-actions:empty { display: none; }
@@ -1016,8 +1025,11 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
   .cta-band .button { width: 100%; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
   .footer-grid > :first-child { grid-column: 1 / -1; }
-  .server-link { flex-wrap: wrap; }
+  .server-card { flex-wrap: wrap; }
+  .server-link { flex-wrap: wrap; flex-basis: 100%; }
   .server-side { width: 100%; justify-content: space-between; }
+  .server-card-copy { padding: 0 18px 16px; width: 100%; }
+  .server-card-copy button { width: 100%; }
   .address-value { font-size: 1.05rem; }
 }
 
@@ -1160,6 +1172,8 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 }
 .help-fab:hover { background: var(--accent-strong); color: var(--accent-ink); transform: translateY(-2px); }
 .help-fab:active { transform: translateY(2px); box-shadow: 0 2px 0 #3c8a20, 0 6px 18px rgb(0 0 0 / 0.45); }
+/* No admin online right now: a small grey dot on the button. */
+.help-offline-dot { position: absolute; bottom: 2px; right: 2px; width: 14px; height: 14px; border-radius: 50%; background: #8b97a8; box-shadow: 0 0 0 3px var(--bg); }
 .help-fab .count-badge { position: absolute; top: -4px; right: -4px; box-shadow: 0 0 0 2px var(--bg); }
 .help-tip {
   position: relative; width: min(290px, calc(100vw - 40px)); margin-right: 6px;
@@ -1972,4 +1986,56 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   .button.small, button.small { min-height: 40px; }
   .ai-hero-try .chip, .faq summary { min-height: 44px; }
   .help-tip-close { width: 36px; height: 36px; top: 2px; right: 2px; }
+}
+
+/* Page changes: a thin bar at the top from the click until the new page is in. */
+.route-progress {
+  position: fixed; top: 0; left: 0; z-index: 200; height: 3px; width: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-strong));
+  box-shadow: 0 0 10px rgb(91 194 54 / 0.6);
+  transform-origin: left; transform: scaleX(0); opacity: 0; pointer-events: none;
+}
+/* Runs quickly to most of the way, then creeps: it never claims to be done before it is. */
+.route-progress.loading { opacity: 1; animation: route-crawl 8s cubic-bezier(0.1, 0.7, 0.2, 1) forwards; }
+.route-progress.done { opacity: 0; transform: scaleX(1); transition: transform 0.15s ease-out, opacity 0.25s 0.15s; }
+@keyframes route-crawl { from { transform: scaleX(0.05); } 30% { transform: scaleX(0.6); } to { transform: scaleX(0.92); } }
+@media (prefers-reduced-motion: reduce) { .route-progress.loading { animation: none; transform: scaleX(0.7); } }
+
+/* Grey placeholders in the page's shape while it loads. */
+.skeleton-page { animation: fade-in 0.2s ease-out 0.1s both; } /* a fast page never flashes them */
+.skeleton { display: block; border-radius: var(--radius); background: linear-gradient(90deg, var(--surface) 0%, var(--surface-2) 50%, var(--surface) 100%) 0 0 / 200% 100%; border: 1px solid var(--border); animation: shimmer 1.4s linear infinite; }
+.skeleton-title { width: 180px; height: 28px; border-radius: var(--radius-sm); }
+.skeleton-card { height: 150px; }
+.skeleton-card.short { height: 84px; }
+.skeleton-row { height: 76px; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* A panel tab's content comes in softly; the header and menu stay put, so nothing jumps. */
+.server-content > * { animation: page-in 0.18s ease-out both; }
+@keyframes page-in { from { opacity: 0; transform: translate3d(0, 6px, 0); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .server-content > * { animation: none; } }
+
+/* Phones: the four main tabs along the bottom, like an app. */
+.server-tabbar { display: none; }
+@media (max-width: 900px) {
+  .server-tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: grid; grid-template-columns: repeat(5, 1fr);
+    padding: 6px max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    background: rgb(15 20 27 / 0.94); border-top: 1px solid var(--border); backdrop-filter: blur(10px);
+  }
+  .server-tabbar a, .server-tabbar button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 4px 2px;
+    background: none; border: 0; box-shadow: none; border-radius: var(--radius-sm); color: var(--muted);
+    font: inherit; font-size: 0.7rem; font-weight: 600; text-decoration: none; white-space: nowrap;
+  }
+  .server-tabbar span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .server-tabbar a:hover, .server-tabbar button:hover:not(:disabled) { background: none; color: var(--fg); transform: none; }
+  .server-tabbar a.active, .server-tabbar a.active:hover, .server-tabbar button.active, .server-tabbar button.active:hover { color: var(--accent-strong); background: var(--accent-soft); }
+  body:has(.server-tabbar) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  body:has(.server-tabbar) .help { bottom: max(80px, calc(env(safe-area-inset-bottom) + 76px)); }
+  /* The phone menu folds open smoothly instead of jumping. */
+  .server-nav.open .server-nav-body { animation: menu-open 0.16s ease-out; transform-origin: top; }
+  @keyframes menu-open { from { opacity: 0; transform: translate3d(0, -6px, 0); } to { opacity: 1; transform: none; } }
 }

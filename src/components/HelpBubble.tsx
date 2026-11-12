@@ -29,6 +29,9 @@ const PRELOAD_DELAY_MS = 1000;
 const TIP_KEY = "help-tip-shown";
 /** Set when a signed-out visitor goes to log in from the bubble, so the chat opens once they are back. */
 const OPEN_KEY = "help-open-after-login";
+/** The sleeping Steve ("admin offline") shows once per browser session, briefly; after that a grey dot on the button says it. */
+const SLEEP_KEY = "help-sleep-shown";
+const SLEEP_SHOW_MS = 6_000;
 
 function storage(fn: (s: Storage) => string | null | void, kind: "session" | "local" = "session") {
   try {
@@ -50,6 +53,7 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
   const [online, setOnline] = useState(adminOnline);
   const [open, setOpen] = useState(false);
   const [tip, setTip] = useState(false);
+  const [sleepNote, setSleepNote] = useState(false);
   const [chat, setChat] = useState<{ state: ChatState; hadUnread: boolean; peeked: boolean } | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -110,6 +114,18 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
       clearTimeout(hide);
     };
   }, [admin, hidden, panelPage]);
+
+  // "Admin offline" with the sleeping Steve: once per session for a few seconds,
+  // so it never sits over the page's text on a phone.
+  useEffect(() => {
+    if (online || admin || hidden || storage((s) => s.getItem(SLEEP_KEY))) return;
+    setSleepNote(true);
+    const timer = setTimeout(() => {
+      setSleepNote(false);
+      storage((s) => s.setItem(SLEEP_KEY, "1"));
+    }, SLEEP_SHOW_MS);
+    return () => clearTimeout(timer);
+  }, [online, admin, hidden]);
 
   // Back from logging in through the bubble: open the chat right away.
   useEffect(() => {
@@ -253,7 +269,7 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
           </button>
         </div>
       )}
-      {!online && !open && !tip && (
+      {!online && sleepNote && !open && !tip && (
         <button type="button" className="help-sleep" onClick={() => setOpen(true)} aria-label={`${t.bubble.offline}. ${t.bubble.open}`}>
           <span className="help-sleep-say">{t.bubble.offline}</span>
           <span className="help-sleep-steve">
@@ -272,6 +288,7 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
       >
         {open ? <X size={26} aria-hidden /> : <MessageCircle size={26} aria-hidden />}
         {!open && badge}
+        {!open && !online && !admin && <span className="help-offline-dot" title={t.bubble.offline} aria-hidden />}
       </button>
     </div>
   );

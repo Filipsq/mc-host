@@ -6,7 +6,10 @@ import { db } from "@/lib/db";
 import { isAdmin } from "@/lib/admin";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { addressLabel, getLiveState } from "@/lib/servers";
+import { addressLabel, getLiveState, type LiveState } from "@/lib/servers";
+import { getMetrics } from "@/lib/agent";
+import CopyButton from "@/components/CopyButton";
+import QRCode from "qrcode";
 import { sharedServers } from "@/lib/access";
 import EditionIcon from "@/components/EditionIcon";
 import { GAME_ICONS } from "@/components/gameIcons";
@@ -44,7 +47,48 @@ export default async function DashboardPage({ searchParams }: Props) {
     Promise.all(servers.map((s) => getLiveState(s))),
     Promise.all(shared.map((s) => getLiveState(s))),
   ]);
+  // Players on the servers that are up right now (a slow or missing answer just leaves the count out).
+  const playersOn = (list: { id: string }[], live: LiveState[]) =>
+    Promise.all(list.map((s, i) => (live[i] === "online" ? getMetrics(s.id, "hour").then((m) => m.online ?? m.players.length).catch(() => null) : null)));
+  const [players, sharedPlayers] = await Promise.all([playersOn(servers, states), playersOn(shared, sharedStates)]);
   const t = all.dashboard;
+  // The panel's address as a code a phone camera can open (for the app card on a computer).
+  const qr = await QRCode.toString(`${process.env.APP_URL ?? "https://mchosting.pl"}/dashboard`, {
+    type: "svg",
+    margin: 1,
+    color: { dark: "#0b0f14", light: "#ffffff" },
+  }).catch(() => undefined);
+  const dayMonth = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", timeZone: "Europe/Warsaw" });
+  const now = new Date();
+
+  // One server on the list: the whole card opens its panel; the address can be copied without going in.
+  const card = (s: (typeof servers)[number], live: LiveState, online: number | null, owner?: string) => {
+    const address = addressLabel(s);
+    const meta = [
+      online !== null && format(t.playersOnline, { n: online }),
+      s.plan !== "FREE" && s.paidUntil && s.paidUntil > now && format(all.billing.paidUntil, { date: dayMonth.format(s.paidUntil) }),
+      owner && format(all.access.ownerLabel, { email: owner }),
+    ].filter(Boolean);
+    return (
+      <li key={s.id} className="server-card">
+        <Link href={`/dashboard/servers/${s.id}`} className="server-link">
+          <EditionIcon edition={s.edition} size={40} />
+          <span className="server-main">
+            <strong>{s.name}</strong>
+            <span className="mono">{address}</span>
+            {meta.length > 0 && <span className="server-meta">{meta.join(" · ")}</span>}
+          </span>
+          <span className="server-side">
+            <span className="chip">{all.plans[s.plan]} · {s.memoryMb / 1024} GB</span>
+            <span className={`badge ${live}`}>{all.server.live[live]}</span>
+          </span>
+        </Link>
+        <span className="server-card-copy">
+          <CopyButton text={address} label={t.copyAddress} copiedLabel={all.server.copied} />
+        </span>
+      </li>
+    );
+  };
 
   return (
     <main className="stack">
@@ -89,45 +133,12 @@ export default async function DashboardPage({ searchParams }: Props) {
           </ul>
         </div>
       ) : (
-        <ul className="server-list">
-          {servers.map((s, i) => (
-            <li key={s.id}>
-              <Link href={`/dashboard/servers/${s.id}`} className="server-link">
-                <EditionIcon edition={s.edition} size={40} />
-                <span className="server-main">
-                  <strong>{s.name}</strong>
-                  <span className="mono">{addressLabel(s)}</span>
-                </span>
-                <span className="server-side">
-                  <span className="chip">{all.plans[s.plan]} · {s.memoryMb / 1024} GB</span>
-                  <span className={`badge ${states[i]}`}>{all.server.live[states[i]]}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <ul className="server-list">{servers.map((s, i) => card(s, states[i], players[i]))}</ul>
       )}
       {shared.length > 0 && (
         <section className="stack">
           <h2>{all.access.dashboardTitle}</h2>
-          <ul className="server-list">
-            {shared.map((s, i) => (
-              <li key={s.id}>
-                <Link href={`/dashboard/servers/${s.id}`} className="server-link">
-                  <EditionIcon edition={s.edition} size={40} />
-                  <span className="server-main">
-                    <strong>{s.name}</strong>
-                    <span className="mono">{addressLabel(s)}</span>
-                    <span className="muted small">{format(all.access.ownerLabel, { email: s.owner.email })}</span>
-                  </span>
-                  <span className="server-side">
-                    <span className="chip">{all.plans[s.plan]} · {s.memoryMb / 1024} GB</span>
-                    <span className={`badge ${sharedStates[i]}`}>{all.server.live[sharedStates[i]]}</span>
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <ul className="server-list">{shared.map((s, i) => card(s, sharedStates[i], sharedPlayers[i], s.owner.email))}</ul>
         </section>
       )}
       {askReview && <ReviewAsk t={all.reviews} textMax={REVIEW_TEXT_MAX} nameMax={REVIEW_NAME_MAX} />}
@@ -141,7 +152,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         </span>
         <Link className="button secondary" href="/dashboard/invite">{all.referrals.nav}</Link>
       </div>
-      <AppInstall labels={all.app} pushKey={pushPublicKey()} />
+      <AppInstall labels={all.app} pushKey={pushPublicKey()} qr={qr} />
     </main>
   );
 }

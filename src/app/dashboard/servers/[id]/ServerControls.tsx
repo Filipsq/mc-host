@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Play, RotateCw, Square } from "lucide-react";
 import { restartServerAction, startServerAction, stopServerAction } from "../actions";
 import type { LiveState } from "@/lib/servers";
+import { SERVER_ACTION_EVENT } from "./LiveBadge";
 import type { Messages } from "@/i18n/messages";
 
 type Props = { id: string; live: LiveState; t: Messages["server"] };
@@ -20,9 +21,12 @@ export default function ServerControls({ id, live, t }: Props) {
 
   function run(kind: "start" | "stop" | "restart", action: (id: string) => Promise<{ error?: keyof Messages["server"]["errors"] } | void>) {
     setDoing(kind);
+    // The state badge changes right away (LiveBadge); the real state follows.
+    window.dispatchEvent(new CustomEvent(SERVER_ACTION_EVENT, { detail: { id, kind } }));
     startTransition(async () => {
       const result = await action(id);
       setError(result?.error ? t.errors[result.error] : null);
+      if (result?.error) window.dispatchEvent(new CustomEvent(SERVER_ACTION_EVENT, { detail: { id, kind: "failed" } }));
       router.refresh();
     });
   }
