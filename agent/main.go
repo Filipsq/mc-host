@@ -791,6 +791,20 @@ const directMemoryMb = 256
 
 func javaHeadroomMb(planMb int) int { return max(1024, planMb/4) }
 
+// crossplayHeadroomMb is the room a Java server with Geyser and Floodgate gets:
+// Geyser's Bedrock data and NetherNet keep more outside the heap, and a free
+// 2 GB crossplay server with a few players reached 3.1 GB and was OOM-killed
+// in its 3 GB container (2026-11-12).
+const crossplayHeadroomMb = 1536
+
+func javaLimitMb(req createRequest) int {
+	room := javaHeadroomMb(req.MemoryMb)
+	if req.Crossplay {
+		room = max(room, crossplayHeadroomMb)
+	}
+	return req.MemoryMb + room
+}
+
 func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 	maxPlayers := fmt.Sprint(req.MaxPlayers)
 	if req.MaxPlayers <= 0 {
@@ -948,7 +962,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		labels["mchost.host"] = req.Hostname
 		containerPort = "25565/tcp"
 		hostIP = "127.0.0.1" // players come in through the router, not directly
-		limitMb = req.MemoryMb + javaHeadroomMb(req.MemoryMb)
+		limitMb = javaLimitMb(req)
 		if req.Crossplay {
 			labels["mchost.crossplay"] = "true" // startServer puts Geyser and Floodgate in (crossplay.go)
 			// Bedrock has no hostname to route by, so Geyser gets the server's own
