@@ -6,13 +6,14 @@ import (
 	"net"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 func TestHealEnvRebuildsAContainerWithTheBadVersionType(t *testing.T) {
 	for _, tc := range []struct {
 		typ, want string
-	}{{"TYPE=PAPER", ""}, {"TYPE=FABRIC", "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=beta"}} {
+	}{{"TYPE=PAPER", ""}, {"TYPE=FORGE", "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=beta"}} {
 		sock := filepath.Join(t.TempDir(), "docker.sock")
 		ln, err := net.Listen("unix", sock)
 		if err != nil {
@@ -53,6 +54,35 @@ func TestHealEnvRebuildsAContainerWithTheBadVersionType(t *testing.T) {
 		}
 		if string(env) != want || created["Hostname"] != nil || created["HostConfig"] == nil || created["NetworkingConfig"] == nil {
 			t.Fatalf("%s: created %v", tc.typ, created)
+		}
+	}
+}
+
+func TestHealedEnvGivesFabricServersFabricAPI(t *testing.T) {
+	for _, tc := range []struct {
+		env  []string
+		want string
+	}{
+		// Built before every Fabric server got it, with mods only in Files.
+		{[]string{"TYPE=FABRIC", "MODRINTH_PROJECTS=", "MODRINTH_DOWNLOAD_DEPENDENCIES=required"}, "TYPE=FABRIC MODRINTH_PROJECTS=P7dR8mSH? MODRINTH_DOWNLOAD_DEPENDENCIES=required"},
+		{[]string{"TYPE=FABRIC", "MODRINTH_PROJECTS=AANobbMI?"}, "TYPE=FABRIC MODRINTH_PROJECTS=AANobbMI?,P7dR8mSH? MODRINTH_DOWNLOAD_DEPENDENCIES=required"},
+		{[]string{"TYPE=FABRIC"}, "TYPE=FABRIC MODRINTH_PROJECTS=P7dR8mSH? MODRINTH_DOWNLOAD_DEPENDENCIES=required"},
+		// Already there (pinned by javafit too): left alone.
+		{[]string{"TYPE=FABRIC", "MODRINTH_PROJECTS=P7dR8mSH:abc?"}, ""},
+		{[]string{"TYPE=FABRIC", "MODRINTH_PROJECTS=AANobbMI?,P7dR8mSH?"}, ""},
+		// Not Fabric: left alone.
+		{[]string{"TYPE=FORGE", "MODRINTH_PROJECTS="}, ""},
+		{[]string{"TYPE=MODRINTH", "MODRINTH_MODPACK=x"}, ""},
+	} {
+		got, why := healedEnv(tc.env)
+		if tc.want == "" {
+			if why != "" {
+				t.Errorf("%v: changed to %v (%s)", tc.env, got, why)
+			}
+			continue
+		}
+		if strings.Join(got, " ") != tc.want || why == "" {
+			t.Errorf("%v: got %v (%q), want %s", tc.env, got, why, tc.want)
 		}
 	}
 }

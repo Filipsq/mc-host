@@ -278,7 +278,8 @@ func TestPluginEnv(t *testing.T) {
 		{createRequest{Kind: "fabric", Version: "1.21.1", OnlineMode: new(bool), Plugins: []string{"AANobbMI"}}, "MODRINTH_PROJECTS=aZj58GfX,AANobbMI?,P7dR8mSH?\n"},
 		// Fabric mods get Fabric API, listed once even when the owner added it too.
 		{createRequest{Kind: "fabric", Version: "1.21.1", Plugins: []string{"P7dR8mSH", "AANobbMI"}}, "MODRINTH_PROJECTS=P7dR8mSH?,AANobbMI?\n"},
-		{createRequest{Kind: "fabric", Version: "1.21.1"}, "MODRINTH_PROJECTS=\n"},
+		// Also with no mods from the panel: owners upload mods in Files too.
+		{createRequest{Kind: "fabric", Version: "1.21.1"}, "MODRINTH_PROJECTS=P7dR8mSH?\n"},
 		{createRequest{Kind: "forge", Version: "1.21.1", OnlineMode: new(bool)}, "MODRINTH_PROJECTS=VYmP7iH5\n"},
 		{createRequest{Kind: "neoforge", Version: "1.21.11", OnlineMode: new(bool)}, "MODRINTH_PROJECTS=VYmP7iH5\n"},
 	} {
