@@ -200,6 +200,7 @@ type ContainerInfo struct {
 	Config struct {
 		Tty    bool              `json:"Tty"`
 		Labels map[string]string `json:"Labels"`
+		Env    []string          `json:"Env"`
 	} `json:"Config"`
 	HostConfig struct {
 		NanoCpus     int64 `json:"NanoCpus"`
