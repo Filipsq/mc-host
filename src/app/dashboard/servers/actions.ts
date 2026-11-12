@@ -52,7 +52,7 @@ import {
   isValidPlayerName,
   parsePlayers,
 } from "@/lib/settings";
-import { activeLevel } from "@/lib/worlds";
+import { activeLevel, nextWorldName, randomSeed } from "@/lib/worlds";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
 import { canChangeFiles } from "@/lib/files";
@@ -733,6 +733,7 @@ const settingsSchema = z.object({
   nonPremium: z.literal("on").optional(),
   ownLogin: z.literal("on").optional(),
   crossplay: z.literal("on").optional(),
+  newWorld: z.literal("on").optional(),
 });
 
 /** Saves the game settings and rebuilds the server with them (a running one restarts). */
@@ -760,7 +761,19 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   // Names without a Minecraft account are fine too: the agent lists them by
   // their offline ID (agent/whitelist.go), so the server still starts.
   const nonPremium = canRunNonPremium({ ...server, version }) && s.nonPremium === "on";
-  if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
+  // A new version starts a fresh world on it (the owner agreed in the popup), so an old
+  // world never meets a version it can't open; the old one stays under Worlds.
+  const newWorld = java && s.newWorld === "on" && version !== server.version && onHost(server) && server.kind !== "skyblock" && server.kind !== "oneblock" && server.kind !== "modpack";
+  let level: { level: string; levelSeed: string; levelType: string } | undefined;
+  if (newWorld) {
+    try {
+      const { entries } = await agent.listFiles(server.id, ".");
+      level = { level: nextWorldName([...entries.map((e) => e.name), activeLevel(server)]), levelSeed: randomSeed(), levelType: "normal" };
+    } catch (err) {
+      console.error("list files for a new world failed", server.id, err);
+      return { error: "applyFailed" };
+    }
+  } else if (onHost(server) && (await worldTooNew(server, activeLevel(server), version))) return { error: "worldTooNew" };
   // Plugins and mods with nothing for the new version leave the list, and jars the panel
   // downloaded (CurseForge, Hangar, SpigotMC) are picked again for it (src/lib/addonVersions.ts).
   let plugins = server.plugins;
@@ -799,6 +812,7 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       ownLogin: nonPremium && s.ownLogin === "on",
       // Kept as it was on a mod server, which has no checkbox for it.
       crossplay: canCrossplay(server) ? s.crossplay === "on" : server.crossplay,
+      ...level,
     },
   });
 
@@ -812,7 +826,12 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
     return { error: "applyFailed" };
   }
   revalidatePath(`/dashboard/servers/${id}`, "layout");
-  redirect(`/dashboard/servers/${id}?settings=saved${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
+  const params = new URLSearchParams({
+    settings: "saved",
+    ...(level && { world: level.level }),
+    ...(dropped.length && { dropped: dropped.join(", ").slice(0, 300) }),
+  });
+  redirect(`/dashboard/servers/${id}?${params}`);
 }
 
 export type NameState = { error?: "invalidName" | "invalidSubdomain" | "subdomainTaken" | "applyFailed" };
