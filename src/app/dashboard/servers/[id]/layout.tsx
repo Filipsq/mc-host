@@ -22,6 +22,7 @@ import EditionIcon from "@/components/EditionIcon";
 import AutoRefresh from "@/components/AutoRefresh";
 import LeaveButton from "./LeaveButton";
 import ServerControls from "./ServerControls";
+import LiveBadge from "./LiveBadge";
 import ServerNav, { type NavGroup } from "./ServerNav";
 import ClassicBack from "./ClassicBack";
 import PanelViewToggle from "./PanelViewToggle";
@@ -157,7 +158,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
             </div>
           </div>
           <div className="classic-state">
-            <span className={`badge ${live}`}>{t.live[live]}</span>
+            <LiveBadge id={server.id} live={live} labels={t.live} stopping={t.doing.stopState} />
             <ServerControls id={server.id} live={live} t={t} />
           </div>
         </header>
@@ -190,7 +191,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
               )}
             </h1>
             <div className="meta">
-              <span className={`badge ${live}`}>{t.live[live]}</span>
+              <LiveBadge id={server.id} live={live} labels={t.live} stopping={t.doing.stopState} />
               <span className="chip">{gameLabel}</span>
               <span className="chip">
                 {all.plans[server.plan]} · {server.memoryMb / 1024} GB RAM
@@ -211,7 +212,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
           name={server.name}
           groups={groups}
           others={others}
-          t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer }}
+          t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer, more: p.tabMore }}
         />
         <div className="server-content">{children}</div>
       </div>

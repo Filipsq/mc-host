@@ -324,6 +324,8 @@ const en: Messages = {
     },
   },
   dashboard: {
+    playersOnline: "{n} online",
+    copyAddress: "Copy address",
     title: "Your servers",
     logOut: "Log out",
     signedInAs: "Signed in as {email}",
@@ -347,6 +349,7 @@ const en: Messages = {
     iosSteps: "On an iPhone, open this page in Safari, tap Share, then “Add to Home Screen”.",
     otherSteps: "On Android, open this page in Chrome, tap ⋮, then “Install app” or “Add to Home screen”.",
     desktopSteps: "Open this site on your phone and log in to add the app to your home screen.",
+    qrHint: "Scan it with your phone camera: the panel opens there and you can add the app to your home screen.",
     iosPush: "On an iPhone, notifications work in the app added to the home screen. Add it and turn them on there.",
     notificationsOn: "Turn on notifications",
     notificationsOff: "Turn off",
@@ -694,7 +697,7 @@ const en: Messages = {
       suspendedNote: "The server is suspended, but you can still download its backups.",
       unavailable: "Couldn't load backups. Refresh the page in a moment.",
     },
-    doing: { start: "Starting…", stop: "Stopping…", restart: "Restarting…" },
+    doing: { start: "Starting…", stop: "Stopping…", restart: "Restarting…", stopState: "Stopping" },
     startSteps: {
       title: "Starting your server",
       steps: ["Downloading the game, plugins and mods", "Starting the server", "Loading plugins and mods", "Preparing the world", "Ready"],
@@ -863,6 +866,7 @@ const en: Messages = {
     menu: "Server menu",
     servers: "Your servers",
     switchServer: "Switch server",
+    tabMore: "More",
     overview: "Overview",
     manage: "Manage",
     game: "Game",

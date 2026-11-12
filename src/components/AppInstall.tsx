@@ -40,7 +40,7 @@ async function save(sub: PushSubscription) {
  * (Android and desktop Chrome/Edge ask with one tap, an iPhone needs Share >
  * Add to Home Screen) and turns this device's notifications on or off.
  */
-export default function AppInstall({ labels, pushKey }: { labels: Labels; pushKey: string | null }) {
+export default function AppInstall({ labels, pushKey, qr }: { labels: Labels; pushKey: string | null; qr?: string }) {
   const [ready, setReady] = useState(false);
   const [installed, setInstalled] = useState(false);
   const [ios, setIos] = useState(false);
@@ -170,7 +170,15 @@ export default function AppInstall({ labels, pushKey }: { labels: Labels; pushKe
           </>
         )}
       </div>
-      {!installed && !prompt && <p className="muted small">{ios ? labels.iosSteps : phone ? labels.otherSteps : labels.desktopSteps}</p>}
+      {!installed && !prompt && (ios || phone || !qr) && <p className="muted small">{ios ? labels.iosSteps : phone ? labels.otherSteps : labels.desktopSteps}</p>}
+      {/* On a computer that can't install it: a code to scan, which opens the panel on the phone. */}
+      {!installed && !prompt && !ios && !phone && qr && (
+        <div className="app-qr">
+          {/* The SVG is made on our server from our own address (qrcode library), not from user input. */}
+          <span className="app-qr-code" dangerouslySetInnerHTML={{ __html: qr }} />
+          <p className="muted small">{labels.qrHint}</p>
+        </div>
+      )}
       {push === "needsInstall" && <p className="muted small">{labels.iosPush}</p>}
       {push === "denied" && <p className="muted small">{labels.denied}</p>}
       {failed && <p className="notice warn small">{labels.failed}</p>}

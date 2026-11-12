@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Ghost, LayoutGrid, LogOut, Megaphone } from "lucide-react";
@@ -9,6 +10,7 @@ import Logo from "@/components/Logo";
 import PreferencesPicker from "@/components/PreferencesPicker";
 import ServiceWorker from "@/components/ServiceWorker";
 import HelpBubble from "@/components/HelpBubble";
+import RouteProgress from "@/components/RouteProgress";
 import HalloweenDecor from "@/components/HalloweenDecor";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
@@ -63,6 +65,9 @@ export default async function RootLayout({
     <html lang={locale}>
       <body className={halloween ? "halloween" : undefined}>
         <ServiceWorker />
+        <Suspense fallback={null}>
+          <RouteProgress />
+        </Suspense>
         {halloween && <HalloweenDecor />}
         <header className="topbar">
           <div className={signedIn ? "topbar-inner signed-in" : "topbar-inner"}>

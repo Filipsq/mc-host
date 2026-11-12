@@ -323,6 +323,8 @@ const pl = {
     },
   },
   dashboard: {
+    playersOnline: "{n} online",
+    copyAddress: "Kopiuj adres",
     title: "Twoje serwery",
     logOut: "Wyloguj się",
     signedInAs: "Zalogowano jako {email}",
@@ -346,6 +348,7 @@ const pl = {
     iosSteps: "Na iPhonie otwórz tę stronę w Safari, stuknij Udostępnij, a potem „Do ekranu początkowego”.",
     otherSteps: "Na Androidzie otwórz tę stronę w Chrome, stuknij ⋮, a potem „Zainstaluj aplikację” albo „Dodaj do ekranu głównego”.",
     desktopSteps: "Otwórz tę stronę na telefonie i zaloguj się, żeby dodać aplikację do ekranu głównego.",
+    qrHint: "Zeskanuj aparatem w telefonie: otworzy się panel, a w nim dodasz aplikację do ekranu głównego.",
     iosPush: "Na iPhonie powiadomienia działają w aplikacji dodanej do ekranu początkowego. Dodaj ją i włącz je tam.",
     notificationsOn: "Włącz powiadomienia",
     notificationsOff: "Wyłącz",
@@ -693,7 +696,7 @@ const pl = {
       suspendedNote: "Serwer jest zawieszony, ale nadal możesz pobrać jego kopie.",
       unavailable: "Nie udało się wczytać kopii. Odśwież stronę za chwilę.",
     },
-    doing: { start: "Uruchamiam…", stop: "Zatrzymuję…", restart: "Restartuję…" },
+    doing: { start: "Uruchamiam…", stop: "Zatrzymuję…", restart: "Restartuję…", stopState: "Zatrzymywanie" },
     startSteps: {
       title: "Uruchamiamy serwer",
       steps: ["Pobieranie gry, pluginów i modów", "Włączanie serwera", "Ładowanie pluginów i modów", "Przygotowanie świata", "Gotowe"],
@@ -862,6 +865,7 @@ const pl = {
     menu: "Menu serwera",
     servers: "Twoje serwery",
     switchServer: "Przełącz serwer",
+    tabMore: "Więcej",
     overview: "Przegląd",
     manage: "Zarządzanie",
     game: "Gra",
