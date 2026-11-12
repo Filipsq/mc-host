@@ -1931,3 +1931,13 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   .review-slide { scroll-snap-align: start; }
   .review-copy { display: none; }
 }
+
+/* A popup asking the owner to agree before something big happens (Settings: a new world on another version). */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgb(0 0 0 / 0.6); backdrop-filter: blur(3px);
+}
+.modal { width: min(460px, 100%); box-shadow: 0 20px 60px rgb(0 0 0 / 0.5); }
+.modal h3 { margin: 0; }
+.modal p { margin: 0; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
