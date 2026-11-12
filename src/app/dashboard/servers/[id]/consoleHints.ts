@@ -8,7 +8,7 @@ export type HintId = keyof Messages["server"]["hints"]["list"];
 export const HINTS: { id: HintId; pattern: RegExp }[] = [
   { id: "invalidSession", pattern: /Failed to verify username|tried to join with an invalid session/ },
   { id: "oldWorld", pattern: /must be opened in an older version/ },
-  { id: "worldTooNew", pattern: /No key dimensions in MapLike|No key seed|DETECTED OLD PLAYER DIRECTORY/ },
+  { id: "worldTooNew", pattern: /No key dimensions in MapLike|No key seed|DETECTED OLD PLAYER DIRECTORY|saved with newer version of minecraft/i },
   { id: "brokenWorld", pattern: /Unable to read or access the world gen settings file|Overworld settings missing/ },
   { id: "duplicatePlugin", pattern: /Duplicate key|Ambiguous plugin name|Duplicate mod/i },
   { id: "missingMod", pattern: /HARD_DEP_NO_CANDIDATE \S+ \S+ \{depends [a-z0-9_.-]+ @|requires .* of (?:'[^']*' \()?[a-z0-9_.-]+\)?, which is missing/ },
