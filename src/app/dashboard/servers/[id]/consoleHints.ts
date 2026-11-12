@@ -11,6 +11,7 @@ export const HINTS: { id: HintId; pattern: RegExp }[] = [
   { id: "worldTooNew", pattern: /No key dimensions in MapLike|No key seed|DETECTED OLD PLAYER DIRECTORY/ },
   { id: "brokenWorld", pattern: /Unable to read or access the world gen settings file|Overworld settings missing/ },
   { id: "duplicatePlugin", pattern: /Duplicate key|Ambiguous plugin name|Duplicate mod/i },
+  { id: "missingMod", pattern: /HARD_DEP_NO_CANDIDATE \S+ \S+ \{depends [a-z0-9_.-]+ @|requires .* of (?:'[^']*' \()?[a-z0-9_.-]+\)?, which is missing/ },
   { id: "missingDependency", pattern: /Missing or unsupported mandatory dependencies|Mod resolution failed|requires .{1,80} which is missing|Unknown\/missing dependency|Incompatible mods found/i },
   { id: "pluginOnModServer", pattern: /Bukkit or Bukkit-implementor/ },
   { id: "clientMod", pattern: /for invalid dist DEDICATED_SERVER|Environment type CLIENT|net\/minecraft\/client\// },
@@ -23,6 +24,28 @@ export const HINTS: { id: HintId; pattern: RegExp }[] = [
   { id: "pluginWrongVersion", pattern: /Unsupported API version|Could not load '?plugins[\\/]|Error occurred while enabling|NoClassDefFoundError: org\/bukkit/ },
   { id: "overloaded", pattern: /Can't keep up! Is the server overloaded/ },
 ];
+
+const MISSING = [
+  /HARD_DEP_NO_CANDIDATE \S+ \S+ \{depends ([a-z0-9_.-]+) @/,
+  /requires .* of (?:'[^']*' \()?([a-z0-9_.-]+)\)?, which is missing/,
+];
+const NOT_MODS = new Set(["minecraft", "java", "fabricloader", "fabric", "quilt_loader"]);
+
+/** The mods the log's last start lacked (Fabric's mod IDs), as the agent reads them too. */
+export function missingMods(lines: string[]): string[] {
+  let found: string[] = [];
+  for (const line of lines) {
+    if (line.includes("Done (")) {
+      found = [];
+      continue;
+    }
+    for (const re of MISSING) {
+      const id = re.exec(line)?.[1];
+      if (id && !NOT_MODS.has(id) && !found.includes(id)) found.push(id);
+    }
+  }
+  return found;
+}
 
 /** The problem a log line shows, if it's one the console knows. */
 export function hintFor(line: string): HintId | undefined {
