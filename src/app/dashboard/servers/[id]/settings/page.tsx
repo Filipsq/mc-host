@@ -17,6 +17,7 @@ import NameForm from "./NameForm";
 import SettingsForm from "./SettingsForm";
 import TerrariaSettingsForm from "./TerrariaSettingsForm";
 import ValheimSettingsForm from "./ValheimSettingsForm";
+import DeleteServer from "../DeleteServer";
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -26,6 +27,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   if (!access || !allows(access, "settings")) notFound();
   const { server } = access;
   const t = await getMessages();
+  // Deleting lives here, at the bottom of the settings, not on the overview: a
+  // rare and final step doesn't need to sit on the first page of the panel.
+  const danger = allows(access, "owner") && (
+    <section className="card danger-zone row" id="usun">
+      <span>
+        <strong>{t.panel.danger}</strong>
+        <span className="disk-line muted small">{t.panel.dangerText}</span>
+      </span>
+      <DeleteServer id={server.id} t={t.server} />
+    </section>
+  );
 
   if (server.edition === "VALHEIM") {
     return (
@@ -37,6 +49,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           t={t.settings}
           valheim={t.otherGames.valheim}
         />
+        {danger}
       </div>
     );
   }
@@ -45,6 +58,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
       <div className="wide-form stack">
         <h2>{t.settings.title}</h2>
         <p className="notice">{t.otherGames.hytale.settingsNote}</p>
+        {danger}
       </div>
     );
   }
@@ -66,6 +80,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           t={t.settings}
           terraria={tt}
         />
+        {danger}
       </div>
     );
   }
@@ -159,6 +174,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           t={t.settings.rename}
         />
       )}
+      {danger}
     </div>
   );
 }

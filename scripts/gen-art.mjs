@@ -337,5 +337,20 @@ for (const type of ["grass", "stone", "log", "ore"]) fs.writeFileSync(new URL(`g
 fs.writeFileSync(new URL("heart.svg", dir), pixelArt(HEART, BADGE_COLORS));
 fs.writeFileSync(new URL("gear.svg", dir), pixelArt(GEAR, BADGE_COLORS));
 fs.writeFileSync(new URL("wrench.svg", dir), pixelArt(WRENCH, BADGE_COLORS));
+// A faint pixel mosaic tile for section backgrounds: flat dark colour looks
+// generic, blocky grain fits the brand. Seeded, so reruns give the same tile.
+function pixelNoise(size = 96, cell = 8, seed = 7) {
+  let x = seed;
+  const rand = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648);
+  const levels = [0, 0, 0, 0.008, 0.014, 0.022];
+  let rects = "";
+  for (let r = 0; r < size / cell; r++)
+    for (let c = 0; c < size / cell; c++) {
+      const o = levels[Math.floor(rand() * levels.length)];
+      if (o) rects += `<rect x="${c * cell}" y="${r * cell}" width="${cell}" height="${cell}" fill-opacity="${o}"/>`;
+    }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" shape-rendering="crispEdges"><g fill="#fff">${rects}</g></svg>\n`;
+}
+fs.writeFileSync(new URL("pixel-noise.svg", dir), pixelNoise());
 fs.copyFileSync(new URL("block-grass.svg", dir), new URL("../src/app/icon.svg", import.meta.url));
 console.log("wrote", fs.readdirSync(dir).join(", "));
