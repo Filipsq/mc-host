@@ -230,7 +230,10 @@ func (f *javaFitter) pick(project string) (*mrVersion, bool) {
 }
 
 func (f *javaFitter) versions(project string) ([]mrVersion, error) {
-	q := url.Values{"loaders": {f.loaders}, "game_versions": {f.version}, "include_changelog": {"false"}}
+	q := url.Values{"loaders": {f.loaders}, "include_changelog": {"false"}}
+	if f.version != "" {
+		q.Set("game_versions", f.version)
+	}
 	req, err := http.NewRequestWithContext(f.ctx, http.MethodGet, modrinthAPI+"/v2/project/"+url.PathEscape(project)+"/version?"+q.Encode(), nil)
 	if err != nil {
 		return nil, err
