@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { ClipboardCopy, Send } from "lucide-react";
 import { sendCommandAction } from "../actions";
+import { sendConsoleToAdmin } from "@/app/dashboard/support/actions";
+import { copyText } from "@/lib/copyText";
 import type { Messages } from "@/i18n/messages";
 import { PLAYER_COMMANDS, WORLD_COMMANDS, cleanNick, type ConsoleGame } from "./quickCommands";
 import { hintFor, isErrorLine, missingMods, type HintId } from "./consoleHints";
@@ -35,6 +39,9 @@ export default function Console({
   const [nick, setNick] = useState("");
   const [message, setMessage] = useState("");
   const logRef = useRef<HTMLPreElement>(null);
+  // What the copy and send buttons last did, shown under them.
+  const [shared, setShared] = useState<{ text: string; ok: boolean; chat?: boolean }>();
+  const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
     const source = new EventSource(`/api/servers/${id}/console`);
@@ -76,6 +83,25 @@ export default function Console({
     const text = message.replace(/[\r\n]/g, " ").trim();
     if (!text) return;
     if (await run(`say ${text}`)) setMessage("");
+  }
+
+  // "Copy the whole console", and with `send` also into the chat with the admin.
+  async function share(send: boolean) {
+    const all = lines.join("\n").trim();
+    if (!all) return setShared({ text: t.consoleNothing, ok: false });
+    const copied = await copyText(all);
+    if (!send) {
+      return setShared(copied ? { text: t.consoleCopied.replace("{n}", String(lines.length)), ok: true } : { text: t.consoleCopyFailed, ok: false });
+    }
+    setSharing(true);
+    try {
+      const res = await sendConsoleToAdmin(id, all);
+      setShared(res.ok ? { text: t.consoleSent, ok: true, chat: true } : { text: t.consoleSendFailed, ok: false });
+    } catch {
+      setShared({ text: t.consoleSendFailed, ok: false });
+    } finally {
+      setSharing(false);
+    }
   }
 
   const q = t.quick;
@@ -126,6 +152,25 @@ export default function Console({
                   : t.consoleEmpty}
               </pre>
             </div>
+          </div>
+          <div className="row console-share">
+            <button type="button" className="secondary small" onClick={() => void share(false)}>
+              <ClipboardCopy size={16} aria-hidden /> {t.consoleCopy}
+            </button>
+            <button type="button" className="secondary small" disabled={sharing} onClick={() => void share(true)}>
+              <Send size={16} aria-hidden /> {sharing ? t.consoleSending : t.consoleSend}
+            </button>
+            {shared && (
+              <span className={`small ${shared.ok ? "muted" : "error"}`} role="status">
+                {shared.text}
+                {shared.chat && (
+                  <>
+                    {" "}
+                    <Link href="/dashboard/support">{t.consoleOpenChat}</Link>
+                  </>
+                )}
+              </span>
+            )}
           </div>
           {input && (
             <form onSubmit={submit} className="row command">
