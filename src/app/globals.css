@@ -679,7 +679,11 @@ a.file-name:hover { color: var(--accent); }
 .file-actions { display: flex; gap: 6px; margin-left: auto; }
 .file-actions .button, .file-actions button { padding: 6px 9px; }
 .file-title { overflow-wrap: anywhere; margin-bottom: 4px; }
-textarea.editor { font-family: var(--font-mono); font-size: 0.88rem; line-height: 1.5; min-height: 60vh; resize: vertical; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+.editor-wrap { position: relative; padding-left: var(--gutter, 4ch); font-family: var(--font-mono); font-size: 0.88rem; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); overflow: hidden; transition: border-color 0.15s, box-shadow 0.15s; }
+.editor-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.editor-lines { position: absolute; left: 0; top: 0; bottom: 0; width: var(--gutter, 4ch); box-sizing: border-box; overflow: hidden; padding: 11px 8px 40px 4px; text-align: right; white-space: pre; font-family: var(--font-mono); font-size: 0.88rem; line-height: 1.5; color: var(--muted); background: var(--surface-2); border-right: 1px solid var(--border); user-select: none; }
+textarea.editor { display: block; width: 100%; border: 0; border-radius: 0; box-shadow: none; font-family: var(--font-mono); font-size: 0.88rem; line-height: 1.5; min-height: 60vh; resize: vertical; tab-size: 2; white-space: pre; overflow-wrap: normal; overflow-x: auto; }
+textarea.editor:focus { box-shadow: none; }
 .plugin-list { display: flex; flex-direction: column; padding: 6px 18px; }
 .plugin-list li { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--border); }
 .plugin-list li:first-child { border-top: 0; }

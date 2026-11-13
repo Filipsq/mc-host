@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { Download, Save } from "lucide-react";
 import type { FileError } from "@/lib/files";
 import type { Messages } from "@/i18n/messages";
@@ -14,6 +14,13 @@ export default function FileEditor({ id, path, initial, nbt, readOnly, t }: Prop
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | FileError>("idle");
   const [detail, setDetail] = useState<string | null>(null);
   const dirty = text !== saved;
+  const gutter = useRef<HTMLDivElement>(null);
+  // Line numbers on the left; the editor never wraps lines, so one number per line stays aligned.
+  const lines = useMemo(() => {
+    let n = 1;
+    for (let i = 0; i < text.length; i++) if (text.charCodeAt(i) === 10) n++;
+    return { count: n, text: Array.from({ length: n }, (_, i) => i + 1).join("\n") };
+  }, [text]);
   const url = `/api/servers/${id}/files?path=${encodeURIComponent(path)}`;
 
   // Warn before leaving with unsaved changes.
@@ -45,8 +52,14 @@ export default function FileEditor({ id, path, initial, nbt, readOnly, t }: Prop
 
   return (
     <div className="stack">
+      <div className="editor-wrap" style={{ "--gutter": `${String(lines.count).length + 2.5}ch` } as CSSProperties}>
+      <div className="editor-lines" ref={gutter} aria-hidden>{lines.text}</div>
       <textarea
         className="editor"
+        wrap="off"
+        onScroll={(e) => {
+          if (gutter.current) gutter.current.scrollTop = e.currentTarget.scrollTop;
+        }}
         value={text}
         readOnly={readOnly}
         spellCheck={false}
@@ -64,6 +77,7 @@ export default function FileEditor({ id, path, initial, nbt, readOnly, t }: Prop
           }
         }}
       />
+      </div>
       <div className="row">
         {!readOnly && (
           <button onClick={save} disabled={status === "saving" || !dirty}>
