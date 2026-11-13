@@ -161,6 +161,10 @@ model SupportMessage {
   // the open chats drop it on their next poll.
   deletedAt DateTime?
   image     SupportImage?
+  // A server console the user sent from the console page ("Skopiuj i wyślij
+  // do admina"): the log text and which server it came from.
+  log       String?
+  logServer String?
 
   @@index([chatId, createdAt])
   @@index([chatId, deletedAt])

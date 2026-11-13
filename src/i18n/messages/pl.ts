@@ -470,6 +470,15 @@ const pl = {
     },
     console: "Konsola",
     consoleEmpty: "Brak logów. Uruchom serwer, aby zobaczyć konsolę.",
+    consoleCopy: "Skopiuj całą konsolę",
+    consoleSend: "Skopiuj i wyślij do admina",
+    consoleSending: "Wysyłam...",
+    consoleCopied: "Skopiowano konsolę ({n} linii).",
+    consoleCopyFailed: "Nie udało się skopiować. Zaznacz tekst w konsoli i skopiuj go ręcznie.",
+    consoleSent: "Wysłano konsolę do administratora. Odpowiedź zobaczysz na czacie.",
+    consoleSendFailed: "Nie udało się wysłać konsoli. Spróbuj ponownie albo napisz na czacie.",
+    consoleOpenChat: "Otwórz czat",
+    consoleNothing: "Konsola jest pusta, nie ma czego skopiować.",
     hints: {
       title: "Co się dzieje z serwerem",
       list: {
@@ -2322,6 +2331,11 @@ const pl = {
     deleteMessage: "Usuń wiadomość",
     deleteConfirm: "Usunąć tę wiadomość? Zniknie u obu stron i nie da się jej przywrócić.",
     deleteFailed: "Nie udało się usunąć wiadomości.",
+    consoleMessage: "📋 Konsola serwera „{name}”",
+    consoleLog: "Pokaż konsolę ({n} linii)",
+    consoleCopy: "Skopiuj konsolę",
+    consoleCopied: "Skopiowano",
+    consoleServer: "Otwórz serwer",
     errors: {
       empty: "Wiadomość jest pusta.",
       tooLong: "Wiadomość może mieć najwyżej {n} znaków.",

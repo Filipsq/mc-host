@@ -471,6 +471,15 @@ const en: Messages = {
     },
     console: "Console",
     consoleEmpty: "No logs yet. Start the server to see its console.",
+    consoleCopy: "Copy the whole console",
+    consoleSend: "Copy and send to admin",
+    consoleSending: "Sending...",
+    consoleCopied: "Console copied ({n} lines).",
+    consoleCopyFailed: "Couldn't copy. Select the text in the console and copy it by hand.",
+    consoleSent: "Console sent to the admin. You'll see the answer in the chat.",
+    consoleSendFailed: "Couldn't send the console. Try again or write in the chat.",
+    consoleOpenChat: "Open chat",
+    consoleNothing: "The console is empty, there's nothing to copy.",
     hints: {
       title: "What's happening with the server",
       list: {
@@ -2323,6 +2332,11 @@ const en: Messages = {
     deleteMessage: "Delete message",
     deleteConfirm: "Delete this message? It disappears for both sides and can't be restored.",
     deleteFailed: "Couldn't delete the message.",
+    consoleMessage: "📋 Console of server “{name}”",
+    consoleLog: "Show console ({n} lines)",
+    consoleCopy: "Copy console",
+    consoleCopied: "Copied",
+    consoleServer: "Open server",
     errors: {
       empty: "The message is empty.",
       tooLong: "A message can be at most {n} characters long.",

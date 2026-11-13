@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ImagePlus, MessageCircle, Send, Trash2, X } from "lucide-react";
 import { format, type Messages } from "@/i18n/messages";
 import { deleteSupportMessage, sendSupportMessage } from "@/app/dashboard/support/actions";
+import CopyButton from "./CopyButton";
 import type { ChatMessage, ChatRate, ChatState, SendError } from "@/lib/support";
 
 type Props = {
@@ -242,6 +244,21 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
                         </a>
                       )}
                       {m.body && <p>{m.body}</p>}
+                      {m.log && (
+                        <details className="chat-console">
+                          <summary>{format(t.consoleLog, { n: m.log.text.split("\n").length })}</summary>
+                          <pre>{m.log.text}</pre>
+                          <div className="row">
+                            <CopyButton text={m.log.text} label={t.consoleCopy} copiedLabel={t.consoleCopied} />
+                            <Link
+                              className="button secondary small"
+                              href={staff ? `/admin/servers/${m.log.server}` : `/dashboard/servers/${m.log.server}/console`}
+                            >
+                              {t.consoleServer}
+                            </Link>
+                          </div>
+                        </details>
+                      )}
                     </div>
                     {staff && (
                       <button type="button" className="chat-delete" onClick={() => void remove(m)} aria-label={t.deleteMessage} title={t.deleteMessage}>

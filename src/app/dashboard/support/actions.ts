@@ -3,6 +3,8 @@
 import { getSession } from "@/lib/session";
 import { isAdmin } from "@/lib/admin";
 import { getPreferences } from "@/i18n/server";
+import { format, messages } from "@/i18n/messages";
+import { getServerFor } from "@/lib/access";
 import { deleteMessage, postMessage, type SendResult } from "@/lib/support";
 
 /**
@@ -25,4 +27,20 @@ export async function deleteSupportMessage(chat: string, messageId: string): Pro
   const session = await getSession();
   if (!session?.user?.id || !(await isAdmin(session.user.id))) return { ok: false };
   return { ok: await deleteMessage(String(chat), String(messageId)) };
+}
+
+/**
+ * Sends a server's console to the admins from its console page, as a message
+ * in the user's own chat that shows the log and links the server.
+ */
+export async function sendConsoleToAdmin(serverId: string, log: string): Promise<SendResult | { ok: false; error: "signedOut" }> {
+  const session = await getSession();
+  if (!session?.user?.id) return { ok: false, error: "signedOut" };
+  const server = await getServerFor(String(serverId), session.user.id, "console");
+  if (!server) return { ok: false, error: "signedOut" };
+  const text = String(log).replace(/\r\n?/g, "\n").trim();
+  if (!text) return { ok: false, error: "empty" };
+  const { locale } = await getPreferences();
+  const body = format(messages[locale].support.consoleMessage, { name: server.name });
+  return postMessage(session.user.id, "user", session.user.id, body, locale, undefined, { text, server: server.id });
 }

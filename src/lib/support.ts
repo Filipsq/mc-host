@@ -16,6 +16,8 @@ import { sendPush } from "./push";
 export type Side = "user" | "staff";
 
 export const MAX_LENGTH = 2000;
+/** The most of a sent console that's kept: its newest characters. */
+export const LOG_MAX = 100_000;
 /** A user may send this many messages per RATE_MINUTES. */
 export const RATE_COUNT = 20;
 export const RATE_MINUTES = 10;
@@ -40,6 +42,8 @@ export type ChatMessage = {
   time: string;
   /** Where the attached picture loads from, if there is one. */
   image?: string;
+  /** A server console the user sent from its console page. */
+  log?: { text: string; server: string };
 };
 
 /** `deleted` lists messages an admin removed since the poll's `since`, which open chats drop. */
@@ -125,6 +129,7 @@ export async function readChat(userId: string, side: Side, locale: string, since
       at: m.createdAt.toISOString(),
       time: when(m.createdAt),
       ...(m.image ? { image: imageUrl(m.image.id) } : {}),
+      ...(m.log && m.logServer ? { log: { text: m.log, server: m.logServer } } : {}),
     })),
     seenAt: seen?.toISOString() ?? null,
     ...(since ? { deleted: gone.map((m) => m.id) } : {}),
@@ -145,6 +150,7 @@ export async function postMessage(
   text: string,
   locale: string,
   picture?: Uint8Array,
+  log?: { text: string; server: string },
 ): Promise<SendResult> {
   const body = text.replace(/\r\n?/g, "\n").trim();
   if (!body && !picture) return { ok: false, error: "empty" };
@@ -179,6 +185,7 @@ export async function postMessage(
         body,
         createdAt: now,
         ...(picture && type ? { image: { create: { type, size: picture.byteLength, data: picture } } } : {}),
+        ...(log ? { log: log.text.slice(-LOG_MAX), logServer: log.server } : {}),
       },
       include: { image: { select: { id: true } } },
     }),
@@ -194,6 +201,7 @@ export async function postMessage(
       at: now.toISOString(),
       time: timeFormat(locale)(now),
       ...(message.image ? { image: imageUrl(message.image.id) } : {}),
+      ...(message.log && message.logServer ? { log: { text: message.log, server: message.logServer } } : {}),
     },
   };
 }
@@ -212,7 +220,7 @@ export async function deleteMessage(userId: string, messageId: string) {
   const counter = message.fromStaff ? "userUnread" : "staffUnread";
   await db.$transaction([
     db.supportImage.deleteMany({ where: { messageId } }),
-    db.supportMessage.update({ where: { id: messageId }, data: { body: "", deletedAt: new Date() } }),
+    db.supportMessage.update({ where: { id: messageId }, data: { body: "", log: null, deletedAt: new Date() } }),
     ...(unread && chat && chat[counter] > 0
       ? [db.supportChat.update({ where: { userId }, data: { [counter]: { decrement: 1 } } })]
       : []),
