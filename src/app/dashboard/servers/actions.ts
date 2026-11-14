@@ -53,6 +53,7 @@ import {
   parsePlayers,
 } from "@/lib/settings";
 import { activeLevel } from "@/lib/worlds";
+import { undoSnapshot } from "@/lib/undoChange";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
 import { canChangeFiles } from "@/lib/files";
@@ -849,6 +850,8 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       ownLogin: server.onlineMode ? true : server.ownLogin,
       // Kept as it was on a mod server, which has no checkbox for it.
       crossplay: canCrossplay(server) ? s.crossplay === "on" : server.crossplay,
+      // A new version can be taken back with "Cofnij zmianę" (src/lib/undoChange.ts).
+      ...(version !== server.version && { undoChange: undoSnapshot(server, "version", activeLevel(server)) }),
     },
   });
 
