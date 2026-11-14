@@ -4,7 +4,8 @@ import { ExternalLink, Map as MapIcon, Mic, Package, Puzzle, Search } from "luci
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { getServerFor } from "@/lib/access";
+import { allows, getServerAccess } from "@/lib/access";
+import UndoNotice from "../undo/UndoNotice";
 import { getPluginInfos, searchAddons } from "@/lib/modrinth";
 import { curseforgeEnabled, getCurseforgeModInfos, searchCurseforgeMods } from "@/lib/curseforge";
 import { getSitePluginInfos, searchSitePlugins } from "@/lib/sitePlugins";
@@ -41,8 +42,9 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const [{ id }, { q = "", src }] = await Promise.all([params, searchParams]);
-  const server = await getServerFor(id, session.user.id, "plugins");
-  if (!server) notFound();
+  const access = await getServerAccess(id, session.user.id);
+  if (!access || !allows(access, "plugins")) notFound();
+  const { server } = access;
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
   const type = addonType(server);
   // Mod servers use the same page with mod wording.
@@ -166,6 +168,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   return (
     <div className="stack">
       <h2>{t.title}</h2>
+      <UndoNotice server={server} all={all} locale={locale} owner={allows(access, "owner")} />
       <p className="muted">
         {type === "mod" ? format(all.mods.introMods, { loader, version: shownVersion(server.version, all.settings.latest, server.version === "LATEST" ? runsOn : undefined) }) : t.intro}
       </p>

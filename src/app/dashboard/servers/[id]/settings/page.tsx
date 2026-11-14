@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { getMessages } from "@/i18n/server";
+import { getMessages, getPreferences } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium, loginLoader } from "@/lib/plugins";
 import { bedrockHost } from "@/lib/servers";
@@ -18,6 +18,7 @@ import SettingsForm from "./SettingsForm";
 import TerrariaSettingsForm from "./TerrariaSettingsForm";
 import ValheimSettingsForm from "./ValheimSettingsForm";
 import DeleteServer from "../DeleteServer";
+import UndoNotice from "../undo/UndoNotice";
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
@@ -26,7 +27,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   const access = await getServerAccess(id, session.user.id);
   if (!access || !allows(access, "settings")) notFound();
   const { server } = access;
-  const t = await getMessages();
+  const [t, { locale }] = await Promise.all([getMessages(), getPreferences()]);
   // Deleting lives here, at the bottom of the settings, not on the overview: a
   // rare and final step doesn't need to sit on the first page of the panel.
   const danger = allows(access, "owner") && (
@@ -105,6 +106,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   return (
     <div className="wide-form stack">
       <h2>{t.settings.title}</h2>
+      <UndoNotice server={server} all={t} locale={locale} owner={allows(access, "owner")} />
       {server.edition === "JAVA" && allows(access, "owner") && (
         <div className="card row">
           <span className="stack-tight">

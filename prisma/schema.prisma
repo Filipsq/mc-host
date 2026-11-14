@@ -293,6 +293,8 @@ model Server {
   // Minigames turned on from the panel (src/lib/minigamesSwitch.ts): what the server ran
   // before, to go back to, and the minigames world, to come back to next time.
   minigamesBack    Json?
+  // What the server ran before its last type or version change, for "Cofnij zmianę" (src/lib/undoChange.ts).
+  undoChange       Json?
   minigamesLevel   String?
   // What the server runs: on Java vanilla (Paper), skyblock, skymap, halloween, minigames, oneblock, modpack, fabric, forge or neoforge
   // (src/lib/modpacks.ts); on Terraria vanilla, tshock or tmodloader (src/lib/terraria.ts).

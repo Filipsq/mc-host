@@ -28,17 +28,18 @@ import Stats from "./Stats";
 import StartSteps from "./StartSteps";
 import CopyButton from "@/components/CopyButton";
 import TestPaymentNotice from "@/components/TestPaymentNotice";
+import UndoNotice from "./undo/UndoNotice";
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ payment?: string; settings?: string; type?: string; dropped?: string; prezent?: string }>;
+  searchParams: Promise<{ payment?: string; settings?: string; type?: string; dropped?: string; prezent?: string; undo?: string }>;
 };
 
 export default async function ServerPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
 
-  const [{ id }, { payment, settings, type: typeChanged, dropped, prezent }] = await Promise.all([params, searchParams]);
+  const [{ id }, { payment, settings, type: typeChanged, dropped, prezent, undo }] = await Promise.all([params, searchParams]);
   const access = await getServerAccess(id, session.user.id);
   if (!access) notFound();
   const { server } = access;
@@ -120,6 +121,10 @@ export default async function ServerPage({ params, searchParams }: Props) {
       {typeChanged === "changed" && server.edition === "JAVA" && (
         <p className="notice success">{format(all.serverType.done, { type: kindLabel(server, all, latest), world: activeLevel(server) })}</p>
       )}
+      {undo && undo in all.undoChange.results && (
+        <p className={undo === "done" ? "notice success" : "notice warn"}>{all.undoChange.results[undo as keyof typeof all.undoChange.results]}</p>
+      )}
+      <UndoNotice server={server} all={all} locale={locale} owner={can("owner")} />
       {payment === "cancelled" && unpaid && <p className="notice">{b.cancelled}</p>}
       {live === "awaitingPayment" && payment !== "success" && <p className="notice">{b.awaiting}</p>}
       {live === "suspended" && (

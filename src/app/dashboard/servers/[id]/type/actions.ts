@@ -16,6 +16,7 @@ import { PLUGINS_MAX, canRunNonPremium, isProjectId, supportsPlugins } from "@/l
 import { type PackChoice, packFields, packNamed, resolvePackChoice } from "@/lib/packChoice";
 import { SERVER_TYPES, minPlanFor, usesMods } from "@/lib/serverType";
 import { activeLevel, nextWorldName, randomSeed } from "@/lib/worlds";
+import { freeName, undoSnapshot } from "@/lib/undoChange";
 import type { Messages } from "@/i18n/messages";
 import type { ServerErrorCode } from "../../actions";
 
@@ -30,15 +31,6 @@ const typeSchema = z.object({
   packLink: z.string().max(300).optional(), // a Modrinth or CurseForge link, or a pack from the Modrinth search
   mods: z.string().max(600).optional(), // Modrinth mods picked on a plain server's Mods page, comma-separated
 });
-
-/** "mods-fabric", or "mods-fabric-2" if that's taken. */
-function freeName(taken: string[], base: string) {
-  const names = new Set(taken);
-  for (let i = 1; ; i++) {
-    const name = i === 1 ? base : `${base}-${i}`;
-    if (!names.has(name)) return name;
-  }
-}
 
 /**
  * Switches a Java server to another type: Paper, a game mode, mods on a loader,
@@ -91,9 +83,10 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
     const { entries } = await agent.listFiles(server.id, ".");
     const names = entries.map((e) => e.name);
     // Mods of the old type would load into the new one (or clash with a pack's), so they move aside.
+    let modsFolder: string | null = null;
     if (usesMods(server.kind) && names.includes("mods")) {
-      const to = freeName(names, `mods-${server.kind === "modpack" ? (server.modpack ?? "pack") : server.kind}`);
-      await agent.changeFiles(server.id, { rename: "mods", to });
+      modsFolder = freeName(names, `mods-${server.kind === "modpack" ? (server.modpack ?? "pack") : server.kind}`);
+      await agent.changeFiles(server.id, { rename: "mods", to: modsFolder });
     }
     const keepPlugins = supportsPlugins(server) && supportsPlugins({ edition: "JAVA", kind });
     // Plugins kept on another version: the ones with nothing for it leave the list (src/lib/addonVersions.ts).
@@ -113,6 +106,8 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
         level: nextWorldName([...names, activeLevel(server)]),
         levelSeed: randomSeed(),
         levelType: "normal",
+        // "Cofnij zmianę" puts all this back (src/lib/undoChange.ts).
+        undoChange: undoSnapshot(server, "type", activeLevel(server), modsFolder),
       },
     });
     await applyToHost(updated);

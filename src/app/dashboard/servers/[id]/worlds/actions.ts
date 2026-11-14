@@ -22,6 +22,7 @@ import {
 } from "@/lib/worlds";
 import { isPreYearVersion } from "@/lib/settings";
 import { fitAddonsToVersion, newWorldVersions } from "@/lib/addonVersions";
+import { undoSnapshot } from "@/lib/undoChange";
 import type { Messages } from "@/i18n/messages";
 import { isMinecraft } from "@/lib/otherGames";
 
@@ -56,6 +57,8 @@ async function playWorld(server: Server, level: string, newWorld?: { seed: strin
       levelType: newWorld?.type ?? null,
       ...(version && { version }),
       ...(fitted && { plugins: fitted.plugins }),
+      // A new version can be taken back with "Cofnij zmianę" (src/lib/undoChange.ts).
+      ...(version && { undoChange: undoSnapshot(server, "version", activeLevel(server)) }),
     },
   });
   await applyToHost(updated);
