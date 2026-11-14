@@ -7,8 +7,9 @@ import { format } from "@/i18n/messages";
 import { getOwnedServer, javaHost } from "@/lib/servers";
 import { formatPrice } from "@/lib/plans";
 import { addonOptions } from "@/lib/planOptions";
-import { ADDONS, addonCost, addonFits, canBuyAddons, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
-import { BuyAddonsForm, DomainForm, RemoveAddonButton } from "./AddonForms";
+import { ADDONS, ADDON_SPECS, DOMAIN_DAYS, addonCost, addonFits, canBuyAddons, domainPaidFor, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
+import { paysafecardEnabled } from "@/lib/cashbill";
+import { BuyAddonsForm, BuyDomainForm, DomainForm, RemoveAddonButton } from "./AddonForms";
 
 // The server's paid add-ons (src/lib/addons.ts): the ones it has, turning one
 // off, buying more for the rest of the period, and setting the own domain.
@@ -42,15 +43,47 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
   return (
     <div className="wide-form stack">
       <h2>{t.title}</h2>
-      <p className="muted">{t.pageHint}</p>
+      {server.plan !== "FREE" && <p className="muted">{t.pageHint}</p>}
 
       {server.plan === "FREE" ? (
-        <section className="card row">
-          <span className="muted">{t.freePlan}</span>
-          <Link className="button" href={`/dashboard/servers/${server.id}/billing`}>
-            {all.billing.manage}
-          </Link>
-        </section>
+        <>
+          {server.edition === "JAVA" && (
+            <section className="card stack">
+              <h2 className="card-title">
+                <Globe size={18} aria-hidden /> {t.free.title}
+              </h2>
+              <p className="muted">{t.free.intro}</p>
+              {domainPaidFor(server) && (
+                <p className="notice success">{format(t.free.paidUntil, { date: new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(server.domainUntil!) })}</p>
+              )}
+              <BuyDomainForm
+                serverId={server.id}
+                price={money(ADDON_SPECS.domain.price[currency])}
+                days={DOMAIN_DAYS}
+                paysafecard={paysafecardEnabled(currency)}
+                again={domainPaidFor(server)}
+                t={t.free}
+                billing={all.billing}
+                legal={all.legal}
+                errors={all.server.errors}
+              />
+            </section>
+          )}
+          {hasOwnDomain(server) && (
+            <section className="card stack">
+              <h2 className="card-title">
+                <Globe size={18} aria-hidden /> {t.domain.title}
+              </h2>
+              <DomainForm serverId={server.id} current={server.customDomain} target={javaHost(server)} address={javaHost(server)} t={t.domain} />
+            </section>
+          )}
+          <section className="card row">
+            <span className="muted">{server.edition === "JAVA" ? t.freeOther : t.freePlan}</span>
+            <Link className="button" href={`/dashboard/servers/${server.id}/billing`}>
+              {all.billing.manage}
+            </Link>
+          </section>
+        </>
       ) : (
         <>
           {have.length > 0 && (

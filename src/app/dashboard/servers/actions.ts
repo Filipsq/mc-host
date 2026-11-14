@@ -28,7 +28,7 @@ import { planById } from "@/lib/plans";
 import { startCheckout, syncDiskLimits } from "@/lib/billing";
 import { sendPlanMail } from "@/lib/planMail";
 import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
-import { addonCost, addonFits, addonList, canBuyAddons, serverAddons, type AddonId } from "@/lib/addons";
+import { ADDON_SPECS, DOMAIN_DAYS, addonCost, addonFits, addonList, canBuyAddons, domainPaidFor, serverAddons, type AddonId } from "@/lib/addons";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
 import { isAdmin } from "@/lib/admin";
@@ -563,6 +563,37 @@ export async function buyXboxAction(id: string, _: CheckoutState, form: FormData
   redirect(url);
 }
 
+/** Buys DOMAIN_DAYS of an own domain for a free Java server (src/lib/addons.ts). */
+export async function buyDomainAction(id: string, _: CheckoutState, form: FormData): Promise<CheckoutState> {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server) redirect("/dashboard");
+  if (server.edition !== "JAVA" || server.plan !== "FREE") redirect(`/dashboard/servers/${server.id}/addons`);
+  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+
+  const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
+  let url: string;
+  try {
+    await db.user.updateMany({ where: { id: user.id }, data: { locale } });
+    url = await startCheckout({
+      user,
+      server,
+      plan: server.plan,
+      days: 0,
+      currency,
+      locale,
+      productName: format(t.paidAddons.free.productName, { days: DOMAIN_DAYS, server: server.name }),
+      startConsent: true,
+      domain: { days: DOMAIN_DAYS, amount: ADDON_SPECS.domain.price[currency] },
+      paysafecard: form.get("method") === "paysafecard",
+    });
+  } catch (err) {
+    console.error("own domain checkout failed", server.id, err);
+    return { error: "paymentsUnavailable" };
+  }
+  redirect(url);
+}
+
 /** Drops an add-on now (what's paid isn't given back); the next payment no longer includes it. */
 export async function removeAddonAction(id: string, addon: AddonId) {
   const user = await requireUser();
@@ -572,7 +603,8 @@ export async function removeAddonAction(id: string, addon: AddonId) {
     where: { id: server.id },
     data: {
       addons: server.addons.filter((a) => a !== addon),
-      ...(addon === "domain" && { customDomain: null }),
+      // Days bought on the free plan still carry it.
+      ...(addon === "domain" && !domainPaidFor(server) && { customDomain: null }),
       // The container keeps the backups count it was made with until it's rebuilt, on its next start.
       ...(addon === "backups" && server.status === "RUNNING" && { pluginsPending: true }),
     },

@@ -10,7 +10,7 @@ import { nodes } from "./nodes";
 import { periodPrice, type PeriodDays } from "./periods";
 import { canSellMemory } from "./capacity";
 import { diskLimitMb } from "./disk";
-import { addonList, monthlyWithAddons, type AddonId } from "./addons";
+import { addonList, domainPaidFor, domainUntilAfter, hasOwnDomain, monthlyWithAddons, type AddonId } from "./addons";
 import {
   FREE_IDLE_DAYS,
   FREE_IDLE_FROM,
@@ -58,22 +58,24 @@ export async function startCheckout(opts: {
   addons?: readonly AddonId[]; // every add-on the server has once paid (addons.ts)
   addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
   xbox?: { days: number; amount: number }; // console joining for a free server (xbox.ts); days is 0 and nothing else changes
+  domain?: { days: number; amount: number }; // an own domain for a free server (DOMAIN_DAYS in addons.ts); the same
   creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
   promoCode?: string; // the Halloween code (halloween.ts): the same, without a creator
   paysafecard?: boolean; // paid with paysafecard through CashBill (cashbill.ts) instead of Stripe
 }) {
-  const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly, xbox } = opts;
+  const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly, xbox, domain } = opts;
+  const extra = xbox ?? domain; // days of one feature for a free server
   const addons = addonList(opts.addons);
   const paysafecard = !!opts.paysafecard;
   if (paysafecard && !paysafecardEnabled(currency)) throw new Error("paysafecard is not set up");
-  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !xbox && !paysafecard;
+  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !extra && !paysafecard;
   // Test keys take no money, so only admins may check out with them (to try the site).
   if (!paysafecard && stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
-  const oneOff = upgrade?.amount ?? addonsOnly?.amount ?? xbox?.amount ?? 0;
-  const full = Math.round((upgrade || addonsOnly || xbox || !days ? oneOff : priceFor(plan, days, currency, addons)) * 100);
-  const plain = !!days && !upgrade && !addonsOnly && !xbox; // a plan bought or extended: codes and offers apply
+  const oneOff = upgrade?.amount ?? addonsOnly?.amount ?? extra?.amount ?? 0;
+  const full = Math.round((upgrade || addonsOnly || extra || !days ? oneOff : priceFor(plan, days, currency, addons)) * 100);
+  const plain = !!days && !upgrade && !addonsOnly && !extra; // a plan bought or extended: codes and offers apply
   const creatorId = plain ? opts.creatorId : undefined;
   const promoCode = plain && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
   // Without a code, a first payment while the user's start offer runs (startOffer.ts) is cheaper too.
@@ -93,6 +95,7 @@ export async function startCheckout(opts: {
       addons,
       addonsOnly: !!addonsOnly,
       xboxDays: xbox?.days ?? 0,
+      domainDays: domain?.days ?? 0,
       creatorId,
       promoCode: promoCode ?? startOffer,
       paysafecard,
@@ -157,6 +160,8 @@ export async function fulfillPayment(paymentId: string) {
   if (await fulfillGiftPurchase(paymentId)) return;
   // Console joining for a free server (xbox.ts): only its own days change.
   if (await fulfillXboxPayment(paymentId)) return;
+  // An own domain for a free server: the same.
+  if (await fulfillDomainPayment(paymentId)) return;
   const now = new Date();
   let inviter: Inviter | null = null;
   let creator: CreatorReward | null = null;
@@ -189,7 +194,8 @@ export async function fulfillPayment(paymentId: string) {
         plan: payment.plan,
         addons: addonList(payment.addons),
         // Without the domain add-on any more, players use the mchosting.pl address again.
-        ...(!payment.addons.includes("domain") && { customDomain: null }),
+        // Days bought on the free plan still count after moving to a paid one.
+        ...(!payment.addons.includes("domain") && !domainPaidFor(server, now) && { customDomain: null }),
         memoryMb: planById(payment.plan).ramGb * 1024,
         paidUntil,
         deletionWarnedAt: null,
@@ -240,6 +246,43 @@ async function fulfillXboxPayment(paymentId: string): Promise<boolean> {
     if (!(err instanceof agent.AgentError && err.status === 404)) console.error("xbox not started after payment", server.id, err);
   });
   return true;
+}
+
+/**
+ * A payment for a free server's own domain: adds its days. The owner then sets
+ * the domain on the Dodatki page, as on a paid plan. Safe to call more than once.
+ */
+async function fulfillDomainPayment(paymentId: string): Promise<boolean> {
+  const payment = await db.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { domainDays: true, serverId: true } });
+  if (payment.domainDays <= 0) return false;
+  const now = new Date();
+  const claimed = await db.payment.updateMany({ where: { id: paymentId, status: "PENDING" }, data: { status: "PAID", paidAt: now } });
+  if (claimed.count === 0) return true;
+  const server = payment.serverId ? await db.server.findUnique({ where: { id: payment.serverId } }) : null;
+  if (!server) return true; // deleted before the payment went through
+  const updated = await db.server.update({ where: { id: server.id }, data: { domainUntil: domainUntilAfter(server, payment.domainDays, now) } });
+  console.info("own domain paid", server.id, payment.domainDays, "days, until", updated.domainUntil?.toISOString());
+  // A domain already set (bought more days in time) keeps working.
+  if (updated.customDomain) await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
+  return true;
+}
+
+/**
+ * Servers whose bought days of an own domain ran out, without the add-on on a
+ * paid plan: the domain is forgotten and players use the mchosting.pl address again.
+ */
+async function stopExpiredDomains(now: Date) {
+  const over = await db.server.findMany({ where: { customDomain: { not: null }, domainUntil: { lt: now } } });
+  let stopped = 0;
+  for (const s of over) {
+    if (hasOwnDomain(s, now)) continue; // the add-on on a paid plan
+    const { count } = await db.server.updateMany({ where: { id: s.id, domainUntil: { lt: now } }, data: { customDomain: null } });
+    if (count === 0) continue;
+    console.info("own domain ran out", s.id, s.customDomain, "paid until", s.domainUntil?.toISOString());
+    stopped++;
+  }
+  if (stopped > 0) await syncHostAliases();
+  return stopped;
 }
 
 /**
@@ -529,7 +572,7 @@ export async function removeLeftoverContainers(now = new Date()) {
 }
 
 export async function runBillingJob(now = new Date()) {
-  const result = { renewed: 0, xboxStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
+  const result = { renewed: 0, xboxStopped: 0, domainsStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // The admin's Hytale sign-in lapses after 30 days unused (hytale.ts).
@@ -547,6 +590,12 @@ export async function runBillingJob(now = new Date()) {
   // A free server's bought console joining has run out.
   result.xboxStopped = await stopExpiredXbox(now).catch((err) => {
     console.error("expired console joining not stopped", err);
+    return 0;
+  });
+
+  // A free server's bought own domain has run out.
+  result.domainsStopped = await stopExpiredDomains(now).catch((err) => {
+    console.error("expired own domains not stopped", err);
     return 0;
   });
 

@@ -152,6 +152,13 @@ export default function TermsPl({ site }: { site: string }) {
           nie zna jego hasła i nie odpowiada za działanie usługi Xbox Live ani za zablokowanie konta przez Microsoft.
         </li>
         <li>
+          Własną domenę można też opłacić dla darmowego Serwera na Javę, jako osobną usługę płatną w cenie dodatku:
+          opłata jest podana za 30 dni, jest jednorazowa (nie odnawia się sama) i nie jest doliczana do żadnego Okresu.
+          Opłacone dni zostają, gdy Serwer przejdzie na płatny Plan. Po ich upływie Usługodawca odłącza domenę, a gracze
+          wchodzą przez adres Serwera w mchosting.pl; Użytkownik może ją wtedy opłacić ponownie. Opłata za czas już
+          opłacony nie jest zwracana, także gdy Użytkownik usunie domenę albo Serwer.
+        </li>
+        <li>
           Po upływie Okresu Serwer zostaje zawieszony: przestaje działać, ale jego świat i kopie zapasowe są
           zachowane. Usługodawca przechowuje dane zawieszonego Serwera przez co najmniej 14 dni od końca Okresu, a
           po tym czasie może je usunąć, uprzedzając o tym Użytkownika e-mailem co najmniej 3 dni wcześniej.

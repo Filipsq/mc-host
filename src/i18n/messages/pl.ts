@@ -2155,6 +2155,16 @@ const pl = {
     buy: "Dokup i zapłać",
     noneLeft: "Masz już wszystkie dodatki.",
     freePlan: "Dodatki są dostępne w płatnych planach. Przejdź na płatny plan, aby je dokupić.",
+    freeOther: "Więcej miejsca i kopii zapasowych są w płatnych planach.",
+    free: {
+      title: "Własna domena na darmowym serwerze",
+      intro: "Gracze wpisują Twoją domenę, np. graj.mojserwer.pl, zamiast adresu z mchosting.pl. Domenę kupujesz sam u dowolnego rejestratora, my ją tylko podpinamy.",
+      buyTitle: "Kup własną domenę: {price} za {days} dni",
+      buyMore: "Przedłuż własną domenę: {price} za kolejne {days} dni",
+      buy: "Zapłać",
+      paidUntil: "Opłacone do {date}. Potem domena przestanie działać, a gracze wejdą dalej przez adres z mchosting.pl.",
+      productName: "Własna domena na {days} dni: {server}",
+    },
     payFirst: "Najpierw opłać serwer. Dodatki możesz wybrać przy płatności.",
     javaOnly: "tylko Minecraft Java",
     domain: {
