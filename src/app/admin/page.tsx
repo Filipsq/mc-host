@@ -25,7 +25,7 @@ const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 export default async function AdminOverview() {
   await requireAdmin();
   const now = new Date();
-  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, chats, ai, costs, rates, recent] = await Promise.all([
+  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, ai, costs, rates, recent] = await Promise.all([
     getMessages(),
     getPreferences(),
     machineStats(),
@@ -41,11 +41,6 @@ export default async function AdminOverview() {
     db.payment.findMany({
       where: { status: "PENDING", createdAt: { gte: new Date(now.getTime() - 30 * DAY) } },
       select: { amount: true, currency: true, stripeSessionId: true },
-    }),
-    db.supportChat.findMany({
-      where: { lastFromStaff: false },
-      orderBy: { lastMessageAt: "asc" },
-      select: { userId: true, lastMessageAt: true, user: { select: { email: true } } },
     }),
     aiUsageThisMonth(),
     db.machineCost.findMany(),
@@ -142,22 +137,7 @@ export default async function AdminOverview() {
     <>
       <section className="stack">
         <h2>{t.attention}</h2>
-        {chats.length > 0 && (
-          <div className="card stack">
-            <h3>
-              <Link href="/admin/support">{all.support.admin.waitingTitle}</Link> <span className="muted">({chats.length})</span>
-            </h3>
-            <ul className="attention-list">
-              {chats.map((c) => (
-                <li key={c.userId}>
-                  <Link className="break" href={`/admin/support/${c.userId}`}>{c.user.email}</Link>
-                  <span className="muted small">{format(all.support.admin.since, { date: f.dateTime(c.lastMessageAt) })}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {attention.length === 0 && chats.length === 0 ? (
+        {attention.length === 0 ? (
           <p className="muted">{t.allGood}</p>
         ) : (
           attention.map((group) => (
