@@ -493,7 +493,7 @@ const en: Messages = {
         },
         worldTooNew: {
           title: "The world is from a newer version than the server",
-          fix: "Minecraft 26 or newer saved this world, and the server is set to an older version. Set the version to “Latest” in Settings or switch to another world in Worlds.",
+          fix: "A newer Minecraft than the server is set to saved this world (or part of it), so the server shuts down when a player goes there. Set the version to “Latest” in Settings or switch to another world in Worlds.",
         },
         brokenWorld: {
           title: "The world can't be loaded",

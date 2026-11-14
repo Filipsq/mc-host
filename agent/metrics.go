@@ -59,6 +59,7 @@ type serverMetrics struct {
 	minigames         bool   // Minigames: the rules are set this start, and the map is there (or the world wasn't empty); see minigames.go
 	minigamesBuilding bool   // Minigames: the world was found empty, so the map goes in
 	difficulty        bool   // Java: the world's difficulty was checked against the setting this start; see difficulty.go
+	gameRules         bool   // Java: the Nether, PvP, command block and monster rules were set this start; see gamerules.go
 }
 
 func (m *serverMetrics) listCmd() string {
@@ -170,7 +171,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		m.logsSince, m.online, m.players, m.count, m.maxPlayers, m.pregen = started.Unix(), map[string]bool{}, nil, 0, 0, ""
 		m.skyMap, m.skyMapBuilding = false, false
 		m.minigames, m.minigamesBuilding = false, false
-		m.difficulty = false
+		m.difficulty, m.gameRules = false, false
 		m.closeRCON()
 	}
 	m.mu.Unlock()
@@ -233,6 +234,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 			tps = javaTPS(run, m)
 			if ok {
 				syncDifficulty(info.Config.Env, m, run)
+				syncGameRules(info.Config.Env, info.Config.Labels["mchost.minigames"] == "true", m, run)
 			}
 			if ok && info.Config.Labels["mchost.pregen"] == "true" {
 				a.pregen(ctx, name, m, run, len(players))
