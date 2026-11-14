@@ -14,6 +14,7 @@ import { makeUpForTestPayment, untoldCustomers } from "@/lib/testPayments";
 import { getPreferences } from "@/i18n/server";
 import { createAdminResetLink } from "@/lib/passwordReset";
 import { PLAYERS_MAX } from "@/lib/settings";
+import { sendPaymentHelp } from "@/lib/paymentHelp";
 
 export type GiftState = { error?: "invalid" | "free" | "soldOut" | "failed"; days?: number; date?: string };
 
@@ -193,4 +194,12 @@ export async function saveMachineCostsAction(form: FormData) {
     });
   }
   revalidatePath("/admin");
+}
+
+/** Asks the buyer of an unfinished payment, in the chat and by email, if they need help paying (paymentHelp.ts). */
+export async function paymentHelpAction(paymentId: string) {
+  const session = await requireAdmin();
+  const result = await sendPaymentHelp(paymentId, session.user!.id!);
+  console.info("admin payment help", paymentId, result);
+  revalidatePath("/admin", "layout");
 }
