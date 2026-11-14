@@ -309,6 +309,9 @@ model Server {
   // Modrinth project IDs of the plugins (Paper) or mods (mod loaders) the owner added (src/lib/plugins.ts);
   // on tModLoader, Steam Workshop IDs of its mods.
   plugins          String[]       @default([])
+  // Builds the owner picked for some Modrinth plugins or mods, "<project ID>:<version ID>:<server version>";
+  // one counts only while the server is on that version (src/lib/plugins.ts pinsFor).
+  pluginVersions   String[]       @default([])
   // The list changed while the server ran; the container gets it on its next rebuild.
   pluginsPending   Boolean        @default(false)
   // Terraria only: the password players type to join; none if null.

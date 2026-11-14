@@ -330,3 +330,38 @@ export async function getPackArt(slugs: readonly string[]): Promise<Map<string, 
     return new Map();
   }
 }
+
+/** One build (Modrinth "version") of a plugin or mod. */
+export type AddonBuild = { id: string; number: string; type: string; date: string };
+
+/**
+ * The builds of a plugin or mod for these loaders and Minecraft versions,
+ * newest first, as the image sees them (kept 10 minutes). Null when Modrinth
+ * doesn't answer.
+ */
+export async function addonBuilds(project: string, loaders: string[], gameVersions: string[]): Promise<AddonBuild[] | null> {
+  const filter = new URLSearchParams({
+    loaders: JSON.stringify(loaders),
+    game_versions: JSON.stringify(gameVersions),
+    include_changelog: "false",
+  });
+  try {
+    const list = (await get<Version[]>(`/v2/project/${encodeURIComponent(project)}/version?${filter}`, 600)) ?? [];
+    return list
+      .map((v) => ({ id: v.id, number: v.version_number.slice(0, 60), type: v.version_type, date: v.date_published }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  } catch (err) {
+    console.error("modrinth build lookup failed", project, err);
+    return null;
+  }
+}
+
+/**
+ * The build the image installs when the owner hasn't picked one: the newest
+ * release (plugins), or the newest release or beta (mods, agent/main.go pluginEnv).
+ */
+export const autoBuild = (builds: AddonBuild[], type: AddonType) =>
+  builds.find((b) => b.type === "release" || (type === "mod" && b.type === "beta"));
+
+/** The loaders a plugin or mod's builds must be for on a server of this kind. */
+export const addonLoaders = (type: AddonType, kind: string) => (type === "plugin" ? PAPER_INSTALL_LOADERS : [kind]);

@@ -83,7 +83,7 @@ func TestFitPluginEnvPinsBuildsForTheServersJava(t *testing.T) {
 	defer func() { modrinthAPI = "" }()
 
 	envFor := func(req createRequest, image string) string {
-		return strings.Join(fitPluginEnv(&req, image, pluginEnv(req.Kind, req.Version, req.Plugins, false, false)), "\n")
+		return strings.Join(fitPluginEnv(&req, image, pluginEnv(req.Kind, req.Version, req.Plugins, req.PluginVersions, false, false)), "\n")
 	}
 	req := createRequest{ID: "tymbarki", Edition: "JAVA", Kind: "vanilla", Version: "1.21.4", Plugins: []string{"worldguard", "okplugin"}}
 
@@ -118,5 +118,12 @@ func TestJarClassVersionSkipsMultiReleaseCopies(t *testing.T) {
 	}
 	if _, err := jarClassVersion([]byte("not a jar")); err == nil {
 		t.Error("no error for a broken jar")
+	}
+}
+
+func TestPluginEnvPins(t *testing.T) {
+	env := strings.Join(pluginEnv("vanilla", "1.21.11", []string{"AAAAAAAA", "BBBBBBBB"}, map[string]string{"BBBBBBBB": "VVVVVVVV"}, false, false), "\n")
+	if !strings.Contains(env, "MODRINTH_PROJECTS=AAAAAAAA?,BBBBBBBB?:VVVVVVVV\n") {
+		t.Fatalf("pinned build not listed: %s", env)
 	}
 }

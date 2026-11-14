@@ -114,8 +114,9 @@ const signalingPort = "19132/tcp"
 // mode picks; the login plugin isn't, so a non-premium server never runs
 // without it. The lists are always set,
 // even empty, because the image removes the plugins and mods it installed
-// that are no longer listed.
-func pluginEnv(kind, version string, plugins []string, login, crossplay bool) []string {
+// that are no longer listed. pins holds the builds the owner picked in the
+// panel (project ID -> Modrinth version ID); those go in as "<id>?:<version>".
+func pluginEnv(kind, version string, plugins []string, pins map[string]string, login, crossplay bool) []string {
 	var projects []string
 	if base := gameModePlugins[kind]; base != "" {
 		projects = strings.Split(base, ",")
@@ -136,6 +137,10 @@ func pluginEnv(kind, version string, plugins []string, login, crossplay bool) []
 			}
 			continue
 		}
+		if v := pins[p]; v != "" {
+			projects = append(projects, p+"?:"+v)
+			continue
+		}
 		projects = append(projects, p+"?")
 	}
 	// Nearly every Fabric mod runs on Fabric API, but some don't list it on
@@ -151,7 +156,7 @@ func pluginEnv(kind, version string, plugins []string, login, crossplay bool) []
 	seen := map[string]bool{}
 	unique := projects[:0]
 	for _, p := range projects {
-		if id := strings.TrimSuffix(p, "?"); !seen[id] {
+		if id := strings.TrimSuffix(strings.SplitN(p, ":", 2)[0], "?"); !seen[id] {
 			seen[id] = true
 			unique = append(unique, p)
 		}
@@ -175,6 +180,9 @@ func pluginEnv(kind, version string, plugins []string, login, crossplay bool) []
 	}
 	return env
 }
+
+// A Modrinth project or version ID.
+var modrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)
 
 // A CurseForge mod as the image takes it: project ID and file ID.
 var curseforgeRef = regexp.MustCompile(`^[0-9]{1,10}:[0-9]{1,12}$`)
@@ -439,6 +447,9 @@ type createRequest struct {
 	// Java on Paper only (not mod packs): Modrinth plugins (slugs or project IDs) the owner added.
 	// On tModLoader: the Steam Workshop IDs of the owner's mods.
 	Plugins []string `json:"plugins"`
+	// Java plugins and mods from Modrinth: the build the owner picked for some of
+	// them (project ID -> version ID); the others get the newest for the version.
+	PluginVersions map[string]string `json:"pluginVersions"`
 	// Java only: the owner's other servers players can go to from this one (links.go).
 	Links []serverLink `json:"links"`
 	// Hytale only: the sign-ins the server and its downloader use (hytale.go).
@@ -512,6 +523,13 @@ func (req *createRequest) validate() error {
 		return errors.New("plugins need a Java server on Paper (not a mod pack)")
 	case len(req.Plugins) > 100:
 		return errors.New("at most 100 plugins")
+	case len(req.PluginVersions) > 100:
+		return errors.New("at most 100 plugin versions")
+	}
+	for id, v := range req.PluginVersions {
+		if !modrinthID.MatchString(id) || !modrinthID.MatchString(v) {
+			return fmt.Errorf("invalid plugin version %q: %q", id, v)
+		}
 	}
 	for _, p := range req.Plugins {
 		ref, cf := strings.CutPrefix(p, "cf:")
@@ -921,7 +939,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			env = append(env, "TYPE=PAPER", "VERSION="+req.Version)
 		}
 		if req.Kind != "modpack" {
-			env = append(env, fitPluginEnv(&req, image, pluginEnv(req.Kind, req.Version, req.Plugins, req.ourLogin(), req.Crossplay))...)
+			env = append(env, fitPluginEnv(&req, image, pluginEnv(req.Kind, req.Version, req.Plugins, req.PluginVersions, req.ourLogin(), req.Crossplay))...)
 		}
 		// Always set: the image only writes the properties it's given, so going back
 		// from non-premium has to say so.
