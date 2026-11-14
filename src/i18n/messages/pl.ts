@@ -492,7 +492,7 @@ const pl = {
         },
         worldTooNew: {
           title: "Świat jest z nowszej wersji niż serwer",
-          fix: "Ten świat zapisał Minecraft 26 lub nowszy, a serwer ma ustawioną starszą wersję. Zmień wersję w Ustawieniach na „Najnowsza” albo włącz inny świat w Światy.",
+          fix: "Ten świat (albo jego część) zapisała nowsza wersja Minecrafta niż ta ustawiona na serwerze, więc serwer wyłącza się, gdy gracz tam wejdzie. Zmień wersję w Ustawieniach na „Najnowsza” albo włącz inny świat w Światy.",
         },
         brokenWorld: {
           title: "Nie da się wczytać świata",
