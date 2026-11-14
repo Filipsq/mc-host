@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec } from "@/lib/servers";
 import { getServerFor } from "@/lib/access";
-import { PAPER_INSTALL_LOADERS, getAddon, projectsWithoutBuild } from "@/lib/modrinth";
+import { PAPER_INSTALL_LOADERS, addonBuilds, addonLoaders, getAddon, projectsWithoutBuild } from "@/lib/modrinth";
 import { downloadVersion, versionsToCheck } from "@/lib/addonVersions";
 import { curseforgeModId, pinCurseforgeMods } from "@/lib/curseforge";
 import { apiTooNew, downloadSitePlugin, pluginApiVersion, sitePluginFromLink } from "@/lib/sitePlugins";
@@ -21,6 +21,8 @@ import {
   curseforgeEntry,
   curseforgeMod,
   isProjectId,
+  parsePins,
+  pinEntry,
   pluginIds,
   setFits,
   sitePlugin,
@@ -214,7 +216,29 @@ export async function removePluginAction(id: string, projectId: string): Promise
   return savePlugins(
     server,
     server.plugins.filter((p) => p !== projectId),
+    parsePins(server.pluginVersions).filter((p) => p.project !== projectId).map(pinEntry),
   );
+}
+
+/**
+ * Picks the build of a Modrinth plugin or mod the server installs on its
+ * version; an empty `build` goes back to the newest one. Only builds made for
+ * the version the server runs are taken.
+ */
+export async function setPluginVersionAction(id: string, projectId: string, build: string): Promise<PluginResult> {
+  const server = await addonServer(id);
+  if (!server || (server.type !== "plugin" && server.type !== "mod") || !server.plugins.includes(projectId) || !isProjectId(projectId)) {
+    return { error: "failed" };
+  }
+  const others = parsePins(server.pluginVersions).filter((p) => p.project !== projectId);
+  if (build === "") return savePlugins(server, server.plugins, others.map(pinEntry));
+  if (!isProjectId(build)) return { error: "failed" };
+  const versions = await versionsToCheck(server.kind, server.version);
+  if (!versions) return { error: "failed" };
+  const builds = await addonBuilds(projectId, addonLoaders(server.type, server.kind), [downloadVersion(versions)]);
+  if (!builds) return { error: "modrinthUnavailable" };
+  if (!builds.some((b) => b.id === build)) return { error: "failed" };
+  return savePlugins(server, server.plugins, [...others, { project: projectId, build, mc: server.version }].map(pinEntry));
 }
 
 /** Rebuilds the server with its plugin list now; a running server restarts. */
@@ -236,8 +260,8 @@ export async function applyPluginsAction(id: string): Promise<PluginResult> {
  * Saves the list. A server that's off gets it right away (its next start
  * installs them); a running one keeps playing until its owner restarts it.
  */
-async function savePlugins(server: Server, plugins: string[]): Promise<PluginResult> {
-  const updated = await db.server.update({ where: { id: server.id }, data: { plugins } });
+async function savePlugins(server: Server, plugins: string[], pluginVersions?: string[]): Promise<PluginResult> {
+  const updated = await db.server.update({ where: { id: server.id }, data: { plugins, ...(pluginVersions && { pluginVersions }) } });
   revalidatePath(`/dashboard/servers/${server.id}`, "layout");
   // Not on the game host (unpaid): the list is used when it's created again.
   if (!["RUNNING", "STOPPED", "SLEEPING"].includes(server.status)) return {};

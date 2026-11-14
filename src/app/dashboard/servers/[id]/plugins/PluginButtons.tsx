@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Check, Plus, RotateCw, Trash2 } from "lucide-react";
-import { addCurseforgeLinkAction, addPluginAction, addSiteLinkAction, addPluginSetAction, addWorkshopModAction, applyPluginsAction, removePluginAction, type PluginResult } from "./actions";
+import { addCurseforgeLinkAction, addPluginAction, addSiteLinkAction, addPluginSetAction, addWorkshopModAction, applyPluginsAction, removePluginAction, setPluginVersionAction, type PluginResult } from "./actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -103,5 +103,47 @@ export function ApplyPlugins({ id, pending: changed, t }: { id: string; pending:
       </button>
       {result?.error && <span className="error small">{format(t.errors[result.error], { name: result.name ?? "", version: result.version ?? "" })}</span>}
     </div>
+  );
+}
+
+/** Picks which build of a Modrinth plugin or mod the server installs; "" is the newest one. */
+export function PluginVersionPicker({
+  id,
+  pluginId,
+  picked,
+  options,
+  autoLabel,
+  t,
+}: {
+  id: string;
+  pluginId: string;
+  picked: string;
+  options: { id: string; label: string }[];
+  autoLabel: string;
+  t: T;
+}) {
+  const { pending, message, save } = useSave(t);
+  const [value, setValue] = useState(picked);
+  return (
+    <span className="plugin-version">
+      <select
+        aria-label={t.buildLabel}
+        value={value}
+        disabled={pending}
+        onChange={(e) => {
+          const build = e.target.value;
+          setValue(build);
+          save(() => setPluginVersionAction(id, pluginId, build));
+        }}
+      >
+        <option value="">{autoLabel}</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <Message message={message} />
+    </span>
   );
 }

@@ -21,7 +21,7 @@ import { planById } from "./plans";
 import { backupsFor, diskGbFor, hasOwnDomain } from "./addons";
 import { requiredArch } from "./terraria";
 import { MAIN_NODE, nodeById, nodes, routerAddress } from "./nodes";
-import { addonType, canCrossplay, canRunNonPremium, sitePlugin, withNeededPlugins } from "./plugins";
+import { addonType, canCrossplay, canRunNonPremium, pinsFor, sitePlugin, withNeededPlugins } from "./plugins";
 import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
 import { xboxOn } from "./xbox";
@@ -299,6 +299,8 @@ export function agentSpec(server: Server): CreateServerSpec {
     modpackLoader: server.kind === "modpack" ? (server.modpackLoader ?? undefined) : undefined,
     // Plugins from Hangar and SpigotMC are files the panel put there itself.
     plugins: addonType(server) ? withNeededPlugins(server.plugins.filter((p) => !sitePlugin(p))) : [],
+    // Builds the owner picked in Plugins for this version.
+    pluginVersions: addonType(server) === "plugin" || addonType(server) === "mod" ? pinsFor(server) : undefined,
     // Linked servers (src/lib/links.ts), kept as "<name>=<java address>".
     links:
       server.edition === "JAVA"

@@ -3,10 +3,10 @@ import { notFound, redirect } from "next/navigation";
 import { ExternalLink, Map as MapIcon, Mic, Package, Puzzle, Search } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
-import { format } from "@/i18n/messages";
+import { format, type Messages } from "@/i18n/messages";
 import { allows, getServerAccess } from "@/lib/access";
 import UndoNotice from "../undo/UndoNotice";
-import { getPluginInfos, searchAddons } from "@/lib/modrinth";
+import { addonBuilds, addonLoaders, autoBuild, getPluginInfos, searchAddons, type AddonBuild } from "@/lib/modrinth";
 import { curseforgeEnabled, getCurseforgeModInfos, searchCurseforgeMods } from "@/lib/curseforge";
 import { getSitePluginInfos, searchSitePlugins } from "@/lib/sitePlugins";
 import { downloadVersion, versionsToCheck } from "@/lib/addonVersions";
@@ -20,6 +20,8 @@ import {
   curseforgeMod,
   curseforgeModPage,
   hasCurseforgeMod,
+  isProjectId,
+  pinsFor,
   pluginIds,
   pluginPage,
   setFits,
@@ -32,7 +34,7 @@ import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
 import { shownVersion } from "@/lib/serverType";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
 import { getWorkshopTitles } from "@/lib/steam";
-import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, RemovePluginButton } from "./PluginButtons";
+import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, PluginVersionPicker, RemovePluginButton } from "./PluginButtons";
 
 const FABRIC_API = "P7dR8mSH"; // added for CurseForge mods that need it
 
@@ -150,6 +152,24 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     fromCf && mc ? searchCurseforgeMods(query, { gameVersion: mc, loader: server.kind }) : null,
     site ? searchSitePlugins(site, query, site === "hangar" ? runsOn : undefined) : null,
   ]);
+  // The builds each plugin has for the version the server runs: what the image
+  // installs (or the one the owner picked), shown instead of the newest
+  // Minecraft the plugin supports, which read as if 26.x builds were installed.
+  const builds = new Map<string, AddonBuild[] | null>();
+  if (runsOn) {
+    const loaders = addonLoaders(type, server.kind);
+    const ids = [...new Set([...server.plugins.filter(isProjectId), ...(Array.isArray(results) ? results.map((r) => r.id) : [])])];
+    const listed = await Promise.all(
+      ids.map((pid) =>
+        Promise.race([addonBuilds(pid, loaders, [runsOn]), new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000))]).then(
+          (list) => [pid, list] as const,
+        ),
+      ),
+    );
+    for (const [pid, list] of listed) builds.set(pid, list);
+  }
+  const pins = pinsFor(server);
+  const buildLabel = (b: AddonBuild) => (b.type === "release" ? b.number : `${b.number} (${t.buildTest})`);
   const searchHref = (from: string) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(query && { q: query }), ...(from && { src: from }) })}#szukaj`;
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
   const included = GAME_MODE_PLUGINS[kind] ?? [];
@@ -243,6 +263,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
                   {runs && runsOn && p?.gameVersions && !runs.some((v) => p.gameVersions!.includes(v)) && (
                     <span className="error small">{format(all.plugins.noBuild, { version: runsOn })}</span>
                   )}
+                  {runsOn && <InstalledBuild id={server.id} pid={pid} list={builds.get(pid)} pin={pins[pid]} mc={runsOn} type={type} t={t} label={buildLabel} />}
                   {p && (
                     <a className="small" href={pluginPage(p.slug, type)} target="_blank" rel="noreferrer">
                       {t.onModrinth} <ExternalLink size={12} aria-hidden />
@@ -468,7 +489,9 @@ export default async function PluginsPage({ params, searchParams }: Props) {
                   <span className="muted small">{p.description}</span>
                   <span className="muted small">
                     {format(t.downloads, { n: numbers.format(p.downloads) })}
-                    {p.newestVersion && ` · ${format(t.upTo, { version: p.newestVersion })}`}
+                    {runsOn
+                      ? ` · ${hitBuildText(builds.get(p.id), type, runsOn, t)}`
+                      : p.newestVersion && ` · ${format(t.upTo, { version: p.newestVersion })}`}
                   </span>
                 </span>
                 <AddPluginButton id={server.id} pluginId={p.id} added={server.plugins.includes(p.id)} t={t} />
@@ -487,5 +510,60 @@ function PluginIcon({ src }: { src?: string }) {
       {/* eslint-disable-next-line @next/next/no-img-element -- small icons through /api/plugin-icon */}
       {src ? <img src={src} alt="" width={40} height={40} loading="lazy" referrerPolicy="no-referrer" /> : <Puzzle size={20} aria-hidden />}
     </span>
+  );
+}
+
+type PluginTexts = Messages["plugins"];
+
+/** What a search result installs on the server's version. */
+function hitBuildText(list: AddonBuild[] | null | undefined, type: "plugin" | "mod", mc: string, t: PluginTexts) {
+  const auto = list && autoBuild(list, type);
+  return auto ? format(t.buildFor, { version: auto.number, mc }) : format(t.worksOn, { mc });
+}
+
+/** Which build of an added plugin the server installs, and a picker for another one made for its version. */
+function InstalledBuild({
+  id,
+  pid,
+  list,
+  pin,
+  mc,
+  type,
+  t,
+  label,
+}: {
+  id: string;
+  pid: string;
+  list: AddonBuild[] | null | undefined;
+  pin?: string;
+  mc: string;
+  type: "plugin" | "mod";
+  t: PluginTexts;
+  label: (b: AddonBuild) => string;
+}) {
+  if (!list || list.length === 0) return null;
+  const auto = autoBuild(list, type);
+  const pinned = pin ? list.find((b) => b.id === pin) : undefined;
+  const shown = pinned ?? (pin ? undefined : auto);
+  return (
+    <>
+      {pin && !pinned ? (
+        <span className="error small">{format(t.buildStale, { mc })}</span>
+      ) : shown ? (
+        <span className="small">
+          {format(t.buildInstalls, { version: shown.number, mc })} · {pinned ? t.buildPicked : t.buildNewest}
+        </span>
+      ) : (
+        <span className="error small">{format(t.buildNoRelease, { mc })}</span>
+      )}
+      <PluginVersionPicker
+        id={id}
+        pluginId={pid}
+        picked={pinned ? pinned.id : ""}
+        options={list.slice(0, 40).map((b) => ({ id: b.id, label: label(b) }))}
+        autoLabel={auto ? format(t.buildAuto, { version: auto.number }) : t.buildAutoNone}
+        t={t}
+      />
+    </>
   );
 }

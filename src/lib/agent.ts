@@ -122,6 +122,7 @@ export type CreateServerSpec = {
   modpackSource?: string; // "curseforge", or none for Modrinth
   modpackVersion?: string; // Modrinth version ID or CurseForge file ID, for a modpack
   modpackLoader?: string; // the pack's mod loader (fabric, forge, neoforge, quilt), for a non-premium pack's login mod
+  pluginVersions?: Record<string, string>; // Modrinth plugins and mods: the build the owner picked (project ID -> version ID)
   plugins: string[]; // Modrinth project IDs: plugins for Paper servers, mods for mod loader servers; Steam Workshop IDs on tModLoader
   links?: { name: string; host: string }[]; // Java only: linked servers players can go to (/trigger <name>)
   hytale?: HytaleSpec; // Hytale only: added here, fresh for each new container (src/lib/hytale.ts)

@@ -11,6 +11,31 @@ export const PLUGINS_MAX = 50;
 /** A Modrinth project ID, which is what the panel stores. */
 export const isProjectId = (s: string) => /^[A-Za-z0-9]{8}$/.test(s);
 
+/** A build the owner picked for a Modrinth plugin or mod, saved as "<project>:<version ID>:<server version>". */
+export type PluginPin = { project: string; build: string; mc: string };
+
+export function parsePins(list: string[]): PluginPin[] {
+  return list.flatMap((entry) => {
+    const [project, build, mc] = entry.split(":");
+    return project && build && mc && isProjectId(project) && isProjectId(build) ? [{ project, build, mc }] : [];
+  });
+}
+
+export const pinEntry = (p: PluginPin) => `${p.project}:${p.build}:${p.mc}`;
+
+/**
+ * The picked builds that count now (project ID -> version ID): only for plugins
+ * still on the list and only while the server stays on the version they were
+ * picked for, so a version change goes back to the newest build for it.
+ */
+export function pinsFor(s: { plugins: string[]; pluginVersions: string[]; version: string }): Record<string, string> {
+  return Object.fromEntries(
+    parsePins(s.pluginVersions)
+      .filter((p) => p.mc === s.version && s.plugins.includes(p.project))
+      .map((p) => [p.project, p.build]),
+  );
+}
+
 // A mod from CurseForge is stored as "cf:<project ID>:<file ID>", pinned to the
 // file the panel picked for the server's Minecraft version and loader
 // (src/lib/curseforge.ts pinCurseforgeMods); the agent hands those to the image.
