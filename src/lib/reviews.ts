@@ -11,7 +11,7 @@ import { sendPush } from "./push";
 // Players' opinions for the home page. The panel asks once a player has kept
 // playing on a server for a while, so the opinion comes from real use; an admin
 // decides which ones the home page shows (never edits them), and the average
-// there counts all of them, so picking only the good ones can't lift it.
+// there counts only the shown ones, so it matches what visitors can read.
 
 export const REVIEW_TEXT_MAX = 300;
 export const REVIEW_NAME_MAX = 30;
@@ -49,15 +49,15 @@ export async function reviewEdition(userId: string): Promise<Edition | null> {
 }
 
 export type HomeReviews = {
-  average: number; // every opinion, shown or not
-  count: number;
+  average: number; // shown opinions only
+  count: number; // shown opinions only
   items: { id: string; stars: number; text: string; name: string; game: string | null; reply: string | null; createdAt: Date }[];
 };
 
 /** What the home page shows, or null while there are too few shown opinions. */
 export async function homeReviews(): Promise<HomeReviews | null> {
   const [all, items] = await Promise.all([
-    db.review.aggregate({ _avg: { stars: true }, _count: true }),
+    db.review.aggregate({ where: { shown: true }, _avg: { stars: true }, _count: true }),
     db.review.findMany({
       where: { shown: true },
       orderBy: { createdAt: "desc" },

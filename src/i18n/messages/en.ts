@@ -69,7 +69,7 @@ const en: Messages = {
     },
     reviewsTitle: "What players say",
     reviewsAverage: "{avg} out of 5 · {n} reviews",
-    reviewsNote: "Reviews are written in the panel by players whose server has run here for at least a week. We check each one and reject only spam and swearing. The average counts every review.",
+    reviewsNote: "Reviews are written in the panel by players whose server has run here for at least a week. We check each one and reject only spam and swearing. The average counts the reviews shown on the page.",
     stepsTitle: "How it works",
     steps: [
       { title: "Create an account", text: "All you need is an email and a password." },
@@ -1673,7 +1673,7 @@ const en: Messages = {
     nav: { overview: "Overview", servers: "Servers", users: "Users", payments: "Payments", support: "Chat", announcement: "Announcement", reviews: "Reviews", hytale: "Hytale" },
     reviews: {
       title: "Player reviews",
-      intro: "The panel asks owners of a server older than 7 days that someone still played on at least 3 days after it was made. The home page shows the 3 or 6 newest shown ones (from 3 up); the average counts all. Reject only spam, swearing and personal data, not bad reviews: that's what the home page promises.",
+      intro: "The panel asks owners of a server older than 7 days that someone still played on at least 3 days after it was made. The home page shows the 3 or 6 newest shown ones (from 3 up); the average and count include only shown ones. Reject only spam, swearing and personal data, not bad reviews: that's what the home page promises.",
       empty: "No reviews yet.",
       shown: "On the site",
       hidden: "Hidden",
