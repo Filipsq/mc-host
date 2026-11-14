@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowUpCircle, CalendarClock, RefreshCw } from "lucide-react";
 import { getSession } from "@/lib/session";
+import { isAdmin } from "@/lib/admin";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getOwnedServer } from "@/lib/servers";
@@ -135,6 +136,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         money={{ locale, currency }}
         autoRenew={server.autoRenew}
         paysafecard={paysafecardEnabled(currency)}
+        adminTest={server.adminTest && (await isAdmin(session.user.id))}
         addons={{
           // The own domain is for Java addresses only.
           options: addonOptions(t, currency).filter((o) => addonFits(o.id, server.edition)),

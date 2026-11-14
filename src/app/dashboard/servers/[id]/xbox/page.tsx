@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { isAdmin } from "@/lib/admin";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { allows, getServerAccess } from "@/lib/access";
@@ -54,6 +55,7 @@ export default async function XboxPage({ params }: { params: Promise<{ id: strin
             billing={all.billing}
             legal={all.legal}
             errors={all.server.errors}
+            adminTest={server.adminTest && (await isAdmin(session.user.id))}
           />
         </section>
       ) : !allowed ? (

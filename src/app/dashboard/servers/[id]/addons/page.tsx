@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Globe, PackagePlus } from "lucide-react";
 import { getSession } from "@/lib/session";
+import { isAdmin } from "@/lib/admin";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getOwnedServer, javaHost } from "@/lib/servers";
@@ -22,6 +23,8 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
 
   const [all, { locale, currency }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.paidAddons;
+  // An admin's own test server: buying is offered for 0 too.
+  const adminTest = server.adminTest && (await isAdmin(session.user.id));
   const money = (n: number) => formatPrice(n, currency, locale);
   const have = serverAddons(server);
   // The own domain is for Java addresses only.
@@ -66,6 +69,7 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
                 billing={all.billing}
                 legal={all.legal}
                 errors={all.server.errors}
+                adminTest={adminTest}
               />
             </section>
           )}
@@ -137,6 +141,7 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
               legal={all.legal}
               errors={all.server.errors}
               hint={format(t.buyHint, { date })}
+              adminTest={adminTest}
             />
           )}
         </>

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { buyXboxAction } from "../../actions";
 import PaymentConsent from "@/components/PaymentConsent";
+import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -16,10 +17,11 @@ type Props = {
   billing: Messages["billing"];
   legal: Messages["legal"];
   errors: Messages["server"]["errors"];
+  adminTest?: boolean; // an admin's test server: a free test purchase is offered too
 };
 
 /** Buys console joining for a free server, for `days` at a time. */
-export default function BuyXbox({ serverId, price, days, paysafecard, again, t, billing, legal, errors }: Props) {
+export default function BuyXbox({ serverId, price, days, paysafecard, again, t, billing, legal, errors, adminTest }: Props) {
   const [state, action, pending] = useActionState(buyXboxAction.bind(null, serverId), {});
   return (
     <form action={action} className="stack">
@@ -41,6 +43,7 @@ export default function BuyXbox({ serverId, price, days, paysafecard, again, t, 
           </button>
         )}
       </div>
+      <AdminTestBuy show={adminTest} pending={pending} t={billing} />
     </form>
   );
 }

@@ -373,6 +373,8 @@ const en: Messages = {
     methods: "Pay by card, BLIK or Przelewy24 (BLIK and Przelewy24 when paying in złoty). Without automatic renewal plans don't renew by themselves, but we email you before yours ends.",
     methodsCashbill: "Pay by card through Stripe (the only way to renew automatically), or by BLIK, bank transfer or paysafecard through CashBill. Without automatic renewal plans don't renew by themselves, but we email you before yours ends.",
     paysafecard: "BLIK, transfer, paysafecard",
+    adminTest: "Buy for 0 (admin test)",
+    adminTestHint: "Only admins see this, on their own test server: the purchase applies at once without paying and doesn't count toward revenue.",
     paysafecardHint: "You can buy a paysafecard code at a newsagent or petrol station. BLIK, transfers and paysafecard don't renew automatically.",
     status: "Status",
     statuses: { active: "Active", suspended: "Suspended", awaiting: "Awaiting payment", free: "Free" },

@@ -141,6 +141,7 @@ async function checkoutUrl(
   creatorId?: string,
   promoCode?: string,
   paysafecard = false,
+  adminTest = false,
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -160,7 +161,13 @@ async function checkoutUrl(
     creatorId,
     promoCode,
     paysafecard,
+    adminTest,
   });
+}
+
+/** An admin's free test purchase (the "0 zł" button): only on their own test servers (Server.adminTest), never on a customer's. */
+async function adminTestBuy(form: FormData, server: { adminTest: boolean }, userId: string) {
+  return form.get("adminTest") === "on" && server.adminTest && (await isAdmin(userId));
 }
 
 /** Add-ons ticked in a form: none on the free plan, and the own domain only for Java (players of other games join by IP and port). */
@@ -421,7 +428,8 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   if (!server) redirect("/dashboard");
   const parsed = checkoutSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { error: "invalidPlan" };
-  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+  const adminTest = await adminTestBuy(form, server, user.id);
+  if (!adminTest && form.get("startNow") !== "on") return { error: "consentRequired" };
   // Renewing the same plan needs nothing new; an upgrade only needs the difference.
   // Admins may go over the sales limit to test buying, as when creating a server.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
@@ -445,6 +453,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       // Likewise the Halloween code, while the event lasts (startCheckout checks).
       server.status === "AWAITING_PAYMENT" ? (server.promoCode ?? undefined) : undefined,
       form.get("method") === "paysafecard",
+      adminTest,
     );
   } catch (err) {
     console.error("checkout failed", server.id, err);
@@ -464,7 +473,8 @@ export async function upgradeAction(id: string, _: CheckoutState, form: FormData
   if (!canUpgrade(server)) redirect(`/dashboard/servers/${server.id}/billing`);
   const parsed = upgradeSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success || !biggerPlans(server.plan).some((p) => p.id === parsed.data.plan)) return { error: "invalidPlan" };
-  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+  const adminTest = await adminTestBuy(form, server, user.id);
+  if (!adminTest && form.get("startNow") !== "on") return { error: "consentRequired" };
   // As for a plan change: the extra memory here, or the whole plan on a machine it can move to.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
   const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
@@ -487,6 +497,7 @@ export async function upgradeAction(id: string, _: CheckoutState, form: FormData
       productName: format(t.upgrade.productName, { from: t.plans[server.plan], to: t.plans[parsed.data.plan], server: server.name }),
       startConsent: true,
       upgrade: { from: server.plan, amount },
+      adminTest,
       // The add-ons stay; only the plan's difference is paid.
       addons: serverAddons(server),
     });
@@ -506,7 +517,8 @@ export async function buyAddonsAction(id: string, _: CheckoutState, form: FormDa
   const have = serverAddons(server);
   const added = formAddons(form, server.plan, server.edition).filter((a) => !have.includes(a));
   if (added.length === 0) return { error: "noAddons" };
-  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+  const adminTest = await adminTestBuy(form, server, user.id);
+  if (!adminTest && form.get("startNow") !== "on") return { error: "consentRequired" };
 
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   const { amount } = addonCost(added, server.paidUntil!, currency);
@@ -524,6 +536,7 @@ export async function buyAddonsAction(id: string, _: CheckoutState, form: FormDa
       startConsent: true,
       addons: [...have, ...added],
       addonsOnly: { amount },
+      adminTest,
     });
   } catch (err) {
     console.error("add-ons checkout failed", server.id, err);
@@ -538,7 +551,8 @@ export async function buyXboxAction(id: string, _: CheckoutState, form: FormData
   const server = await getOwnedServer(id, user.id);
   if (!server) redirect("/dashboard");
   if (!takesBedrockPlayers(server) || server.plan !== "FREE") redirect(`/dashboard/servers/${server.id}/xbox`);
-  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+  const adminTest = await adminTestBuy(form, server, user.id);
+  if (!adminTest && form.get("startNow") !== "on") return { error: "consentRequired" };
 
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   let url: string;
@@ -554,6 +568,7 @@ export async function buyXboxAction(id: string, _: CheckoutState, form: FormData
       productName: format(t.xbox.productName, { days: XBOX_DAYS, server: server.name }),
       startConsent: true,
       xbox: { days: XBOX_DAYS, amount: XBOX_PRICE[currency] },
+      adminTest,
       paysafecard: form.get("method") === "paysafecard",
     });
   } catch (err) {
@@ -569,7 +584,8 @@ export async function buyDomainAction(id: string, _: CheckoutState, form: FormDa
   const server = await getOwnedServer(id, user.id);
   if (!server) redirect("/dashboard");
   if (server.edition !== "JAVA" || server.plan !== "FREE") redirect(`/dashboard/servers/${server.id}/addons`);
-  if (form.get("startNow") !== "on") return { error: "consentRequired" };
+  const adminTest = await adminTestBuy(form, server, user.id);
+  if (!adminTest && form.get("startNow") !== "on") return { error: "consentRequired" };
 
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   let url: string;
@@ -585,6 +601,7 @@ export async function buyDomainAction(id: string, _: CheckoutState, form: FormDa
       productName: format(t.paidAddons.free.productName, { days: DOMAIN_DAYS, server: server.name }),
       startConsent: true,
       domain: { days: DOMAIN_DAYS, amount: ADDON_SPECS.domain.price[currency] },
+      adminTest,
       paysafecard: form.get("method") === "paysafecard",
     });
   } catch (err) {
