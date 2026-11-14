@@ -1671,6 +1671,14 @@ const en: Messages = {
   admin: {
     title: "Admin panel",
     nav: { overview: "Overview", servers: "Servers", users: "Users", payments: "Payments", support: "Chat", announcement: "Announcement", reviews: "Reviews", hytale: "Hytale" },
+    copyForClaude: {
+      button: "Copy for Claude",
+      copying: "Gathering…",
+      copied: "Copied, paste it to Claude",
+      hint: "Copies the server, its state, plugins, console and chat, to paste into Claude.",
+      failed: "Couldn't gather the data. Try again.",
+      selectBelow: "The browser didn't allow copying. Select the text below and copy it yourself.",
+    },
     reviews: {
       title: "Player reviews",
       intro: "The panel asks owners of a server older than 7 days that someone still played on at least 3 days after it was made. The home page shows the 3 or 6 newest shown ones (from 3 up); the average and count include only shown ones. Reject only spam, swearing and personal data, not bad reviews: that's what the home page promises.",

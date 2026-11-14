@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { CHAT_RATE, MAX_LENGTH, readChat } from "@/lib/support";
 import SupportChat from "@/components/SupportChat";
+import CopyForClaude from "@/components/CopyForClaude";
 
 type Props = { params: Promise<{ userId: string }> };
 
@@ -36,7 +37,10 @@ export default async function AdminChat({ params }: Props) {
           <h2 className="break">{user.email}</h2>
           <p className="muted small">{t.admin.replyHint}</p>
         </div>
-        <Link className="button secondary small" href={`/admin/users/${user.id}`}>{t.admin.profile}</Link>
+        <div className="row">
+          <CopyForClaude target={{ userId: user.id }} t={all.admin.copyForClaude} />
+          <Link className="button secondary small" href={`/admin/users/${user.id}`}>{t.admin.profile}</Link>
+        </div>
       </header>
       <div className="chat-servers">
         <span className="muted small">{all.admin.nav.servers}:</span>
