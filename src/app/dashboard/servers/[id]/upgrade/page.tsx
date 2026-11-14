@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { isAdmin } from "@/lib/admin";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getOwnedServer } from "@/lib/servers";
@@ -62,6 +63,7 @@ export default async function UpgradePage({ params }: { params: Promise<{ id: st
         billing={all.billing}
         legal={all.legal}
         errors={all.server.errors}
+        adminTest={server.adminTest && (await isAdmin(session.user.id))}
       />
     </div>
   );

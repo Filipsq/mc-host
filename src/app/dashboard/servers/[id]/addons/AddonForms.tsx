@@ -5,6 +5,7 @@ import { buyAddonsAction, buyDomainAction, removeAddonAction } from "../../actio
 import PayBadges from "@/components/PayBadges";
 import { clearDomainAction, setDomainAction } from "./actions";
 import PaymentConsent from "@/components/PaymentConsent";
+import AdminTestBuy from "@/components/AdminTestBuy";
 import { format, type Messages } from "@/i18n/messages";
 import type { AddonOption } from "@/components/PlanPicker";
 import type { AddonId } from "@/lib/addons";
@@ -20,10 +21,11 @@ type BuyProps = {
   legal: Messages["legal"];
   errors: Messages["server"]["errors"];
   hint: string;
+  adminTest?: boolean; // an admin's test server: a free test purchase is offered too
 };
 
 /** Ticks add-ons the server doesn't have and pays their share of the time left. */
-export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, legal, errors, hint }: BuyProps) {
+export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, legal, errors, hint, adminTest }: BuyProps) {
   const [state, action, pending] = useActionState(buyAddonsAction.bind(null, serverId), {});
   const [ticked, setTicked] = useState<AddonId[]>([]);
   const key = options.filter((o) => ticked.includes(o.id)).map((o) => o.id).join(",");
@@ -60,6 +62,7 @@ export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, le
       <button type="submit" disabled={pending || !key}>
         {pending ? billing.redirecting : t.buy}
       </button>
+      {key && <AdminTestBuy show={adminTest} pending={pending} t={billing} />}
     </form>
   );
 }
@@ -158,10 +161,11 @@ type BuyDomainProps = {
   billing: Messages["billing"];
   legal: Messages["legal"];
   errors: Messages["server"]["errors"];
+  adminTest?: boolean;
 };
 
 /** Buys an own domain for a free server, for `days` at a time (like console joining). */
-export function BuyDomainForm({ serverId, price, days, paysafecard, again, t, billing, legal, errors }: BuyDomainProps) {
+export function BuyDomainForm({ serverId, price, days, paysafecard, again, t, billing, legal, errors, adminTest }: BuyDomainProps) {
   const [state, action, pending] = useActionState(buyDomainAction.bind(null, serverId), {});
   return (
     <form action={action} className="stack">
@@ -183,6 +187,7 @@ export function BuyDomainForm({ serverId, price, days, paysafecard, again, t, bi
           </button>
         )}
       </div>
+      <AdminTestBuy show={adminTest} pending={pending} t={billing} />
     </form>
   );
 }

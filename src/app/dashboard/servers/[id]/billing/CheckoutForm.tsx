@@ -6,6 +6,7 @@ import { checkoutAction } from "../../actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import type { ComponentProps } from "react";
 import PaymentConsent from "@/components/PaymentConsent";
+import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
 import type { Messages } from "@/i18n/messages";
 
@@ -22,9 +23,10 @@ type Props = {
   autoRenew: boolean; // ticked to start with
   addons: ComponentProps<typeof PlanPicker>["addons"];
   paysafecard: boolean; // offered too (cashbill.ts)
+  adminTest?: boolean; // an admin's test server: a free test purchase is offered too
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, paysafecard }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, paysafecard, adminTest }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -60,6 +62,7 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
           </button>
         )}
       </div>
+      <AdminTestBuy show={adminTest} pending={pending} t={t} />
     </form>
   );
 }

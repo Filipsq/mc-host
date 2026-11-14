@@ -62,25 +62,28 @@ export async function startCheckout(opts: {
   creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
   promoCode?: string; // the Halloween code (halloween.ts): the same, without a creator
   paysafecard?: boolean; // paid with paysafecard through CashBill (cashbill.ts) instead of Stripe
+  adminTest?: boolean; // an admin's test server (Server.adminTest): bought for 0, applied at once, no Stripe
 }) {
   const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly, xbox, domain } = opts;
   const extra = xbox ?? domain; // days of one feature for a free server
   const addons = addonList(opts.addons);
-  const paysafecard = !!opts.paysafecard;
+  const adminTest = !!opts.adminTest;
+  const paysafecard = !!opts.paysafecard && !adminTest;
   if (paysafecard && !paysafecardEnabled(currency)) throw new Error("paysafecard is not set up");
-  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !extra && !paysafecard;
+  // An admin's test purchase saves no card, so it can't renew by itself.
+  const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !extra && !paysafecard && !adminTest;
   // Test keys take no money, so only admins may check out with them (to try the site).
-  if (!paysafecard && stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
+  if (!adminTest && !paysafecard && stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
   const oneOff = upgrade?.amount ?? addonsOnly?.amount ?? extra?.amount ?? 0;
   const full = Math.round((upgrade || addonsOnly || extra || !days ? oneOff : priceFor(plan, days, currency, addons)) * 100);
-  const plain = !!days && !upgrade && !addonsOnly && !extra; // a plan bought or extended: codes and offers apply
+  const plain = !!days && !upgrade && !addonsOnly && !extra && !adminTest; // a plan bought or extended: codes and offers apply
   const creatorId = plain ? opts.creatorId : undefined;
   const promoCode = plain && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
   // Without a code, a first payment while the user's start offer runs (startOffer.ts) is cheaper too.
   const startOffer = plain && !creatorId && !promoCode && (await startOfferEnds(user.id)) ? "start" : undefined;
-  const amount = creatorId ? withCreatorDiscount(full) : promoCode ? withHalloweenDiscount(full) : startOffer ? withStartOfferDiscount(full) : full;
+  const amount = adminTest ? 0 : creatorId ? withCreatorDiscount(full) : promoCode ? withHalloweenDiscount(full) : startOffer ? withStartOfferDiscount(full) : full;
   const payment = await db.payment.create({
     data: {
       userId: user.id,
@@ -104,6 +107,12 @@ export async function startCheckout(opts: {
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const back = `${appUrl}/dashboard/servers/${server.id}`;
+  if (adminTest) {
+    // Marked like a Stripe test checkout, so it counts as a test payment (not revenue) and can be deleted in the admin panel.
+    await db.payment.update({ where: { id: payment.id }, data: { stripeSessionId: `cs_test_admin_${payment.id}` } });
+    await fulfillPayment(payment.id);
+    return `${back}?payment=success`;
+  }
   const cardsOnly = paysafecardEnabled(currency) && !upgrade && !addonsOnly;
   if (paysafecard) {
     const cb = await createCashbillPayment(payment, { title: opts.productName, returnUrl: `${back}?payment=success`, email: user.email });

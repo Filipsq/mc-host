@@ -372,6 +372,8 @@ const pl = {
     methods: "Zapłacisz kartą, BLIK-iem lub przez Przelewy24 (BLIK i Przelewy24 przy płatności w złotówkach). Bez automatycznego odnawiania plan nie odnawia się sam, ale przed końcem okresu przypomnimy Ci mailem.",
     methodsCashbill: "Kartą zapłacisz przez Stripe (tylko wtedy możesz włączyć automatyczne odnawianie). BLIK-iem, przelewem lub paysafecard zapłacisz przez CashBill. Bez automatycznego odnawiania plan nie odnawia się sam, ale przed końcem okresu przypomnimy Ci mailem.",
     paysafecard: "BLIK, przelew, paysafecard",
+    adminTest: "Kup za 0 zł (test admina)",
+    adminTestHint: "Widzisz to tylko jako admin na swoim serwerze testowym: zakup działa od razu, bez płatności, i nie liczy się do przychodów.",
     paysafecardHint: "Kod paysafecard kupisz np. w kiosku lub na stacji benzynowej. BLIK, przelew i paysafecard nie odnawiają się automatycznie.",
     status: "Status",
     statuses: { active: "Aktywny", suspended: "Zawieszony", awaiting: "Czeka na płatność", free: "Darmowy" },
