@@ -12,6 +12,7 @@ import { EDITION_NAMES } from "@/lib/editions";
 import PaymentTable from "../../PaymentTable";
 import { DeleteButton, GiftForm, MoveForm, SlotsForm } from "./AdminServerActions";
 import { nodes } from "@/lib/nodes";
+import CopyForClaude from "@/components/CopyForClaude";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -87,6 +88,7 @@ export default async function AdminServer({ params }: Props) {
         <Link className="button" href={`/dashboard/servers/${server.id}`}>
           {t.openPanel}
         </Link>
+        <CopyForClaude target={{ serverId: server.id }} t={t.copyForClaude} />
       </div>
 
       <section className="card stack">

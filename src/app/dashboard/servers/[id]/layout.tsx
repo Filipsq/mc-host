@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CopyForClaude from "@/components/CopyForClaude";
 import { Users } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
@@ -110,9 +111,12 @@ export default async function ServerLayout({ children, params }: { children: Rea
   const banners = (
     <>
       {access.role === "admin" && owner && (
-        <p className="notice warn">
-          {format(all.admin.viewing, { email: owner.email })} <Link href={`/admin/servers/${id}`}>{all.admin.openAdmin}</Link>
-        </p>
+        <div className="notice warn row">
+          <span>
+            {format(all.admin.viewing, { email: owner.email })} <Link href={`/admin/servers/${id}`}>{all.admin.openAdmin}</Link>
+          </span>
+          <CopyForClaude target={{ serverId: id }} t={all.admin.copyForClaude} />
+        </div>
       )}
       {access.role === "friend" && owner && (
         <div className="notice row friend-banner">

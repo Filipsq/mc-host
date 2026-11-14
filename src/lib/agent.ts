@@ -359,6 +359,22 @@ export async function getMetrics(id: string, range: MetricsRange): Promise<Serve
   return res.json();
 }
 
+/** The console's last lines (the agent sends its last 200 and stops), for the admins' helper. */
+export async function readLogTail(id: string): Promise<string[]> {
+  const res = await agentFetch(`/servers/${id}/logs?follow=0`, { timeoutMs: 10_000 });
+  const lines: string[] = [];
+  for (const raw of (await res.text()).split("\n")) {
+    if (!raw.startsWith("data: ")) continue;
+    try {
+      const line = JSON.parse(raw.slice(6));
+      if (typeof line === "string") lines.push(line);
+    } catch {
+      // A half line at a cut-off: skip it.
+    }
+  }
+  return lines;
+}
+
 /** Opens the console log stream (Server-Sent Events) for a server. */
 export async function openLogStream(id: string, signal: AbortSignal) {
   return agentFetch(`/servers/${id}/logs`, { signal });

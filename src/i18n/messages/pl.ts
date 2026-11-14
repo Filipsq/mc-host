@@ -1670,6 +1670,14 @@ const pl = {
   admin: {
     title: "Panel admina",
     nav: { overview: "Przegląd", servers: "Serwery", users: "Użytkownicy", payments: "Płatności", support: "Czat", announcement: "Ogłoszenie", reviews: "Opinie", hytale: "Hytale" },
+    copyForClaude: {
+      button: "Kopiuj dla Claude",
+      copying: "Zbieram dane…",
+      copied: "Skopiowane, wklej Claude",
+      hint: "Kopiuje serwer, jego stan, pluginy, konsolę i czat, żeby wkleić to Claude.",
+      failed: "Nie udało się zebrać danych. Spróbuj jeszcze raz.",
+      selectBelow: "Telefon nie pozwolił skopiować. Zaznacz tekst poniżej i skopiuj go sam.",
+    },
     reviews: {
       title: "Opinie graczy",
       intro: "Panel prosi o opinię właścicieli serwera starszego niż 7 dni, na którym ktoś grał jeszcze co najmniej 3 dni po założeniu. Strona główna pokazuje 3 lub 6 najnowszych pokazanych (od 3 w górę), a średnia i liczba opinii liczą tylko pokazane. Odrzucaj tylko spam, wulgaryzmy i dane osobowe, nie złe opinie: tak obiecuje strona główna.",
