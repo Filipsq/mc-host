@@ -995,6 +995,8 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 /* The three small sign-up tables share a row, so they must fit their cards. */
 .admin .signup-tables { align-items: start; }
 .admin .signup-tables table { min-width: 0; }
+/* On phones the recent-days tables keep only their labels, so the numbers fit. */
+@media (max-width: 600px) { .admin .activity-hint { display: none; } }
 
 /* Signed in, the top bar holds three buttons, so the page links and some labels go sooner. */
 @media (max-width: 1080px) { .signed-in .topnav { display: none; } }

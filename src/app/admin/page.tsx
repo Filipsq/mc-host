@@ -15,6 +15,8 @@ import { formats } from "./format";
 import { aiEnabled, aiUsageThisMonth } from "@/lib/ai";
 import RebuildBedrock from "./RebuildBedrock";
 import { signupBuckets, signupsSince, type Bucket } from "./signups";
+import { activity, countSince, warsawMidnight } from "./activity";
+import { REFUSAL_KINDS } from "@/lib/refusals";
 
 const DAY = 24 * 60 * 60 * 1000;
 const VAT = 0.23;
@@ -23,7 +25,7 @@ const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 export default async function AdminOverview() {
   await requireAdmin();
   const now = new Date();
-  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, chats, ai, costs, rates] = await Promise.all([
+  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, chats, ai, costs, rates, recent] = await Promise.all([
     getMessages(),
     getPreferences(),
     machineStats(),
@@ -48,6 +50,7 @@ export default async function AdminOverview() {
     aiUsageThisMonth(),
     db.machineCost.findMany(),
     nbpRates(),
+    activity(now),
   ]);
   const t = all.admin;
   const f = formats(locale);
@@ -79,6 +82,13 @@ export default async function AdminOverview() {
   const revenueNet = Math.round(revenueGross.reduce<number>((sum, v) => sum + (v ?? 0), 0) / (1 + VAT));
   const profit = revenueNet - costPln;
   const zl = (minor: number) => f.money(minor, "PLN");
+  const a = t.activity;
+  const activityRows = [
+    { label: a.signups, counts: countSince(joined.map((u) => u.createdAt), recent.since) },
+    { label: a.newFree, counts: recent.newFree, hint: a.newFreeHint },
+    { label: a.newPaying, counts: recent.newPaying, hint: a.newPayingHint },
+    { label: a.payments, counts: recent.payments },
+  ];
 
   const crashed = servers.filter((s) => live[s.id].state === "crashed");
   const overDisk = servers.filter((s) => (live[s.id].diskMb ?? 0) > diskLimitMb(s));
@@ -130,6 +140,186 @@ export default async function AdminOverview() {
 
   return (
     <>
+      <section className="stack">
+        <h2>{t.attention}</h2>
+        {chats.length > 0 && (
+          <div className="card stack">
+            <h3>
+              <Link href="/admin/support">{all.support.admin.waitingTitle}</Link> <span className="muted">({chats.length})</span>
+            </h3>
+            <ul className="attention-list">
+              {chats.map((c) => (
+                <li key={c.userId}>
+                  <Link className="break" href={`/admin/support/${c.userId}`}>{c.user.email}</Link>
+                  <span className="muted small">{format(all.support.admin.since, { date: f.dateTime(c.lastMessageAt) })}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {attention.length === 0 && chats.length === 0 ? (
+          <p className="muted">{t.allGood}</p>
+        ) : (
+          attention.map((group) => (
+            <div key={group.title} className="card stack">
+              <h3>
+                {group.title} <span className="muted">({group.rows.length})</span>
+              </h3>
+              {group.hint && <p className="muted small">{group.hint}</p>}
+              <ul className="attention-list">
+                {group.rows.map((s) => (
+                  <li key={s.id}>
+                    <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
+                    <span className="muted small">
+                      {[all.plans[s.plan], group.note?.(s)].filter(Boolean).join(" · ")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        )}
+      </section>
+      <section className="stack">
+        <h2>{t.numbers}</h2>
+        <div className="admin-grid">
+          <Tile label={t.users} value={String(users)} hint={format(t.usersNew, { n: newUsers })} href="/admin/users" />
+          <Tile
+            label={a.paying}
+            value={String(recent.paying)}
+            hint={format(a.payingHint, { share: users ? f.number((recent.paying / users) * 100) : "0" })}
+          />
+          <Tile
+            label={t.serversTotal}
+            value={String(servers.length)}
+            hint={[stats ? format(t.serversOnline, { n: online }) : "", ...byPlan.map((p) => `${all.plans[p.plan]}: ${p.n}`), tests ? format(t.testServers, { n: tests }) : ""]
+              .filter(Boolean)
+              .join(" · ")}
+            href="/admin/servers"
+          />
+          <div className="card stat">
+            <p className="stat-label">
+              <Link href="/admin/payments">{t.revenue30}</Link>
+            </p>
+            <div className="revenue-split">
+              <Link href="/admin/payments?status=PAID">
+                <span className="muted small">{t.revenuePaid}</span>
+                <span className="stat-value">{f.totals(last30) || t.none}</span>
+              </Link>
+              <Link href="/admin/payments?status=PENDING">
+                <span className="muted small">{format(t.revenuePending, { n: waiting.length })}</span>
+                <span className="stat-value pending">{f.totals(waiting) || t.none}</span>
+              </Link>
+            </div>
+            <p className="muted small">{format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}</p>
+            <p className="muted small">{t.revenuePendingHint}</p>
+            {tests30.length > 0 && (
+              <p className="muted small">{format(t.revenueTests, { amount: f.totals(tests30) })}</p>
+            )}
+          </div>
+          <Tile
+            label={t.aiUsage}
+            value={aiEnabled() || ai.calls > 0 ? format(t.aiValue, { n: ai.calls, limit: ai.limit }) : t.aiOff}
+            share={aiEnabled() ? ai.calls / ai.limit : undefined}
+            hint={format(t.aiCost, { usd: new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(ai.usd) })}
+          />
+        </div>
+      </section>
+
+      <section className="stack">
+        <h2>{a.title}</h2>
+        <div className="admin-grid signup-tables">
+          <div className="card flush">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>{a.traffic}</th>
+                  <th className="num">{a.today}</th>
+                  <th className="num">{a.days7}</th>
+                  <th className="num">{a.days30}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activityRows.map((row) => (
+                  <tr key={row.label}>
+                    <td>
+                      {row.label}
+                      {row.hint && <div className="muted small activity-hint">{row.hint}</div>}
+                    </td>
+                    {row.counts.map((n, i) => (
+                      <td key={i} className="num">
+                        {i === 0 ? <strong>{n}</strong> : n}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="card flush">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>{a.refusals}</th>
+                  <th className="num">{a.today}</th>
+                  <th className="num">{a.days7}</th>
+                  <th className="num">{a.days30}</th>
+                  <th className="num">{a.people}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {REFUSAL_KINDS.map((kind) => {
+                  const row = recent.refusals[kind];
+                  return (
+                    <tr key={kind}>
+                      <td>
+                        {a.kinds[kind]}
+                        <div className="muted small activity-hint">{a.kindHints[kind]}</div>
+                      </td>
+                      {row.counts.map((n, i) => (
+                        <td key={i} className={`num${n > 0 && kind !== "startFailed" && kind !== "createFailed" ? " over" : ""}`}>
+                          {i === 0 ? <strong>{n}</strong> : n}
+                        </td>
+                      ))}
+                      <td className="num">{row.people}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p className="muted small">{a.refusalsHint}</p>
+        {recent.recent.length > 0 && (
+          <div className="card stack">
+            <h3>{a.recent}</h3>
+            <ul className="attention-list">
+              {recent.recent.map((r) => (
+                <li key={r.id}>
+                  <span className="nowrap">{f.dateTime(r.createdAt)}</span>
+                  <span>{a.kinds[r.kind] ?? r.kind}</span>
+                  {r.userId && (
+                    <Link className="break" href={`/admin/users/${r.userId}`}>
+                      {r.email ?? r.userId}
+                    </Link>
+                  )}
+                  <span className="muted small">
+                    {[all.plans[r.plan], r.node, r.serverId && <Link key="s" href={`/admin/servers/${r.serverId}`}>{a.server}</Link>]
+                      .filter(Boolean)
+                      .map((part, i) => (
+                        <span key={i}>
+                          {i > 0 && " · "}
+                          {part}
+                        </span>
+                      ))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </section>
+
       <section className="stack">
         <h2>{t.machine}</h2>
         {!stats ? (
@@ -250,6 +440,32 @@ export default async function AdminOverview() {
       </section>
 
       <section className="stack">
+        <h2>{t.signups}</h2>
+        <div className="admin-grid signup-tables">
+          {signupTables.map((table) => (
+            <div key={table.title} className="card flush">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>{table.title}</th>
+                    <th className="num">{t.signupsCount}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {table.rows.map((b, i) => (
+                    <tr key={b.start.getTime()}>
+                      <td className="nowrap">{table.label(b, i)}</td>
+                      <td className="num">{i === 0 ? <strong>{b.count}</strong> : b.count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="stack">
         <h2>{t.costs.title}</h2>
         <form action={saveMachineCostsAction} className="stack">
           <div className="table-scroll card flush">
@@ -321,112 +537,7 @@ export default async function AdminOverview() {
       </section>
 
       <section className="stack">
-        <h2>{t.numbers}</h2>
-        <div className="admin-grid">
-          <Tile label={t.users} value={String(users)} hint={format(t.usersNew, { n: newUsers })} href="/admin/users" />
-          <Tile
-            label={t.serversTotal}
-            value={String(servers.length)}
-            hint={[stats ? format(t.serversOnline, { n: online }) : "", ...byPlan.map((p) => `${all.plans[p.plan]}: ${p.n}`), tests ? format(t.testServers, { n: tests }) : ""]
-              .filter(Boolean)
-              .join(" · ")}
-            href="/admin/servers"
-          />
-          <div className="card stat">
-            <p className="stat-label">
-              <Link href="/admin/payments">{t.revenue30}</Link>
-            </p>
-            <div className="revenue-split">
-              <Link href="/admin/payments?status=PAID">
-                <span className="muted small">{t.revenuePaid}</span>
-                <span className="stat-value">{f.totals(last30) || t.none}</span>
-              </Link>
-              <Link href="/admin/payments?status=PENDING">
-                <span className="muted small">{format(t.revenuePending, { n: waiting.length })}</span>
-                <span className="stat-value pending">{f.totals(waiting) || t.none}</span>
-              </Link>
-            </div>
-            <p className="muted small">{format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}</p>
-            <p className="muted small">{t.revenuePendingHint}</p>
-            {tests30.length > 0 && (
-              <p className="muted small">{format(t.revenueTests, { amount: f.totals(tests30) })}</p>
-            )}
-          </div>
-          <Tile
-            label={t.aiUsage}
-            value={aiEnabled() || ai.calls > 0 ? format(t.aiValue, { n: ai.calls, limit: ai.limit }) : t.aiOff}
-            share={aiEnabled() ? ai.calls / ai.limit : undefined}
-            hint={format(t.aiCost, { usd: new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(ai.usd) })}
-          />
-        </div>
-      </section>
-
-      <section className="stack">
-        <h2>{t.signups}</h2>
-        <div className="admin-grid signup-tables">
-          {signupTables.map((table) => (
-            <div key={table.title} className="card flush">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>{table.title}</th>
-                    <th className="num">{t.signupsCount}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {table.rows.map((b, i) => (
-                    <tr key={b.start.getTime()}>
-                      <td className="nowrap">{table.label(b, i)}</td>
-                      <td className="num">{i === 0 ? <strong>{b.count}</strong> : b.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="stack">
-        <h2>{t.attention}</h2>
         <RebuildBedrock t={t.bedrockRebuild} />
-        {chats.length > 0 && (
-          <div className="card stack">
-            <h3>
-              <Link href="/admin/support">{all.support.admin.waitingTitle}</Link> <span className="muted">({chats.length})</span>
-            </h3>
-            <ul className="attention-list">
-              {chats.map((c) => (
-                <li key={c.userId}>
-                  <Link className="break" href={`/admin/support/${c.userId}`}>{c.user.email}</Link>
-                  <span className="muted small">{format(all.support.admin.since, { date: f.dateTime(c.lastMessageAt) })}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {attention.length === 0 && chats.length === 0 ? (
-          <p className="muted">{t.allGood}</p>
-        ) : (
-          attention.map((group) => (
-            <div key={group.title} className="card stack">
-              <h3>
-                {group.title} <span className="muted">({group.rows.length})</span>
-              </h3>
-              {group.hint && <p className="muted small">{group.hint}</p>}
-              <ul className="attention-list">
-                {group.rows.map((s) => (
-                  <li key={s.id}>
-                    <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
-                    <span className="muted small">
-                      {[all.plans[s.plan], group.note?.(s)].filter(Boolean).join(" · ")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
-        )}
       </section>
     </>
   );
@@ -463,11 +574,6 @@ function Meter({ share }: { share: number }) {
 
 /** Midnight on the 1st of this month, Polish time. */
 function monthStart(now: Date) {
-  const part = (type: string, parts: Intl.DateTimeFormatPart[]) => parts.find((p) => p.type === type)!.value;
-  const ym = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw", year: "numeric", month: "2-digit" }).formatToParts(now);
-  const day = `${part("year", ym)}-${part("month", ym)}-01`;
-  const offset = new Intl.DateTimeFormat("en", { timeZone: "Europe/Warsaw", timeZoneName: "longOffset" }).formatToParts(
-    new Date(`${day}T00:00:00Z`),
-  );
-  return new Date(`${day}T00:00:00${part("timeZoneName", offset).replace("GMT", "") || "Z"}`);
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(now);
+  return warsawMidnight(now, `${day.slice(0, 8)}01`);
 }

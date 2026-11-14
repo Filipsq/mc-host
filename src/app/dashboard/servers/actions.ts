@@ -31,6 +31,7 @@ import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
 import { ADDON_SPECS, DOMAIN_DAYS, addonCost, addonFits, addonList, canBuyAddons, domainPaidFor, serverAddons, type AddonId } from "@/lib/addons";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { canSellMemory, heldMemoryMb, rankNodes } from "@/lib/capacity";
+import { logRefusal } from "@/lib/refusals";
 import { isAdmin } from "@/lib/admin";
 import { FREE_STARTER_DAYS, checkCreatorCode, giveBackFreeStarter, takeFreeStarter } from "@/lib/creator";
 import { HALLOWEEN_CODE, isHalloweenCode } from "@/lib/halloween";
@@ -272,7 +273,10 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   // Bedrock and tModLoader need an x86 machine.
   const candidates = await rankNodes(memoryMb, plan === "FREE" ? 0 : extraMb, undefined, requiredArch({ edition, kind }));
   const node = candidates[0];
-  if (!node) return { error: "soldOut", values };
+  if (!node) {
+    await logRefusal("createSoldOut", { plan, userId: user.id });
+    return { error: "soldOut", values };
+  }
 
   // Pin the pack's current version, so players know exactly which one to install.
   let pack: PackChoice | null = null;
@@ -391,6 +395,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
       }
       await db.server.delete({ where: { id: server.id } });
       if (freeStarter) await giveBackFreeStarter(user.id);
+      await logRefusal(agent.isFull(err) ? "createFull" : "createFailed", { plan, userId: user.id, node: server.node });
       return { error: agent.isFull(err) ? "full" : "agentUnavailable", values };
     }
   }
@@ -437,6 +442,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
   // Its own machine may be full: then the whole plan has to fit on another, where it moves once paid for (moveIfFull).
   if (!(await canSellMemory(extraMb, planMb, server.node)) && !(await canSellMemory(planMb))) {
+    await logRefusal("upgradeSoldOut", { plan: parsed.data.plan, userId: user.id, serverId: server.id, node: server.node });
     return { error: "soldOut" };
   }
 
@@ -480,6 +486,7 @@ export async function upgradeAction(id: string, _: CheckoutState, form: FormData
   const planMb = planById(parsed.data.plan).ramGb * 1024;
   const extraMb = (await isAdmin(user.id)) ? 0 : planMb - heldMemoryMb(server);
   if (!(await canSellMemory(extraMb, planMb, server.node)) && !(await canSellMemory(planMb))) {
+    await logRefusal("upgradeSoldOut", { plan: parsed.data.plan, userId: user.id, serverId: server.id, node: server.node });
     return { error: "soldOut" };
   }
 
@@ -689,11 +696,15 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
       revalidatePath(`/dashboard/servers/${id}`, "layout");
       return {};
     }
-    if (agent.isFull(err)) return { error: "full" };
+    if (agent.isFull(err)) {
+      await logRefusal("startFull", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
+      return { error: "full" };
+    }
     if (agent.isDiskFull(err)) {
       revalidatePath(`/dashboard/servers/${id}`, "layout");
       return { error: "diskFull" };
     }
+    await logRefusal("startFailed", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
     throw err;
   }
   await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
