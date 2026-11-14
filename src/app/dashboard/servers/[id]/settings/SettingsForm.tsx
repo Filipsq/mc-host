@@ -18,7 +18,7 @@ type Props = {
   playerLimit: number; // the most the plan allows
   viewDistance: { max: number; def: number }; // the plan's range and default, in chunks
   // Java only; offered on Paper servers, and on mod loaders only on the versions their login mod runs on
-  nonPremium?: { offered: boolean; on: boolean; ownLogin?: boolean; versions?: readonly string[] };
+  nonPremium?: { offered: boolean; on: boolean; ownLogin?: boolean; loginHint: string; versions?: readonly string[] };
   crossplay?: { offered: boolean; on: boolean; host: string; port: number }; // the same, with where Bedrock players join
   initial: {
     version: string;
@@ -196,13 +196,7 @@ export default function SettingsForm({ serverId, edition, name, versions, latest
         </label>
       )}
       {nonPremium && nonPremiumOffered && nonPremiumOn && (
-        <label className="check">
-          <input type="checkbox" name="ownLogin" defaultChecked={nonPremium.ownLogin} />
-          <span className="stack-tight">
-            <span>{t.ownLogin}</span>
-            <span className="muted small">{t.ownLoginHint}</span>
-          </span>
-        </label>
+        <p className="notice warn small">{nonPremium.on && !nonPremium.ownLogin ? t.ourLoginNote : nonPremium.loginHint}</p>
       )}
       {nonPremium && !nonPremiumOffered && (
         <p className="muted small">

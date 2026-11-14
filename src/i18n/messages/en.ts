@@ -221,7 +221,7 @@ const en: Messages = {
       },
       {
         q: "Can the server be non-premium?",
-        a: "Yes, on Java without mods, and with mods and mod packs on Fabric (1.19.4–1.21.11) and Forge and NeoForge (1.21.1). Turn on non-premium when creating the server or in Settings. Every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
+        a: "Yes, on Java without mods, and with mods and mod packs on Fabric (1.19.4–1.21.11) and Forge and NeoForge (1.21.1). Turn on non-premium when creating the server or in Settings. We also recommend adding AuthMe in Plugins (or a login mod in Mods): every player then sets a password with /register and logs in with /login, so nobody can play under someone else's name.",
       },
       {
         q: "Are servers protected against DDoS attacks?",
@@ -643,9 +643,9 @@ const en: Messages = {
     modsNote: "You add mods once the server is made, on its Mods page. Players need the same loader and Minecraft version.",
     modsInfo: "{loader}, Minecraft {version}. Players need {loader} on the same version and the mods marked \"players too\". The Modrinth App installs them most easily.",
     ramFrom: "from {gb} GB RAM",
-    nonPremiumHint: "Every player logs in with a password (/register, then /login), so nobody can play under someone else's name. You can change this later in Settings.",
+    nonPremiumHint: "We don't add a login plugin: without one anyone can join under someone else's name. We recommend adding AuthMe in Plugins once the server is made (players set a password with /register). You can change this later in Settings.",
     nonPremiumPackHint:
-      "Every player logs in with a password (/register, then /login). On a mod pack it works when the pack runs on Fabric (Minecraft 1.19.4–1.21.11) or Forge/NeoForge 1.21.1; on others the server stays premium.",
+      "We don't add a login mod: without one anyone can join under someone else's name. On a mod pack non-premium works when the pack runs on Fabric (Minecraft 1.19.4–1.21.11) or Forge/NeoForge 1.21.1; on others the server stays premium.",
     crossplayHint: "Players on phones, consoles and Windows 10/11 (Bedrock) join together with Java players. You'll find the address and port for them on the server's page.",
     withPlugins: "Plugins: {list}",
     ramLow: "{game} runs best with {gb} GB RAM or more, and this plan has {plan} GB. It will run, but may lag with many players.",
@@ -839,12 +839,17 @@ const en: Messages = {
     opHint: "Make someone an operator (OP) in the console with: op name",
     nonPremium: "Non-premium: let in players who haven't bought Minecraft",
     nonPremiumHint:
-      "On first join every player sets a password with /register, then logs in with /login, so nobody can play under someone else's name. After switching, players start with an empty inventory because their IDs change. The world stays.",
+      "After switching, players start with an empty inventory because their IDs change. The world stays.",
     nonPremiumPaperOnly:
       "Non-premium doesn't work on this server: we have no tested password login mod for it, so someone could join under another player's name. It works on servers without mods, and on mods and mod packs on Fabric, Forge and NeoForge on some versions.",
-    ownLogin: "I use my own login plugin (no AuthMe)",
-    ownLoginHint:
-      "We don't add AuthMe or a login mod. Add your own plugin (e.g. nLogin, LibreLogin) under Plugins. With no login at all, anyone can join under your name.",
+    loginHintPlugins:
+      "We don't add a login plugin. Without one anyone can join under any name, yours too, and get your OP. We recommend adding AuthMe in Plugins: players set a password with /register and log in with /login.",
+    loginHintMods:
+      "We don't add a login mod. Without one anyone can join under any name, yours too, and get your OP. We recommend adding {mod} in Mods: players set a password with /register and log in with /login.",
+    loginHintPack:
+      "We don't add a login mod. Without one anyone can join under any name, yours too, and get your OP. You can upload a password login mod to the mods folder in Files.",
+    ourLoginNote:
+      "This server runs the AuthMe plugin (or login mod) we added when non-premium was turned on, so players log in with a password. To remove it, untick non-premium, save, then tick it and save again.",
     nonPremiumModVersions:
       "On this loader non-premium works only on Minecraft {versions}. Only there is a tested password login mod; without it someone could join under another player's name.",
     nonPremiumOn: "non-premium",
