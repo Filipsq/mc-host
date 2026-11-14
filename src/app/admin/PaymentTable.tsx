@@ -4,7 +4,7 @@ import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 import { isRemovablePayment, isTestPayment } from "@/lib/billing";
 import type { Formats } from "./format";
-import { DeletePaymentButton } from "./PaymentActions";
+import { DeletePaymentButton, PaymentHelpButton } from "./PaymentActions";
 import SortableTable from "./SortableTable";
 import { sortable } from "./sortable";
 
@@ -17,6 +17,7 @@ export default function PaymentTable({ rows, all, f, showUser = true, showServer
   const t = all.admin;
   if (rows.length === 0) return <p className="muted">{t.noPayments}</p>;
   const removable = rows.some(isRemovablePayment);
+  const helpable = rows.some((p) => p.status === "PENDING" || p.helpSentAt);
   const table = sortable<PaymentRow>(
     [
       {
@@ -84,6 +85,19 @@ export default function PaymentTable({ rows, all, f, showUser = true, showServer
         desc: true,
         value: (p) => p.paidAt,
         cell: (p) => <td className="nowrap">{p.paidAt ? f.dateTime(p.paidAt) : "–"}</td>,
+      },
+      helpable && {
+        label: t.paymentHelp.column,
+        value: (p) => p.helpSentAt,
+        cell: (p) => (
+          <td>
+            {p.helpSentAt ? (
+              <span className="muted small nowrap">{format(t.paymentHelp.sent, { date: f.dateTime(p.helpSentAt) })}</span>
+            ) : (
+              p.status === "PENDING" && <PaymentHelpButton id={p.id} t={t.paymentHelp} />
+            )}
+          </td>
+        ),
       },
       removable && {
         label: t.paymentRemove.one,

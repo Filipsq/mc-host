@@ -1630,6 +1630,17 @@ const pl = {
     turnOn: "Włącz je z powrotem",
     invalid: "Ten link jest nieprawidłowy. Skopiuj go z e-maila w całości.",
   },
+  paymentHelpMail: {
+    subject: "Potrzebujesz pomocy z płatnością?",
+    whatServer: "serwer „{server}” (plan {plan})",
+    whatPlan: "plan {plan}",
+    paragraphs: [
+      "Cześć! 👋 Widzę, że płatność za {what} w {brand} nie została dokończona.",
+      "Potrzebujesz pomocy? Jeśli chcesz zapłacić paysafecard albo w inny sposób, którego nie ma na stronie, napisz do mnie na czacie na stronie. Załatwimy to razem, krok po kroku.",
+      "Coś nie zadziałało albo masz pytanie o plan? Też pisz śmiało, odpowiem najszybciej, jak się da. Do zobaczenia w grze! 🎮",
+    ],
+    button: "Napisz na czacie",
+  },
   testPaymentMail: {
     server: {
       subject: "Płatność za serwer {server} nie została pobrana",
@@ -1885,6 +1896,12 @@ const pl = {
       told: "Poinformowani",
       paidSince: "opłacono od tego czasu",
       notPaid: "jeszcze nie opłacono",
+    },
+    paymentHelp: {
+      column: "Pomoc",
+      button: "Zapytaj o pomoc",
+      confirm: "Wysłać klientowi wiadomość na czacie i maila z pytaniem, czy potrzebuje pomocy z płatnością (np. paysafecard)?",
+      sent: "Zapytano {date}",
     },
     paymentRemove: {
       testChip: "test",

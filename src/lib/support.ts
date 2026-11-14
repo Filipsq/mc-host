@@ -151,6 +151,8 @@ export async function postMessage(
   locale: string,
   picture?: Uint8Array,
   log?: { text: string; server: string },
+  // The caller tells the other side itself (paymentHelp.ts), so no "new message" email.
+  quiet = false,
 ): Promise<SendResult> {
   const body = text.replace(/\r\n?/g, "\n").trim();
   if (!body && !picture) return { ok: false, error: "empty" };
@@ -191,7 +193,7 @@ export async function postMessage(
     }),
   ]);
 
-  if (shouldEmail(chat, side, now)) after(() => notify(userId, side, body, !!picture));
+  if (!quiet && shouldEmail(chat, side, now)) after(() => notify(userId, side, body, !!picture));
   return {
     ok: true,
     message: {

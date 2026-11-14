@@ -1631,6 +1631,17 @@ const en: Messages = {
     turnOn: "Turn them back on",
     invalid: "This link isn't valid. Copy the whole link from the email.",
   },
+  paymentHelpMail: {
+    subject: "Need a hand with your payment?",
+    whatServer: "the server “{server}” ({plan} plan)",
+    whatPlan: "the {plan} plan",
+    paragraphs: [
+      "Hi! 👋 I noticed your payment for {what} at {brand} wasn't finished.",
+      "Need any help? If you'd like to pay with paysafecard or another way that isn't on the site, message me in the chat on the site and we'll sort it out together, step by step.",
+      "Something didn't work, or have a question about the plan? Just write, I'll answer as soon as I can. See you in the game! 🎮",
+    ],
+    button: "Open the chat",
+  },
   testPaymentMail: {
     server: {
       subject: "The payment for server {server} was not taken",
@@ -1886,6 +1897,12 @@ const en: Messages = {
       told: "Told",
       paidSince: "paid since",
       notPaid: "not paid yet",
+    },
+    paymentHelp: {
+      column: "Help",
+      button: "Offer help",
+      confirm: "Send the customer a chat message and an email asking if they need help with the payment (e.g. paysafecard)?",
+      sent: "Asked {date}",
     },
     paymentRemove: {
       testChip: "test",

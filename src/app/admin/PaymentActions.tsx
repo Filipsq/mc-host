@@ -1,8 +1,8 @@
 "use client";
 
 import { useTransition } from "react";
-import { Mail, Trash2 } from "lucide-react";
-import { apologizeForTestPaymentsAction, deletePaymentAction, deleteTestPaymentsAction } from "./actions";
+import { Mail, MessageCircleQuestion, Trash2 } from "lucide-react";
+import { apologizeForTestPaymentsAction, deletePaymentAction, deleteTestPaymentsAction, paymentHelpAction } from "./actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -53,6 +53,23 @@ export function ApologizeButton({ userId, confirmText, label, disabled, primary 
       }}
     >
       <Mail size={primary ? 16 : 14} aria-hidden /> {label}
+    </button>
+  );
+}
+
+/** Asks the customer of a pending payment if they need help paying (chat message + email), once. */
+export function PaymentHelpButton({ id, t }: { id: string; t: Messages["admin"]["paymentHelp"] }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      className="secondary small nowrap"
+      disabled={pending}
+      onClick={() => {
+        if (confirm(t.confirm)) startTransition(() => paymentHelpAction(id));
+      }}
+    >
+      <MessageCircleQuestion size={14} aria-hidden /> {t.button}
     </button>
   );
 }

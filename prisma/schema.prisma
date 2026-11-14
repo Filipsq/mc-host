@@ -431,6 +431,8 @@ model Payment {
   redeemedGiftId        String?
   createdAt             DateTime      @default(now())
   paidAt                DateTime?
+  // An admin asked the buyer of this unfinished payment if they need help (src/lib/paymentHelp.ts).
+  helpSentAt            DateTime?
 
   @@index([userId])
   @@index([serverId])
