@@ -140,6 +140,13 @@ export default function TermsEn({ site }: { site: string }) {
           Live service or for Microsoft blocking the account.
         </li>
         <li>
+          An own domain can also be paid for on a free Java Server, as a separate paid service at the add-on’s price:
+          its price is given per 30 days, it is a one-off payment (it does not renew by itself) and it is not added to
+          any Period. The days paid for stay when the Server moves to a paid Plan. Once they are over, the Provider
+          disconnects the domain and players join with the Server’s mchosting.pl address; the User can then pay for it
+          again. Time already paid for is not refunded, including when the User removes the domain or deletes the Server.
+        </li>
+        <li>
           When you change Plans, the unused days of your current Plan are converted into days of the new Plan by
           the ratio of their prices and added to the paid Period.
         </li>

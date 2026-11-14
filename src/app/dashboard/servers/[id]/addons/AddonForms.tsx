@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { buyAddonsAction, removeAddonAction } from "../../actions";
+import { buyAddonsAction, buyDomainAction, removeAddonAction } from "../../actions";
+import PayBadges from "@/components/PayBadges";
 import { clearDomainAction, setDomainAction } from "./actions";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
@@ -144,5 +145,44 @@ export function DomainForm({ serverId, current, target, address, t }: DomainProp
         </div>
       </form>
     </div>
+  );
+}
+
+type BuyDomainProps = {
+  serverId: string;
+  price: string;
+  days: number;
+  paysafecard: boolean;
+  again: boolean; // already paid for: this adds more days
+  t: Messages["paidAddons"]["free"];
+  billing: Messages["billing"];
+  legal: Messages["legal"];
+  errors: Messages["server"]["errors"];
+};
+
+/** Buys an own domain for a free server, for `days` at a time (like console joining). */
+export function BuyDomainForm({ serverId, price, days, paysafecard, again, t, billing, legal, errors }: BuyDomainProps) {
+  const [state, action, pending] = useActionState(buyDomainAction.bind(null, serverId), {});
+  return (
+    <form action={action} className="stack">
+      <p>
+        <strong>{format(again ? t.buyMore : t.buyTitle, { price, days })}</strong>
+      </p>
+      <p className="muted small">{paysafecard ? billing.methodsCashbill : billing.methods}</p>
+      <PaymentConsent legal={legal} />
+      {state.error && <p className="error">{errors[state.error]}</p>}
+      <div className="pay-buttons">
+        <button type="submit" className="pay-button" disabled={pending}>
+          <span className="pay-label">{pending ? billing.redirecting : t.buy}</span>
+          <PayBadges method={paysafecard ? "cards" : "stripe"} />
+        </button>
+        {paysafecard && (
+          <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
+            <span className="pay-label">{billing.paysafecard}</span>
+            <PayBadges method="cashbill" />
+          </button>
+        )}
+      </div>
+    </form>
   );
 }

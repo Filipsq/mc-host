@@ -168,7 +168,7 @@ export function javaHost(server: Pick<Server, "subdomain">) {
 }
 
 /** What players type in the game to join: a Java address, or a host and port (Bedrock, Terraria). */
-export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port" | "node" | "plan" | "addons" | "customDomain">) {
+export function joinAddress(server: Pick<Server, "edition" | "subdomain" | "port" | "node" | "plan" | "addons" | "customDomain" | "domainUntil">) {
   // With the domain add-on and the owner's domain set, players type that instead.
   if (server.edition === "JAVA") return { host: (hasOwnDomain(server) && server.customDomain) || javaHost(server), port: null };
   return { host: nodeById(server.node).host, port: server.port };
@@ -229,10 +229,10 @@ export async function syncPeerRoutes() {
 /** Tells every machine's router which own domains (the "domain" add-on) lead to which Java address (see agent/aliases.go). */
 export async function syncHostAliases() {
   const servers = await db.server.findMany({
-    where: { customDomain: { not: null }, edition: "JAVA", plan: { not: "FREE" }, addons: { has: "domain" } },
-    select: { customDomain: true, subdomain: true, plan: true, addons: true, edition: true },
+    where: { customDomain: { not: null }, edition: "JAVA", OR: [{ plan: { not: "FREE" }, addons: { has: "domain" } }, { domainUntil: { gt: new Date() } }] },
+    select: { customDomain: true, subdomain: true, plan: true, addons: true, edition: true, domainUntil: true },
   });
-  await setHostAliases(Object.fromEntries(servers.filter(hasOwnDomain).map((s) => [s.customDomain!, javaHost(s)])));
+  await setHostAliases(Object.fromEntries(servers.filter((s) => hasOwnDomain(s)).map((s) => [s.customDomain!, javaHost(s)])));
 }
 
 /** The address as players type it. */

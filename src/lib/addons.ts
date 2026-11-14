@@ -62,10 +62,24 @@ export const diskGbFor = (s: Pick<Server, "plan" | "addons">) =>
 export const backupsFor = (s: Pick<Server, "plan" | "addons">) =>
   planById(s.plan).backupsKept + serverAddons(s).reduce((n, a) => n + ADDON_SPECS[a].backups, 0);
 
-/** Whether the server may use its own domain. */
-export const hasOwnDomain = (s: Pick<Server, "plan" | "addons" | "edition">) => s.edition === "JAVA" && serverAddons(s).includes("domain");
-
 const DAY = 24 * 60 * 60 * 1000;
+
+// A free Java server buys its own domain on its own, DOMAIN_DAYS at a time, at the add-on's price (Fiq, 2026-11-14).
+export const DOMAIN_DAYS = 30;
+
+/** Whether a free server's bought days of its own domain are still running. */
+export const domainPaidFor = (s: Pick<Server, "domainUntil">, now = new Date()) => !!s.domainUntil && s.domainUntil > now;
+
+/** Where the bought days end once `days` more are paid for, counting from what's left. */
+export function domainUntilAfter(s: Pick<Server, "domainUntil">, days: number, now = new Date()) {
+  const from = domainPaidFor(s, now) ? s.domainUntil! : now;
+  return new Date(from.getTime() + days * DAY);
+}
+
+/** Whether the server may use its own domain: the add-on on a paid plan, or bought days (kept after moving to a paid plan). */
+export const hasOwnDomain = (s: Pick<Server, "plan" | "addons" | "edition" | "domainUntil">, now = new Date()) =>
+  s.edition === "JAVA" && (serverAddons(s).includes("domain") || domainPaidFor(s, now));
+
 // The smallest amount Stripe takes in each currency.
 export const STRIPE_MINIMUM: Record<Currency, number> = { PLN: 2, EUR: 0.5, USD: 0.5, GBP: 0.3 };
 

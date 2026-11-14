@@ -100,7 +100,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
       items: [
         can("owner") && { key: "billing" as const, label: all.billing.title, path: "/billing" },
         can("owner") && canUpgrade(server) && { key: "upgrade" as const, label: p.upgrade, path: "/upgrade" },
-        can("owner") && server.plan !== "FREE" && { key: "addons" as const, label: all.paidAddons.title, path: "/addons" },
+        can("owner") && (server.plan !== "FREE" || server.edition === "JAVA") && { key: "addons" as const, label: all.paidAddons.title, path: "/addons" },
         can("owner") && { key: "access" as const, label: all.access.title, path: "/access" },
         can("owner") && { key: "creator" as const, label: all.creator.nav, path: "/creator" },
       ].filter(present),

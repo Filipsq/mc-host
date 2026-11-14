@@ -2156,6 +2156,16 @@ const en: Messages = {
     buy: "Buy and pay",
     noneLeft: "You already have every add-on.",
     freePlan: "Add-ons come with paid plans. Move to a paid plan to buy them.",
+    freeOther: "More disk space and backups come with paid plans.",
+    free: {
+      title: "Your own domain on a free server",
+      intro: "Players type your domain, e.g. play.myserver.com, instead of the mchosting.pl address. You buy the domain yourself from any registrar; we only connect it.",
+      buyTitle: "Buy your own domain: {price} for {days} days",
+      buyMore: "Extend your own domain: {price} for another {days} days",
+      buy: "Pay",
+      paidUntil: "Paid until {date}. After that the domain stops working and players join with the mchosting.pl address again.",
+      productName: "Own domain for {days} days: {server}",
+    },
     payFirst: "Pay for the server first. You can pick add-ons when paying.",
     javaOnly: "Minecraft Java only",
     domain: {
