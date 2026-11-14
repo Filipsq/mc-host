@@ -617,6 +617,25 @@ func (req *createRequest) offline() bool { return req.OnlineMode != nil && !*req
 // ourLogin is whether we add the login addon: a non-premium server whose owner didn't pick their own.
 func (req *createRequest) ourLogin() bool { return req.offline() && !req.OwnLogin }
 
+// loginAddon is the login addon whose settings we write on a non-premium server:
+// ours, or AuthMe, EasyAuth or EasyLogin the owner added in Plugins or Mods
+// themselves (the default since 2026-11-14), so it works with the shared router
+// address from the first start too (agent/login.go loginOverrides).
+func (req *createRequest) loginAddon() string {
+	if !req.offline() {
+		return ""
+	}
+	if !req.OwnLogin {
+		return loginAddon(req.loginKind(), req.Version)
+	}
+	for _, p := range req.Plugins {
+		if _, ok := loginConfigs[p]; ok {
+			return p
+		}
+	}
+	return ""
+}
+
 // image is the server's container image: imageFor, except that a non-premium
 // Fabric pack runs on Java 21, as a Fabric server of its version does. Fabric
 // packs on 1.20.4 or older otherwise get Java 17 (with Forge packs), but
@@ -747,8 +766,8 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 	if err := a.docker.CreateContainer(ctx, name, spec); err != nil {
 		return err
 	}
-	if req.ourLogin() {
-		a.prepareLogin(ctx, req.ID, loginAddon(req.loginKind(), req.Version))
+	if addon := req.loginAddon(); addon != "" {
+		a.prepareLogin(ctx, req.ID, addon)
 	}
 	if req.Edition == "JAVA" {
 		a.prepareIslands(ctx, req.ID, req.Kind)

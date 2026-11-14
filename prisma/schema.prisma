@@ -273,7 +273,9 @@ model Server {
   // who log in with a password through the AuthMe plugin.
   onlineMode       Boolean        @default(true)
   // Non-premium with the owner's own login plugin or mod: the agent doesn't add AuthMe/EasyAuth/EasyLogin.
-  ownLogin         Boolean        @default(false)
+  // True for servers made since 2026-11-14 (owners add a login plugin themselves); older
+  // non-premium servers keep our AuthMe until non-premium is turned off and on again.
+  ownLogin         Boolean        @default(true)
   // Java on Paper only: Bedrock players (phones, consoles, Windows) join too, through the
   // Geyser plugin on the server's port over UDP.
   crossplay        Boolean        @default(false)

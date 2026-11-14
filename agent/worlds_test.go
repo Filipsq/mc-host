@@ -409,3 +409,23 @@ func TestPrepareLoginMods(t *testing.T) {
 		t.Fatal("loginAddon picks the wrong addon")
 	}
 }
+
+func TestOwnerLoginAddon(t *testing.T) {
+	off, on := false, true
+	req := createRequest{Edition: "JAVA", Kind: "vanilla", Version: "1.21.4", OnlineMode: &off, OwnLogin: true, Plugins: []string{"Vebnzrzj", authMe}}
+	if got := req.loginAddon(); got != authMe {
+		t.Fatalf("owner's AuthMe: loginAddon = %q", got)
+	}
+	req.Plugins = []string{"Vebnzrzj"}
+	if got := req.loginAddon(); got != "" {
+		t.Fatalf("no login plugin: loginAddon = %q", got)
+	}
+	req.OwnLogin = false
+	if got := req.loginAddon(); got != authMe {
+		t.Fatalf("ours: loginAddon = %q", got)
+	}
+	req.OnlineMode = &on
+	if got := req.loginAddon(); got != "" {
+		t.Fatalf("premium: loginAddon = %q", got)
+	}
+}

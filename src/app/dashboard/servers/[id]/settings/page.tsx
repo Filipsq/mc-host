@@ -134,6 +134,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
                 offered: canRunNonPremium(server),
                 on: !server.onlineMode,
                 ownLogin: server.ownLogin,
+                loginHint:
+                  server.kind === "modpack" ? t.settings.loginHintPack : loginLoader(server) ? format(t.settings.loginHintMods, { mod: LOGIN_MODS[loginLoader(server)!].title }) : t.settings.loginHintPlugins,
                 ...(loginLoader(server) && { versions: LOGIN_MODS[loginLoader(server)!].versions }),
               }
             : undefined
