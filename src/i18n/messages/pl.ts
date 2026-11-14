@@ -67,7 +67,7 @@ const pl = {
     },
     reviewsTitle: "Co mówią gracze",
     reviewsAverage: "{avg} na 5 · {n} opinii",
-    reviewsNote: "Opinie piszą w panelu gracze, których serwer działa u nas co najmniej tydzień. Sprawdzamy każdą i odrzucamy tylko spam i wulgaryzmy. Średnia liczy wszystkie opinie.",
+    reviewsNote: "Opinie piszą w panelu gracze, których serwer działa u nas co najmniej tydzień. Sprawdzamy każdą i odrzucamy tylko spam i wulgaryzmy. Średnia liczy opinie widoczne na stronie.",
     stepsTitle: "Jak to działa",
     steps: [
       { title: "Załóż konto", text: "Wystarczy e-mail i hasło." },
@@ -1663,7 +1663,7 @@ const pl = {
     nav: { overview: "Przegląd", servers: "Serwery", users: "Użytkownicy", payments: "Płatności", support: "Czat", announcement: "Ogłoszenie", reviews: "Opinie", hytale: "Hytale" },
     reviews: {
       title: "Opinie graczy",
-      intro: "Panel prosi o opinię właścicieli serwera starszego niż 7 dni, na którym ktoś grał jeszcze co najmniej 3 dni po założeniu. Strona główna pokazuje 3 lub 6 najnowszych pokazanych (od 3 w górę), a średnia liczy wszystkie. Odrzucaj tylko spam, wulgaryzmy i dane osobowe, nie złe opinie: tak obiecuje strona główna.",
+      intro: "Panel prosi o opinię właścicieli serwera starszego niż 7 dni, na którym ktoś grał jeszcze co najmniej 3 dni po założeniu. Strona główna pokazuje 3 lub 6 najnowszych pokazanych (od 3 w górę), a średnia i liczba opinii liczą tylko pokazane. Odrzucaj tylko spam, wulgaryzmy i dane osobowe, nie złe opinie: tak obiecuje strona główna.",
       empty: "Nikt jeszcze nie napisał opinii.",
       shown: "Na stronie",
       hidden: "Ukryta",
