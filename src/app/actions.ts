@@ -18,6 +18,8 @@ import { getSession } from "@/lib/session";
 import { linkInvites } from "@/lib/access";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 import { PUSH_COOKIE } from "@/lib/pushEndpoint";
+import { deleteAccount } from "@/lib/accountDeletion";
+import type { DeleteAccountState } from "@/components/DeleteAccountForm";
 import { GIFT_COOKIE } from "@/lib/giftCookie";
 import { START_PACK_COOKIE, startPackQuery } from "@/lib/startPack";
 import { LOGIN_PER_EMAIL, RESETS_PER_IP, SIGNUPS_PER_IP, clientIp, hit, isLimited, loginLimited } from "@/lib/rateLimit";
@@ -168,6 +170,34 @@ export async function changePasswordAction(_: FormState, form: FormData): Promis
   // Signs this device in again, so only the other devices are logged out.
   await signIn("credentials", { email, password, redirectTo: "/dashboard?haslo=zmienione" });
   return {};
+}
+
+/** The customer deletes their own account (src/lib/accountDeletion.ts): email typed again, and the password if it has one. */
+export async function deleteOwnAccountAction(_: DeleteAccountState, form: FormData): Promise<DeleteAccountState> {
+  const session = await getSession();
+  const userId = session?.user?.id;
+  if (!userId) redirect("/login");
+  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, passwordHash: true } });
+  if (!user) redirect("/login");
+  if (String(form.get("email") ?? "").trim().toLowerCase() !== user.email.toLowerCase()) return { error: "email" };
+  // Same limit as changing the password, so a session left open can't be used to guess it.
+  const key = `pwchange:${userId}`;
+  if (isLimited(key, LOGIN_PER_EMAIL.max, LOGIN_PER_EMAIL.windowMs)) return { error: "tooManyAttempts" };
+  if (user.passwordHash && !(await bcrypt.compare(String(form.get("password") ?? ""), user.passwordHash))) {
+    hit(key);
+    return { error: "wrongPassword" };
+  }
+  let result;
+  try {
+    result = await deleteAccount(userId);
+  } catch (err) {
+    console.error("account deletion failed", userId, err);
+    return { error: "failed" };
+  }
+  if (result === "serverFailed" || result === "admin" || result === "missing") return { error: result };
+  console.info("user deleted own account", userId, result);
+  await signOut({ redirectTo: "/" });
+  return { done: true };
 }
 
 export async function logOut() {

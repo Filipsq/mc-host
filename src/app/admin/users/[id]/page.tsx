@@ -11,6 +11,9 @@ import ServerTable from "../../ServerTable";
 import ResetLink from "./ResetLink";
 import { format } from "@/i18n/messages";
 import { ADMIN_LINK_HOURS } from "@/lib/passwordReset";
+import { accountSummary } from "@/lib/accountDeletion";
+import DeleteAccountForm from "@/components/DeleteAccountForm";
+import { deleteAccountAdminAction } from "../../actions";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -28,14 +31,19 @@ export default async function AdminUser({ params }: Props) {
     },
   });
   if (!user) notFound();
-  const [all, { locale }, stats] = await Promise.all([
+  const [all, { locale }, stats, summary] = await Promise.all([
     getMessages(),
     getPreferences(),
     user.servers.length > 0 ? machineStats() : null,
+    accountSummary(user.id),
   ]);
+  const td = all.accountDelete;
   const t = all.admin;
   const f = formats(locale);
   const paid = user.payments.filter((p) => p.status === "PAID");
+  const paidLines = summary.paid.map(
+    (s) => format(td.paidUntil, { name: s.name, plan: all.plans[s.plan], date: f.date(s.paidUntil!) }) + (s.autoRenew ? `, ${td.autoRenew}` : ""),
+  );
 
   const details: [string, string][] = [
     [t.columns.joined, f.dateTime(user.createdAt)],
@@ -52,6 +60,7 @@ export default async function AdminUser({ params }: Props) {
         <h2 className="break">{user.email}</h2>
         <div className="row">
           {user.admin && <span className="chip">{t.adminChip}</span>}
+          {user.deletedAt && <span className="chip">{td.deletedChip}</span>}
           <Link className="button secondary small" href={`/admin/support/${user.id}`}>
             <MessageCircle size={16} aria-hidden /> {all.support.admin.open}
           </Link>
@@ -68,6 +77,9 @@ export default async function AdminUser({ params }: Props) {
           ))}
         </dl>
       </section>
+      {user.deletedAt && <p className="notice warn">{format(td.deletedNote, { date: f.dateTime(user.deletedAt) })}</p>}
+      {!user.deletedAt && (
+      <>
       <section className="card stack">
         <h3>{t.createFor.title}</h3>
         <p className="muted">{t.createFor.hint}</p>
@@ -82,6 +94,8 @@ export default async function AdminUser({ params }: Props) {
         <p className="muted">{format(t.resetLink.hint, { hours: ADMIN_LINK_HOURS })}</p>
         <ResetLink userId={user.id} t={t.resetLink} />
       </section>
+      </>
+      )}
       <section className="stack">
         <h3>{t.nav.servers}</h3>
         <ServerTable rows={user.servers} live={liveStates(user.servers, stats)} all={all} f={f} showOwner={false} />
@@ -90,6 +104,20 @@ export default async function AdminUser({ params }: Props) {
         <h3>{t.payments}</h3>
         <PaymentTable rows={user.payments} all={all} f={f} showUser={false} />
       </section>
+      {!user.deletedAt && !user.admin && (
+        <section className="card stack danger-zone">
+          <h3>{td.title}</h3>
+          <p className="muted">{td.adminHint}</p>
+          <DeleteAccountForm
+            action={deleteAccountAdminAction.bind(null, user.id)}
+            email={user.email}
+            servers={summary.servers}
+            paidLines={paidLines}
+            needsPassword={false}
+            t={td}
+          />
+        </section>
+      )}
     </>
   );
 }

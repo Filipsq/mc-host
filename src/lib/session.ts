@@ -11,8 +11,8 @@ import { db } from "@/lib/db";
 export async function getSession() {
   const session = await auth();
   if (!session?.user?.id) return null;
-  const user = await db.user.findUnique({ where: { id: session.user.id }, select: { passwordChangedAt: true } });
-  if (!user) return null;
+  const user = await db.user.findUnique({ where: { id: session.user.id }, select: { passwordChangedAt: true, deletedAt: true } });
+  if (!user || user.deletedAt) return null;
   if (user.passwordChangedAt && (session.signedInAt ?? 0) < user.passwordChangedAt.getTime()) return null;
   return session;
 }
