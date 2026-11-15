@@ -233,9 +233,9 @@ func main() {
 	if token == "" {
 		log.Fatal("AGENT_TOKEN is required")
 	}
-	idleMin, err := strconv.Atoi(envOr("IDLE_MINUTES", "5"))
-	if err != nil || idleMin < 1 {
-		log.Fatal("IDLE_MINUTES must be a positive number")
+	idleSec, err := strconv.Atoi(envOr("IDLE_SECONDS", "100"))
+	if err != nil || idleSec < 30 {
+		log.Fatal("IDLE_SECONDS must be a number of seconds, at least 30")
 	}
 	memoryLimit, err := strconv.Atoi(envOr("MEMORY_LIMIT_MB", "0"))
 	if err != nil || memoryLimit < 0 {
@@ -265,7 +265,7 @@ func main() {
 		docker:      NewDocker(envOr("DOCKER_SOCKET", "/var/run/docker.sock")),
 		token:       token,
 		stateDir:    envOr("STATE_DIR", "./state"),
-		idle:        time.Duration(idleMin) * time.Minute,
+		idle:        time.Duration(idleSec) * time.Second,
 		memoryLimit: memoryLimit,
 		overbook:    overbook,
 		freeMemory:  freeMemory,
@@ -995,8 +995,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		env = append(env, fmt.Sprintf("VIEW_DISTANCE=%d", view), fmt.Sprintf("SIMULATION_DISTANCE=%d", min(6, view)))
 		if req.Autostop {
 			// The image stops the server by itself once nobody has played for this long.
-			secs := fmt.Sprint(int(a.idle.Seconds()))
-			env = append(env, "ENABLE_AUTOSTOP=TRUE", "AUTOSTOP_TIMEOUT_EST="+secs, "AUTOSTOP_TIMEOUT_INIT="+secs)
+			env = append(env, "ENABLE_AUTOSTOP=TRUE", a.autostopEst(), a.autostopInit())
 		}
 		labels["mchost.host"] = req.Hostname
 		containerPort = "25565/tcp"
@@ -1508,4 +1507,18 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 
 func writeError(w http.ResponseWriter, code int, msg string) {
 	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+// firstJoinGrace is how long a free server waits for its first player after
+// it starts: someone who just clicked Start needs time to open the game and join.
+const firstJoinGrace = 5 * time.Minute
+
+// autostopEst is the image's setting for how long a free server stays up once its
+// last player has left; autostopInit, before anyone has joined since the start.
+func (a *agent) autostopEst() string {
+	return fmt.Sprintf("AUTOSTOP_TIMEOUT_EST=%d", int(a.idle.Seconds()))
+}
+
+func (a *agent) autostopInit() string {
+	return fmt.Sprintf("AUTOSTOP_TIMEOUT_INIT=%d", int(max(a.idle, firstJoinGrace).Seconds()))
 }

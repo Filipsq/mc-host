@@ -38,6 +38,25 @@ func (a *agent) healEnv(ctx context.Context, id string) {
 		}
 	}
 	fixed, why := healedEnv(old)
+	// Free servers built when the sleep time was different get the current one.
+	for i, e := range fixed {
+		want := ""
+		switch {
+		case strings.HasPrefix(e, "AUTOSTOP_TIMEOUT_EST="):
+			want = a.autostopEst()
+		case strings.HasPrefix(e, "AUTOSTOP_TIMEOUT_INIT="):
+			want = a.autostopInit()
+		}
+		if want != "" && e != want {
+			fixed[i] = want
+			if !strings.Contains(why, "sleep time") {
+				if why != "" {
+					why += ", "
+				}
+				why += "sleep time " + strings.TrimPrefix(a.autostopEst(), "AUTOSTOP_TIMEOUT_EST=") + "s"
+			}
+		}
+	}
 	if missing := a.missingFabricMods(ctx, id, fixed); len(missing) > 0 {
 		fixed = addProjects(fixed, missing)
 		if why != "" {
