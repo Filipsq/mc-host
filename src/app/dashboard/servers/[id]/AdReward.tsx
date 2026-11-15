@@ -147,7 +147,7 @@ export default function AdReward({ id, unit, level, until, left: initialLeft, ne
         : null;
 
   return (
-    <div className="card stack-tight ad-reward">
+    <div className="card stack-tight boost-card">
       <div className="row">
         <span className="stack-tight">
           <strong>

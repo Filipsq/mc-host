@@ -20,7 +20,7 @@ export default function AdBox({ label }: { label: string }) {
   }, []);
 
   return (
-    <aside className="card stack-tight ad-box">
+    <aside className="card stack-tight thanks-card">
       <p className="muted small">{label}</p>
       <ins
         className="adsbygoogle"
