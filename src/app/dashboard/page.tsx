@@ -145,7 +145,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <ul className="server-list">{shared.map((s, i) => card(s, sharedStates[i], sharedPlayers[i], s.owner.email))}</ul>
         </section>
       )}
-      {!!ADSENSE_SLOT && !paying && <AdBox label={t.adLabel} />}
+      {!!ADSENSE_SLOT && !paying && <AdBox label={t.adLabel} blockedLabel={t.adBlocked} />}
       {askReview && <ReviewAsk t={all.reviews} textMax={REVIEW_TEXT_MAX} nameMax={REVIEW_NAME_MAX} />}
       <div className="card row invite-card">
         <span className="row invite-days">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ADSENSE_CLIENT, ADSENSE_SLOT } from "@/lib/ads";
 
 declare global {
@@ -9,9 +9,16 @@ declare global {
   }
 }
 
-// One AdSense unit with the admin's thank-you note above it.
-export default function AdBox({ label }: { label: string }) {
+// One AdSense unit with the admin's thank-you note above it, or a request to turn off an ad blocker.
+export default function AdBox({ label, blockedLabel }: { label: string; blockedLabel: string }) {
+  const [blocked, setBlocked] = useState(false);
   useEffect(() => {
+    // An ad blocker stops the request for AdSense's script; ask nicely instead of showing an empty box.
+    fetch(`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`, {
+      method: "HEAD",
+      mode: "no-cors",
+      cache: "no-store",
+    }).catch(() => setBlocked(true));
     try {
       (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch {
@@ -22,6 +29,7 @@ export default function AdBox({ label }: { label: string }) {
   return (
     <aside className="card stack-tight thanks-card">
       <p className="muted small">{label}</p>
+      {blocked && <p className="notice warn">{blockedLabel}</p>}
       <ins
         className="adsbygoogle"
         style={{ display: "block" }}

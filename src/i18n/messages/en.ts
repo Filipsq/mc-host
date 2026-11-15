@@ -325,6 +325,7 @@ const en: Messages = {
   },
   dashboard: {
     adLabel: "Ad · this helps support our business, thank you! ~ admin",
+    adBlocked: "Your ad blocker is on. Turn it off for mchosting.pl to help us keep free servers running. Thank you!",
     playersOnline: "{n} online",
     copyAddress: "Copy address",
     title: "Your servers",
