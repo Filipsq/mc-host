@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import Script from "next/script";
 import { Ghost, LayoutGrid, LogOut, Megaphone } from "lucide-react";
 import "@fontsource-variable/inter";
 import "@fontsource/jersey-10/latin.css";
@@ -15,6 +16,7 @@ import HalloweenDecor from "@/components/HalloweenDecor";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { siteUrl } from "@/lib/site";
+import { ADSENSE_CLIENT } from "@/lib/ads";
 import { isAdmin } from "@/lib/admin";
 import { adminOnline } from "@/lib/presence";
 import { getAnnouncement } from "@/lib/announcement";
@@ -35,6 +37,8 @@ export async function generateMetadata(): Promise<Metadata> {
     description: t.meta.description,
     // Added to an iPhone's home screen, the site opens full screen as "MCHosting".
     appleWebApp: { capable: true, title: BRAND_NAME, statusBarStyle: "black" },
+    // Lets Google AdSense confirm the site belongs to our account.
+    other: { "google-adsense-account": ADSENSE_CLIENT },
     openGraph: {
       type: "website",
       siteName: BRAND_NAME,
@@ -65,6 +69,13 @@ export default async function RootLayout({
     <html lang={locale}>
       <body className={halloween ? "halloween" : undefined}>
         <ServiceWorker />
+        {/* AdSense: shows Google's cookie consent message and fills the panel's ad box. */}
+        <Script
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <Suspense fallback={null}>
           <RouteProgress />
         </Suspense>
