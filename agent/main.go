@@ -326,6 +326,8 @@ func (a *agent) routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, map[string]bool{"ok": true}) })
 	mux.HandleFunc("GET /stats", a.stats)
+	// The machine alone, without asking Docker about every server: quick enough to ask before a start.
+	mux.HandleFunc("GET /host", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, a.hostStats()) })
 	mux.HandleFunc("GET /containers", a.containersList)
 	mux.HandleFunc("PUT /disk-limits", a.putDiskLimits)
 	mux.HandleFunc("PUT /peer-routes", a.putPeerRoutes)

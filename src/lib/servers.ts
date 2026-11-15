@@ -7,6 +7,7 @@ import {
   copyServer,
   deleteServer,
   forgetServerNode,
+  getHost,
   getServerState,
   listWorlds,
   recreateServer,
@@ -359,13 +360,31 @@ export async function moveIfFull(server: Server): Promise<Server | null> {
   return (await moveServer(server, to)) ?? server;
 }
 
+// What the agent wants free before it starts a free server (agent/capacity.go: its
+// starting share, plus the larger of 1 GB and 10% of the machine), and some more so
+// the copy isn't for nothing; and disk for its files.
+const START_MB = 1536 + 512;
+const START_DISK_MB = 10 * 1024;
+
+function hasRoomToStart(host: { memoryTotalMb: number; memoryAvailableMb: number; diskFreeMb: number }) {
+  return host.memoryAvailableMb >= START_MB + Math.max(1024, host.memoryTotalMb / 10) && host.diskFreeMb >= START_DISK_MB;
+}
+
 /**
  * When a free server's machine has no memory awake for it, moves it to the
  * machine best placed for free servers and starts it there. Returns the moved
  * server, or null if there's no other machine or the copy failed.
  */
 export async function startElsewhere(server: Server): Promise<Server | null> {
-  const to = (await rankNodes(server.memoryMb, 0, undefined, requiredArch(server))).find((n) => n !== server.node);
+  const ranked = (await rankNodes(server.memoryMb, 0, undefined, requiredArch(server))).filter((n) => n !== server.node);
+  // Only a machine that really has the memory and disk for it now: the one best placed
+  // by plans sold may be just as full, and the server would be copied there for nothing.
+  const hosts = await Promise.all(ranked.map((n) => getHost(nodeById(n))));
+  const roomy = ranked
+    .map((id, i) => ({ id, host: hosts[i] }))
+    .filter(({ host }) => host && hasRoomToStart(host))
+    .sort((a, b) => b.host!.memoryAvailableMb - a.host!.memoryAvailableMb);
+  const to = roomy[0]?.id;
   if (!to) return null;
   const moved = await moveServer(server, to);
   if (!moved) return null;

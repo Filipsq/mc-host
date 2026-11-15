@@ -691,8 +691,7 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
       });
   } catch (err) {
     // A free server's machine is full right now: it moves to one with room and starts there.
-    // A server already waiting for room stays on its machine: only the first try moves it.
-    if (agent.isFull(err) && server.plan === "FREE" && !server.queuedAt && (await startElsewhere(server).catch(() => null))) {
+    if (agent.isFull(err) && server.plan === "FREE" && (await startElsewhere(server).catch(() => null))) {
       await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false, queuedAt: null } });
       revalidatePath(`/dashboard/servers/${id}`, "layout");
       return {};
