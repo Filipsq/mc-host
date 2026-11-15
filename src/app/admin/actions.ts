@@ -15,6 +15,8 @@ import { getPreferences } from "@/i18n/server";
 import { createAdminResetLink } from "@/lib/passwordReset";
 import { PLAYERS_MAX } from "@/lib/settings";
 import { sendPaymentHelp } from "@/lib/paymentHelp";
+import { deleteAccount } from "@/lib/accountDeletion";
+import type { DeleteAccountState } from "@/components/DeleteAccountForm";
 
 export type GiftState = { error?: "invalid" | "free" | "soldOut" | "failed"; days?: number; date?: string };
 
@@ -43,6 +45,25 @@ export async function deleteServerAdminAction(id: string): Promise<{ error?: "fa
     console.info("admin deleted server", id);
   }
   redirect("/admin/servers");
+}
+
+/** Deletes a customer's whole account with its servers (src/lib/accountDeletion.ts), once its email is typed again. */
+export async function deleteAccountAdminAction(userId: string, _: DeleteAccountState, form: FormData): Promise<DeleteAccountState> {
+  const session = await requireAdmin();
+  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (!user) return { error: "missing" };
+  if (String(form.get("email") ?? "").trim().toLowerCase() !== user.email.toLowerCase()) return { error: "email" };
+  let result;
+  try {
+    result = await deleteAccount(userId);
+  } catch (err) {
+    console.error("admin: account deletion failed", userId, err);
+    return { error: "failed" };
+  }
+  if (result === "serverFailed" || result === "admin" || result === "missing") return { error: result };
+  console.info("admin deleted account", userId, result, "by", session.user?.id);
+  revalidatePath("/admin/users");
+  redirect("/admin/users");
 }
 
 export type SlotsState = { error?: "invalid" | "failed"; saved?: boolean };

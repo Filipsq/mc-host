@@ -29,6 +29,7 @@ export default async function AdminUsers({ searchParams }: Props) {
         createdAt: true,
         locale: true,
         admin: true,
+        deletedAt: true,
         _count: { select: { servers: true } },
         // Test payments took no money.
         payments: { where: { status: "PAID", OR: [{ stripeSessionId: null }, { NOT: TEST_PAYMENTS }] }, select: { amount: true, currency: true } },
@@ -61,7 +62,8 @@ export default async function AdminUsers({ searchParams }: Props) {
                   value: (u) => u.email,
                   cell: (u) => (
                     <td>
-                      <Link href={`/admin/users/${u.id}`}>{u.email}</Link> {u.admin && <span className="chip">{t.adminChip}</span>}
+                      <Link href={`/admin/users/${u.id}`}>{u.email}</Link> {u.admin && <span className="chip">{t.adminChip}</span>}{" "}
+                      {u.deletedAt && <span className="chip">{all.accountDelete.deletedChip}</span>}
                     </td>
                   ),
                 },

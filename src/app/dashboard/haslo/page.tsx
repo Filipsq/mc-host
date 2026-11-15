@@ -29,6 +29,9 @@ export default async function ChangePasswordPage() {
       </header>
       <ChangePasswordForm t={t} email={session.user.email ?? ""} hasPassword={hasPassword} />
       {hasPassword && <p className="muted small">{t.forgotCurrent}</p>}
+      <p className="muted small">
+        <Link href="/dashboard/usun-konto">{all.accountDelete.link}</Link>
+      </p>
     </main>
   );
 }
