@@ -700,10 +700,19 @@ textarea.editor:focus { box-shadow: none; }
 .type-notes:empty { display: none; }
 .plugin-search { display: flex; gap: 8px; }
 .plugin-search input { flex: 1; min-width: 0; width: auto; }
+.category-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.category-chips .chip { text-decoration: none; min-height: 36px; padding: 6px 12px; font-weight: 500; transition: border-color 0.15s, color 0.15s; }
+.category-chips .chip:hover { color: var(--fg); border-color: var(--border-strong); }
+.category-chips .chip.active { color: var(--accent-strong); border-color: var(--accent); background: var(--accent-soft); }
 @media (max-width: 640px) {
   .file-name { flex-basis: 100%; }
   .file-meta { padding-left: 28px; }
   .plugin-list li { flex-wrap: wrap; }
+  /* One swipeable row instead of four wrapped ones above the results. */
+  .category-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; scroll-padding: 0 16px; }
+  .category-chips::-webkit-scrollbar { display: none; }
+  .category-chips .chip { flex: none; min-height: 44px; }
+  .plugin-search input, .plugin-search button { min-height: 48px; font-size: 1rem; }
   .plugin-action { max-width: none; flex-basis: 100%; align-items: flex-start; text-align: left; padding-left: 52px; }
   .world-actions { max-width: none; flex-basis: 100%; justify-content: flex-start; padding-left: 52px; }
   .world-actions .error { text-align: left; }
@@ -2050,7 +2059,7 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .server-tabbar { display: none; }
 @media (max-width: 900px) {
   .server-tabbar {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: grid; grid-template-columns: repeat(5, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
     padding: 6px max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
     background: rgb(15 20 27 / 0.94); border-top: 1px solid var(--border); backdrop-filter: blur(10px);
   }
