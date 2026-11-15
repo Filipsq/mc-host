@@ -708,6 +708,14 @@ const en: Messages = {
       suspendedNote: "The server is suspended, but you can still download its backups.",
       unavailable: "Couldn't load backups. Refresh the page in a moment.",
     },
+    queue: {
+      title: "You're in the queue.",
+      text: "All free slots are taken right now. The server will start by itself as soon as one frees up, and we'll send you a notification. No need to click anything.",
+      upgrade: "Skip the wait: Starter from {price}",
+      leave: "Leave the queue",
+      pushTitle: "Your server is up!",
+      pushBody: "A slot freed up and {server} is starting now. You can join.",
+    },
     doing: { start: "Starting…", stop: "Stopping…", restart: "Restarting…", stopState: "Stopping" },
     startSteps: {
       title: "Starting your server",

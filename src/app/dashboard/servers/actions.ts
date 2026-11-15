@@ -662,7 +662,7 @@ async function serverOrThrow(id: string, need: ServerNeed) {
   return server;
 }
 
-export async function startServerAction(id: string): Promise<{ error?: ServerErrorCode }> {
+export async function startServerAction(id: string): Promise<{ error?: ServerErrorCode; queued?: boolean }> {
   const server = await serverOrThrow(id, "view");
   // Unpaid servers stay off until someone pays.
   if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
@@ -691,12 +691,21 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
       });
   } catch (err) {
     // A free server's machine is full right now: it moves to one with room and starts there.
-    if (agent.isFull(err) && server.plan === "FREE" && (await startElsewhere(server).catch(() => null))) {
-      await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
+    // A server already waiting for room stays on its machine: only the first try moves it.
+    if (agent.isFull(err) && server.plan === "FREE" && !server.queuedAt && (await startElsewhere(server).catch(() => null))) {
+      await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false, queuedAt: null } });
       revalidatePath(`/dashboard/servers/${id}`, "layout");
       return {};
     }
     if (agent.isFull(err)) {
+      // A free server waits in line and starts by itself once there is room (startQueue.ts).
+      if (server.plan === "FREE") {
+        if (server.queuedAt) return { queued: true };
+        await db.server.update({ where: { id: server.id }, data: { queuedAt: new Date() } });
+        await logRefusal("startFull", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
+        revalidatePath(`/dashboard/servers/${id}`, "layout");
+        return { queued: true };
+      }
       await logRefusal("startFull", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
       return { error: "full" };
     }
@@ -707,15 +716,22 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
     await logRefusal("startFailed", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
     throw err;
   }
-  await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
+  await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false, queuedAt: null } });
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   return {};
+}
+
+/** Gives up a free server's place in the line for room to start. */
+export async function leaveQueueAction(id: string) {
+  const server = await serverOrThrow(id, "view");
+  await db.server.update({ where: { id: server.id }, data: { queuedAt: null } });
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
 }
 
 export async function stopServerAction(id: string) {
   const server = await serverOrThrow(id, "view");
   await agent.stopServer(server.id);
-  await db.server.update({ where: { id: server.id }, data: { status: "STOPPED" } });
+  await db.server.update({ where: { id: server.id }, data: { status: "STOPPED", queuedAt: null } });
   revalidatePath(`/dashboard/servers/${id}`, "layout");
 }
 

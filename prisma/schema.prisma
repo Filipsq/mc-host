@@ -327,6 +327,9 @@ model Server {
   // When its owner was told a suspended server will be deleted; cleared by a payment.
   // For a free server: told it will be deleted for nobody playing; cleared when someone plays.
   deletionWarnedAt DateTime?
+  // A free server that found no room when started: since when it waits to be started
+  // by itself once there is room (src/lib/startQueue.ts).
+  queuedAt         DateTime?
   // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
   lastPlayedAt     DateTime       @default(now())
   // When its owner was asked to come back and play (src/lib/comeback.ts); cleared when someone plays.
