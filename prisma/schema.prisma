@@ -321,7 +321,8 @@ model Server {
   // Terraria only: the password players type to join; none if null.
   serverPassword   String?
   // Host port of the server: behind the router for Java, public for Bedrock (UDP) and Terraria (TCP).
-  port             Int?           @unique
+  // Unique on its machine only: each machine has the whole range (src/lib/servers.ts).
+  port             Int?
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
   subdomain        String?        @unique
   // Paid plans are prepaid; the server is suspended once this passes.
@@ -371,6 +372,7 @@ model Server {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  @@unique([node, port])
   @@index([ownerId])
   @@index([creatorId])
 }

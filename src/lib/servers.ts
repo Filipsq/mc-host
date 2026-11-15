@@ -113,21 +113,42 @@ export async function destroyServer(server: Pick<Server, "id">) {
 const PORT_START = Number(process.env.PORT_RANGE_START ?? 30000);
 const PORT_END = Number(process.env.PORT_RANGE_END ?? 30999);
 
+/** The lowest port free on machine `node` that isn't in `busy`, or null if none is. */
+export async function freePortOn(node: string, busy: ReadonlySet<number> = new Set()): Promise<number | null> {
+  const taken = await db.server.findMany({ where: { node, port: { gte: PORT_START, lte: PORT_END } }, select: { port: true } });
+  const used = new Set(taken.map((s) => s.port));
+  let port = PORT_START;
+  while ((used.has(port) || busy.has(port)) && port <= PORT_END) port++;
+  return port > PORT_END ? null : port;
+}
+
 /**
- * Creates the server row with the lowest free port. The unique index on port
+ * Puts the server on machine `to`, with a new port if its own is taken there.
+ * Returns null if `to` has no free port.
+ */
+export async function setNode(server: Server, to: string): Promise<Server | null> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const clash = server.port !== null && (await db.server.count({ where: { node: to, port: server.port, NOT: { id: server.id } } })) > 0;
+    const port = clash ? await freePortOn(to) : server.port;
+    if (port === null) return null;
+    try {
+      return await db.server.update({ where: { id: server.id }, data: { node: to, port } });
+    } catch (err) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+    }
+  }
+  return null;
+}
+
+/**
+ * Creates the server row with the lowest port free on its machine. The unique index on node and port
  * settles races between two simultaneous creations; the loser retries.
  * Returns "subdomainTaken" if the address is already in use, or null if no port is free.
  */
 export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreateInput, "port">) {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const taken = await db.server.findMany({
-      where: { port: { gte: PORT_START, lte: PORT_END } },
-      select: { port: true },
-    });
-    const used = new Set(taken.map((s) => s.port));
-    let port = PORT_START;
-    while (used.has(port) && port <= PORT_END) port++;
-    if (port > PORT_END) return null;
+    const port = await freePortOn(data.node ?? MAIN_NODE);
+    if (port === null) return null;
     try {
       // Mods' jetpacks and wings need flying, or the server kicks their players.
       const allowFlight = data.allowFlight ?? (data.kind === "modpack" || isModLoader(data.kind));
@@ -148,11 +169,8 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
  */
 export async function changePort(server: Server, busy: ReadonlySet<number>): Promise<Server | null> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const taken = await db.server.findMany({ where: { port: { gte: PORT_START, lte: PORT_END } }, select: { port: true } });
-    const used = new Set(taken.map((s) => s.port));
-    let port = PORT_START;
-    while ((used.has(port) || busy.has(port)) && port <= PORT_END) port++;
-    if (port > PORT_END) return null;
+    const port = await freePortOn(server.node, busy);
+    if (port === null) return null;
     try {
       return await db.server.update({ where: { id: server.id }, data: { port } });
     } catch (err) {
@@ -415,7 +433,8 @@ export async function moveServer(server: Server, to: string): Promise<Server | n
       if (!(err instanceof AgentError && err.status === 404)) throw err;
       copied = false;
     }
-    const moved = await db.server.update({ where: { id: server.id }, data: { node: to } });
+    const moved = await setNode(server, to);
+    if (!moved) throw new Error(`no free port on ${to}`);
     forgetServerNode(server.id);
     console.info("moved", server.id, "from", from.id, "to", to);
     await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));

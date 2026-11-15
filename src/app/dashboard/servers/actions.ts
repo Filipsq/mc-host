@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Prisma, type Plan, type ServerStatus } from "@prisma/client";
+import { Prisma, type Plan, type Server, type ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
@@ -12,6 +12,7 @@ import {
   agentSpec,
   applyToHost,
   changePort,
+  setNode,
   createServerRecord,
   destroyServer,
   getOwnedServer,
@@ -388,8 +389,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
         }
       }
       // That machine has no free server's worth of memory awake right now: try the next one.
-      if (agent.isFull(err) && next < candidates.length) {
-        server = await db.server.update({ where: { id: server.id }, data: { node: candidates[next] } });
+      const nextNode: Server | null = agent.isFull(err) && next < candidates.length ? await setNode(server, candidates[next]) : null;
+      if (nextNode) {
+        server = nextNode;
         agent.forgetServerNode(server.id);
         await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
         continue;
