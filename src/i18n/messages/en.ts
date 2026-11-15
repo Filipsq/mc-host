@@ -324,6 +324,7 @@ const en: Messages = {
     },
   },
   dashboard: {
+    adLabel: "Ad · this helps support our business, thank you! ~ admin",
     playersOnline: "{n} online",
     copyAddress: "Copy address",
     title: "Your servers",

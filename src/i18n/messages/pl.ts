@@ -323,6 +323,7 @@ const pl = {
     },
   },
   dashboard: {
+    adLabel: "Reklamka · dzięki temu wspieracie nasz biznes, dziękuję! ~ admin",
     playersOnline: "{n} online",
     copyAddress: "Kopiuj adres",
     title: "Twoje serwery",
