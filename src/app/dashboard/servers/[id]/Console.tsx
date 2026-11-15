@@ -42,6 +42,8 @@ export default function Console({
   // What the copy and send buttons last did, shown under them.
   const [shared, setShared] = useState<{ text: string; ok: boolean; chat?: boolean }>();
   const [sharing, setSharing] = useState(false);
+  // "Are you sure?" before the console goes to the admin.
+  const confirmRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     const source = new EventSource(`/api/servers/${id}/console`);
@@ -157,7 +159,7 @@ export default function Console({
             <button type="button" className="secondary small" onClick={() => void share(false)}>
               <ClipboardCopy size={16} aria-hidden /> {t.consoleCopy}
             </button>
-            <button type="button" className="secondary small" disabled={sharing} onClick={() => void share(true)}>
+            <button type="button" className="secondary small" disabled={sharing} onClick={() => confirmRef.current?.showModal()}>
               <Send size={16} aria-hidden /> {sharing ? t.consoleSending : t.consoleSend}
             </button>
             {shared && (
@@ -172,6 +174,34 @@ export default function Console({
               </span>
             )}
           </div>
+          <dialog
+            ref={confirmRef}
+            className="confirm-dialog"
+            aria-labelledby="console-send-title"
+            onClick={(e) => {
+              // A click on the dimmed background outside the box cancels.
+              if (e.target === e.currentTarget) e.currentTarget.close();
+            }}
+          >
+            <form method="dialog" className="stack">
+              <h3 id="console-send-title">{t.consoleSendConfirm.title}</h3>
+              <p>{t.consoleSendConfirm.text}</p>
+              <div className="row confirm-actions">
+                <button type="submit" value="no" className="secondary">{t.consoleSendConfirm.no}</button>
+                <button
+                  type="submit"
+                  value="yes"
+                  autoFocus
+                  onClick={() => {
+                    // The form closes the window; then send.
+                    void share(true);
+                  }}
+                >
+                  <Send size={16} aria-hidden /> {t.consoleSendConfirm.yes}
+                </button>
+              </div>
+            </form>
+          </dialog>
           {input && (
             <form onSubmit={submit} className="row command">
               <input
