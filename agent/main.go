@@ -976,7 +976,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		// need, up to the plan; an idle one gives memory back to the machine.
 		// Aikar's garbage collector flags avoid the pauses that stall chunk loading.
 		env = append(env, fmt.Sprintf("INIT_MEMORY=%dM", min(req.MemoryMb, initialHeapMb)), fmt.Sprintf("MAX_MEMORY=%dM", req.MemoryMb),
-			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000 -XX:MaxDirectMemorySize="+fmt.Sprint(directMemoryMb)+"m", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true",
+			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000 -XX:MaxDirectMemorySize="+fmt.Sprint(directMemoryMb)+"m", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true", noWatchdog,
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
 			players := whitelistEntries(&req)

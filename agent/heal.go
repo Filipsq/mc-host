@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -139,6 +140,10 @@ func healedEnv(env []string) ([]string, string) {
 		}
 		fixed = append(fixed, s)
 	}
+	if java(env) && !hasPrefix(env, "MAX_TICK_TIME=") {
+		fixed = append(fixed, noWatchdog)
+		why = append(why, "without the watchdog")
+	}
 	if fabric && !hasProjects {
 		fixed = append(fixed, "MODRINTH_PROJECTS="+fabricAPI+"?")
 		why = append(why, "with Fabric API")
@@ -147,6 +152,27 @@ func healedEnv(env []string) ([]string, string) {
 		fixed = append(fixed, "MODRINTH_DOWNLOAD_DEPENDENCIES=required")
 	}
 	return fixed, strings.Join(why, ", ")
+}
+
+// noWatchdog turns off Minecraft's watchdog (max-tick-time), which kills the
+// server when one tick takes over a minute. On our shared machines that
+// happens with nobody playing: an empty Fabric 1.21.11 server on n5, its main
+// thread idle and no chunk loaded, was killed with exit 1 and showed Awaria
+// (2026-11-15), most likely because the machine stalled for a minute. The
+// trade-off: a mod server that really hangs stays up until someone restarts
+// it. Paper keeps its own watchdog (spigot.yml timeout-time).
+const noWatchdog = "MAX_TICK_TIME=-1"
+
+// java tells whether an env is a Java server's (only those get Aikar's flags).
+func java(env []string) bool { return slices.Contains(env, "USE_AIKAR_FLAGS=true") }
+
+func hasPrefix(env []string, prefix string) bool {
+	for _, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasFabricAPI tells whether an image project list has Fabric API, pinned or not.

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -127,5 +128,18 @@ func TestMissingFabricModsAddsWhatModrinthHas(t *testing.T) {
 	}
 	if got := a.missingFabricMods(context.Background(), "abc12345", []string{"TYPE=FABRIC", "VERSION=1.21.4", "MODRINTH_PROJECTS=viafabric?"}); len(got) != 0 {
 		t.Fatalf("already listed, got %v", got)
+	}
+}
+
+func TestHealedEnvTurnsOffWatchdogOnJava(t *testing.T) {
+	fixed, why := healedEnv([]string{"TYPE=FABRIC", "USE_AIKAR_FLAGS=true", "MODRINTH_PROJECTS=P7dR8mSH?"})
+	if !slices.Contains(fixed, noWatchdog) || !strings.Contains(why, "watchdog") {
+		t.Errorf("Java env not healed: %v (%q)", fixed, why)
+	}
+	if again, why := healedEnv(fixed); why != "" || len(again) != len(fixed) {
+		t.Errorf("healed twice: %v (%q)", again, why)
+	}
+	if _, why := healedEnv([]string{"EULA=TRUE", "SERVER_PORT=19132"}); why != "" {
+		t.Errorf("Bedrock env healed: %q", why)
 	}
 }
