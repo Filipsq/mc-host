@@ -28,6 +28,7 @@ import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type Cr
 import { fulfillGiftPurchase } from "./gifts";
 import { isHalloweenCode, withHalloweenDiscount } from "./halloween";
 import { startOffers, startOfferEnds, withStartOfferDiscount } from "./startOffer";
+import { startQueued } from "./startQueue";
 import { xboxAllowed, xboxUntilAfter } from "./xbox";
 import type { Currency, Locale } from "@/i18n/config";
 
@@ -581,8 +582,14 @@ export async function removeLeftoverContainers(now = new Date()) {
 }
 
 export async function runBillingJob(now = new Date()) {
-  const result = { renewed: 0, xboxStopped: 0, domainsStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0 };
+  const result = { renewed: 0, xboxStopped: 0, domainsStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0, queueStarted: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
+
+  // Free servers waiting for room: start those that fit now.
+  result.queueStarted = await startQueued(now).catch((err) => {
+    console.error("queued starts failed", err);
+    return 0;
+  });
 
   // The admin's Hytale sign-in lapses after 30 days unused (hytale.ts).
   await keepHytaleAlive().catch((err) => console.error("hytale keep-alive failed", err));

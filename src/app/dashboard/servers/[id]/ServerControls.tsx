@@ -19,14 +19,14 @@ export default function ServerControls({ id, live, t }: Props) {
   const [doing, setDoing] = useState<"start" | "stop" | "restart" | null>(null);
   const running = live === "online" || live === "starting" || live === "restarting";
 
-  function run(kind: "start" | "stop" | "restart", action: (id: string) => Promise<{ error?: keyof Messages["server"]["errors"] } | void>) {
+  function run(kind: "start" | "stop" | "restart", action: (id: string) => Promise<{ error?: keyof Messages["server"]["errors"]; queued?: boolean } | void>) {
     setDoing(kind);
     // The state badge changes right away (LiveBadge); the real state follows.
     window.dispatchEvent(new CustomEvent(SERVER_ACTION_EVENT, { detail: { id, kind } }));
     startTransition(async () => {
       const result = await action(id);
       setError(result?.error ? t.errors[result.error] : null);
-      if (result?.error) window.dispatchEvent(new CustomEvent(SERVER_ACTION_EVENT, { detail: { id, kind: "failed" } }));
+      if (result?.error || result?.queued) window.dispatchEvent(new CustomEvent(SERVER_ACTION_EVENT, { detail: { id, kind: "failed" } }));
       router.refresh();
     });
   }

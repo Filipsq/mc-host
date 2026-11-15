@@ -2055,3 +2055,5 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   .server-nav.open .server-nav-body { animation: menu-open 0.16s ease-out; transform-origin: top; }
   @keyframes menu-open { from { opacity: 0; transform: translate3d(0, -6px, 0); } to { opacity: 1; transform: none; } }
 }
+.queue-notice { display: flex; flex-direction: column; gap: 10px; }
+.queue-notice p { margin: 0; }

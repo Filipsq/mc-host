@@ -707,6 +707,14 @@ const pl = {
       suspendedNote: "Serwer jest zawieszony, ale nadal możesz pobrać jego kopie.",
       unavailable: "Nie udało się wczytać kopii. Odśwież stronę za chwilę.",
     },
+    queue: {
+      title: "Czekasz w kolejce.",
+      text: "Wszystkie darmowe miejsca są teraz zajęte. Serwer uruchomi się sam, gdy tylko zwolni się miejsce, i damy Ci znać powiadomieniem. Nie musisz nic klikać.",
+      upgrade: "Nie chcę czekać: Starter od {price}",
+      leave: "Zrezygnuj z kolejki",
+      pushTitle: "Serwer już działa!",
+      pushBody: "Zwolniło się miejsce i serwer {server} właśnie się uruchamia. Możesz wchodzić.",
+    },
     doing: { start: "Uruchamiam…", stop: "Zatrzymuję…", restart: "Restartuję…", stopState: "Zatrzymywanie" },
     startSteps: {
       title: "Uruchamiamy serwer",
