@@ -223,6 +223,7 @@ type agent struct {
 
 	metrics    sync.Map // server id -> *serverMetrics, the Statistics card's history (see metrics.go)
 	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
+	terrariaUp sync.Map // Terraria server id -> time.Time it was last seen still loading (see idle.go)
 	autostops  sync.Map // server id -> autostopExit, whether its last nonzero exit was going to sleep
 
 	udp *udpWaker // answers Bedrock players while their server is stopped (see bedrock.go)

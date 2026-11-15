@@ -42,12 +42,13 @@ func (a *agent) sleepIdle(ctx context.Context) error {
 	for _, c := range list {
 		id := c.Labels["mchost.server"]
 		var idle time.Duration
+		var joined bool
 		var err error
 		switch c.Labels["mchost.edition"] {
 		case "BEDROCK":
-			idle, err = a.bedrockIdleFor(ctx, id)
+			idle, joined, err = a.bedrockIdleFor(ctx, id)
 		case "TERRARIA":
-			idle, err = a.terrariaIdleFor(ctx, id)
+			idle, joined, err = a.terrariaIdleFor(ctx, id)
 		default:
 			continue // Java's image stops by itself
 		}
@@ -55,7 +56,7 @@ func (a *agent) sleepIdle(ctx context.Context) error {
 			log.Printf("idle check %s: %v", id, err)
 			continue
 		}
-		if idle < a.idle {
+		if idle < a.idleLimit(joined) {
 			continue
 		}
 		log.Printf("putting %s to sleep after %s with no players", id, idle.Round(time.Second))
@@ -67,16 +68,29 @@ func (a *agent) sleepIdle(ctx context.Context) error {
 	return nil
 }
 
-// bedrockIdleFor returns how long the server has had nobody online (0 if someone is).
-func (a *agent) bedrockIdleFor(ctx context.Context, id string) (time.Duration, error) {
+// idleLimit is how long a Bedrock or Terraria server may have nobody online
+// before it sleeps: the idle period once someone has played since the start,
+// and at least firstJoinGrace before anyone has, so whoever clicked Start can
+// open the game and join (with the 100 s idle period, free Bedrock servers
+// went to sleep before anyone could join, 2026-11-15).
+func (a *agent) idleLimit(joined bool) time.Duration {
+	if joined {
+		return a.idle
+	}
+	return max(a.idle, firstJoinGrace)
+}
+
+// bedrockIdleFor returns how long the server has had nobody online (0 if
+// someone is), and whether anyone has joined since it started.
+func (a *agent) bedrockIdleFor(ctx context.Context, id string) (time.Duration, bool, error) {
 	name := containerName(id)
 	info, err := a.docker.InspectContainer(ctx, name)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	started, err := time.Parse(time.RFC3339Nano, info.State.StartedAt)
 	if err != nil {
-		return 0, fmt.Errorf("parse StartedAt: %w", err)
+		return 0, false, fmt.Errorf("parse StartedAt: %w", err)
 	}
 	var lines []string
 	err = a.docker.Logs(ctx, name, LogOptions{Since: started.Unix(), Timestamps: true}, func(line string) error {
@@ -84,13 +98,13 @@ func (a *agent) bedrockIdleFor(ctx context.Context, id string) (time.Duration, e
 		return nil
 	})
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	online, last := countBedrockPlayers(lines, started)
 	if online > 0 {
-		return 0, nil
+		return 0, true, nil
 	}
-	return time.Since(last), nil
+	return time.Since(last), last.After(started), nil
 }
 
 // countBedrockPlayers replays join/leave lines from a timestamped log and
@@ -119,33 +133,37 @@ func countBedrockPlayers(lines []string, since time.Time) (online int, lastActiv
 	return online, lastActivity
 }
 
-// terrariaIdleFor returns how long the server has had nobody connected (0 if someone is).
-func (a *agent) terrariaIdleFor(ctx context.Context, id string) (time.Duration, error) {
+// terrariaIdleFor returns how long the server has had nobody connected (0 if
+// someone is), and whether anyone has played since it started.
+func (a *agent) terrariaIdleFor(ctx context.Context, id string) (time.Duration, bool, error) {
 	name := containerName(id)
 	info, err := a.docker.InspectContainer(ctx, name)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	last, err := time.Parse(time.RFC3339Nano, info.State.StartedAt)
 	if err != nil {
-		return 0, fmt.Errorf("parse StartedAt: %w", err)
+		return 0, false, fmt.Errorf("parse StartedAt: %w", err)
 	}
 	// Still making its world (which can take minutes) or loading it: nobody
 	// could have joined yet, so the idle time starts once the server is up.
 	if info.State.Health == nil || info.State.Health.Status != "healthy" {
-		a.lastPlayed.Store(id, time.Now())
-		return 0, nil
+		a.terrariaUp.Store(id, time.Now())
+		return 0, false, nil
 	}
 	n, err := a.terrariaConnections(ctx, name)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
 	if n > 0 {
 		a.lastPlayed.Store(id, time.Now())
-		return 0, nil
+		return 0, true, nil
 	}
 	if v, ok := a.lastPlayed.Load(id); ok && v.(time.Time).After(last) {
-		last = v.(time.Time)
+		return time.Since(v.(time.Time)), true, nil
 	}
-	return time.Since(last), nil
+	if up, ok := a.terrariaUp.Load(id); ok && up.(time.Time).After(last) {
+		last = up.(time.Time)
+	}
+	return time.Since(last), false, nil
 }

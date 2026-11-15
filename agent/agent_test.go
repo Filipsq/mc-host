@@ -587,3 +587,16 @@ func TestAutostopGivesTimeForTheFirstJoin(t *testing.T) {
 		t.Fatal(a.autostopEst(), a.autostopInit())
 	}
 }
+
+func TestIdleLimitWaitsForFirstPlayer(t *testing.T) {
+	a := &agent{idle: 100 * time.Second}
+	if got := a.idleLimit(false); got != firstJoinGrace {
+		t.Errorf("before anyone joined: %v, want %v", got, firstJoinGrace)
+	}
+	if got := a.idleLimit(true); got != 100*time.Second {
+		t.Errorf("after a player left: %v, want 100s", got)
+	}
+	if got := (&agent{idle: 10 * time.Minute}).idleLimit(false); got != 10*time.Minute {
+		t.Errorf("long idle period: %v", got)
+	}
+}
