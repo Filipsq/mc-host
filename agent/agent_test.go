@@ -580,3 +580,10 @@ func TestCrossplay(t *testing.T) {
 func specEnv(spec map[string]any) string {
 	return strings.Join(spec["Env"].([]string), "\n") + "\n"
 }
+
+func TestAutostopGivesTimeForTheFirstJoin(t *testing.T) {
+	a := &agent{idle: 100 * time.Second}
+	if a.autostopEst() != "AUTOSTOP_TIMEOUT_EST=100" || a.autostopInit() != "AUTOSTOP_TIMEOUT_INIT=300" {
+		t.Fatal(a.autostopEst(), a.autostopInit())
+	}
+}
