@@ -17,6 +17,7 @@ import (
 // villagers and farm animals.
 var paperEntityLimits = map[string]int{
 	"item":           256,
+	"tnt":            64, // primed TNT: a pile of it ran a free 2 GB server out of memory (2026-11-15)
 	"experience_orb": 16,
 	"arrow":          16,
 	"snowball":       8,

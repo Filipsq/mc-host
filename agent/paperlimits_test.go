@@ -29,7 +29,7 @@ func TestSetEntitySaveLimits(t *testing.T) {
 	got := setEntitySaveLimits(paperDefaultsSample, paperEntityLimits)
 	for _, want := range []string{
 		"    arrow: 16\n", "    ender_pearl: 8\n", "    experience_orb: 40\n", // owner's value stays
-		"    snowball: 8\n", "    item: 256\n  fixed-chunk-inhabited-time: -1\n",
+		"    snowball: 8\n", "    item: 256\n    tnt: 64\n  fixed-chunk-inhabited-time: -1\n",
 		"collisions:\n  max-entity-collisions: 8\n",
 	} {
 		if !strings.Contains(got, want) {
