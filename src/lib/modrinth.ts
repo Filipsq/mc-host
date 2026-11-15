@@ -140,6 +140,18 @@ const info = (
 
 const newest = (versions: string[]) => versions.filter((g) => RELEASE.test(g)).sort(compareVersions).at(-1);
 
+/** Modrinth categories offered as one-tap chips over the search, most asked first. */
+export const ADDON_CATEGORIES = {
+  plugin: ["management", "economy", "game-mechanics", "minigame", "social", "utility", "worldgen", "adventure", "mobs", "transportation", "optimization"],
+  mod: ["technology", "magic", "adventure", "storage", "decoration", "food", "mobs", "equipment", "worldgen", "transportation", "utility", "optimization"],
+} as const;
+export type AddonCategory = (typeof ADDON_CATEGORIES)["plugin" | "mod"][number];
+
+/** The category from a link, if it's one of ours for that type. */
+export function addonCategory(type: "plugin" | "mod", value: string | undefined): AddonCategory | undefined {
+  return (ADDON_CATEGORIES[type] as readonly string[]).includes(value ?? "") ? (value as AddonCategory) : undefined;
+}
+
 /**
  * Paper plugins, or mods for a loader, matching the query (the most downloaded
  * ones without one); for a Minecraft version if given. Only what runs on servers.
@@ -147,7 +159,7 @@ const newest = (versions: string[]) => versions.filter((g) => RELEASE.test(g)).s
 export async function searchAddons(
   type: AddonType,
   query: string,
-  o: { gameVersion?: string; loader?: string } = {},
+  o: { gameVersion?: string; loader?: string; category?: string } = {},
 ): Promise<PluginHit[] | "modrinthUnavailable"> {
   const facets =
     type === "plugin"
@@ -155,6 +167,7 @@ export async function searchAddons(
       : [["project_type:mod"], [`categories:${o.loader}`]];
   facets.push(["server_side:required", "server_side:optional"]);
   if (o.gameVersion) facets.push([`versions:${o.gameVersion}`]);
+  if (o.category) facets.push([`categories:${o.category}`]);
   const params = new URLSearchParams({
     query: query.slice(0, 100),
     limit: "20",
