@@ -285,6 +285,10 @@ model Server {
   xboxUntil        DateTime?
   // A free server's own domain (customDomain) is paid for on its own, per 30 days, until this date (src/lib/addons.ts).
   domainUntil      DateTime?
+  // A free server's reward for watched ads (src/lib/adReward.ts): how many rewards it has, until when.
+  // Left above 0 after it ends until the server is rebuilt without them.
+  adBoost          Int            @default(0)
+  adBoostUntil     DateTime?
   // The world folder the server runs (the image's default if null), and the seed and
   // type it was made with (src/lib/worlds.ts). On Terraria the type is the world's size.
   level            String?
@@ -317,7 +321,8 @@ model Server {
   // Terraria only: the password players type to join; none if null.
   serverPassword   String?
   // Host port of the server: behind the router for Java, public for Bedrock (UDP) and Terraria (TCP).
-  port             Int?           @unique
+  // Unique on its machine only: each machine has the whole range (src/lib/servers.ts).
+  port             Int?
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
   subdomain        String?        @unique
   // Paid plans are prepaid; the server is suspended once this passes.
@@ -327,6 +332,9 @@ model Server {
   // When its owner was told a suspended server will be deleted; cleared by a payment.
   // For a free server: told it will be deleted for nobody playing; cleared when someone plays.
   deletionWarnedAt DateTime?
+  // A free server that found no room when started: since when it waits to be started
+  // by itself once there is room (src/lib/startQueue.ts).
+  queuedAt         DateTime?
   // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
   lastPlayedAt     DateTime       @default(now())
   // When its owner was asked to come back and play (src/lib/comeback.ts); cleared when someone plays.
@@ -360,11 +368,24 @@ model Server {
   ownerId          String
   // Friends the owner let into the server's panel.
   members          ServerMember[]
+  adWatches        AdWatch[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  @@unique([node, port])
   @@index([ownerId])
   @@index([creatorId])
+}
+
+// One rewarded ad watched to the end for a free server (src/lib/adReward.ts).
+model AdWatch {
+  id        String   @id @default(cuid())
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([serverId, createdAt])
 }
 
 // A friend the owner let into a server's panel. Invited by email; linked to the

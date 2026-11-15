@@ -18,6 +18,8 @@ import { halloweenOn } from "@/lib/halloween";
 import { REFERRAL_DAYS } from "@/lib/referrals";
 import { pushPublicKey } from "@/lib/push";
 import AppInstall from "@/components/AppInstall";
+import AdBox from "@/components/AdBox";
+import { ADSENSE_SLOT } from "@/lib/ads";
 import TestPaymentNotice from "@/components/TestPaymentNotice";
 import { REVIEW_NAME_MAX, REVIEW_TEXT_MAX, shouldAskReview, unseenReviewReply } from "@/lib/reviews";
 import ReviewAsk from "./ReviewAsk";
@@ -60,6 +62,8 @@ export default async function DashboardPage({ searchParams }: Props) {
   }).catch(() => undefined);
   const dayMonth = new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", timeZone: "Europe/Warsaw" });
   const now = new Date();
+  // Customers with a paid server see no ads.
+  const paying = servers.some((s) => s.plan !== "FREE" && !!s.paidUntil && s.paidUntil > now);
 
   // One server on the list: the whole card opens its panel; the address can be copied without going in.
   const card = (s: (typeof servers)[number], live: LiveState, online: number | null, owner?: string) => {
@@ -141,6 +145,7 @@ export default async function DashboardPage({ searchParams }: Props) {
           <ul className="server-list">{shared.map((s, i) => card(s, sharedStates[i], sharedPlayers[i], s.owner.email))}</ul>
         </section>
       )}
+      {!!ADSENSE_SLOT && !paying && <AdBox label={t.adLabel} blockedLabel={t.adBlocked} />}
       {askReview && <ReviewAsk t={all.reviews} textMax={REVIEW_TEXT_MAX} nameMax={REVIEW_NAME_MAX} />}
       <div className="card row invite-card">
         <span className="row invite-days">

@@ -29,6 +29,10 @@ import StartSteps from "./StartSteps";
 import CopyButton from "@/components/CopyButton";
 import TestPaymentNotice from "@/components/TestPaymentNotice";
 import UndoNotice from "./undo/UndoNotice";
+import AdReward from "./AdReward";
+import { db } from "@/lib/db";
+import { AD_MANAGER_REWARDED_UNIT } from "@/lib/ads";
+import { AD_WATCHES_PER_DAY, AD_WINDOW_MS, adBonus, adBoostLevel } from "@/lib/adReward";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -108,6 +112,16 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const waiting = payment === "success" && unpaid;
   // A running start offer (startOffer.ts), shown to the owner on their free servers.
   const offerEnds = server.plan === "FREE" && can("owner") ? await startOfferEnds(session.user.id) : null;
+  // The "watch an ad" reward (adReward.ts): free servers, their owner, once Ad Manager is set up.
+  const adsOn = !!AD_MANAGER_REWARDED_UNIT && server.plan === "FREE" && can("owner") && !unpaid;
+  const watches = adsOn
+    ? await db.adWatch.findMany({
+        where: { serverId: server.id, createdAt: { gt: new Date(Date.now() - AD_WINDOW_MS) } },
+        orderBy: { createdAt: "asc" },
+        select: { createdAt: true },
+      })
+    : [];
+  const adsLeft = Math.max(0, AD_WATCHES_PER_DAY - watches.length);
 
   return (
     <div className="stack">
@@ -286,12 +300,26 @@ export default async function ServerPage({ params, searchParams }: Props) {
         )}
       </div>
 
+      {adsOn && (
+        <AdReward
+          id={server.id}
+          unit={AD_MANAGER_REWARDED_UNIT}
+          level={adBoostLevel(server)}
+          until={adBoostLevel(server) > 0 ? server.adBoostUntil!.toISOString() : null}
+          left={adsLeft}
+          nextAt={adsLeft === 0 && watches[0] ? new Date(watches[0].createdAt.getTime() + AD_WINDOW_MS).toISOString() : null}
+          running={live === "online" || live === "starting"}
+          locale={locale}
+          t={all.adReward}
+        />
+      )}
+
       {!unpaid && !classic && (
         <Stats
           id={server.id}
           java={server.edition === "JAVA"}
           running={live === "online" || live === "starting" || live === "restarting"}
-          memoryMb={server.memoryMb}
+          memoryMb={server.memoryMb + adBonus(server).memoryMb}
           locale={locale}
           t={t.stats}
         />

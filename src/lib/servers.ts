@@ -7,6 +7,7 @@ import {
   copyServer,
   deleteServer,
   forgetServerNode,
+  getHost,
   getServerState,
   listWorlds,
   recreateServer,
@@ -25,6 +26,7 @@ import { addonType, canCrossplay, canRunNonPremium, pinsFor, sitePlugin, withNee
 import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
 import { xboxOn } from "./xbox";
+import { adBonus } from "./adReward";
 
 export type LiveState =
   | "starting"
@@ -111,21 +113,42 @@ export async function destroyServer(server: Pick<Server, "id">) {
 const PORT_START = Number(process.env.PORT_RANGE_START ?? 30000);
 const PORT_END = Number(process.env.PORT_RANGE_END ?? 30999);
 
+/** The lowest port free on machine `node` that isn't in `busy`, or null if none is. */
+export async function freePortOn(node: string, busy: ReadonlySet<number> = new Set()): Promise<number | null> {
+  const taken = await db.server.findMany({ where: { node, port: { gte: PORT_START, lte: PORT_END } }, select: { port: true } });
+  const used = new Set(taken.map((s) => s.port));
+  let port = PORT_START;
+  while ((used.has(port) || busy.has(port)) && port <= PORT_END) port++;
+  return port > PORT_END ? null : port;
+}
+
 /**
- * Creates the server row with the lowest free port. The unique index on port
+ * Puts the server on machine `to`, with a new port if its own is taken there.
+ * Returns null if `to` has no free port.
+ */
+export async function setNode(server: Server, to: string): Promise<Server | null> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const clash = server.port !== null && (await db.server.count({ where: { node: to, port: server.port, NOT: { id: server.id } } })) > 0;
+    const port = clash ? await freePortOn(to) : server.port;
+    if (port === null) return null;
+    try {
+      return await db.server.update({ where: { id: server.id }, data: { node: to, port } });
+    } catch (err) {
+      if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+    }
+  }
+  return null;
+}
+
+/**
+ * Creates the server row with the lowest port free on its machine. The unique index on node and port
  * settles races between two simultaneous creations; the loser retries.
  * Returns "subdomainTaken" if the address is already in use, or null if no port is free.
  */
 export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreateInput, "port">) {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const taken = await db.server.findMany({
-      where: { port: { gte: PORT_START, lte: PORT_END } },
-      select: { port: true },
-    });
-    const used = new Set(taken.map((s) => s.port));
-    let port = PORT_START;
-    while (used.has(port) && port <= PORT_END) port++;
-    if (port > PORT_END) return null;
+    const port = await freePortOn(data.node ?? MAIN_NODE);
+    if (port === null) return null;
     try {
       // Mods' jetpacks and wings need flying, or the server kicks their players.
       const allowFlight = data.allowFlight ?? (data.kind === "modpack" || isModLoader(data.kind));
@@ -146,11 +169,8 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
  */
 export async function changePort(server: Server, busy: ReadonlySet<number>): Promise<Server | null> {
   for (let attempt = 0; attempt < 5; attempt++) {
-    const taken = await db.server.findMany({ where: { port: { gte: PORT_START, lte: PORT_END } }, select: { port: true } });
-    const used = new Set(taken.map((s) => s.port));
-    let port = PORT_START;
-    while ((used.has(port) || busy.has(port)) && port <= PORT_END) port++;
-    if (port > PORT_END) return null;
+    const port = await freePortOn(server.node, busy);
+    if (port === null) return null;
     try {
       return await db.server.update({ where: { id: server.id }, data: { port } });
     } catch (err) {
@@ -244,14 +264,17 @@ export function addressLabel(server: Parameters<typeof joinAddress>[0]) {
 /** The container spec the agent needs, derived from the server's plan. */
 export function agentSpec(server: Server): CreateServerSpec {
   const plan = planById(server.plan);
+  // Watched ads give a free server more slots and RAM for a day (adReward.ts).
+  const bonus = adBonus(server);
+  const players = maxPlayersFor(server, plan);
   return {
     id: server.id,
     name: server.name,
     edition: server.edition,
-    memoryMb: plan.ramGb * 1024,
+    memoryMb: plan.ramGb * 1024 + bonus.memoryMb,
     cpus: plan.cpus,
     port: server.port!,
-    maxPlayers: maxPlayersFor(server, plan),
+    maxPlayers: players > 0 ? players + bonus.slots : 0,
     version: server.version,
     hostname: server.edition === "JAVA" ? javaHost(server) : "",
     password: server.edition === "TERRARIA" || server.edition === "VALHEIM" ? (server.serverPassword ?? "") : undefined,
@@ -359,13 +382,31 @@ export async function moveIfFull(server: Server): Promise<Server | null> {
   return (await moveServer(server, to)) ?? server;
 }
 
+// What the agent wants free before it starts a free server (agent/capacity.go: its
+// starting share, plus the larger of 1 GB and 10% of the machine), and some more so
+// the copy isn't for nothing; and disk for its files.
+const START_MB = 1536 + 512;
+const START_DISK_MB = 10 * 1024;
+
+function hasRoomToStart(host: { memoryTotalMb: number; memoryAvailableMb: number; diskFreeMb: number }) {
+  return host.memoryAvailableMb >= START_MB + Math.max(1024, host.memoryTotalMb / 10) && host.diskFreeMb >= START_DISK_MB;
+}
+
 /**
  * When a free server's machine has no memory awake for it, moves it to the
  * machine best placed for free servers and starts it there. Returns the moved
  * server, or null if there's no other machine or the copy failed.
  */
 export async function startElsewhere(server: Server): Promise<Server | null> {
-  const to = (await rankNodes(server.memoryMb, 0, undefined, requiredArch(server))).find((n) => n !== server.node);
+  const ranked = (await rankNodes(server.memoryMb, 0, undefined, requiredArch(server))).filter((n) => n !== server.node);
+  // Only a machine that really has the memory and disk for it now: the one best placed
+  // by plans sold may be just as full, and the server would be copied there for nothing.
+  const hosts = await Promise.all(ranked.map((n) => getHost(nodeById(n))));
+  const roomy = ranked
+    .map((id, i) => ({ id, host: hosts[i] }))
+    .filter(({ host }) => host && hasRoomToStart(host))
+    .sort((a, b) => b.host!.memoryAvailableMb - a.host!.memoryAvailableMb);
+  const to = roomy[0]?.id;
   if (!to) return null;
   const moved = await moveServer(server, to);
   if (!moved) return null;
@@ -392,7 +433,8 @@ export async function moveServer(server: Server, to: string): Promise<Server | n
       if (!(err instanceof AgentError && err.status === 404)) throw err;
       copied = false;
     }
-    const moved = await db.server.update({ where: { id: server.id }, data: { node: to } });
+    const moved = await setNode(server, to);
+    if (!moved) throw new Error(`no free port on ${to}`);
     forgetServerNode(server.id);
     console.info("moved", server.id, "from", from.id, "to", to);
     await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));

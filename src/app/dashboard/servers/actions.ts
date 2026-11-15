@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { Prisma, type Plan, type ServerStatus } from "@prisma/client";
+import { Prisma, type Plan, type Server, type ServerStatus } from "@prisma/client";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
@@ -12,6 +12,7 @@ import {
   agentSpec,
   applyToHost,
   changePort,
+  setNode,
   createServerRecord,
   destroyServer,
   getOwnedServer,
@@ -54,6 +55,7 @@ import {
   parsePlayers,
 } from "@/lib/settings";
 import { activeLevel } from "@/lib/worlds";
+import { AD_WATCHES_PER_DAY, AD_WINDOW_MS, adBoostAfterWatch } from "@/lib/adReward";
 import { undoSnapshot } from "@/lib/undoChange";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
@@ -387,8 +389,9 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
         }
       }
       // That machine has no free server's worth of memory awake right now: try the next one.
-      if (agent.isFull(err) && next < candidates.length) {
-        server = await db.server.update({ where: { id: server.id }, data: { node: candidates[next] } });
+      const nextNode: Server | null = agent.isFull(err) && next < candidates.length ? await setNode(server, candidates[next]) : null;
+      if (nextNode) {
+        server = nextNode;
         agent.forgetServerNode(server.id);
         await syncPeerRoutes().catch((err) => console.error("peer routes not sent", err));
         continue;
@@ -662,7 +665,7 @@ async function serverOrThrow(id: string, need: ServerNeed) {
   return server;
 }
 
-export async function startServerAction(id: string): Promise<{ error?: ServerErrorCode }> {
+export async function startServerAction(id: string): Promise<{ error?: ServerErrorCode; queued?: boolean }> {
   const server = await serverOrThrow(id, "view");
   // Unpaid servers stay off until someone pays.
   if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
@@ -692,11 +695,19 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
   } catch (err) {
     // A free server's machine is full right now: it moves to one with room and starts there.
     if (agent.isFull(err) && server.plan === "FREE" && (await startElsewhere(server).catch(() => null))) {
-      await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
+      await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false, queuedAt: null } });
       revalidatePath(`/dashboard/servers/${id}`, "layout");
       return {};
     }
     if (agent.isFull(err)) {
+      // A free server waits in line and starts by itself once there is room (startQueue.ts).
+      if (server.plan === "FREE") {
+        if (server.queuedAt) return { queued: true };
+        await db.server.update({ where: { id: server.id }, data: { queuedAt: new Date() } });
+        await logRefusal("startFull", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
+        revalidatePath(`/dashboard/servers/${id}`, "layout");
+        return { queued: true };
+      }
       await logRefusal("startFull", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
       return { error: "full" };
     }
@@ -707,15 +718,22 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
     await logRefusal("startFailed", { plan: server.plan, userId: server.ownerId, serverId: server.id, node: server.node });
     throw err;
   }
-  await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false } });
+  await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false, queuedAt: null } });
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   return {};
+}
+
+/** Gives up a free server's place in the line for room to start. */
+export async function leaveQueueAction(id: string) {
+  const server = await serverOrThrow(id, "view");
+  await db.server.update({ where: { id: server.id }, data: { queuedAt: null } });
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
 }
 
 export async function stopServerAction(id: string) {
   const server = await serverOrThrow(id, "view");
   await agent.stopServer(server.id);
-  await db.server.update({ where: { id: server.id }, data: { status: "STOPPED" } });
+  await db.server.update({ where: { id: server.id }, data: { status: "STOPPED", queuedAt: null } });
   revalidatePath(`/dashboard/servers/${id}`, "layout");
 }
 
@@ -1012,4 +1030,34 @@ export async function setClassicPanelAction(on: boolean) {
   if (!session?.user?.id) return;
   await db.user.update({ where: { id: session.user.id }, data: { classicPanel: on === true } });
   revalidatePath("/dashboard/servers", "layout");
+}
+
+export type AdRewardResult = { error?: "limit" | "notFree" | "failed"; until?: string; left?: number };
+
+/**
+ * A rewarded ad was watched to the end: the free server gets more slots and RAM for a day
+ * (adReward.ts), at most twice in any 24 hours. A running server restarts with them.
+ */
+export async function adRewardAction(id: string): Promise<AdRewardResult> {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server || server.plan !== "FREE" || !onHost(server)) return { error: "notFree" };
+  const now = new Date();
+  const since = new Date(now.getTime() - AD_WINDOW_MS);
+  const watched = await db.adWatch.count({ where: { serverId: server.id, createdAt: { gt: since } } });
+  if (watched >= AD_WATCHES_PER_DAY) return { error: "limit" };
+  const boost = adBoostAfterWatch(server, now);
+  const [, updated] = await db.$transaction([
+    db.adWatch.create({ data: { serverId: server.id, userId: user.id } }),
+    db.server.update({ where: { id: server.id }, data: boost }),
+  ]);
+  console.info("ad reward", server.id, "level", boost.adBoost);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+  try {
+    await applyToHost(updated);
+  } catch (err) {
+    // Saved anyway: it gets them on its next start.
+    console.error("ad reward not applied now", server.id, err);
+  }
+  return { until: boost.adBoostUntil.toISOString(), left: AD_WATCHES_PER_DAY - watched - 1 };
 }

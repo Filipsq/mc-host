@@ -9,7 +9,9 @@ import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { getLiveDetailsOnce } from "@/lib/servers";
 import { getMetrics } from "@/lib/agent";
-import { planById } from "@/lib/plans";
+import { formatPrice, planById } from "@/lib/plans";
+import { periodPrice } from "@/lib/periods";
+import { getPreferences } from "@/i18n/server";
 import { maxPlayersFor } from "@/lib/settings";
 import { canUpgrade } from "@/lib/upgrade";
 import { addonType, offersModPicker } from "@/lib/plugins";
@@ -21,8 +23,11 @@ import { isMinecraft } from "@/lib/otherGames";
 import { takesBedrockPlayers } from "@/lib/xbox";
 import EditionIcon from "@/components/EditionIcon";
 import AutoRefresh from "@/components/AutoRefresh";
+import AdBox from "@/components/AdBox";
+import { ADSENSE_SLOT } from "@/lib/ads";
 import LeaveButton from "./LeaveButton";
 import ServerControls from "./ServerControls";
+import QueueNotice from "./QueueNotice";
 import LiveBadge from "./LiveBadge";
 import ServerNav, { type NavGroup } from "./ServerNav";
 import ClassicBack from "./ClassicBack";
@@ -108,8 +113,17 @@ export default async function ServerLayout({ children, params }: { children: Rea
     },
   ].filter((g) => g.items.length > 0);
 
+  const { locale, currency } = await getPreferences();
   const banners = (
     <>
+      {server.queuedAt && server.plan === "FREE" && !(live === "online" || live === "starting") && (
+        <QueueNotice
+          id={server.id}
+          owner={can("owner")}
+          price={formatPrice(periodPrice(planById("STARTER").price[currency], 7), currency, locale)}
+          t={t.queue}
+        />
+      )}
       {access.role === "admin" && owner && (
         <div className="notice warn row">
           <span>
@@ -172,8 +186,11 @@ export default async function ServerLayout({ children, params }: { children: Rea
     );
   }
 
+  // Free servers get a tall ad right of the panel on wide screens; paid ones never see ads.
+  const sideAd = !!ADSENSE_SLOT && server.plan === "FREE" && !server.adminTest;
+
   return (
-    <main className="server-panel">
+    <main className={sideAd ? "server-panel with-side-ad" : "server-panel"}>
       {banners}
       {/* The same spot as in the classic look, so switching back and forth stays under the cursor. */}
       <div className="row classic-top">
@@ -219,6 +236,11 @@ export default async function ServerLayout({ children, params }: { children: Rea
           t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer, more: p.tabMore }}
         />
         <div className="server-content">{children}</div>
+        {sideAd && (
+          <div className="side-ad">
+            <AdBox label={all.dashboard.adLabel} blockedLabel={all.dashboard.adBlocked} variant="side" />
+          </div>
+        )}
       </div>
       {(live === "starting" || live === "restarting") && <AutoRefresh />}
     </main>

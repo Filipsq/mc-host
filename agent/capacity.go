@@ -34,6 +34,10 @@ const (
 	smallMachineMarginMb = 512
 )
 
+// freeStartMb is what a free server counts for when it starts: it rarely fills
+// its plan with a few players, and its limit stays the plan's.
+const freeStartMb = 1536
+
 // freeMemoryMarginMb is what has to stay free on the machine after a free server
 // starts, when overbooking and other servers are running: room for them to grow.
 const freeMemoryMarginMb = 1024
@@ -85,7 +89,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 				if inUse > 0 {
 					margin = freeMemoryMarginMb
 				}
-				startNeed := need
+				startNeed := min(need, freeStartMb)
 				if a.freeMemory > 0 {
 					startNeed = min(need, initialHeapMb)
 					margin = min(margin, smallMachineMarginMb)
