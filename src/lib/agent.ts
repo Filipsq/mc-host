@@ -212,6 +212,13 @@ export async function setPeerRoutes(routes: Record<string, string>) {
   await agentFetch("/peer-routes", { method: "PUT", body: JSON.stringify({ routes }), node: nodeById(MAIN_NODE) });
 }
 
+/** A machine's memory and disk right now; null when it didn't answer (or its agent is older). */
+export async function getHost(node: GameNode): Promise<HostStats["host"] | null> {
+  return agentFetch("/host", { timeoutMs: 5_000, node })
+    .then((res) => res.json() as Promise<HostStats["host"]>)
+    .catch(() => null);
+}
+
 /**
  * Every machine and every server on them, for the admin panel, added up. Throws if the
  * main machine doesn't answer; extra ones that don't are listed in `unreachable`.
