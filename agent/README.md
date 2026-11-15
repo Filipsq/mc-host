@@ -8,7 +8,7 @@ It also listens on the Java port (25565) and routes each player by the address t
 wake it" in the server list and starts it when someone tries to join. Point a wildcard DNS record
 (`*.mchost.pl`) at the host.
 
-Free servers sleep after `IDLE_MINUTES` with nobody online: Java through the image's built-in
+Free servers sleep after `IDLE_SECONDS` with nobody online: Java through the image's built-in
 autostop, Bedrock through the agent watching join/leave lines in the console, Terraria through the
 agent counting players' connections to the game port.
 
@@ -23,7 +23,7 @@ go test ./...
 | `AGENT_ADDR` | `:8081` | Listen address. Keep it private (firewall or VPN), never public |
 | `DOCKER_SOCKET` | `/var/run/docker.sock` | |
 | `GAME_ADDR` | `:25565` | Public Java port the router listens on |
-| `IDLE_MINUTES` | `5` | How long a free server may sit empty before sleeping |
+| `IDLE_SECONDS` | `100` | How long a free server may sit empty before sleeping |
 | `STATE_DIR` | `./state` | Remembers which servers were stopped by their owner (so players can't wake them) |
 | `BACKUP_DIR` | `./backups` | Where backups are kept: `<server id>/<UTC time>.tar.gz` |
 | `BACKUP_MOUNT` | `BACKUP_DIR` | The same place as Docker sees it (a host path or a volume name), for the helper containers that pack and unpack worlds |
