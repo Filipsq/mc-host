@@ -30,7 +30,7 @@ func (a *agent) sleptOnExit(id string, info *ContainerInfo) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	slept := false
-	err := a.docker.Logs(ctx, containerName(id), LogOptions{Tail: 80}, func(line string) error {
+	err := a.docker.Logs(ctx, containerName(id), LogOptions{Tail: 400}, func(line string) error {
 		if isAutostopLine(line) {
 			slept = true
 			return errFoundAutostop

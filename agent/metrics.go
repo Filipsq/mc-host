@@ -46,7 +46,8 @@ type serverMetrics struct {
 	cpuSystem  uint64
 	tpsCmd     int       // index into tpsCommands that worked; -1 while unknown
 	tpsTried   time.Time // when none of them worked, the last try
-	logsSince  int64     // Bedrock and Terraria: how far the join/leave lines were read
+	logsSince  int64     // Bedrock and Terraria: how far the join/leave lines were read; Java: how far javaStopping read
+	stopping   bool      // Java: the server began to stop this run; no more RCON until it starts again
 	online     map[string]bool
 	rcon       *rconConn // Java: kept open between samples; only the sampler uses it
 	// Java: /list was taken over by a plugin, so the sampler asks minecraft:list.
@@ -171,7 +172,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		m.logsSince, m.online, m.players, m.count, m.maxPlayers, m.pregen = started.Unix(), map[string]bool{}, nil, 0, 0, ""
 		m.skyMap, m.skyMapBuilding = false, false
 		m.minigames, m.minigamesBuilding = false, false
-		m.difficulty, m.gameRules = false, false
+		m.difficulty, m.gameRules, m.stopping = false, false, false
 		m.closeRCON()
 	}
 	m.mu.Unlock()
@@ -217,6 +218,14 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 		// Hytale doesn't say who plays in a way the agent reads yet.
 		count = 0
 	default:
+		if a.javaStopping(ctx, name, m) {
+			// Stopping (autostop, Zatrzymaj, a restart): commands sent now are
+			// refused with a stack trace each ("Cannot perform command async"),
+			// which buries the autostop line the agent looks for after the exit
+			// and made a server that went to sleep look crashed.
+			count = 0
+			break
+		}
 		ip := info.IP()
 		run := func(cmd string) (string, error) { return a.rconRun(ctx, name, ip, m, cmd) }
 		if out, err := run(m.listCmd()); err == nil {
@@ -512,4 +521,38 @@ func bucketSamples(samples []metricSample, size time.Duration) []metricSample {
 		out = append(out, b)
 	}
 	return out
+}
+
+// javaStopping tells whether a Java server began to stop since it started,
+// reading only what it logged since the last sample.
+func (a *agent) javaStopping(ctx context.Context, name string, m *serverMetrics) bool {
+	m.mu.Lock()
+	since, stopping := m.logsSince, m.stopping
+	m.mu.Unlock()
+	if stopping {
+		return true
+	}
+	now := time.Now().Unix()
+	found := false
+	err := a.docker.Logs(ctx, name, LogOptions{Since: since}, func(line string) error {
+		if isStoppingLine(line) {
+			found = true
+		}
+		return nil
+	})
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err == nil {
+		m.logsSince = now
+	}
+	m.stopping = m.stopping || found
+	if found {
+		m.closeRCON()
+	}
+	return m.stopping
+}
+
+// isStoppingLine matches what a Java server or the image logs as it stops.
+func isStoppingLine(line string) bool {
+	return isAutostopLine(line) || strings.Contains(line, "]: Stopping server") || strings.Contains(line, "]: Stopping the server")
 }
