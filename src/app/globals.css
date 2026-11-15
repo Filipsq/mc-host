@@ -777,6 +777,15 @@ main.compare { max-width: 1080px; }
 .thanks-card { overflow: hidden; }
 .thanks-card .adsbygoogle { min-height: 90px; }
 .thanks-card .adsbygoogle[data-ad-status="unfilled"] { display: none !important; }
+/* A free server's panel: a tall ad in a third column, only where the screen has room for it. */
+.side-ad { display: none; }
+@media (min-width: 1280px) {
+  main.server-panel.with-side-ad { max-width: 1440px; }
+  .with-side-ad .server-body { grid-template-columns: 240px minmax(0, 1fr) 192px; }
+  .with-side-ad .side-ad { display: block; position: sticky; top: 84px; }
+  .thanks-card.side { padding: 14px 16px; }
+  .thanks-card.side .adsbygoogle { min-height: 600px; }
+}
 .app-card { gap: 12px; }
 .app-card > p { margin: 0; }
 .app-card-head { gap: 14px; flex-wrap: nowrap; justify-content: flex-start; }

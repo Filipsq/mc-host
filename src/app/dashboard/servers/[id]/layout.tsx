@@ -23,6 +23,8 @@ import { isMinecraft } from "@/lib/otherGames";
 import { takesBedrockPlayers } from "@/lib/xbox";
 import EditionIcon from "@/components/EditionIcon";
 import AutoRefresh from "@/components/AutoRefresh";
+import AdBox from "@/components/AdBox";
+import { ADSENSE_SLOT } from "@/lib/ads";
 import LeaveButton from "./LeaveButton";
 import ServerControls from "./ServerControls";
 import QueueNotice from "./QueueNotice";
@@ -184,8 +186,11 @@ export default async function ServerLayout({ children, params }: { children: Rea
     );
   }
 
+  // Free servers get a tall ad right of the panel on wide screens; paid ones never see ads.
+  const sideAd = !!ADSENSE_SLOT && server.plan === "FREE" && !server.adminTest;
+
   return (
-    <main className="server-panel">
+    <main className={sideAd ? "server-panel with-side-ad" : "server-panel"}>
       {banners}
       {/* The same spot as in the classic look, so switching back and forth stays under the cursor. */}
       <div className="row classic-top">
@@ -231,6 +236,11 @@ export default async function ServerLayout({ children, params }: { children: Rea
           t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer, more: p.tabMore }}
         />
         <div className="server-content">{children}</div>
+        {sideAd && (
+          <div className="side-ad">
+            <AdBox label={all.dashboard.adLabel} blockedLabel={all.dashboard.adBlocked} variant="side" />
+          </div>
+        )}
       </div>
       {(live === "starting" || live === "restarting") && <AutoRefresh />}
     </main>
