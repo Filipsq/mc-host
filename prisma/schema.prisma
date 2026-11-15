@@ -285,6 +285,10 @@ model Server {
   xboxUntil        DateTime?
   // A free server's own domain (customDomain) is paid for on its own, per 30 days, until this date (src/lib/addons.ts).
   domainUntil      DateTime?
+  // A free server's reward for watched ads (src/lib/adReward.ts): how many rewards it has, until when.
+  // Left above 0 after it ends until the server is rebuilt without them.
+  adBoost          Int            @default(0)
+  adBoostUntil     DateTime?
   // The world folder the server runs (the image's default if null), and the seed and
   // type it was made with (src/lib/worlds.ts). On Terraria the type is the world's size.
   level            String?
@@ -363,11 +367,23 @@ model Server {
   ownerId          String
   // Friends the owner let into the server's panel.
   members          ServerMember[]
+  adWatches        AdWatch[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
   @@index([ownerId])
   @@index([creatorId])
+}
+
+// One rewarded ad watched to the end for a free server (src/lib/adReward.ts).
+model AdWatch {
+  id        String   @id @default(cuid())
+  server    Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@index([serverId, createdAt])
 }
 
 // A friend the owner let into a server's panel. Invited by email; linked to the

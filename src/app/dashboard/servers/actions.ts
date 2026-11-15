@@ -54,6 +54,7 @@ import {
   parsePlayers,
 } from "@/lib/settings";
 import { activeLevel } from "@/lib/worlds";
+import { AD_WATCHES_PER_DAY, AD_WINDOW_MS, adBoostAfterWatch } from "@/lib/adReward";
 import { undoSnapshot } from "@/lib/undoChange";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
 import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
@@ -1027,4 +1028,34 @@ export async function setClassicPanelAction(on: boolean) {
   if (!session?.user?.id) return;
   await db.user.update({ where: { id: session.user.id }, data: { classicPanel: on === true } });
   revalidatePath("/dashboard/servers", "layout");
+}
+
+export type AdRewardResult = { error?: "limit" | "notFree" | "failed"; until?: string; left?: number };
+
+/**
+ * A rewarded ad was watched to the end: the free server gets more slots and RAM for a day
+ * (adReward.ts), at most twice in any 24 hours. A running server restarts with them.
+ */
+export async function adRewardAction(id: string): Promise<AdRewardResult> {
+  const user = await requireUser();
+  const server = await getOwnedServer(id, user.id);
+  if (!server || server.plan !== "FREE" || !onHost(server)) return { error: "notFree" };
+  const now = new Date();
+  const since = new Date(now.getTime() - AD_WINDOW_MS);
+  const watched = await db.adWatch.count({ where: { serverId: server.id, createdAt: { gt: since } } });
+  if (watched >= AD_WATCHES_PER_DAY) return { error: "limit" };
+  const boost = adBoostAfterWatch(server, now);
+  const [, updated] = await db.$transaction([
+    db.adWatch.create({ data: { serverId: server.id, userId: user.id } }),
+    db.server.update({ where: { id: server.id }, data: boost }),
+  ]);
+  console.info("ad reward", server.id, "level", boost.adBoost);
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+  try {
+    await applyToHost(updated);
+  } catch (err) {
+    // Saved anyway: it gets them on its next start.
+    console.error("ad reward not applied now", server.id, err);
+  }
+  return { until: boost.adBoostUntil.toISOString(), left: AD_WATCHES_PER_DAY - watched - 1 };
 }

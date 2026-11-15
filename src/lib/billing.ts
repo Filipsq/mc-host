@@ -4,7 +4,7 @@ import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
 import { createCashbillPayment, paysafecardEnabled } from "./cashbill";
 import * as agent from "./agent";
-import { agentSpec, changePort, destroyServer, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
+import { agentSpec, applyToHost, changePort, destroyServer, getLiveState, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
 import { nodes } from "./nodes";
 import { periodPrice, type PeriodDays } from "./periods";
@@ -312,6 +312,25 @@ async function stopExpiredXbox(now: Date) {
   return stopped;
 }
 
+/**
+ * A free server's reward for watched ads ran out (adReward.ts): it is rebuilt without the
+ * extra slots and RAM. One that is running keeps them until a later run finds it stopped or asleep,
+ * so nobody playing is thrown out.
+ */
+async function endAdBoosts(now: Date) {
+  const over = await db.server.findMany({ where: { adBoost: { gt: 0 }, adBoostUntil: { lt: now } } });
+  let ended = 0;
+  for (const s of over) {
+    const live = await getLiveState(s).catch(() => "unknown" as const);
+    if (live === "online" || live === "starting" || live === "restarting" || live === "unknown") continue;
+    const { count } = await db.server.updateMany({ where: { id: s.id, adBoost: { gt: 0 }, adBoostUntil: { lt: now } }, data: { adBoost: 0 } });
+    if (count === 0) continue;
+    await applyToHost({ ...s, adBoost: 0 }).catch((err) => console.error("ad reward not taken off", s.id, err));
+    ended++;
+  }
+  return ended;
+}
+
 /** Tells the machines every server's disk limit (also servers made before there were limits, and after an agent lost its state). */
 export async function syncDiskLimits() {
   const onAgent = await db.server.findMany({
@@ -582,7 +601,7 @@ export async function removeLeftoverContainers(now = new Date()) {
 }
 
 export async function runBillingJob(now = new Date()) {
-  const result = { renewed: 0, xboxStopped: 0, domainsStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0, queueStarted: 0 };
+  const result = { renewed: 0, xboxStopped: 0, adBoostsEnded: 0, domainsStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0, queueStarted: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Free servers waiting for room: start those that fit now.
@@ -606,6 +625,12 @@ export async function runBillingJob(now = new Date()) {
   // A free server's bought console joining has run out.
   result.xboxStopped = await stopExpiredXbox(now).catch((err) => {
     console.error("expired console joining not stopped", err);
+    return 0;
+  });
+
+  // A free server's reward for watched ads has run out.
+  result.adBoostsEnded = await endAdBoosts(now).catch((err) => {
+    console.error("ad rewards not ended", err);
     return 0;
   });
 

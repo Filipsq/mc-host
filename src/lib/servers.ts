@@ -26,6 +26,7 @@ import { addonType, canCrossplay, canRunNonPremium, pinsFor, sitePlugin, withNee
 import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
 import { xboxOn } from "./xbox";
+import { adBonus } from "./adReward";
 
 export type LiveState =
   | "starting"
@@ -245,14 +246,17 @@ export function addressLabel(server: Parameters<typeof joinAddress>[0]) {
 /** The container spec the agent needs, derived from the server's plan. */
 export function agentSpec(server: Server): CreateServerSpec {
   const plan = planById(server.plan);
+  // Watched ads give a free server more slots and RAM for a day (adReward.ts).
+  const bonus = adBonus(server);
+  const players = maxPlayersFor(server, plan);
   return {
     id: server.id,
     name: server.name,
     edition: server.edition,
-    memoryMb: plan.ramGb * 1024,
+    memoryMb: plan.ramGb * 1024 + bonus.memoryMb,
     cpus: plan.cpus,
     port: server.port!,
-    maxPlayers: maxPlayersFor(server, plan),
+    maxPlayers: players > 0 ? players + bonus.slots : 0,
     version: server.version,
     hostname: server.edition === "JAVA" ? javaHost(server) : "",
     password: server.edition === "TERRARIA" || server.edition === "VALHEIM" ? (server.serverPassword ?? "") : undefined,
