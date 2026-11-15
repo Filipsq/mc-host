@@ -324,6 +324,7 @@ const pl = {
   },
   dashboard: {
     adLabel: "Reklamka · dzięki temu wspieracie nasz biznes, dziękuję! ~ admin",
+    adBlocked: "Masz włączoną blokadę reklam. Wyłącz ją na mchosting.pl, a pomożesz nam utrzymać darmowe serwery. Dziękuję!",
     playersOnline: "{n} online",
     copyAddress: "Kopiuj adres",
     title: "Twoje serwery",
