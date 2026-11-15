@@ -199,7 +199,7 @@ func (s *serverFiles) fixConfig(path string, fix func(string) string) {
 		return
 	}
 	if _, err := s.writeFile(path, strings.NewReader(fixed)); err != nil {
-		log.Printf("login settings %s: %v", s.id, err)
+		log.Printf("settings %s %s: %v", s.id, path, err)
 	}
 }
 
