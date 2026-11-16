@@ -22,7 +22,7 @@ fi
 if [ "$MOVE" = --move ]; then
   secret=$(grep '^CRON_SECRET=' .env | cut -d= -f2- | tr -d "'\"")
   echo "Moving every server off $NODE_ID, one at a time (leave this window open)..."
-  curl -sSN --max-time 21600 -H "Authorization: Bearer $secret" "http://127.0.0.1:3000/api/cron/drain?node=$NODE_ID"
+  curl -fsSN --max-time 21600 -H "Authorization: Bearer $secret" "http://127.0.0.1:3000/api/cron/drain?node=$NODE_ID"
 fi
 
 left=$(docker compose exec -T db psql -U mchost -d mchost -tA -F ' | ' -c \

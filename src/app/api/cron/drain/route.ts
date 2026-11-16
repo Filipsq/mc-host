@@ -7,7 +7,7 @@ import { MAIN_NODE, nodes } from "@/lib/nodes";
 // Moves every server off one machine, one at a time, before it's taken out of use
 // (deploy/remove-node.sh runs it). Each goes where a new server like it would, stopped;
 // its owner starts it again as usual. Prints a line per server as it goes.
-export const maxDuration = 6 * 60 * 60;
+export const maxDuration = 21600; // six hours: Next.js reads it as a plain number
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
