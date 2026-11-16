@@ -737,6 +737,8 @@ main.legal { max-width: 760px; }
 mark.blank { background: rgb(240 163 58 / 0.18); color: var(--amber); border-radius: 4px; padding: 0 4px; }
 .contact-email { display: inline-flex; align-items: center; gap: 8px; font-size: 1.15rem; font-weight: 600; }
 .address-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.row-inline { display: inline-flex; align-items: center; gap: 6px; }
+.domain-promo { border-color: var(--accent); background: linear-gradient(180deg, var(--accent-soft), transparent 70%), var(--surface); }
 
 /* Comparison of free plans */
 main.compare { max-width: 1080px; }
