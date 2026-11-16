@@ -138,7 +138,9 @@ export default function TermsPl({ site }: { site: string }) {
           Do płatnego Planu Użytkownik może dokupić dodatki (np. dodatkowe miejsce na dysku, więcej kopii
           zapasowych, własną domenę). Cena dodatku jest podana za 30 dni i jest doliczana do ceny Planu za każdy
           opłacany Okres. Dodatek dokupiony w trakcie Okresu kosztuje część tej ceny za czas pozostały do końca
-          Okresu (nie mniej niż najniższa kwota przyjmowana przez operatora płatności). Użytkownik może wyłączyć
+          Okresu (nie mniej niż najniższa kwota przyjmowana przez operatora płatności). Wyjątkiem jest własna
+          domena: dokupiona w trakcie Okresu kosztuje jednorazowo jej cenę za 30 dni, bez względu na to, ile
+          czasu zostało do końca Okresu. Użytkownik może wyłączyć
           dodatek w każdej chwili; opłata za czas już opłacony nie jest zwracana. Przy własnej domenie Użytkownik
           odpowiada za to, że ma prawo jej używać, i sam ustawia jej rekordy DNS.
         </li>

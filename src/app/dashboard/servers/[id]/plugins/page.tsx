@@ -6,7 +6,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 import { allows, getServerAccess } from "@/lib/access";
 import UndoNotice from "../undo/UndoNotice";
-import { addonBuilds, addonLoaders, autoBuild, getPluginInfos, searchAddons, type AddonBuild } from "@/lib/modrinth";
+import { ADDON_CATEGORIES, addonBuilds, addonCategory, addonLoaders, autoBuild, getPluginInfos, searchAddons, type AddonBuild } from "@/lib/modrinth";
 import { curseforgeEnabled, getCurseforgeModInfos, searchCurseforgeMods } from "@/lib/curseforge";
 import { getSitePluginInfos, searchSitePlugins } from "@/lib/sitePlugins";
 import { downloadVersion, versionsToCheck } from "@/lib/addonVersions";
@@ -38,12 +38,12 @@ import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, PluginVer
 
 const FABRIC_API = "P7dR8mSH"; // added for CurseForge mods that need it
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string; src?: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ q?: string; src?: string; cat?: string }> };
 
 export default async function PluginsPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const [{ id }, { q = "", src }] = await Promise.all([params, searchParams]);
+  const [{ id }, { q = "", src, cat }] = await Promise.all([params, searchParams]);
   const access = await getServerAccess(id, session.user.id);
   if (!access || !allows(access, "plugins")) notFound();
   const { server } = access;
@@ -142,12 +142,14 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     spigot: all.plugins.sourceSpigot,
   };
   const active = fromCf ? "cf" : (site ?? "");
+  // A Modrinth category picked from the chips over the results.
+  const category = active === "" ? addonCategory(type, cat) : undefined;
   const cfIds = server.plugins.map((p) => curseforgeMod(p)?.modId).filter((m) => m !== undefined);
   const [infos, cfInfos, siteInfos, results, cfResults, siteResults] = await Promise.all([
     getPluginInfos(server.plugins.filter((p) => !curseforgeMod(p) && !sitePlugin(p))),
     getCurseforgeModInfos(cfIds),
     getSitePluginInfos(server.plugins.filter((p) => sitePlugin(p))),
-    fromCf || site ? null : searchAddons(type, query, { gameVersion: runsOn, loader: server.kind }),
+    fromCf || site ? null : searchAddons(type, query, { gameVersion: runsOn, loader: server.kind, category }),
     // A CurseForge file is picked for one Minecraft version, so "newest" has none.
     fromCf && mc ? searchCurseforgeMods(query, { gameVersion: mc, loader: server.kind }) : null,
     site ? searchSitePlugins(site, query, site === "hangar" ? runsOn : undefined) : null,
@@ -171,8 +173,11 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   const pins = pinsFor(server);
   const buildLabel = (b: AddonBuild) => (b.type === "release" ? b.number : `${b.number} (${t.buildTest})`);
   const searchHref = (from: string) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(query && { q: query }), ...(from && { src: from }) })}#szukaj`;
+  const categoryHref = (c?: string) => `/dashboard/servers/${server.id}/plugins?${new URLSearchParams({ ...(c && { cat: c }) })}#szukaj`;
+
   const kind = isServerKind(server.kind) ? server.kind : "vanilla";
   const included = GAME_MODE_PLUGINS[kind] ?? [];
+  const onServer = included.length + server.plugins.length;
   const numbers = new Intl.NumberFormat(locale, { notation: "compact", maximumFractionDigits: 1 });
   const sets = type === "plugin" ? PLUGIN_SETS.filter((set) => setFits(set, kind)) : [];
   const loader = LOADER_NAMES[server.kind] ?? server.kind;
@@ -189,9 +194,6 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     <div className="stack">
       <h2>{t.title}</h2>
       <UndoNotice server={server} all={all} locale={locale} owner={allows(access, "owner")} />
-      <p className="muted">
-        {type === "mod" ? format(all.mods.introMods, { loader, version: shownVersion(server.version, all.settings.latest, server.version === "LATEST" ? runsOn : undefined) }) : t.intro}
-      </p>
       {type === "mod" && (
         <p className="notice">
           {format(all.mods.noPlugins, { loader })}{" "}
@@ -200,7 +202,146 @@ export default async function PluginsPage({ params, searchParams }: Props) {
       )}
       <ApplyPlugins id={server.id} pending={server.pluginsPending} t={t} />
 
-      <section className="stack">
+      <section className="stack" id="szukaj">
+        {onServer > 0 && (
+          <p className="small">
+            <a href="#na-serwerze">{format(t.onServerCount, { n: onServer })}</a>
+          </p>
+        )}
+        {sources.length > 0 && (
+          <nav className="tabs">
+            {sources.map((from) => (
+              <Link key={from} className={from === active ? "active" : undefined} href={searchHref(from)}>
+                {sourceNames[from]}
+              </Link>
+            ))}
+          </nav>
+        )}
+        <form className="plugin-search" action={`/dashboard/servers/${server.id}/plugins#szukaj`}>
+          {active && <input type="hidden" name="src" value={active} />}
+          {category && <input type="hidden" name="cat" value={category} />}
+          <input name="q" type="search" defaultValue={query} placeholder={t.searchPlaceholder} aria-label={t.search} maxLength={100} />
+          <button>
+            <Search size={16} aria-hidden /> {t.searchButton}
+          </button>
+        </form>
+        {active === "" && (
+          <nav className="category-chips" aria-label={t.search}>
+            <Link className={category ? "chip" : "chip active"} href={categoryHref()} aria-current={category ? undefined : "true"}>
+              {t.categoryAll}
+            </Link>
+            {ADDON_CATEGORIES[type].map((c) => (
+              <Link key={c} className={c === category ? "chip active" : "chip"} href={categoryHref(c)} aria-current={c === category ? "true" : undefined}>
+                {t.categories[c]}
+              </Link>
+            ))}
+          </nav>
+        )}
+        <p className="muted small">
+          {query ? format(t.results, { q: query }) : category ? format(t.categoryHits, { category: t.categories[category] }) : t.popular}
+          {type === "mod" && ` · ${loader}`}
+          {(fromCf ? mc : runsOn) && site !== "spigot" && ` · ${format(t.forVersion, { mc: (fromCf ? mc : runsOn)! })}`}
+        </p>
+        {site ? (
+          <>
+            <p className="muted small">{site === "hangar" ? t.hangarIntro : t.spigotIntro}</p>
+            {siteResults === "siteUnavailable" ? (
+              <p className="notice warn">{t.errors.siteUnavailable}</p>
+            ) : !siteResults || siteResults.length === 0 ? (
+              <p className="muted">{t.noResults}</p>
+            ) : (
+              <ul className="card plugin-list">
+                {siteResults.map((p) => (
+                  <li key={p.entry}>
+                    <PluginIcon src={p.icon} />
+                    <span className="plugin-main">
+                      <a href={p.page} target="_blank" rel="noreferrer">
+                        <strong>{p.title}</strong>
+                      </a>
+                      <span className="muted small">{p.description}</span>
+                      <span className="muted small">
+                        {format(t.downloads, { n: numbers.format(p.downloads) })}
+                        {p.newestVersion && ` · ${format(t.upTo, { version: p.newestVersion })}`}
+                      </span>
+                      {p.blocked && <span className="small">{t.siteBlockedNote}</span>}
+                    </span>
+                    {!p.blocked && <AddPluginButton id={server.id} pluginId={p.entry} added={server.plugins.includes(p.entry)} t={t} />}
+                  </li>
+                ))}
+              </ul>
+            )}
+            <h3>{t.siteAddLink}</h3>
+            <AddWorkshopForm id={server.id} t={t} placeholder={site === "hangar" ? t.hangarLinkPlaceholder : t.spigotLinkPlaceholder} site="site" />
+            <p className="muted small">
+              {t.otherSites} <Link href={`/dashboard/servers/${server.id}/files?path=plugins`}>{t.openConfig}</Link>
+            </p>
+          </>
+        ) : fromCf ? (
+          cfResults === null ? (
+            <p className="notice">{all.mods.errors.cfNeedsVersion}</p>
+          ) : cfResults === "curseforgeUnavailable" ? (
+            <p className="notice warn">{all.mods.errors.curseforgeUnavailable}</p>
+          ) : (
+            <>
+              <p className="muted small">{format(all.mods.cfIntro, { loader, version: server.version })}</p>
+              {cfResults.length === 0 ? (
+                <p className="muted">{t.noResults}</p>
+              ) : (
+                <ul className="card plugin-list">
+                  {cfResults.map((m) => (
+                    <li key={m.modId}>
+                      <PluginIcon src={m.icon} />
+                      <span className="plugin-main">
+                        <a href={curseforgeModPage(m.slug)} target="_blank" rel="noreferrer">
+                          <strong>{m.title}</strong>
+                        </a>
+                        <span className="muted small">{m.description}</span>
+                        <span className="muted small">{format(t.downloads, { n: numbers.format(m.downloads) })}</span>
+                        {m.blocked && <span className="small">{all.mods.cfBlockedNote}</span>}
+                      </span>
+                      {!m.blocked && (
+                        <AddPluginButton id={server.id} pluginId={`cf:${m.modId}`} added={hasCurseforgeMod(server.plugins, m.modId)} t={t} />
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <h3>{all.mods.cfAddLink}</h3>
+              <AddWorkshopForm id={server.id} t={t} placeholder={all.mods.cfLinkPlaceholder} site="curseforge" />
+            </>
+          )
+        ) : results === null ? null : results === "modrinthUnavailable" ? (
+          <p className="notice warn">{t.errors.modrinthUnavailable}</p>
+        ) : results.length === 0 ? (
+          <p className="muted">{t.noResults}</p>
+        ) : (
+          <ul className="card plugin-list">
+            {results.map((p) => (
+              <li key={p.id}>
+                <PluginIcon src={p.icon} />
+                <span className="plugin-main">
+                  <span>
+                    <a href={pluginPage(p.slug, type)} target="_blank" rel="noreferrer">
+                      <strong>{p.title}</strong>
+                    </a>{" "}
+                    {p.forPlayers && forPlayers}
+                  </span>
+                  <span className="muted small">{p.description}</span>
+                  <span className="muted small">
+                    {format(t.downloads, { n: numbers.format(p.downloads) })}
+                    {runsOn
+                      ? ` · ${hitBuildText(builds.get(p.id), type, runsOn, t)}`
+                      : p.newestVersion && ` · ${format(t.upTo, { version: p.newestVersion })}`}
+                  </span>
+                </span>
+                <AddPluginButton id={server.id} pluginId={p.id} added={server.plugins.includes(p.id)} t={t} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="stack" id="na-serwerze">
         <h2>{t.installed}</h2>
         <ul className="card plugin-list">
           {included.map((p) => (
@@ -276,6 +417,10 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           })}
           {included.length === 0 && server.plugins.length === 0 && <li className="muted">{t.none}</li>}
         </ul>
+        {/* How adding works, under the list: the search comes first on a phone. */}
+        <p className="muted small">
+          {type === "mod" ? format(all.mods.introMods, { loader, version: shownVersion(server.version, all.settings.latest, server.version === "LATEST" ? runsOn : undefined) }) : t.intro}
+        </p>
         <p className="muted small">
           {t.config} <Link href={`/dashboard/servers/${server.id}/files?path=${type === "mod" ? "config" : "plugins"}`}>{t.openConfig}</Link>
         </p>
@@ -379,127 +524,6 @@ export default async function PluginsPage({ params, searchParams }: Props) {
         </section>
       )}
 
-      <section className="stack" id="szukaj">
-        <h2>{t.search}</h2>
-        {sources.length > 0 && (
-          <nav className="tabs">
-            {sources.map((from) => (
-              <Link key={from} className={from === active ? "active" : undefined} href={searchHref(from)}>
-                {sourceNames[from]}
-              </Link>
-            ))}
-          </nav>
-        )}
-        <form className="plugin-search" action={`/dashboard/servers/${server.id}/plugins#szukaj`}>
-          {active && <input type="hidden" name="src" value={active} />}
-          <input name="q" type="search" defaultValue={query} placeholder={t.searchPlaceholder} aria-label={t.search} maxLength={100} />
-          <button>
-            <Search size={16} aria-hidden /> {t.searchButton}
-          </button>
-        </form>
-        <p className="muted small">
-          {query ? format(t.results, { q: query }) : t.popular}
-          {type === "mod" && ` · ${loader}`}
-          {(fromCf ? mc : runsOn) && site !== "spigot" && ` · ${format(t.forVersion, { mc: (fromCf ? mc : runsOn)! })}`}
-        </p>
-        {site ? (
-          <>
-            <p className="muted small">{site === "hangar" ? t.hangarIntro : t.spigotIntro}</p>
-            {siteResults === "siteUnavailable" ? (
-              <p className="notice warn">{t.errors.siteUnavailable}</p>
-            ) : !siteResults || siteResults.length === 0 ? (
-              <p className="muted">{t.noResults}</p>
-            ) : (
-              <ul className="card plugin-list">
-                {siteResults.map((p) => (
-                  <li key={p.entry}>
-                    <PluginIcon src={p.icon} />
-                    <span className="plugin-main">
-                      <a href={p.page} target="_blank" rel="noreferrer">
-                        <strong>{p.title}</strong>
-                      </a>
-                      <span className="muted small">{p.description}</span>
-                      <span className="muted small">
-                        {format(t.downloads, { n: numbers.format(p.downloads) })}
-                        {p.newestVersion && ` · ${format(t.upTo, { version: p.newestVersion })}`}
-                      </span>
-                      {p.blocked && <span className="small">{t.siteBlockedNote}</span>}
-                    </span>
-                    {!p.blocked && <AddPluginButton id={server.id} pluginId={p.entry} added={server.plugins.includes(p.entry)} t={t} />}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <h3>{t.siteAddLink}</h3>
-            <AddWorkshopForm id={server.id} t={t} placeholder={site === "hangar" ? t.hangarLinkPlaceholder : t.spigotLinkPlaceholder} site="site" />
-            <p className="muted small">
-              {t.otherSites} <Link href={`/dashboard/servers/${server.id}/files?path=plugins`}>{t.openConfig}</Link>
-            </p>
-          </>
-        ) : fromCf ? (
-          cfResults === null ? (
-            <p className="notice">{all.mods.errors.cfNeedsVersion}</p>
-          ) : cfResults === "curseforgeUnavailable" ? (
-            <p className="notice warn">{all.mods.errors.curseforgeUnavailable}</p>
-          ) : (
-            <>
-              <p className="muted small">{format(all.mods.cfIntro, { loader, version: server.version })}</p>
-              {cfResults.length === 0 ? (
-                <p className="muted">{t.noResults}</p>
-              ) : (
-                <ul className="card plugin-list">
-                  {cfResults.map((m) => (
-                    <li key={m.modId}>
-                      <PluginIcon src={m.icon} />
-                      <span className="plugin-main">
-                        <a href={curseforgeModPage(m.slug)} target="_blank" rel="noreferrer">
-                          <strong>{m.title}</strong>
-                        </a>
-                        <span className="muted small">{m.description}</span>
-                        <span className="muted small">{format(t.downloads, { n: numbers.format(m.downloads) })}</span>
-                        {m.blocked && <span className="small">{all.mods.cfBlockedNote}</span>}
-                      </span>
-                      {!m.blocked && (
-                        <AddPluginButton id={server.id} pluginId={`cf:${m.modId}`} added={hasCurseforgeMod(server.plugins, m.modId)} t={t} />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <h3>{all.mods.cfAddLink}</h3>
-              <AddWorkshopForm id={server.id} t={t} placeholder={all.mods.cfLinkPlaceholder} site="curseforge" />
-            </>
-          )
-        ) : results === null ? null : results === "modrinthUnavailable" ? (
-          <p className="notice warn">{t.errors.modrinthUnavailable}</p>
-        ) : results.length === 0 ? (
-          <p className="muted">{t.noResults}</p>
-        ) : (
-          <ul className="card plugin-list">
-            {results.map((p) => (
-              <li key={p.id}>
-                <PluginIcon src={p.icon} />
-                <span className="plugin-main">
-                  <span>
-                    <a href={pluginPage(p.slug, type)} target="_blank" rel="noreferrer">
-                      <strong>{p.title}</strong>
-                    </a>{" "}
-                    {p.forPlayers && forPlayers}
-                  </span>
-                  <span className="muted small">{p.description}</span>
-                  <span className="muted small">
-                    {format(t.downloads, { n: numbers.format(p.downloads) })}
-                    {runsOn
-                      ? ` · ${hitBuildText(builds.get(p.id), type, runsOn, t)}`
-                      : p.newestVersion && ` · ${format(t.upTo, { version: p.newestVersion })}`}
-                  </span>
-                </span>
-                <AddPluginButton id={server.id} pluginId={p.id} added={server.plugins.includes(p.id)} t={t} />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
   );
 }

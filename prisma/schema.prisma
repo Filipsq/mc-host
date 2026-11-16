@@ -66,6 +66,9 @@ model User {
   // Their opinion of the site (src/lib/reviews.ts), and when they closed the panel's request for one.
   review             Review?
   reviewDismissedAt  DateTime?
+  // The account was deleted (src/lib/accountDeletion.ts) but had paid payments,
+  // which the law says to keep: the row stays, with no email, password or servers.
+  deletedAt          DateTime?
 
   @@index([referredById])
 }

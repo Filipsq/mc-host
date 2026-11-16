@@ -8,7 +8,8 @@ import { allows, getServerAccess, type ServerNeed } from "@/lib/access";
 import { diskLimitMb, formatMb, hardDiskLimitMb } from "@/lib/disk";
 import { deletionDate, idleDeletionDate } from "@/lib/billing";
 import { starterWeekPrice } from "@/lib/planMail";
-import { planById } from "@/lib/plans";
+import { formatPrice, planById } from "@/lib/plans";
+import { ADDON_SPECS, hasOwnDomain } from "@/lib/addons";
 import { canUpgrade } from "@/lib/upgrade";
 import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
 import type { Difficulty, GameMode } from "@/lib/settings";
@@ -17,7 +18,7 @@ import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
 import { usesClassicPanel } from "@/lib/panelView";
 import { kindLabel, shownVersion } from "@/lib/serverType";
 import { latestVersionNumber } from "@/lib/addonVersions";
-import { ArrowUpCircle, Gift } from "lucide-react";
+import { ArrowUpCircle, Gift, Globe } from "lucide-react";
 import { activeLevel } from "@/lib/worlds";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import { isOtherGame, isValheimPreset } from "@/lib/otherGames";
@@ -196,8 +197,23 @@ export default async function ServerPage({ params, searchParams }: Props) {
               </span>
             )}
           </div>
-          <CopyButton text={server.edition === "VALHEIM" || server.edition === "HYTALE" ? `${host}:${port}` : host} label={t.copy} copiedLabel={t.copied} />
+          <span className="row">
+            {/* "Zmień adres" outside Settings, leading with the own domain (Fiq, 2026-11-16). */}
+            {server.edition === "JAVA" && can("owner") && (
+              <Link className="button secondary small" href={`/dashboard/servers/${server.id}/address`}>
+                {all.paidAddons.address.button}
+              </Link>
+            )}
+            <CopyButton text={server.edition === "VALHEIM" || server.edition === "HYTALE" ? `${host}:${port}` : host} label={t.copy} copiedLabel={t.copied} />
+          </span>
         </div>
+        {server.edition === "JAVA" && can("owner") && !hasOwnDomain(server) && (
+          <p className="small">
+            <Link href={`/dashboard/servers/${server.id}/address`} className="row-inline">
+              <Globe size={14} aria-hidden /> {format(all.paidAddons.address.teaser, { price: formatPrice(ADDON_SPECS.domain.price[currency], currency, locale) })}
+            </Link>
+          </p>
+        )}
         {server.edition === "BEDROCK" && <p className="muted small">{t.bedrockJoin}</p>}
         {server.edition === "VALHEIM" && (
           <p className="muted small">

@@ -36,6 +36,7 @@ const ICONS = {
   backups: Archive,
   worlds: Globe,
   plugins: Puzzle,
+  bedrockAddons: Puzzle,
   mods: Blocks,
   minigames: Gamepad2,
   resourcepack: Palette,
@@ -85,10 +86,13 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
     setOpen(false); // the phone menu folds at once, the page loads under it
   };
   const all = groups.flatMap((g) => g.items);
-  // The phone's bottom bar: the four places people go most, plus the full menu.
+  // The phone's bottom bar: the places people go most, plus the full menu.
+  // Plugins or mods sit there too, so finding one doesn't start in "More".
+  const addons = all.find((item) => item.key === "plugins") ?? all.find((item) => item.key === "mods") ?? all.find((item) => item.key === "bedrockAddons");
   const tabs = (["overview", "console", "files", "settings"] as const)
     .map((key) => all.find((item) => item.key === key))
     .filter((item): item is NavItem => !!item);
+  if (addons) tabs.splice(Math.min(2, tabs.length), 0, addons);
   const current = all.find(isActive);
   const CurrentIcon = current ? ICONS[current.key] : Menu;
 

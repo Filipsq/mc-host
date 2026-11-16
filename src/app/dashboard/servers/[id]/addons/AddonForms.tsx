@@ -15,23 +15,25 @@ type BuyProps = {
   options: AddonOption[]; // the ones the server doesn't have yet
   // What each set of ticked add-ons costs now, keyed by their ids joined with "," in ADDONS order.
   costs: Record<string, string>;
-  prices: Record<string, string>; // each add-on's 30-day price, formatted
+  prices: Record<string, string>; // each add-on's price line, ready to show ("+5 zł / 30 dni")
   t: Messages["paidAddons"];
   billing: Messages["billing"];
   legal: Messages["legal"];
   errors: Messages["server"]["errors"];
   hint: string;
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
+  title?: string; // instead of "Dokup dodatki"
+  preselect?: AddonId[]; // ticked from the start (the address page offers only the domain)
 };
 
 /** Ticks add-ons the server doesn't have and pays their share of the time left. */
-export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, legal, errors, hint, adminTest }: BuyProps) {
+export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, legal, errors, hint, adminTest, title, preselect }: BuyProps) {
   const [state, action, pending] = useActionState(buyAddonsAction.bind(null, serverId), {});
-  const [ticked, setTicked] = useState<AddonId[]>([]);
+  const [ticked, setTicked] = useState<AddonId[]>(preselect ?? []);
   const key = options.filter((o) => ticked.includes(o.id)).map((o) => o.id).join(",");
   return (
     <form action={action} className="card stack">
-      <h2 className="card-title">{t.buyTitle}</h2>
+      <h2 className="card-title">{title ?? t.buyTitle}</h2>
       <p className="muted small">{hint}</p>
       <div className="addon-options">
         {options.map((o) => (
@@ -45,7 +47,7 @@ export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, le
             />
             <span className="stack-tight">
               <strong>{o.name}</strong>
-              <span className="addon-price">{format(t.price, { price: prices[o.id] })}</span>
+              <span className="addon-price">{prices[o.id]}</span>
               <span className="muted small">{o.hint}</span>
             </span>
           </label>
