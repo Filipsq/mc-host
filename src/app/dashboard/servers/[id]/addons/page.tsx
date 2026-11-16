@@ -8,7 +8,7 @@ import { format } from "@/i18n/messages";
 import { getOwnedServer, javaHost } from "@/lib/servers";
 import { formatPrice } from "@/lib/plans";
 import { addonOptions } from "@/lib/planOptions";
-import { ADDONS, ADDON_SPECS, DOMAIN_DAYS, addonCost, addonFits, canBuyAddons, domainPaidFor, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
+import { ADDONS, ADDON_SPECS, DOMAIN_DAYS, FLAT_ADDONS, addonCost, addonFits, canBuyAddons, domainPaidFor, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
 import { paysafecardEnabled } from "@/lib/cashbill";
 import { BuyAddonsForm, BuyDomainForm, DomainForm, RemoveAddonButton } from "./AddonForms";
 
@@ -135,7 +135,9 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
               serverId={server.id}
               options={missing}
               costs={costs}
-              prices={prices}
+              prices={Object.fromEntries(
+                missing.map((o) => [o.id, format(FLAT_ADDONS.includes(o.id) ? t.flatPrice : t.price, { price: prices[o.id] })]),
+              )}
               t={t}
               billing={all.billing}
               legal={all.legal}

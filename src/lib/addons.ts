@@ -83,13 +83,21 @@ export const hasOwnDomain = (s: Pick<Server, "plan" | "addons" | "edition" | "do
 // The smallest amount Stripe takes in each currency.
 export const STRIPE_MINIMUM: Record<Currency, number> = { PLN: 2, EUR: 0.5, USD: 0.5, GBP: 0.3 };
 
+// Add-ons bought mid-period for one flat price whatever time is left, not a
+// share of it: the own domain is "always 5 zł until the server's period ends"
+// (Fiq, 2026-11-16; a long prepaid period made it look like 24 zł).
+export const FLAT_ADDONS: readonly AddonId[] = ["domain"];
+
 /**
  * What adding `added` costs for the time left until `paidUntil`: their 30-day
- * price times the share of 30 days left, rounded up and never below what Stripe takes.
+ * price times the share of 30 days left (FLAT_ADDONS: their price once),
+ * rounded up and never below what Stripe takes.
  */
 export function addonCost(added: readonly AddonId[], paidUntil: Date, currency: Currency, now = new Date()) {
   const daysLeft = Math.max(0, paidUntil.getTime() - now.getTime()) / DAY;
-  const exact = Math.ceil(((addonsMonthly(added, currency) * daysLeft) / 30) * 100 - 1e-6) / 100;
+  const flat = added.filter((a) => FLAT_ADDONS.includes(a));
+  const shared = added.filter((a) => !FLAT_ADDONS.includes(a));
+  const exact = Math.ceil(((addonsMonthly(shared, currency) * daysLeft) / 30 + addonsMonthly(flat, currency)) * 100 - 1e-6) / 100;
   return { amount: Math.max(exact, STRIPE_MINIMUM[currency]), daysLeft };
 }
 
