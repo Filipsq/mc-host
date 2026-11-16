@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 )
@@ -15,6 +16,60 @@ import (
 // takes its Minecraft version from its plugins (Skyblock, OneBlock…) stopped
 // on every start ("Invalid value for option '--allowed-version-type'").
 const badVersionType = "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=alpha+"
+
+// betaMods is what a mod loader gets (pluginEnv); alphaMods lets the image take
+// alpha builds too, for a server whose last start stopped because a mod needs
+// one that only ever came out as alphas: "FNaF Mod Showbiz Demo" needs Showbiz
+// (wJ32u9Oq), all alphas, and the image stopped every start with
+// NoApplicableVersionsException (2026-11-16). Only that server: with alpha
+// allowed the image takes a mod's newest alpha even when a release exists.
+const (
+	betaMods  = "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=beta"
+	alphaMods = "MODRINTH_PROJECTS_DEFAULT_VERSION_TYPE=alpha"
+)
+
+// lastStartNeededAlpha tells whether the last start stopped on a mod with only alpha builds.
+func (a *agent) lastStartNeededAlpha(ctx context.Context, id string) bool {
+	if a.docker == nil {
+		return false
+	}
+	logCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+	found := false
+	_ = a.docker.Logs(logCtx, containerName(id), LogOptions{Tail: 300}, func(line string) error {
+		found = found || needsAlpha(line)
+		return nil
+	})
+	return found
+}
+
+// needsAlpha tells whether a log line is the image refusing a mod (or a mod's
+// dependency) whose every build is an alpha, while it looked for betas or better.
+func needsAlpha(line string) bool {
+	if !strings.Contains(line, "NoApplicableVersionsException(") {
+		return false
+	}
+	list, pref, ok := strings.Cut(line, "], versionType=VersionTypePref(versionType=")
+	if !ok || strings.HasPrefix(pref, "alpha") {
+		return false
+	}
+	_, list, ok = strings.Cut(list, "versions=[")
+	if !ok {
+		return false
+	}
+	types := versionTypeField.FindAllStringSubmatch(list, -1)
+	if len(types) == 0 {
+		return false
+	}
+	for _, t := range types {
+		if t[1] != "alpha" {
+			return false
+		}
+	}
+	return true
+}
+
+var versionTypeField = regexp.MustCompile(`versionType=(\w+)\)`)
 
 // healEnv rebuilds a stopped server's container whose env healedEnv puts
 // right, with the same settings otherwise. Its world is in a named volume,
@@ -63,6 +118,13 @@ func (a *agent) healEnv(ctx context.Context, id string) {
 			why += ", "
 		}
 		why += "with " + strings.Join(missing, ", ") + " a mod needs"
+	}
+	if i := slices.Index(fixed, betaMods); i >= 0 && a.lastStartNeededAlpha(ctx, id) {
+		fixed[i] = alphaMods
+		if why != "" {
+			why += ", "
+		}
+		why += "with alpha builds, a mod needs one"
 	}
 	if why == "" {
 		return
@@ -139,6 +201,10 @@ func healedEnv(env []string) ([]string, string) {
 		}
 		fixed = append(fixed, s)
 	}
+	if java(env) && !hasPrefix(env, "MAX_TICK_TIME=") {
+		fixed = append(fixed, noWatchdog)
+		why = append(why, "without the watchdog")
+	}
 	if fabric && !hasProjects {
 		fixed = append(fixed, "MODRINTH_PROJECTS="+fabricAPI+"?")
 		why = append(why, "with Fabric API")
@@ -147,6 +213,27 @@ func healedEnv(env []string) ([]string, string) {
 		fixed = append(fixed, "MODRINTH_DOWNLOAD_DEPENDENCIES=required")
 	}
 	return fixed, strings.Join(why, ", ")
+}
+
+// noWatchdog turns off Minecraft's watchdog (max-tick-time), which kills the
+// server when one tick takes over a minute. On our shared machines that
+// happens with nobody playing: an empty Fabric 1.21.11 server on n5, its main
+// thread idle and no chunk loaded, was killed with exit 1 and showed Awaria
+// (2026-11-15), most likely because the machine stalled for a minute. The
+// trade-off: a mod server that really hangs stays up until someone restarts
+// it. Paper keeps its own watchdog (spigot.yml timeout-time).
+const noWatchdog = "MAX_TICK_TIME=-1"
+
+// java tells whether an env is a Java server's (only those get Aikar's flags).
+func java(env []string) bool { return slices.Contains(env, "USE_AIKAR_FLAGS=true") }
+
+func hasPrefix(env []string, prefix string) bool {
+	for _, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasFabricAPI tells whether an image project list has Fabric API, pinned or not.
