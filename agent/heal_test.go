@@ -143,3 +143,19 @@ func TestHealedEnvTurnsOffWatchdogOnJava(t *testing.T) {
 		t.Errorf("Bedrock env healed: %q", why)
 	}
 }
+
+func TestNeedsAlpha(t *testing.T) {
+	alphas := `c-image-helper] 16:24:56.352 ERROR : 'modrinth' command failed. Version is 1.77.1 NoApplicableVersionsException(project=Project(slug=null, id=wJ32u9Oq, title=wJ32u9Oq, projectType=null, serverSide=null), versions=[Version(id=4LSYFidm, projectId=wJ32u9Oq, name=Showbiz 0.5.3-alpha+1.21.1 (Fabric), versionType=alpha), Version(id=Z6u7ighZ, projectId=wJ32u9Oq, name=Showbiz 0.1.0-alpha+1.21.1, versionType=alpha)], versionType=VersionTypePref(versionType=beta, prefersBest=false))`
+	if !needsAlpha(alphas) {
+		t.Error("alpha-only dependency not seen")
+	}
+	if needsAlpha(strings.Replace(alphas, "0.1.0-alpha+1.21.1, versionType=alpha", "0.1.0+1.21.1, versionType=release", 1)) {
+		t.Error("a release among the builds counted as alpha-only")
+	}
+	if needsAlpha(strings.Replace(alphas, "VersionTypePref(versionType=beta", "VersionTypePref(versionType=alpha", 1)) {
+		t.Error("already on alpha")
+	}
+	if needsAlpha("NoApplicableVersionsException(project=Project(id=x), versions=[], versionType=VersionTypePref(versionType=beta, prefersBest=false))") {
+		t.Error("no builds at all is not an alpha problem")
+	}
+}
