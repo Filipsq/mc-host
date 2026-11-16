@@ -476,6 +476,27 @@ export async function importWorld(id: string, edition: Edition, path: string, na
   await agentFetch(`/servers/${id}/worlds/import?${q}`, { method: "POST", timeoutMs: 10 * 60_000 });
 }
 
+// A Bedrock add-on pack the world runs (agent/bedrockpacks.go).
+export type BedrockPack = { uuid: string; name: string; type: "behavior" | "resource"; version?: number[] | null; folder?: string; beta?: boolean };
+
+/** The add-on packs a Bedrock world runs. */
+export async function listBedrockPacks(id: string, world: string): Promise<BedrockPack[]> {
+  const res = await agentFetch(`/servers/${id}/bedrock-packs?world=${encodeURIComponent(world)}`, { timeoutMs: 30_000 });
+  return (await res.json()).packs;
+}
+
+/** Unpacks a .mcaddon/.mcpack uploaded to `path` (deleted afterwards) and turns its packs on in the world. */
+export async function importBedrockPacks(id: string, path: string, world: string): Promise<BedrockPack[]> {
+  const q = `path=${encodeURIComponent(path)}&world=${encodeURIComponent(world)}`;
+  const res = await agentFetch(`/servers/${id}/bedrock-packs/import?${q}`, { method: "POST", timeoutMs: 10 * 60_000 });
+  return (await res.json()).packs;
+}
+
+/** Takes a pack off the world and deletes its folder. */
+export async function removeBedrockPack(id: string, uuid: string, world: string) {
+  await agentFetch(`/servers/${id}/bedrock-packs/${encodeURIComponent(uuid)}?world=${encodeURIComponent(world)}`, { method: "DELETE", timeoutMs: 60_000 });
+}
+
 /** Deletes a world the server isn't running. */
 export async function deleteWorld(id: string, edition: Edition, name: string) {
   await agentFetch(`/servers/${id}/worlds/${encodeURIComponent(name)}?edition=${edition}`, { method: "DELETE", timeoutMs: 5 * 60_000 });
