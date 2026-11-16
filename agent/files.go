@@ -242,6 +242,12 @@ func writeFileError(w http.ResponseWriter, err error) {
 		writeError(w, http.StatusBadRequest, "javaMap")
 	case errors.Is(err, errOldMap):
 		writeError(w, http.StatusBadRequest, "oldMap")
+	case errors.Is(err, errNoPack):
+		writeError(w, http.StatusBadRequest, "noPack")
+	case errors.Is(err, errSkinPack):
+		writeError(w, http.StatusBadRequest, "skinPack")
+	case errors.Is(err, errWorldTemplate):
+		writeError(w, http.StatusBadRequest, "worldTemplate")
 	case errors.Is(err, errExists), errors.Is(err, fs.ErrExist):
 		writeError(w, http.StatusConflict, "exists")
 	case errors.Is(err, fs.ErrNotExist):

@@ -21,6 +21,7 @@ import { EDITION_NAMES } from "@/lib/editions";
 import { isTerrariaKind } from "@/lib/terraria";
 import { isMinecraft } from "@/lib/otherGames";
 import { takesBedrockPlayers } from "@/lib/xbox";
+import { takesBedrockAddons } from "@/lib/bedrockAddons";
 import EditionIcon from "@/components/EditionIcon";
 import AutoRefresh from "@/components/AutoRefresh";
 import AdBox from "@/components/AdBox";
@@ -94,6 +95,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
       items: [
         live !== "awaitingPayment" && can("files") && isMinecraft(server.edition) && { key: "worlds" as const, label: all.worlds.title, path: "/worlds" },
         addonsTitle && can("plugins") && { key: "plugins" as const, label: addonsTitle, path: "/plugins" },
+        live !== "awaitingPayment" && can("files") && takesBedrockAddons(server) && { key: "bedrockAddons" as const, label: all.bedrockAddons.title, path: "/bedrock-addons" },
         (offersModPicker(server) || server.kind === "modpack") && can("plugins") && { key: "mods" as const, label: all.mods.title, path: "/mods" },
         can("owner") && offersMinigames(server) && { key: "minigames" as const, label: all.minigamesSwitch.nav, path: "/minigames" },
         server.edition === "JAVA" && can("owner") && { key: "links" as const, label: all.links.title, path: "/links" },
