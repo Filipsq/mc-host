@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # Takes an extra game machine out of use, as root on the MAIN machine:
 #   cd ~/mc-host/deploy && ./remove-node.sh n2
-# First it lists the servers still on it: move each with the admin panel's
-# "Przenieś na inną maszynę" (or delete it) and run this again. With none left, it
+# First it lists the servers still on it; ./remove-node.sh n2 --move moves them all to
+# the other machines, one at a time (stopped; owners start them as usual). With none left, it
 # drops the machine from NODES and the tunnel and restarts the site, so nothing new
 # goes there. The machine itself isn't touched: cancel it at its host afterwards.
 set -euo pipefail
 cd "$(dirname "$0")"
 [ -f .env ] || { echo "Run this on the main machine, in ~/mc-host/deploy." >&2; exit 1; }
 NODE_ID=${1:-}
+MOVE=${2:-}
 if [ -z "$NODE_ID" ] || [ "$NODE_ID" = main ]; then
   echo "Usage: ./remove-node.sh <id>   (e.g. n2; not main)" >&2
   exit 1
@@ -18,10 +19,16 @@ if ! grep '^NODES=' .env | grep -q "\"id\":\"$NODE_ID\""; then
   exit 1
 fi
 
+if [ "$MOVE" = --move ]; then
+  secret=$(grep '^CRON_SECRET=' .env | cut -d= -f2- | tr -d "'\"")
+  echo "Moving every server off $NODE_ID, one at a time (leave this window open)..."
+  curl -sSN --max-time 21600 -H "Authorization: Bearer $secret" "http://127.0.0.1:3000/api/cron/drain?node=$NODE_ID"
+fi
+
 left=$(docker compose exec -T db psql -U mchost -d mchost -tA -F ' | ' -c \
   "SELECT s.name, s.plan, s.status, u.email FROM \"Server\" s JOIN \"User\" u ON u.id = s.\"ownerId\" WHERE s.node = '$NODE_ID' ORDER BY s.plan, s.name")
 if [ -n "$left" ]; then
-  echo "Still on $NODE_ID (move each in Admin > Serwery > Przenieś na inną maszynę, then run this again):"
+  echo "Still on $NODE_ID (move them all with: ./remove-node.sh $NODE_ID --move):"
   echo "$left" | sed 's/^/  /'
   exit 1
 fi
