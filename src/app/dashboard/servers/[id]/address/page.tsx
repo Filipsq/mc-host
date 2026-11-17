@@ -10,6 +10,7 @@ import { formatPrice } from "@/lib/plans";
 import { addonOptions } from "@/lib/planOptions";
 import { ADDON_SPECS, DOMAIN_DAYS, addonCost, canBuyAddons, domainPaidFor, hasOwnDomain } from "@/lib/addons";
 import { paysafecardEnabled } from "@/lib/cashbill";
+import { serverIps } from "@/lib/ownDomain";
 import { BuyAddonsForm, BuyDomainForm, DomainForm } from "../addons/AddonForms";
 import AddressForm from "./AddressForm";
 
@@ -25,6 +26,8 @@ export default async function AddressPage({ params }: { params: Promise<{ id: st
 
   const [all, { locale, currency }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.paidAddons;
+  // The A record's value: our IP, so the owner's DNS never names mchosting.
+  const ips = hasOwnDomain(server) ? await serverIps(javaHost(server)) : [];
   const a = t.address;
   const adminTest = server.adminTest && (await isAdmin(session.user.id));
   const price = formatPrice(ADDON_SPECS.domain.price[currency], currency, locale);
@@ -47,7 +50,7 @@ export default async function AddressPage({ params }: { params: Promise<{ id: st
             <Globe size={18} aria-hidden /> {t.domain.title}
           </h2>
           {free && domainPaidFor(server) && <p className="notice success">{format(t.free.paidUntil, { date: date(server.domainUntil!) })}</p>}
-          <DomainForm serverId={server.id} current={server.customDomain} target={javaHost(server)} address={javaHost(server)} t={t.domain} />
+          <DomainForm serverId={server.id} current={server.customDomain} target={javaHost(server)} ips={ips} address={javaHost(server)} t={t.domain} copy={{ label: all.server.copy, copied: all.server.copied }} />
         </section>
       ) : (
         <section className="card stack domain-promo">
