@@ -4,14 +4,14 @@ import { db } from "@/lib/db";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { formats } from "../format";
-import { botConfigured, botEnabled } from "@/lib/supportBotState";
+import { botConfigured, botSwitches } from "@/lib/supportBotState";
 import { setSupportBotAction } from "./actions";
 
 const SHOWN = 100;
 
 export default async function AdminSupport() {
   await requireAdmin();
-  const [all, { locale }, chats, botOn] = await Promise.all([
+  const [all, { locale }, chats, bot] = await Promise.all([
     getMessages(),
     getPreferences(),
     db.supportChat.findMany({
@@ -22,7 +22,7 @@ export default async function AdminSupport() {
         messages: { where: { deletedAt: null }, orderBy: { createdAt: "desc" }, take: 1, select: { body: true, fromStaff: true, bot: true, image: { select: { id: true } } } },
       },
     }),
-    botEnabled(),
+    botSwitches(),
   ]);
   const configured = botConfigured();
   const t = all.support;
@@ -38,15 +38,27 @@ export default async function AdminSupport() {
       <section className="card stack-tight">
         <div className="row">
           <h3>🤖 {t.admin.botTitle}</h3>
-          <span className={`badge ${botOn && configured ? "online" : "offline"}`}>{botOn && configured ? t.admin.botOn : t.admin.botOff}</span>
+          <span className={`badge ${configured && bot.whenOnline ? "online" : "offline"}`}>
+            {configured && bot.whenOnline ? t.admin.botNowOn : t.admin.botNowOff}
+          </span>
         </div>
         <p className="muted small">{t.admin.botIntro}</p>
         {!configured ? (
           <p className="muted small">{t.admin.botNotConfigured}</p>
         ) : (
-          <form action={setSupportBotAction.bind(null, !botOn)}>
-            <button type="submit" className={botOn ? "secondary small" : "small"}>{botOn ? t.admin.botDisable : t.admin.botEnable}</button>
-          </form>
+          <div className="bot-switches">
+            {(["whenOnline", "whenOffline"] as const).map((which) => (
+              <form key={which} action={setSupportBotAction.bind(null, which, !bot[which])} className="bot-switch">
+                <span className="stack-tight">
+                  <strong>{which === "whenOnline" ? t.admin.botWhenOnline : t.admin.botWhenOffline}</strong>
+                  <span className="muted small">{which === "whenOnline" ? t.admin.botWhenOnlineHint : t.admin.botWhenOfflineHint}</span>
+                </span>
+                <button type="submit" className={`small${bot[which] ? "" : " secondary"}`} aria-pressed={bot[which]}>
+                  {bot[which] ? t.admin.botOn : t.admin.botOff}
+                </button>
+              </form>
+            ))}
+          </div>
         )}
       </section>
       {chats.length === 0 ? (

@@ -289,9 +289,8 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
             })}
             {!staff && bot?.waiting && (
               <li className="chat-msg staff bot first chat-typing" aria-live="polite">
-                <span className="chat-author">{t.bot}</span>
                 <div className="chat-row">
-                  <div className="chat-bubble"><p className="muted"><Bot size={15} aria-hidden /> {t.botWriting}</p></div>
+                  <div className="chat-bubble"><p className="muted"><span className="chat-spinner" aria-hidden /> {t.botWriting}</p></div>
                 </div>
               </li>
             )}

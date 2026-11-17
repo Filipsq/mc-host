@@ -271,7 +271,10 @@ function shouldEmail(chat: SupportChat, from: Side, now: Date) {
   return unread === 1 && (!readAt || now.getTime() - readAt.getTime() > READING_MS);
 }
 
-export async function notify(userId: string, from: Side, body: string, picture: boolean) {
+/** Why the support bot handed a chat to the admins, which their email and phone notification say. */
+export type HandoverReason = "timeout" | "failed" | "bot" | "asked";
+
+export async function notify(userId: string, from: Side, body: string, picture: boolean, handover?: HandoverReason) {
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, locale: true } });
   if (!user) return;
   const recipients =
@@ -291,7 +294,7 @@ export async function notify(userId: string, from: Side, body: string, picture: 
     const url = from === "user" ? `${app}/admin/support/${userId}` : `${app}/dashboard/support`;
     const mail = buttonMail({
       to: to.email,
-      subject: format(t.subject, vars),
+      subject: format(from === "user" && handover ? all.support.mail.handover[handover] : t.subject, vars),
       paragraphs: [format(t.intro, vars), ...lines],
       button: t.button,
       url,

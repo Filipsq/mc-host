@@ -108,11 +108,13 @@ model HytaleAuth {
   updatedAt    DateTime  @updatedAt
 }
 
-// Whether the support bot answers in the Help chat: one row, switched in
-// the admin panel. It also needs OPENBOT_WEBHOOK_URL and _SECRET in .env.
+// When the support bot answers in the Help chat: one row, switched in the
+// admin panel, separately for while an admin is on the site and while none
+// is. It also needs OPENBOT_WEBHOOK_URL and _SECRET in .env.
 model SupportBot {
-  id        Int      @id @default(1)
-  enabled   Boolean  @default(false)
+  id          Int      @id @default(1)
+  whenOnline  Boolean  @default(false)
+  whenOffline Boolean  @default(true)
   updatedAt DateTime @updatedAt
 }
 

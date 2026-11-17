@@ -5,7 +5,8 @@ ALTER TABLE "SupportMessage" ADD COLUMN "bot" BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE "SupportBot" (
     "id" INTEGER NOT NULL DEFAULT 1,
-    "enabled" BOOLEAN NOT NULL DEFAULT false,
+    "whenOnline" BOOLEAN NOT NULL DEFAULT false,
+    "whenOffline" BOOLEAN NOT NULL DEFAULT true,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "SupportBot_pkey" PRIMARY KEY ("id")

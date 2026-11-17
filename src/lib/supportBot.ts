@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { db } from "./db";
 import { BRAND_NAME } from "./brand";
 import { chatContextText } from "./claudeContext";
-import { MAX_LENGTH, notify } from "./support";
+import { IMAGE_MAX_BYTES, imageType, MAX_LENGTH, notify } from "./support";
 import { botActive, BOT_PAUSE_MS } from "./supportBotState";
 
 // The support bot (Fiq asked 2026-11-17): OpenBot answers simple questions in the
@@ -29,6 +29,10 @@ const TOKEN_MS = 15 * 60_000;
 /** OpenBot refuses webhook bodies over 64 KB; this leaves room for the rest. */
 const CONTEXT_MAX_BYTES = 48 * 1024;
 const BOT_TIMEOUT_MS = 15_000;
+/** How the bot should write (Fiq asked 2026-11-18: casually). Sent with every question. */
+const STYLE =
+  "Pisz na luzie, po koleżeńsku, jak gracz do gracza: na Ty, krótko (2-5 zdań), bez urzędowych formułek, emoji z umiarem. " +
+  "Jeśli pomoże, dołącz zrzut ekranu pokazujący, gdzie coś jest w panelu (pole image).";
 
 const secret = () => process.env.OPENBOT_WEBHOOK_SECRET ?? "";
 const appUrl = () => process.env.APP_URL ?? "http://localhost:3000";
@@ -90,6 +94,7 @@ export async function askBot(userId: string, messageId: string) {
     occurredAt: new Date(now).toISOString(),
     data: {
       site: BRAND_NAME,
+      style: STYLE,
       language: message.chat.user.locale,
       customerMessage: message.body || "",
       sentPicture: !!message.image,
@@ -99,8 +104,9 @@ export async function askBot(userId: string, messageId: string) {
         url: `${appUrl()}/api/support/bot`,
         method: "POST",
         token: replyToken(userId, now + TOKEN_MS),
-        body: '{"token": "<token>", "text": "<answer for the customer>", "escalate": false}',
+        body: '{"token": "<token>", "text": "<answer for the customer>", "escalate": false, "image": "<optional PNG/JPG screenshot as base64>"}',
         maxLength: MAX_LENGTH,
+        imageMaxBytes: IMAGE_MAX_BYTES,
       },
     },
   });
@@ -139,15 +145,24 @@ export async function handOverLate(now = new Date()) {
   return late.length;
 }
 
-/** Adds the bot's message to the chat, which the user sees like an admin's (marked as the bot). */
-async function postBotMessage(userId: string, text: string) {
+/** Adds the bot's message to the chat, which the user sees like an admin's (marked as the bot), with an optional picture. */
+async function postBotMessage(userId: string, text: string, picture?: { data: Uint8Array; type: string }) {
   const now = new Date();
   await db.$transaction([
     db.supportChat.update({
       where: { userId },
       data: { lastMessageAt: now, lastFromStaff: true, staffUnread: 0, userUnread: { increment: 1 } },
     }),
-    db.supportMessage.create({ data: { chatId: userId, fromStaff: true, bot: true, body: text, createdAt: now } }),
+    db.supportMessage.create({
+      data: {
+        chatId: userId,
+        fromStaff: true,
+        bot: true,
+        body: text,
+        createdAt: now,
+        ...(picture ? { image: { create: { type: picture.type, size: picture.data.byteLength, data: picture.data } } } : {}),
+      },
+    }),
   ]);
 }
 
@@ -186,7 +201,7 @@ async function handOver(userId: string, text: string | null, why: "failed" | "ti
     orderBy: { createdAt: "desc" },
     select: { body: true, image: { select: { id: true } } },
   });
-  await notify(userId, "user", question?.body ?? "", !!question?.image);
+  await notify(userId, "user", question?.body ?? "", !!question?.image, why);
 }
 
 /** The user asked for a person instead of the bot. */
@@ -197,10 +212,22 @@ export async function askForPerson(userId: string) {
   return true;
 }
 
-export type BotReplyResult = { ok: true } | { ok: false; error: "badToken" | "empty" | "tooLong" | "notWaiting"; status: number };
+export type BotReplyResult =
+  | { ok: true }
+  | { ok: false; error: "badToken" | "empty" | "tooLong" | "notWaiting" | "imageType" | "imageTooBig"; status: number };
+
+/** A picture the bot sent as base64 (a data: URL works too), checked like a customer's. */
+function botPicture(image: string): { data: Uint8Array; type: string } | "imageType" | "imageTooBig" {
+  const base64 = image.replace(/^data:[^,]*,/, "").replace(/\s+/g, "");
+  if (base64.length > Math.ceil((IMAGE_MAX_BYTES * 4) / 3) + 4) return "imageTooBig";
+  const data = new Uint8Array(Buffer.from(base64, "base64"));
+  if (data.byteLength > IMAGE_MAX_BYTES) return "imageTooBig";
+  const type = imageType(data);
+  return type ? { data, type } : "imageType";
+}
 
 /** OpenBot's answer to a question askBot sent. */
-export async function handleBotReply(token: string, text: string, escalate: boolean): Promise<BotReplyResult> {
+export async function handleBotReply(token: string, text: string, escalate: boolean, image?: string): Promise<BotReplyResult> {
   const checked = checkReplyToken(token);
   if (!checked) return { ok: false, error: "badToken", status: 401 };
   const { userId, askedAt } = checked;
@@ -213,8 +240,10 @@ export async function handleBotReply(token: string, text: string, escalate: bool
     await handOver(userId, body ? body : null, "bot");
     return { ok: true };
   }
-  if (!body) return { ok: false, error: "empty", status: 400 };
-  await postBotMessage(userId, body);
+  const picture = image ? botPicture(image) : undefined;
+  if (typeof picture === "string") return { ok: false, error: picture, status: 400 };
+  if (!body && !picture) return { ok: false, error: "empty", status: 400 };
+  await postBotMessage(userId, body, picture);
   // A question the user sent after this one still waits for its own answer.
   await db.supportChat.updateMany({ where: { userId, botWaitingSince: { lte: askedAt } }, data: { botWaitingSince: null } });
   after(() => notifyUserIfAway(userId, body));
