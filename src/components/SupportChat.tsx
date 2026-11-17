@@ -63,7 +63,6 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
   const [messages, setMessages] = useState(initial.messages);
   const [seenAt, setSeenAt] = useState(initial.seenAt);
   const [bot, setBot] = useState(initial.bot);
-  const [botInfo, setBotInfo] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -208,23 +207,19 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
 
   return (
     <section className="card chat">
-      {!staff && bot?.on && (
-        <div className={`chat-bot-badge${botInfo ? " open" : ""}`} onMouseLeave={() => setBotInfo(false)}>
-          <button type="button" className="chat-bot-icon" aria-label={t.askPerson} title={t.askPerson} onClick={() => void askPerson()}>
-            <UserRound size={18} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className="chat-bot-icon"
-            aria-label={t.botHint}
-            aria-expanded={botInfo}
-            onClick={() => setBotInfo((v) => !v)}
-          >
-            <Bot size={18} aria-hidden />
-          </button>
+      {!staff && (bot?.on || bot?.person) && (
+        <div className="chat-bot-badge">
+          {bot.on ? (
+            <button type="button" className="chat-bot-icon" aria-label={t.askPerson} onClick={() => void askPerson()}>
+              <Bot size={18} aria-hidden />
+            </button>
+          ) : (
+            <button type="button" className="chat-bot-icon person" aria-label={t.personHint}>
+              <UserRound size={18} aria-hidden />
+            </button>
+          )}
           <div className="chat-bot-pop" role="note">
-            <p className="small">{t.botHint}</p>
-            <p className="small muted"><UserRound size={13} aria-hidden /> {t.askPersonHint}</p>
+            <p className="small">{bot.on ? t.botHint : t.personHint}</p>
           </div>
         </div>
       )}

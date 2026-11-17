@@ -56,7 +56,7 @@ export type ChatState = { messages: ChatMessage[]; seenAt: string | null; delete
  * The support bot as the user's chat shows it: whether it answers here
  * (`on`), and whether it's writing an answer right now.
  */
-export type BotState = { on: boolean; waiting: boolean };
+export type BotState = { on: boolean; waiting: boolean; /** The bot is on, but a person has this chat for now. */ person?: boolean };
 
 export const imageUrl = (id: string) => `/api/support/image/${id}`;
 
@@ -145,7 +145,13 @@ export async function readChat(userId: string, side: Side, locale: string, since
     seenAt: seen?.toISOString() ?? null,
     ...(since ? { deleted: gone.map((m) => m.id) } : {}),
     ...(side === "user"
-      ? { bot: { on: active && !(chat?.botPausedUntil && chat.botPausedUntil > new Date()), waiting: active && !!chat?.botWaitingSince } }
+      ? {
+          bot: {
+            on: active && !(chat?.botPausedUntil && chat.botPausedUntil > new Date()),
+            waiting: active && !!chat?.botWaitingSince,
+            person: active && !!(chat?.botPausedUntil && chat.botPausedUntil > new Date()),
+          },
+        }
       : {}),
   };
 }
@@ -209,6 +215,8 @@ export async function postMessage(
     }),
   ]);
 
+  // An admin answered while the bot was still thinking: for the bot's report.
+  if (staff) await db.supportBotCase.updateMany({ where: { userId, result: null }, data: { result: "admin" } }).catch(() => {});
   // The support bot gets the user's question first; the admins hear about it
   // only if the bot hands it over or doesn't answer (src/lib/supportBot.ts).
   const toBot = !staff && !quiet && (await botActive()) && !(chat.botPausedUntil && chat.botPausedUntil > now);
