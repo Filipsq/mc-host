@@ -28,7 +28,7 @@ import {
   Users,
 } from "lucide-react";
 
-const ICONS = {
+export const ICONS = {
   overview: LayoutDashboard,
   console: Terminal,
   files: FolderOpen,
