@@ -108,6 +108,14 @@ model HytaleAuth {
   updatedAt    DateTime  @updatedAt
 }
 
+// Whether the support bot answers in the Help chat: one row, switched in
+// the admin panel. It also needs OPENBOT_WEBHOOK_URL and _SECRET in .env.
+model SupportBot {
+  id        Int      @id @default(1)
+  enabled   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+}
+
 model Announcement {
   id        Int      @id @default(1)
   text      String   @default("")
@@ -146,6 +154,12 @@ model SupportChat {
   // Messages no admin has seen yet, and when an admin last had the chat open.
   staffUnread   Int              @default(0)
   staffReadAt   DateTime?
+  // The support bot (OpenBot, src/lib/supportBot.ts): when the user's latest
+  // question went to the bot and no answer came yet, and until when the bot
+  // stays quiet in this chat (an admin answered, it handed over, or the user
+  // asked for a person).
+  botWaitingSince DateTime?
+  botPausedUntil  DateTime?
   messages      SupportMessage[]
 
   @@index([lastMessageAt])
@@ -157,6 +171,8 @@ model SupportMessage {
   chat      SupportChat   @relation(fields: [chatId], references: [userId], onDelete: Cascade)
   // Written by an admin (authorId) rather than by the chat's user.
   fromStaff Boolean       @default(false)
+  // Written by the support bot (fromStaff is set too, authorId is empty).
+  bot       Boolean       @default(false)
   authorId  String?
   body      String
   createdAt DateTime      @default(now())

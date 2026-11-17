@@ -128,6 +128,11 @@ export default function PrivacyPl({ site }: { site: string }) {
           się na podstawie standardowych klauzul umownych.
         </li>
         <li>
+          <strong>OpenBot</strong> – asystent AI administratora, który odpowiada na proste pytania na czacie pomocy. Dostaje
+          treść rozmowy i dane Twoich serwerów (nazwy, ustawienia, stan, konsolę), bez adresu e-mail. Trudniejsze pytania
+          przekazuje administratorowi, a w każdej chwili możesz poprosić o rozmowę z człowiekiem.
+        </li>
+        <li>
           Usługa powiadomień Twojej przeglądarki lub telefonu (np. Google dla Chrome i Androida, Apple dla iPhone’a,
           Mozilla dla Firefoksa) – tylko gdy włączysz powiadomienia w panelu. Dostarcza je na Twoje urządzenie; treść
           powiadomienia jest zaszyfrowana i ta usługa jej nie widzi.

@@ -138,6 +138,23 @@ create it as usual. Until it's set up, the AI boxes are hidden.
 the whole site `AI_MONTHLY_LIMIT` times a month; the admin overview shows this month's use and an
 estimated cost.
 
+## Help chat bot (OpenBot)
+
+An [OpenBot](https://openbot.site) routine can answer simple questions in the help chat. Each
+customer message goes to the routine's webhook with the customer's servers and the chat
+(`src/lib/supportBot.ts`); the routine answers by POSTing `{ "token", "text", "escalate" }` to
+`/api/support/bot`. A hand-over (`"escalate": true`), a failed webhook, or no answer within 2 minutes
+sends the question to the admins as before, and the bot then stays quiet in that chat for 24 hours,
+as it does after an admin answers. Customers can also press "Chcę rozmawiać z człowiekiem".
+
+1. In OpenBot, make a routine with a webhook trigger and copy its address and signing secret.
+2. Put them in `deploy/.env` as `OPENBOT_WEBHOOK_URL=…` and `OPENBOT_WEBHOOK_SECRET=…`, then run
+   `./setup.sh` again.
+3. Switch it on in Admin > Czat.
+
+OpenBot runs on the admin's computer, so while it's off every question waits the 2 minutes and goes
+to the admins.
+
 ## CurseForge mod packs
 
 With a CurseForge API key the home page shows CurseForge's 10 most popular mod packs that run on our

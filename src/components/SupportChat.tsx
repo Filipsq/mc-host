@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImagePlus, MessageCircle, Send, Trash2, X } from "lucide-react";
+import { Bot, ImagePlus, MessageCircle, Send, Trash2, UserRound, X } from "lucide-react";
 import { format, type Messages } from "@/i18n/messages";
-import { deleteSupportMessage, sendSupportMessage } from "@/app/dashboard/support/actions";
+import { askForPersonAction, deleteSupportMessage, sendSupportMessage } from "@/app/dashboard/support/actions";
 import CopyButton from "./CopyButton";
 import type { ChatMessage, ChatRate, ChatState, SendError } from "@/lib/support";
 
@@ -62,6 +62,7 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
   const router = useRouter();
   const [messages, setMessages] = useState(initial.messages);
   const [seenAt, setSeenAt] = useState(initial.seenAt);
+  const [bot, setBot] = useState(initial.bot);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +90,7 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
       if (!res.ok) return;
       const state = (await res.json()) as ChatState;
       setSeenAt(state.seenAt);
+      if (state.bot) setBot(state.bot);
       const gone = new Set(state.deleted ?? []);
       if (state.messages.length > 0 || gone.size > 0) {
         setMessages((list) => merge(list, state.messages).filter((m) => !gone.has(m.id)));
@@ -161,6 +163,8 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
       if (result.ok) {
         stick.current = true;
         setMessages((list) => merge(list, [result.message]));
+        // The bot starts on it right away; the next poll confirms.
+        if (!staff && bot?.on) setBot({ on: true, waiting: true });
         setText("");
         setPicture(null);
       } else if (result.error === "signedOut") {
@@ -184,6 +188,16 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
       else setError(t.deleteFailed);
     } catch {
       setError(t.deleteFailed);
+    }
+  }
+
+  async function askPerson() {
+    try {
+      await askForPersonAction();
+      stick.current = true;
+      await poll();
+    } catch {
+      setError(t.errors.failed);
     }
   }
 
@@ -223,10 +237,10 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
           <ol className="chat-messages">
             {messages.map((m, i) => {
               const own = mine(m);
-              const first = i === 0 || messages[i - 1].fromStaff !== m.fromStaff;
+              const first = i === 0 || messages[i - 1].fromStaff !== m.fromStaff || !messages[i - 1].bot !== !m.bot;
               return (
-                <li key={m.id} className={`chat-msg${own ? " own" : ""}${m.fromStaff ? " staff" : ""}${first ? " first" : ""}`}>
-                  {first && <span className="chat-author">{own ? t.you : otherName}</span>}
+                <li key={m.id} className={`chat-msg${own ? " own" : ""}${m.fromStaff ? " staff" : ""}${m.bot ? " bot" : ""}${first ? " first" : ""}`}>
+                  {first && <span className="chat-author">{m.bot ? t.bot : own ? t.you : otherName}</span>}
                   <div className="chat-row">
                     <div className={`chat-bubble${m.image ? " with-image" : ""}`}>
                       {m.image && (
@@ -273,9 +287,25 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
                 </li>
               );
             })}
+            {!staff && bot?.waiting && (
+              <li className="chat-msg staff bot first chat-typing" aria-live="polite">
+                <span className="chat-author">{t.bot}</span>
+                <div className="chat-row">
+                  <div className="chat-bubble"><p className="muted"><Bot size={15} aria-hidden /> {t.botWriting}</p></div>
+                </div>
+              </li>
+            )}
           </ol>
         )}
       </div>
+      {!staff && bot?.on && (
+        <div className="chat-bot-bar">
+          <span className="muted small"><Bot size={15} aria-hidden /> {t.botHint}</span>
+          <button type="button" className="secondary small" onClick={() => void askPerson()}>
+            <UserRound size={15} aria-hidden /> {t.askPerson}
+          </button>
+        </div>
+      )}
       {picture && (
         <div className="chat-attachment">
           {/* eslint-disable-next-line @next/next/no-img-element -- a local preview */}

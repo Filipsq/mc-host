@@ -1129,6 +1129,12 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 .chat-attachment span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-attachment-remove { padding: 6px; height: auto; }
 .chat-attachment + .chat-form { border-top: none; }
+/* The support bot (OpenBot): its messages, "writing" note and the ask-a-person bar. */
+.chat-msg.bot .chat-bubble { border-style: dashed; }
+.chat-typing .chat-bubble p { display: inline-flex; align-items: center; gap: 6px; }
+.chat-bot-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; padding: 8px 14px; border-top: 1px solid var(--border); background: var(--bg-alt); }
+.chat-bot-bar > span { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.chat-bot-bar + .chat-form, .chat-bot-bar + .chat-attachment { border-top: none; }
 .chat-time { font-size: 0.72rem; color: var(--muted); margin: 2px 4px 0; }
 .chat-empty { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 12px; }
 .chat-empty p { margin: 0; max-width: 420px; }
