@@ -30,6 +30,7 @@ model User {
   payments           Payment[]
   passwordResets     PasswordReset[]
   supportChat        SupportChat?
+  supportBotCases    SupportBotCase[]
   aiUsage            AiUsage[]
   // Friends' servers this user was let into (see src/lib/access.ts).
   memberships        ServerMember[]
@@ -116,6 +117,27 @@ model SupportBot {
   whenOnline  Boolean  @default(false)
   whenOffline Boolean  @default(true)
   updatedAt DateTime @updatedAt
+}
+
+// One question the support bot got, for the admin's daily report
+// (/admin/support/raport): what was asked, what the bot answered and how it ended.
+model SupportBotCase {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    String
+  askedAt     DateTime
+  answer      String?
+  answeredAt  DateTime?
+  // answered (the bot answered), handedOver (the bot passed it on), timeout,
+  // failed (webhook error), person (the user asked for a person while waiting),
+  // admin (an admin answered first); null while waiting.
+  result      String?
+  // The bot answered, but the user asked for a person afterwards.
+  personAfter Boolean   @default(false)
+
+  @@index([askedAt])
+  @@index([userId, askedAt])
 }
 
 model Announcement {

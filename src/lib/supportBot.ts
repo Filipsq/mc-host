@@ -32,6 +32,8 @@ const CONTEXT_MAX_BYTES = 40 * 1024;
 const BOT_TIMEOUT_MS = 15_000;
 /** The longest the question waits for the servers' live state before going to the bot without it. */
 const CONTEXT_WAIT_MS = 4000;
+/** Asking for a person this soon after the bot's answer means the answer didn't solve it. */
+const PERSON_AFTER_MS = 2 * 60 * 60_000;
 /** How the bot should write (Fiq asked 2026-11-18: casually). Sent with every question. */
 const STYLE =
   "Pisz na luzie, po koleżeńsku, jak gracz do gracza: na Ty, krótko (2-5 zdań), bez urzędowych formułek, emoji z umiarem. " +
@@ -89,6 +91,8 @@ export async function askBot(userId: string, messageId: string) {
   if (!message) return;
   const now = Date.now();
   await db.supportChat.update({ where: { userId }, data: { botWaitingSince: new Date(now) } });
+  const question = message.body || (message.image ? "[zdjęcie]" : message.log ? "[konsola serwera]" : "");
+  await db.supportBotCase.create({ data: { userId, question, askedAt: new Date(now) } }).catch(() => {});
   // The bot doesn't need the customer's email address, so it doesn't get it.
   // Reading live server state can be slow on a busy machine; the bot gets what's there after CONTEXT_WAIT_MS.
   const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), CONTEXT_WAIT_MS));
@@ -203,6 +207,18 @@ async function handOver(userId: string, text: string | null, why: "failed" | "ti
     where: { userId },
     data: { botWaitingSince: null, botPausedUntil: new Date(now.getTime() + BOT_PAUSE_MS), lastFromStaff: false, staffUnread: { increment: 1 } },
   });
+  // The report: questions still open end this way, and an answer the user didn't want counts as half solved.
+  const result = { failed: "failed", timeout: "timeout", asked: "person", bot: "handedOver" }[why];
+  await db.supportBotCase.updateMany({ where: { userId, result: null }, data: { result, ...(why === "bot" && text ? { answer: text, answeredAt: now } : {}) } });
+  if (why === "asked") {
+    // Only the bot's latest answer didn't do it.
+    const last = await db.supportBotCase.findFirst({
+      where: { userId, result: "answered", askedAt: { gte: new Date(now.getTime() - PERSON_AFTER_MS) } },
+      orderBy: { askedAt: "desc" },
+      select: { id: true },
+    });
+    if (last) await db.supportBotCase.update({ where: { id: last.id }, data: { personAfter: true } });
+  }
   const question = await db.supportMessage.findFirst({
     where: { chatId: userId, fromStaff: false, deletedAt: null },
     orderBy: { createdAt: "desc" },
@@ -252,6 +268,9 @@ export async function handleBotReply(token: string, text: string, escalate: bool
   if (typeof picture === "string") return { ok: false, error: picture, status: 400 };
   if (!body && !picture) return { ok: false, error: "empty", status: 400 };
   await postBotMessage(userId, body, picture);
+  await db.supportBotCase
+    .updateMany({ where: { userId, askedAt, result: null }, data: { result: "answered", answer: body || "[zdjęcie]", answeredAt: new Date() } })
+    .catch(() => {});
   // A question the user sent after this one still waits for its own answer.
   await db.supportChat.updateMany({ where: { userId, botWaitingSince: { lte: askedAt } }, data: { botWaitingSince: null } });
   after(() => notifyUserIfAway(userId, body));

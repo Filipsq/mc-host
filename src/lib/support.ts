@@ -215,6 +215,8 @@ export async function postMessage(
     }),
   ]);
 
+  // An admin answered while the bot was still thinking: for the bot's report.
+  if (staff) await db.supportBotCase.updateMany({ where: { userId, result: null }, data: { result: "admin" } }).catch(() => {});
   // The support bot gets the user's question first; the admins hear about it
   // only if the bot hands it over or doesn't answer (src/lib/supportBot.ts).
   const toBot = !staff && !quiet && (await botActive()) && !(chat.botPausedUntil && chat.botPausedUntil > now);
