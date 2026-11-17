@@ -2141,3 +2141,8 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 @media (prefers-reduced-motion: reduce) {
   .panel-search-backdrop, .panel-search { animation: none; }
 }
+
+/* Own domain record (AddonForms DomainForm): each field with its copy button. */
+.dns-record .dns-field { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+.dns-record .dns-value { justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.dns-record .dns-value strong { word-break: break-all; }

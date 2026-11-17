@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { buyAddonsAction, buyDomainAction, removeAddonAction } from "../../actions";
 import PayBadges from "@/components/PayBadges";
+import CopyButton from "@/components/CopyButton";
 import { clearDomainAction, setDomainAction } from "./actions";
 import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
@@ -98,32 +99,81 @@ export function RemoveAddonButton({ serverId, addon, label, confirm }: { serverI
 type DomainProps = {
   serverId: string;
   current: string | null;
-  target: string; // the server's Java address, which the CNAME points at
+  target: string; // the server's Java address, which a CNAME would point at
+  ips: string[]; // the public IPs players reach the server at, for the A record
   address: string;
   t: Messages["paidAddons"]["domain"];
+  copy: { label: string; copied: string };
 };
 
-/** The own domain: how to point it here, and the field that checks and saves it. */
-export function DomainForm({ serverId, current, target, address, t }: DomainProps) {
+// Registries that sell names one level down (kokolino.com.pl), so "kokolino" is
+// part of the bought domain, not a record name.
+const TWO_PART_SUFFIXES = ["com.pl", "net.pl", "org.pl", "info.pl", "biz.pl", "waw.pl", "edu.pl", "co.uk", "org.uk", "com.de"];
+
+/** "graj.kokolino.pl" -> "graj", "kokolino.pl" -> "@" (the domain itself). */
+export function recordName(domain: string) {
+  const labels = cleanTyped(domain).split(".").filter(Boolean);
+  if (labels.length < 2) return "graj";
+  const bought = TWO_PART_SUFFIXES.some((s) => labels.slice(-2).join(".") === s) ? 3 : 2;
+  return labels.length > bought ? labels.slice(0, labels.length - bought).join(".") : "@";
+}
+
+function cleanTyped(input: string) {
+  return input.trim().toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/[/:].*$/, "").replace(/\.$/, "");
+}
+
+// The record is often still on its way through DNS when the owner clicks, so
+// the panel keeps checking by itself, for up to an hour.
+const RECHECK_MS = 60_000;
+const RECHECK_TRIES = 60;
+
+/** The own domain: what record to add (copyable), where, and the field that checks and saves it. */
+export function DomainForm({ serverId, current, target, ips, address, t, copy }: DomainProps) {
   const [state, action, pending] = useActionState(setDomainAction.bind(null, serverId), {});
   const [clearing, startClear] = useTransition();
+  const [, startCheck] = useTransition();
   const [typed, setTyped] = useState(current ?? "");
-  // The record's name is the part before the owner's domain, e.g. "graj" in graj.mojserwer.pl.
-  const name = typed.includes(".") && typed.split(".").length > 2 ? typed.split(".")[0] : "graj";
+  const [tries, setTries] = useState(0);
+  const lastSent = useRef("");
+  const name = recordName(typed);
+  const useA = ips.length > 0;
+  const record = useA ? { type: "A", value: ips[0] } : { type: "CNAME", value: target };
+  const waiting = !pending && (state.error === "dnsMissing" || state.error === "dnsWrong") && cleanTyped(typed) === lastSent.current;
+
+  useEffect(() => {
+    if (!waiting || tries >= RECHECK_TRIES) return;
+    const timer = setTimeout(() => {
+      const form = new FormData();
+      form.set("domain", lastSent.current);
+      setTries((n) => n + 1);
+      startCheck(() => action(form));
+    }, RECHECK_MS);
+    return () => clearTimeout(timer);
+  }, [waiting, tries, action]);
+
+  const field = (label: string, value: string, note?: string) => (
+    <div className="dns-field">
+      <span className="muted small">{label}</span>
+      <span className="row dns-value">
+        <strong className="mono">{value}</strong>
+        <CopyButton text={value} label={copy.label} copiedLabel={copy.copied} />
+      </span>
+      {note && <span className="muted small">{note}</span>}
+    </div>
+  );
+
   return (
     <div className="stack">
       {current && <p className="notice success small">{format(t.active, { domain: current, address })}</p>}
-      <p className="small">{t.steps}</p>
-      <p className="mono small dns-record">
-        {/* One field per line, so a phone doesn't break the address in the middle. */}
-        {format(t.record, { name, target })
-          .split(" · ")
-          .map((part) => (
-            <span key={part}>{part}</span>
-          ))}
-      </p>
-      <p className="muted small">{t.wait}</p>
-      <form action={action} className="stack">
+      <p className="small">{t.intro}</p>
+      <form
+        action={(form) => {
+          lastSent.current = cleanTyped(String(form.get("domain") ?? ""));
+          setTries(0);
+          action(form);
+        }}
+        className="stack"
+      >
         <label>
           {t.label}
           <input
@@ -137,7 +187,27 @@ export function DomainForm({ serverId, current, target, address, t }: DomainProp
             required
           />
         </label>
-        {state.error && <p className="error small">{format(t.errors[state.error], { target })}</p>}
+        <p className="small">{t.steps}</p>
+        <div className="dns-record">
+          {field(t.recordType, record.type)}
+          {field(t.recordName, name, name === "@" ? t.rootNote : undefined)}
+          {field(t.recordValue, record.value)}
+        </div>
+        {useA && <p className="muted small">{format(t.cnameAlt, { name, target })}</p>}
+        <details className="small">
+          <summary>{t.guidesTitle}</summary>
+          <ul className="stack-tight">
+            {t.guides.map((g) => (
+              <li key={g.name}>
+                <strong>{g.name}:</strong> {g.text}
+              </li>
+            ))}
+          </ul>
+        </details>
+        <p className="muted small">{t.wait}</p>
+        {state.error && <p className="error small">{format(t.errors[state.error], { target, ip: record.value, type: record.type })}</p>}
+        {waiting && tries < RECHECK_TRIES && <p className="muted small">{t.rechecking}</p>}
+        {state.saved && !current && <p className="notice success small">{t.saved}</p>}
         <div className="row" style={{ justifyContent: "flex-start" }}>
           <button type="submit" disabled={pending}>
             {pending ? t.saving : t.save}

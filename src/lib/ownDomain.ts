@@ -2,7 +2,8 @@ import "server-only";
 import { Resolver } from "node:dns/promises";
 
 // The "domain" add-on (addons.ts): the owner points their own domain at the
-// server's Java address with a CNAME record, and the routers send players who
+// server with an A record (our IP, so nothing says mchosting; Fiq 2026-11-17)
+// or a CNAME to the server's Java address, and the routers send players who
 // type it to the server (agent/aliases.go). Before a domain is taken, its DNS
 // must already lead here, so nobody claims a domain they don't control.
 
@@ -26,6 +27,17 @@ export function checkDomainShape(domain: string): OwnDomainError | null {
   if (!DOMAIN.test(domain)) return "invalidDomain";
   if (domain === GAME_DOMAIN || domain.endsWith(`.${GAME_DOMAIN}`)) return "ourDomain";
   return null;
+}
+
+/**
+ * The public IPv4 addresses players reach `target` (the server's Java address)
+ * at, for the A record the panel shows. Empty when DNS can't tell (then the
+ * panel shows the CNAME instead).
+ */
+export async function serverIps(target: string): Promise<string[]> {
+  const dns = new Resolver({ timeout: 3000, tries: 1 });
+  dns.setServers(["1.1.1.1", "9.9.9.9"]);
+  return dns.resolve4(target).catch(() => [] as string[]);
 }
 
 /**
