@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { db } from "./db";
 import { BRAND_NAME } from "./brand";
 import { chatContextText } from "./claudeContext";
+import { SUPPORT_KNOWLEDGE } from "./supportKnowledge";
 import { IMAGE_MAX_BYTES, imageType, MAX_LENGTH, notify } from "./support";
 import { botActive, BOT_PAUSE_MS } from "./supportBotState";
 
@@ -27,8 +28,10 @@ export const ANSWER_WAIT_MS = 2 * 60_000;
 /** A reply token is accepted this long after the question. */
 const TOKEN_MS = 15 * 60_000;
 /** OpenBot refuses webhook bodies over 64 KB; this leaves room for the rest. */
-const CONTEXT_MAX_BYTES = 48 * 1024;
+const CONTEXT_MAX_BYTES = 40 * 1024;
 const BOT_TIMEOUT_MS = 15_000;
+/** The longest the question waits for the servers' live state before going to the bot without it. */
+const CONTEXT_WAIT_MS = 4000;
 /** How the bot should write (Fiq asked 2026-11-18: casually). Sent with every question. */
 const STYLE =
   "Pisz na luzie, po koleżeńsku, jak gracz do gracza: na Ty, krótko (2-5 zdań), bez urzędowych formułek, emoji z umiarem. " +
@@ -87,7 +90,9 @@ export async function askBot(userId: string, messageId: string) {
   const now = Date.now();
   await db.supportChat.update({ where: { userId }, data: { botWaitingSince: new Date(now) } });
   // The bot doesn't need the customer's email address, so it doesn't get it.
-  const full = ((await chatContextText(userId).catch(() => null)) ?? "").split(message.chat.user.email).join("(adres ukryty)");
+  // Reading live server state can be slow on a busy machine; the bot gets what's there after CONTEXT_WAIT_MS.
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), CONTEXT_WAIT_MS));
+  const full = ((await Promise.race([chatContextText(userId).catch(() => null), timeout])) ?? "").split(message.chat.user.email).join("(adres ukryty)");
   const context = lastBytes(full, CONTEXT_MAX_BYTES);
   const body = JSON.stringify({
     type: "support.message",
@@ -95,6 +100,7 @@ export async function askBot(userId: string, messageId: string) {
     data: {
       site: BRAND_NAME,
       style: STYLE,
+      knowledge: SUPPORT_KNOWLEDGE,
       language: message.chat.user.locale,
       customerMessage: message.body || "",
       sentPicture: !!message.image,
@@ -120,6 +126,7 @@ export async function askBot(userId: string, messageId: string) {
     });
     await res.body?.cancel();
     if (res.status < 200 || res.status >= 300) throw new Error(`OpenBot webhook answered ${res.status}`);
+    console.log(`[support-bot] chat ${userId}: question sent to OpenBot in ${((Date.now() - now) / 1000).toFixed(1)} s`);
   } catch (err) {
     console.error(`[support-bot] chat ${userId}: sending to OpenBot failed:`, err);
     await handOver(userId, null, "failed");
@@ -231,6 +238,7 @@ export async function handleBotReply(token: string, text: string, escalate: bool
   const checked = checkReplyToken(token);
   if (!checked) return { ok: false, error: "badToken", status: 401 };
   const { userId, askedAt } = checked;
+  console.log(`[support-bot] chat ${userId}: OpenBot answered after ${((Date.now() - askedAt.getTime()) / 1000).toFixed(1)} s${escalate ? " (handed over)" : ""}`);
   const body = text.replace(/\r\n?/g, "\n").trim();
   if (body.length > MAX_LENGTH) return { ok: false, error: "tooLong", status: 400 };
   const chat = await db.supportChat.findUnique({ where: { userId }, select: { botWaitingSince: true } });

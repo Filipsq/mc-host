@@ -2597,6 +2597,7 @@ const en: Messages = {
     botWriting: "We're writing your answer...",
     botHint: "A bot answers simple questions right away and passes harder ones to an admin.",
     askPerson: "I want to talk to a person",
+    askPersonHint: "Prefer a person? Click the person icon next to it.",
     seen: "Seen",
     staffPlaceholder: "Reply to the user...",
     staffEmptyTitle: "No messages",

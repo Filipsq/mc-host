@@ -63,6 +63,7 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
   const [messages, setMessages] = useState(initial.messages);
   const [seenAt, setSeenAt] = useState(initial.seenAt);
   const [bot, setBot] = useState(initial.bot);
+  const [botInfo, setBotInfo] = useState(false);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -207,6 +208,26 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
 
   return (
     <section className="card chat">
+      {!staff && bot?.on && (
+        <div className={`chat-bot-badge${botInfo ? " open" : ""}`} onMouseLeave={() => setBotInfo(false)}>
+          <button type="button" className="chat-bot-icon" aria-label={t.askPerson} title={t.askPerson} onClick={() => void askPerson()}>
+            <UserRound size={18} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className="chat-bot-icon"
+            aria-label={t.botHint}
+            aria-expanded={botInfo}
+            onClick={() => setBotInfo((v) => !v)}
+          >
+            <Bot size={18} aria-hidden />
+          </button>
+          <div className="chat-bot-pop" role="note">
+            <p className="small">{t.botHint}</p>
+            <p className="small muted"><UserRound size={13} aria-hidden /> {t.askPersonHint}</p>
+          </div>
+        </div>
+      )}
       <div
         className="chat-log"
         ref={log}
@@ -297,14 +318,6 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
           </ol>
         )}
       </div>
-      {!staff && bot?.on && (
-        <div className="chat-bot-bar">
-          <span className="muted small"><Bot size={15} aria-hidden /> {t.botHint}</span>
-          <button type="button" className="secondary small" onClick={() => void askPerson()}>
-            <UserRound size={15} aria-hidden /> {t.askPerson}
-          </button>
-        </div>
-      )}
       {picture && (
         <div className="chat-attachment">
           {/* eslint-disable-next-line @next/next/no-img-element -- a local preview */}

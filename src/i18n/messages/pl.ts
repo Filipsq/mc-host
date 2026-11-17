@@ -2596,6 +2596,7 @@ const pl = {
     botWriting: "Piszemy dla Ciebie odpowiedź...",
     botHint: "Na proste pytania od razu odpowiada bot. Trudniejsze przekazuje administratorowi.",
     askPerson: "Chcę rozmawiać z człowiekiem",
+    askPersonHint: "Wolisz człowieka? Kliknij ludzika obok.",
     seen: "Przeczytane",
     staffPlaceholder: "Odpowiedz użytkownikowi...",
     staffEmptyTitle: "Brak wiadomości",
