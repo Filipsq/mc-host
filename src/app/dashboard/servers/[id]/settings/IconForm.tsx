@@ -23,6 +23,7 @@ export default function IconForm({ serverId, t }: { serverId: string; t: Message
       <label>
         {t.icon}
         <input
+          name="icon-upload"
           type="file"
           accept="image/*"
           disabled={pending}

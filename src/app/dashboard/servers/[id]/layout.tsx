@@ -14,7 +14,7 @@ import { periodPrice } from "@/lib/periods";
 import { getPreferences } from "@/i18n/server";
 import { maxPlayersFor } from "@/lib/settings";
 import { canUpgrade } from "@/lib/upgrade";
-import { addonType, offersModPicker } from "@/lib/plugins";
+import { addonType, canCrossplay, canRunNonPremium, offersModPicker } from "@/lib/plugins";
 import { kindLabel } from "@/lib/serverType";
 import { latestVersionNumber } from "@/lib/addonVersions";
 import { EDITION_NAMES } from "@/lib/editions";
@@ -31,6 +31,7 @@ import ServerControls from "./ServerControls";
 import QueueNotice from "./QueueNotice";
 import LiveBadge from "./LiveBadge";
 import ServerNav, { type NavGroup } from "./ServerNav";
+import PanelSearch, { type SearchItem } from "./PanelSearch";
 import ClassicBack from "./ClassicBack";
 import PanelViewToggle from "./PanelViewToggle";
 import { usesClassicPanel } from "@/lib/panelView";
@@ -115,6 +116,64 @@ export default async function ServerLayout({ children, params }: { children: Rea
     },
   ].filter((g) => g.items.length > 0);
 
+  // The search box (Ctrl+K): every menu page, plus the single options inside
+  // them, so "whitelist" or "pvp" lands on the very field. Only what's on screen
+  // for this server and this person; the words it also answers to are in panelSearch.keywords.
+  const kw = all.panelSearch.keywords;
+  const st = all.settings;
+  const java = server.edition === "JAVA";
+  const settingsAt = { kind: "option" as const, where: st.title, path: "/settings" };
+  const field = (key: keyof typeof kw, label: string, name: string, icon: SearchItem["icon"] = "option"): SearchItem => ({
+    ...settingsAt, label, field: name, icon, keywords: kw[key],
+  });
+  const options: (SearchItem | false)[] = [];
+  if (can("settings")) {
+    if (server.edition === "JAVA" || server.edition === "BEDROCK") {
+      options.push(
+        java && field("version", st.version, "version"),
+        field("gameMode", st.gameMode, "gameMode"),
+        field("difficulty", st.difficulty, "difficulty"),
+        field("motd", st.motd, "motd"),
+        field("maxPlayers", st.maxPlayers, "maxPlayers"),
+        java && field("pvp", st.pvp, "pvp"),
+        java && field("allowFlight", st.allowFlight, "allowFlight"),
+        java && field("hardcore", st.hardcore, "hardcore"),
+        java && field("commandBlocks", st.commandBlocks, "commandBlocks"),
+        java && field("allowNether", st.allowNether, "allowNether"),
+        java && field("allowEnd", st.allowEnd, "allowEnd"),
+        java && field("spawnMonsters", st.spawnMonsters, "spawnMonsters"),
+        java && field("forceGamemode", st.forceGamemode, "forceGamemode"),
+        java && field("spawnProtection", st.spawnProtection, "spawnProtection"),
+        java && field("viewDistance", st.viewDistance, "viewDistance"),
+        java && canRunNonPremium(server) && field("nonPremium", st.nonPremium, "nonPremium"),
+        java && canCrossplay(server) && field("crossplay", st.crossplay, "crossplay"),
+        field("whitelist", st.whitelist, "whitelist"),
+        java && field("icon", st.icon, "icon-upload", "icon"),
+      );
+    } else if (server.edition === "TERRARIA") {
+      options.push(field("motd", st.motd, "motd"), field("password", all.terraria.password, "password", "password"));
+    } else if (server.edition === "VALHEIM") {
+      options.push(field("password", all.otherGames.valheim.password, "password", "password"), field("preset", all.otherGames.valheim.preset, "preset"));
+    }
+    if (access.role !== "friend" && server.edition !== "VALHEIM" && server.edition !== "HYTALE" && server.edition !== "TERRARIA") {
+      options.push(field("name", st.rename.name, "name", "name"), java && field("subdomain", st.rename.address, "subdomain", "address"));
+    }
+    if (can("owner")) options.push({ ...settingsAt, label: all.panel.danger, anchor: "usun", icon: "delete", keywords: kw.delete });
+  }
+  if (java && can("owner")) {
+    options.push(
+      { kind: "page", label: all.serverType.title, path: "/type", icon: "type", keywords: kw.type },
+      { kind: "page", label: all.paidAddons.address.title, path: "/address", icon: "address", keywords: kw.address },
+    );
+  }
+  const searchItems: SearchItem[] = [
+    ...groups.flatMap((g) =>
+      g.items.map((item): SearchItem => ({ kind: "page", label: item.label, where: g.title, path: item.path, icon: item.key, keywords: kw[item.key] })),
+    ),
+    ...options.filter(present),
+  ];
+  const search = <PanelSearch id={server.id} items={searchItems} t={all.panelSearch} />;
+
   const { locale, currency } = await getPreferences();
   const banners = (
     <>
@@ -151,7 +210,10 @@ export default async function ServerLayout({ children, params }: { children: Rea
         {banners}
         <div className="row classic-top">
           <ClassicBack id={server.id} name={server.name} back={t.back} />
-          <PanelViewToggle classic t={p} />
+          <span className="row-inline">
+            {search}
+            <PanelViewToggle classic t={p} />
+          </span>
         </div>
         <header className="page-head">
           <div className="page-title">
@@ -196,7 +258,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
       {banners}
       {/* The same spot as in the classic look, so switching back and forth stays under the cursor. */}
       <div className="row classic-top">
-        <span />
+        {search}
         <PanelViewToggle classic={false} t={p} />
       </div>
       <header className="card server-head">
