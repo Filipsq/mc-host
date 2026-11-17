@@ -27,6 +27,14 @@ export default async function PackMods({ server, q }: { server: Server; q: strin
   return (
     <div className="stack">
       <h2>{all.mods.title}</h2>
+      {/* Above the list: a pack can have hundreds of mods, and below them the way to add one was never seen. */}
+      <div className="card stack-tight">
+        <strong>{t.addTitle}</strong>
+        <span className="muted small">{format(t.addText, { loader, version: server.version })}</span>
+        <Link className="button secondary" href={`/dashboard/servers/${server.id}/files?path=mods`}>
+          {t.addButton}
+        </Link>
+      </div>
       {listing === null ? (
         <p className="notice">{t.notYet}</p>
       ) : listing === "error" ? (
@@ -46,7 +54,7 @@ export default async function PackMods({ server, q }: { server: Server; q: strin
           {shown.length === 0 ? (
             <p className="muted">{t.none}</p>
           ) : (
-            <ul className="card stack-tight small">
+            <ul className="card stack-tight small" style={{ maxHeight: "28rem", overflowY: "auto" }}>
               {shown.map((name) => (
                 <li key={name}>{name}</li>
               ))}
@@ -55,13 +63,6 @@ export default async function PackMods({ server, q }: { server: Server; q: strin
           <p className="muted small">{t.removeHint}</p>
         </>
       )}
-      <div className="card stack-tight">
-        <strong>{t.addTitle}</strong>
-        <span className="muted small">{format(t.addText, { loader, version: server.version })}</span>
-        <Link className="button secondary" href={`/dashboard/servers/${server.id}/files?path=mods`}>
-          {t.addButton}
-        </Link>
-      </div>
     </div>
   );
 }
