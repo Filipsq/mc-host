@@ -76,14 +76,14 @@ async function chatLines(userId: string, take: number) {
     where: { chatId: userId, deletedAt: null },
     orderBy: { createdAt: "desc" },
     take,
-    select: { fromStaff: true, body: true, createdAt: true, log: true, logServer: true, image: { select: { id: true } } },
+    select: { fromStaff: true, bot: true, body: true, createdAt: true, log: true, logServer: true, image: { select: { id: true } } },
   });
   return recent.reverse();
 }
 
 const chatText = (messages: Awaited<ReturnType<typeof chatLines>>) =>
   messages
-    .map((m) => `[${time(m.createdAt)}] ${m.fromStaff ? "Admin" : "Klient"}: ${m.body}${m.image ? " [wysłał zdjęcie]" : ""}${m.log ? ` [dołączył konsolę serwera ${m.logServer}]` : ""}`)
+    .map((m) => `[${time(m.createdAt)}] ${m.bot ? "Bot" : m.fromStaff ? "Admin" : "Klient"}: ${m.body}${m.image ? " [wysłał zdjęcie]" : ""}${m.log ? ` [dołączył konsolę serwera ${m.logServer}]` : ""}`)
     .join("\n");
 
 /** The text for a customer's chat: who they are, their servers (consoles of those that are down) and the chat. */

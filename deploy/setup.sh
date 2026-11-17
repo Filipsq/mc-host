@@ -112,6 +112,16 @@ if ! grep -qE '^ANTHROPIC_API_KEY=.+' .env; then
   echo "The AI creator is off: set ANTHROPIC_API_KEY in deploy/.env (see deploy/README.md)."
 fi
 
+# The help chat bot (OpenBot); see deploy/README.md.
+if ! grep -q '^OPENBOT_WEBHOOK_URL=' .env; then
+  cat >> .env <<'ENV'
+# The OpenBot routine's webhook address and signing secret. With both set, the
+# bot can be switched on in Admin > Czat.
+OPENBOT_WEBHOOK_URL=
+OPENBOT_WEBHOOK_SECRET=
+ENV
+fi
+
 # CurseForge mod packs on the home page and in the panel; see deploy/README.md.
 if ! grep -q '^CF_API_KEY=' .env; then
   cat >> .env <<'ENV'

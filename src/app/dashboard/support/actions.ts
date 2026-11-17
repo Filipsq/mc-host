@@ -6,6 +6,7 @@ import { getPreferences } from "@/i18n/server";
 import { format, messages } from "@/i18n/messages";
 import { getServerFor } from "@/lib/access";
 import { deleteMessage, postMessage, type SendResult } from "@/lib/support";
+import { askForPerson } from "@/lib/supportBot";
 
 /**
  * Sends a chat message: to the admins from the signed-in user's own chat, or,
@@ -43,4 +44,11 @@ export async function sendConsoleToAdmin(serverId: string, log: string): Promise
   const { locale } = await getPreferences();
   const body = format(messages[locale].support.consoleMessage, { name: server.name });
   return postMessage(session.user.id, "user", session.user.id, body, locale, undefined, { text, server: server.id });
+}
+
+/** The user wants a person, not the support bot: the chat goes to the admins. */
+export async function askForPersonAction(): Promise<{ ok: boolean }> {
+  const session = await getSession();
+  if (!session?.user?.id) return { ok: false };
+  return { ok: await askForPerson(session.user.id) };
 }

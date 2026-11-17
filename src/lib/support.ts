@@ -7,6 +7,7 @@ import { defaultLocale, isLocale } from "@/i18n/config";
 import { BRAND_NAME } from "./brand";
 import { buttonMail, sendMail } from "./mail";
 import { sendPush } from "./push";
+import { botActive, BOT_PAUSE_MS } from "./supportBotState";
 
 // The "Help" chat: each user has one conversation with the admins. The pages
 // poll /api/support for new messages while they're open and visible, and
@@ -36,6 +37,8 @@ export type ChatMessage = {
   id: string;
   body: string;
   fromStaff: boolean;
+  /** Written by the support bot rather than an admin. */
+  bot?: true;
   /** ISO time, for ordering and polling. */
   at: string;
   /** The time as people read it, in Polish time. */
@@ -47,7 +50,13 @@ export type ChatMessage = {
 };
 
 /** `deleted` lists messages an admin removed since the poll's `since`, which open chats drop. */
-export type ChatState = { messages: ChatMessage[]; seenAt: string | null; deleted?: string[] };
+export type ChatState = { messages: ChatMessage[]; seenAt: string | null; deleted?: string[]; bot?: BotState };
+
+/**
+ * The support bot as the user's chat shows it: whether it answers here
+ * (`on`), and whether it's writing an answer right now.
+ */
+export type BotState = { on: boolean; waiting: boolean };
 
 export const imageUrl = (id: string) => `/api/support/image/${id}`;
 
@@ -121,11 +130,13 @@ export async function readChat(userId: string, side: Side, locale: string, since
   }
   const when = timeFormat(locale);
   const seen = side === "user" ? chat?.staffReadAt : chat?.userReadAt;
+  const active = side === "user" && (await botActive());
   return {
     messages: rows.reverse().map((m) => ({
       id: m.id,
       body: m.body,
       fromStaff: m.fromStaff,
+      ...(m.bot ? { bot: true as const } : {}),
       at: m.createdAt.toISOString(),
       time: when(m.createdAt),
       ...(m.image ? { image: imageUrl(m.image.id) } : {}),
@@ -133,6 +144,9 @@ export async function readChat(userId: string, side: Side, locale: string, since
     })),
     seenAt: seen?.toISOString() ?? null,
     ...(since ? { deleted: gone.map((m) => m.id) } : {}),
+    ...(side === "user"
+      ? { bot: { on: active && !(chat?.botPausedUntil && chat.botPausedUntil > new Date()), waiting: active && !!chat?.botWaitingSince } }
+      : {}),
   };
 }
 
@@ -173,11 +187,13 @@ export async function postMessage(
   const staff = side === "staff";
   // Writing counts as reading: the writer has seen everything before it.
   const mine = staff ? { staffUnread: 0, staffReadAt: now } : { userUnread: 0, userReadAt: now };
+  // An admin answering takes the chat over from the support bot for a while.
+  const takeOver = staff ? { botWaitingSince: null, botPausedUntil: new Date(now.getTime() + BOT_PAUSE_MS) } : {};
   const [chat, message] = await db.$transaction([
     db.supportChat.upsert({
       where: { userId },
-      create: { userId, lastMessageAt: now, lastFromStaff: staff, ...mine, ...(staff ? { userUnread: 1 } : { staffUnread: 1 }) },
-      update: { lastMessageAt: now, lastFromStaff: staff, ...mine, ...(staff ? { userUnread: { increment: 1 } } : { staffUnread: { increment: 1 } }) },
+      create: { userId, lastMessageAt: now, lastFromStaff: staff, ...mine, ...takeOver, ...(staff ? { userUnread: 1 } : { staffUnread: 1 }) },
+      update: { lastMessageAt: now, lastFromStaff: staff, ...mine, ...takeOver, ...(staff ? { userUnread: { increment: 1 } } : { staffUnread: { increment: 1 } }) },
     }),
     db.supportMessage.create({
       data: {
@@ -193,7 +209,11 @@ export async function postMessage(
     }),
   ]);
 
-  if (!quiet && shouldEmail(chat, side, now)) after(() => notify(userId, side, body, !!picture));
+  // The support bot gets the user's question first; the admins hear about it
+  // only if the bot hands it over or doesn't answer (src/lib/supportBot.ts).
+  const toBot = !staff && !quiet && (await botActive()) && !(chat.botPausedUntil && chat.botPausedUntil > now);
+  if (toBot) after(async () => (await import("./supportBot")).askBot(userId, message.id));
+  else if (!quiet && shouldEmail(chat, side, now)) after(() => notify(userId, side, body, !!picture));
   return {
     ok: true,
     message: {
@@ -251,7 +271,10 @@ function shouldEmail(chat: SupportChat, from: Side, now: Date) {
   return unread === 1 && (!readAt || now.getTime() - readAt.getTime() > READING_MS);
 }
 
-async function notify(userId: string, from: Side, body: string, picture: boolean) {
+/** Why the support bot handed a chat to the admins, which their email and phone notification say. */
+export type HandoverReason = "timeout" | "failed" | "bot" | "asked";
+
+export async function notify(userId: string, from: Side, body: string, picture: boolean, handover?: HandoverReason) {
   const user = await db.user.findUnique({ where: { id: userId }, select: { id: true, email: true, locale: true } });
   if (!user) return;
   const recipients =
@@ -271,7 +294,7 @@ async function notify(userId: string, from: Side, body: string, picture: boolean
     const url = from === "user" ? `${app}/admin/support/${userId}` : `${app}/dashboard/support`;
     const mail = buttonMail({
       to: to.email,
-      subject: format(t.subject, vars),
+      subject: format(from === "user" && handover ? all.support.mail.handover[handover] : t.subject, vars),
       paragraphs: [format(t.intro, vars), ...lines],
       button: t.button,
       url,
