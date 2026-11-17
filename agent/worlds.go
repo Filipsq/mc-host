@@ -45,6 +45,7 @@ type worldInfo struct {
 	Size     int64     `json:"size"`
 	Modified time.Time `json:"modified"` // when the world was last saved
 	NewGame  bool      `json:"newGame,omitempty"`
+	SavedBy  string    `json:"savedBy,omitempty"` // the newest version that ran it (worldversion.go)
 }
 
 // savedByNewGame reports whether a Java world was saved by Minecraft 26.1 or
@@ -168,6 +169,9 @@ func (s *serverFiles) worlds(bedrock bool) ([]worldInfo, error) {
 			w.Modified = fi.ModTime().UTC().Truncate(time.Second)
 		}
 		w.NewGame = !bedrock && s.savedByNewGame(n)
+		if !bedrock {
+			w.SavedBy = s.worldVersion(n)
+		}
 		list = append(list, w)
 	}
 	sort.Slice(list, func(i, j int) bool { return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name) })

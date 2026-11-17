@@ -890,7 +890,7 @@ const en: Messages = {
       tooManyPlayers: "The list can have at most 100 players",
       applyFailed: "We saved the settings but couldn't apply them on the server. Try again in a moment.",
       worldTooNew:
-        "This server's world was saved by Minecraft 26 or newer, and older versions (1.x) can't open it at all. Keep the version on “Latest” or make a new world on the Worlds tab and pick the older version there.",
+        "This server's world was already saved by a newer Minecraft than the one you picked, and an older version can't open it (the server would keep stopping). Keep this version or “Latest”, or make a new world on the Worlds tab and pick the older version there.",
       curseforgeUnavailable: "Couldn't reach CurseForge, which the mods from it need for the new version. Try again in a moment.",
     },
   },
@@ -1071,7 +1071,7 @@ const en: Messages = {
       oldMap:
         "This is a very old world (from before Minecraft 1.2) that today's servers can't open. Convert it for free at chunker.app (pick Java Edition and the newest version) and upload the result.",
       worldTooNew:
-        "This world was saved by Minecraft 26 or newer, and the server runs an older version (1.x) that can't open it. Set the version to “Latest” in Settings, then play this world.",
+        "This world was saved by a newer Minecraft than the server's version, and an older one can't open it. Set the version to “Latest” in Settings, then play this world.",
       notOnHost: "Worlds will be here once the server is paid for.",
       unavailable: "Couldn't load the worlds. Try again in a moment.",
     },
@@ -2137,7 +2137,7 @@ const en: Messages = {
       gone: "This change can't be undone any more (too long ago, or already undone).",
       notOnHost: "You can undo the change once the server is paid for.",
       needsPlan: "The previous mod pack needs a bigger plan than the server has now.",
-      worldTooNew: "A newer Minecraft (26.x) has already opened the previous world, so it can't go back to an older one.",
+      worldTooNew: "A newer Minecraft has already opened the previous world, so it can't go back to an older one.",
       failed: "Couldn't undo the change. Try again in a moment.",
     },
   },
