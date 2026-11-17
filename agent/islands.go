@@ -245,7 +245,9 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
         url= file=
         [ -n "$v" ] && url=https://maven.ftb.dev/releases/dev/ftb/mods/$a/$v/$a-$v.jar file=$a-$v.jar ;;
       *)
-        read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/${lib%-fabric}/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$VERSION%22%5D" |
+        slug=${lib%-fabric}
+        [ "$lib" = athena ] && slug=athena-ctm
+        read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/$slug/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$VERSION%22%5D" |
           jq -r '[.[0].files[] | select(.primary)][0] | .url + " " + .filename' 2>/dev/null) ;;
     esac
     if [ -n "$url" ] && curl -fsSL -o "mods/$file" "$url"; then

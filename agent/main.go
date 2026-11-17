@@ -1349,12 +1349,14 @@ var packExcludes = []string{"missingmodschecker", "ftbquestsfreezefix", "barsita
 // server-side mods need them (Better MC: NoClassDefFoundError for
 // terrablender.api.TerraBlenderApi, net.blay09.mods.balm.api.Balm and
 // dev.ftb.mods.ftblibrary), so the image installs them anyway.
-var packIncludes = []string{"terrablender", "balm", "ftb-library"}
+// Prominence II (Fabric 1.20.1) leaves Athena, which Chipped needs, off the server.
+var packIncludes = []string{"terrablender", "balm", "ftb-library", "athena"}
 
 // packLibs are Fabric mod IDs packScript downloads when a mod needs one and the
 // pack left it out (Better MC). Balm calls itself balm-fabric on some versions.
 // FTB Library, Teams and Quests come from FTB's Maven.
-var packLibs = []string{"terrablender", "balm-fabric", "balm", "ftblibrary", "ftbteams", "ftbquests"}
+// Athena's Modrinth project is athena-ctm.
+var packLibs = []string{"terrablender", "balm-fabric", "balm", "ftblibrary", "ftbteams", "ftbquests", "athena"}
 
 // gameDNS answers servers' lookups (Paper, plugins, mod packs). Docker would otherwise pass them on to whatever the provider set up
 // on the host, which may sit behind the firewall that keeps servers away from
