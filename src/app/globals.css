@@ -676,6 +676,10 @@ a.file-name:hover { color: var(--accent); }
 .file-icon { flex: none; color: var(--muted); }
 .file-icon.dir { color: var(--gold); }
 .file-meta { white-space: nowrap; }
+.file-select-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.file-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; }
+.file-check input, .file-pick { width: 18px; height: 18px; margin: 0; flex: none; accent-color: var(--accent); cursor: pointer; }
+.file-list li.picked { background: var(--accent-soft); margin: 0 -18px; padding-left: 18px; padding-right: 18px; }
 .file-actions { display: flex; gap: 6px; margin-left: auto; }
 .file-actions .button, .file-actions button { padding: 6px 9px; }
 .file-title { overflow-wrap: anywhere; margin-bottom: 4px; }
@@ -706,7 +710,9 @@ textarea.editor:focus { box-shadow: none; }
 .category-chips .chip.active { color: var(--accent-strong); border-color: var(--accent); background: var(--accent-soft); }
 @media (max-width: 640px) {
   .file-name { flex-basis: 100%; }
+  .file-pick + .file-name { flex-basis: calc(100% - 30px); }
   .file-meta { padding-left: 28px; }
+  .file-pick ~ .file-meta { padding-left: 58px; }
   .plugin-list li { flex-wrap: wrap; }
   /* One swipeable row instead of four wrapped ones above the results. */
   .category-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; scroll-padding: 0 16px; }
