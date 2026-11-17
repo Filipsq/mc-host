@@ -212,12 +212,21 @@ if [ -d mods ] && [ -n "$MODRINTH_VERSION" ] && command -v unzip >/dev/null && c
     done
   done
 fi
+# older A B: version A is below B (build tags after + or - ignored).
+older() { local a=${1%%[+-]*} b=${2%%[+-]*}; [ "$a" != "$b" ] && [ "$(printf '%s\n%s\n' "$a" "$b" | sort -V | head -1)" = "$a" ]; }
 if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/neoforged ] && command -v unzip >/dev/null && command -v jq >/dev/null && command -v curl >/dev/null; then
   have=" " need=" "
+  declare -A ver=() at=() least=()
   for jar in mods/*.jar; do
     meta=$(unzip -p "$jar" fabric.mod.json 2>/dev/null) || continue
     have+="$(jq -r '([.id] + (.provides // [])) | join(" ")' <<<"$meta" 2>/dev/null) "
     need+="$(jq -r '(.depends // {}) | keys | join(" ")' <<<"$meta" 2>/dev/null) "
+    read -r id v < <(jq -r '.id + " " + (.version // "")' <<<"$meta" 2>/dev/null)
+    [ -n "$id" ] && ver[$id]=$v at[$id]=$jar
+    # The lowest version another mod accepts (">=3.1.1"): Prominence II ships Athena 3.0.0 with a Chipped that wants 3.1.1.
+    while read -r dep min; do
+      [ -n "$min" ] && { [ -z "${least[$dep]}" ] || older "${least[$dep]}" "$min"; } && least[$dep]=$min
+    done < <(jq -r '(.depends // {}) | to_entries[] | select(.value | type == "string" and startswith(">=")) | .key + " " + (.value | ltrimstr(">=") | ltrimstr(" "))' <<<"$meta" 2>/dev/null)
   done
   # FTB's own jars have fabric.mod.json files jq can't read, so they're known by name too.
   for jar in mods/*.jar; do
@@ -235,7 +244,15 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
   [[ "$have$need" =~ " "ftbquests" " ]] && need+="ftbquests ftbteams "
   [[ "$have$need" =~ " "ftb(quests|teams|chunks|essentials)" " ]] && need+="ftblibrary "
   for lib in ` + strings.Join(packLibs, " ") + `; do
-    [[ "$need" == *" $lib "* && "$have" != *" $lib "* ]] || continue
+    stale=
+    if [[ "$have" == *" $lib "* ]]; then
+      # There, but older than a mod needs: fetch the newest and drop the old jar.
+      [ -n "${least[$lib]}" ] && [ -n "${ver[$lib]}" ] && [ -n "${at[$lib]}" ] && older "${ver[$lib]}" "${least[$lib]}" || continue
+      stale=${at[$lib]}
+      echo "[mchost] $lib ${ver[$lib]} is older than the ${least[$lib]} a mod needs"
+    else
+      [[ "$need" == *" $lib "* ]] || continue
+    fi
     case $lib in
       ftblibrary|ftbquests|ftbteams)
         # Not on Modrinth; from FTB's own Maven, which numbers versions after Minecraft's: 2001.x is for 1.20.1.
@@ -252,6 +269,7 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
     esac
     if [ -n "$url" ] && curl -fsSL -o "mods/$file" "$url"; then
       echo "[mchost] added mods/$file (needed by the pack's mods)"
+      [ -n "$stale" ] && [ "$stale" != "mods/$file" ] && rm -f "$stale" && echo "[mchost] removed $stale"
       have+="$lib ${lib%-fabric} $lib-fabric "
     else
       [ -n "$file" ] && rm -f "mods/$file"
