@@ -889,7 +889,7 @@ const pl = {
       tooManyPlayers: "Lista może mieć najwyżej 100 graczy",
       applyFailed: "Zapisaliśmy ustawienia, ale nie udało się ich zastosować na serwerze. Spróbuj ponownie za chwilę.",
       worldTooNew:
-        "Świat tego serwera zapisał Minecraft 26 lub nowszy, a starsze wersje (1.x) w ogóle go nie otworzą. Zostaw wersję „Najnowsza” albo zrób nowy świat w zakładce Światy i wybierz tam starszą wersję.",
+        "Świat tego serwera zapisała już nowsza wersja Minecrafta niż ta, którą wybierasz, a starsza wersja go nie otworzy (serwer by się wyłączał). Zostaw tę wersję albo „Najnowsza”, albo zrób nowy świat w zakładce Światy i wybierz tam starszą wersję.",
       curseforgeUnavailable: "CurseForge nie odpowiada, a mody z niego trzeba dobrać do nowej wersji. Spróbuj ponownie za chwilę.",
     },
   },
@@ -1123,7 +1123,7 @@ const pl = {
       oldMap:
         "To bardzo stara mapa (sprzed Minecrafta 1.2), której dzisiejsze serwery nie otworzą. Przerób ją za darmo na chunker.app (wybierz Java Edition i najnowszą wersję) i wgraj wynik.",
       worldTooNew:
-        "Ten świat zapisał Minecraft 26 lub nowszy, a serwer ma starszą wersję (1.x), która go nie otworzy. Zmień wersję w Ustawieniach na „Najnowsza”, a potem włącz ten świat.",
+        "Ten świat zapisała nowsza wersja Minecrafta niż ta ustawiona na serwerze, a starsza go nie otworzy. Zmień wersję w Ustawieniach na „Najnowsza”, a potem włącz ten świat.",
       notOnHost: "Światy będą dostępne, gdy serwer będzie opłacony.",
       unavailable: "Nie udało się wczytać światów. Spróbuj ponownie za chwilę.",
     },
@@ -2189,7 +2189,7 @@ const pl = {
       gone: "Tej zmiany nie da się już cofnąć (minęło za dużo czasu albo była już cofnięta).",
       notOnHost: "Zmianę cofniesz, gdy serwer będzie opłacony.",
       needsPlan: "Poprzednia paczka modów potrzebuje większego planu niż ten, który serwer ma teraz.",
-      worldTooNew: "Poprzedni świat otworzyła już nowsza wersja Minecrafta (26.x), więc nie wróci na starszą.",
+      worldTooNew: "Poprzedni świat otworzyła już nowsza wersja Minecrafta, więc nie wróci na starszą.",
       failed: "Nie udało się cofnąć zmiany. Spróbuj ponownie za chwilę.",
     },
   },

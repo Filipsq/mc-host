@@ -15,6 +15,7 @@ import {
   setPeerRoutes,
   type AgentState,
   type CreateServerSpec,
+  type World,
 } from "./agent";
 import { getServerFor } from "./access";
 import { oversold, pickNode, rankNodes } from "./capacity";
@@ -342,11 +343,32 @@ export function agentSpec(server: Server): CreateServerSpec {
  * 26.1+: it saves the world as it stops, before the new version starts.
  */
 export async function worldTooNew(server: Pick<Server, "id" | "edition" | "version" | "status">, level: string, version: string) {
-  if (server.edition !== "JAVA" || !isPreYearVersion(version)) return false;
+  if (server.edition !== "JAVA" || !RELEASE_NUMBER.test(version)) return false;
   const listed = await listWorlds(server.id, "JAVA").catch(() => null);
   const world = listed?.worlds.find((w) => w.name === level);
-  if (world) return !!world.newGame;
-  return !isPreYearVersion(server.version) && server.status === "RUNNING";
+  if (world) return worldNeedsNewer(world, version);
+  return isPreYearVersion(version) && !isPreYearVersion(server.version) && server.status === "RUNNING";
+}
+
+const RELEASE_NUMBER = /^\d+\.\d+(\.\d+)?$/;
+
+/**
+ * Whether Minecraft `version` is too old to open `world`: 1.x can't open what
+ * 26.1+ saved, and no version opens what a newer one saved (Paper 26.1.2 on a
+ * world 26.3 had played stopped with "chunk saved with newer version of
+ * minecraft", 2026-11-17). "Najnowsza" (LATEST) opens anything.
+ */
+export function worldNeedsNewer(world: Pick<World, "newGame" | "savedBy">, version: string) {
+  if (!RELEASE_NUMBER.test(version)) return false;
+  if (world.newGame && isPreYearVersion(version)) return true;
+  return !!world.savedBy && RELEASE_NUMBER.test(world.savedBy) && compareReleases(version, world.savedBy) < 0;
+}
+
+function compareReleases(a: string, b: string) {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0);
+  return 0;
 }
 
 /** Whether the server is on the game host: paid for (or free) and not suspended. */
