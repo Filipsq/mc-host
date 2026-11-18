@@ -1,0 +1,70 @@
+[
+  {
+    "key": "adres",
+    "path": "",
+    "highlight": "text=Zmień adres",
+    "box": ".card:has-text('Adres')",
+    "title": "Adres serwera do wpisania w Minecrafcie (Przegląd)",
+    "when": "jak dołączyć, jaki jest adres/IP serwera, jak zmienić adres"
+  },
+  {
+    "key": "uruchom",
+    "path": "",
+    "highlight": "button:has-text('Uruchom'), button:has-text('Zatrzymaj')",
+    "title": "Przycisk Uruchom / Zatrzymaj (góra panelu)",
+    "when": "jak włączyć, wyłączyć albo zrestartować serwer"
+  },
+  {
+    "key": "typ-serwera",
+    "path": "settings",
+    "highlight": "text=Zmień typ",
+    "box": ".card:has-text('Typ serwera')",
+    "title": "Ustawienia > Typ serwera > Zmień typ",
+    "when": "jak przejść na mody, paczkę modów, Skyblock, OneBlock albo z powrotem na zwykły serwer"
+  },
+  {
+    "key": "wersja",
+    "path": "settings",
+    "highlight": "select:near(:text('Wersja Minecrafta'))",
+    "title": "Ustawienia > Wersja Minecrafta",
+    "when": "jak zmienić wersję gry, outdated server/client"
+  },
+  {
+    "key": "pluginy",
+    "path": "plugins",
+    "highlight": "input[placeholder*='essentials']",
+    "hide": [
+      ".notice"
+    ],
+    "title": "Pluginy > wyszukiwarka",
+    "when": "jak dodać plugin (EssentialsX, WorldEdit, AuthMe itd.)"
+  },
+  {
+    "key": "konsola",
+    "path": "console",
+    "highlight": "input[placeholder*='komend'], textarea[placeholder*='komend']",
+    "title": "Konsola > pole na komendy",
+    "when": "gdzie wpisać komendę (op, gamemode, whitelist add), gdzie są logi"
+  },
+  {
+    "key": "pliki",
+    "path": "files",
+    "highlight": "text=Wgraj pliki",
+    "title": "Pliki > Wgraj pliki",
+    "when": "jak wgrać albo edytować pliki, configi, jary"
+  },
+  {
+    "key": "swiaty",
+    "path": "worlds",
+    "highlight": "text=Wgraj świat",
+    "title": "Światy > Wgraj świat",
+    "when": "jak wgrać swoją mapę/świat, nowy świat z ziarnem"
+  },
+  {
+    "key": "platnosci",
+    "path": "billing",
+    "highlight": "text=Ulepsz serwer",
+    "title": "Plan i płatności (przedłużanie, ulepszenie, automatyczne odnawianie)",
+    "when": "jak przedłużyć, opłacić, ulepszyć plan, do kiedy jest opłacony"
+  }
+]
