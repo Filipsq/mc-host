@@ -1030,6 +1030,69 @@ button.th-sort:focus-visible { outline: 2px solid var(--accent); outline-offset:
 /* On phones the recent-days tables keep only their labels, so the numbers fit. */
 @media (max-width: 600px) { .admin .activity-hint { display: none; } }
 
+/* Admin overview: compact. Small number tiles in one row, short tables, rare things folded away. */
+.admin .stack.tight, .admin .fold-body.stack.tight { gap: 8px; }
+.overview { display: flex; flex-direction: column; gap: 18px; }
+.overview h2 { font-size: 1.05rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.kpis.skeleton { min-height: 74px; border-radius: var(--radius); background: var(--surface); opacity: 0.5; }
+.kpi.card { display: flex; flex-direction: column; gap: 3px; padding: 10px 12px; min-width: 0; color: inherit; text-decoration: none; }
+a.kpi.card:hover { border-color: var(--border-strong); }
+a.kpi.card:hover .kpi-label { color: var(--fg); }
+.kpi-label { color: var(--muted); font-size: 0.76rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi-value { font-size: 1.2rem; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.kpi-value.good { color: var(--accent-strong); }
+.kpi-value.warn { color: var(--amber); }
+.kpi-value.bad { color: var(--error); }
+.kpi-hint { color: var(--muted); font-size: 0.74rem; line-height: 1.3; }
+.kpi .meter { height: 5px; margin-top: 2px; }
+.has-hint { text-decoration: underline dotted var(--border-strong); text-underline-offset: 3px; cursor: help; }
+.overview-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (min-width: 1100px) { .overview-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+.kpi-value.long { font-size: 0.95rem; }
+.admin-table td.fit, .admin-table th.fit { width: 1%; white-space: nowrap; }
+.admin .admin-table.compact { font-size: 0.84rem; min-width: 0; }
+.admin-table.compact th, .admin-table.compact td { padding: 5px 10px; }
+.admin-table.compact thead + tbody + thead th { border-top: 1px solid var(--border-strong); padding-top: 9px; }
+.admin-table.compact tr.sum-row td { background: var(--surface-2); }
+.admin-table.machines .machine-cell { min-width: 96px; gap: 3px; }
+.admin-table.machines .meter { height: 5px; }
+.admin .admin-table.machines { min-width: 620px; }
+.admin .attention-scroll { max-height: 260px; }
+.admin .table-scroll.short { max-height: 280px; }
+.all-good { margin: 0; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--accent-soft); color: var(--accent-strong); font-weight: 600; font-size: 0.9rem; }
+.overview .chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.overview .chips .chip { font-size: 0.76rem; padding: 2px 8px; text-decoration: none; font-weight: 600; }
+.chip.bad, .adot.bad { color: var(--error); border-color: var(--error); }
+.chip.warn, .adot.warn { color: var(--amber); border-color: var(--amber); }
+.adot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; color: var(--muted); }
+.fold { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 6px 12px; flex-wrap: wrap; padding: 10px 14px; font-weight: 700; font-size: 0.95rem; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: "▸"; color: var(--muted); }
+.fold[open] > summary::before { content: "▾"; }
+.fold-extra { color: var(--muted); font-weight: 500; font-size: 0.84rem; }
+.fold-extra .good { color: var(--accent-strong); }
+.fold-extra .over { color: var(--error); }
+.fold-body { padding: 0 14px 14px; }
+.fold-body > .card:not(.flush) { padding: 12px 14px; }
+.overview-cols .fold { background: none; border: 0; }
+.overview-cols .fold > summary { padding: 4px 0; font-size: 0.88rem; }
+.fold .signup-tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; align-items: start; }
+.loading-line { display: flex; align-items: center; gap: 8px; margin: 0; }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-strong); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+.admin-table.costs .cost-input input { padding: 5px 8px; }
+.admin-table.costs .cost-input select { padding: 5px 8px; }
+
+/* Admin server and user pages: details in a tight grid, the actions side by side instead of one box each. */
+.admin .details.tight { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 16px; }
+.admin .details.tight dt { font-size: 0.76rem; }
+.admin .details.tight dd { font-size: 0.9rem; }
+.admin-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 10px; align-items: start; }
+.admin-actions > .card { padding: 12px 14px; gap: 8px; }
+.admin-actions > .card h3 { font-size: 0.95rem; }
+.admin-actions > .card p { font-size: 0.8rem; }
+
 /* Signed in, the top bar holds three buttons, so the page links and some labels go sooner. */
 @media (max-width: 1080px) { .signed-in .topnav { display: none; } }
 @media (max-width: 800px) { .hide-tablet { display: none; } }

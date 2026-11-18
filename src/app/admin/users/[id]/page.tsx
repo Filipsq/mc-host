@@ -66,9 +66,8 @@ export default async function AdminUser({ params }: Props) {
           </Link>
         </div>
       </header>
-      <section className="card stack">
-        <h3>{t.details}</h3>
-        <dl className="details">
+      <section className="card stack tight">
+        <dl className="details tight">
           {details.map(([label, value]) => (
             <div key={label}>
               <dt>{label}</dt>
@@ -79,22 +78,22 @@ export default async function AdminUser({ params }: Props) {
       </section>
       {user.deletedAt && <p className="notice warn">{format(td.deletedNote, { date: f.dateTime(user.deletedAt) })}</p>}
       {!user.deletedAt && (
-      <>
-      <section className="card stack">
-        <h3>{t.createFor.title}</h3>
-        <p className="muted">{t.createFor.hint}</p>
-        <div className="row">
-          <Link className="button small" href={`/dashboard/new?dla=${user.id}`}>
-            <Plus size={16} aria-hidden /> {t.createFor.open}
-          </Link>
+        <div className="admin-actions">
+          <section className="card stack">
+            <h3>{t.createFor.title}</h3>
+            <p className="muted small">{t.createFor.hint}</p>
+            <div className="row">
+              <Link className="button small" href={`/dashboard/new?dla=${user.id}`}>
+                <Plus size={16} aria-hidden /> {t.createFor.open}
+              </Link>
+            </div>
+          </section>
+          <section className="card stack">
+            <h3>{t.resetLink.title}</h3>
+            <p className="muted small">{format(t.resetLink.hint, { hours: ADMIN_LINK_HOURS })}</p>
+            <ResetLink userId={user.id} t={t.resetLink} />
+          </section>
         </div>
-      </section>
-      <section className="card stack">
-        <h3>{t.resetLink.title}</h3>
-        <p className="muted">{format(t.resetLink.hint, { hours: ADMIN_LINK_HOURS })}</p>
-        <ResetLink userId={user.id} t={t.resetLink} />
-      </section>
-      </>
       )}
       <section className="stack">
         <h3>{t.nav.servers}</h3>
@@ -105,8 +104,9 @@ export default async function AdminUser({ params }: Props) {
         <PaymentTable rows={user.payments} all={all} f={f} showUser={false} />
       </section>
       {!user.deletedAt && !user.admin && (
-        <section className="card stack danger-zone">
-          <h3>{td.title}</h3>
+        <details className="fold danger-zone">
+          <summary>{td.title}</summary>
+          <div className="fold-body stack tight">
           <p className="muted">{td.adminHint}</p>
           <DeleteAccountForm
             action={deleteAccountAdminAction.bind(null, user.id)}
@@ -116,7 +116,8 @@ export default async function AdminUser({ params }: Props) {
             needsPassword={false}
             t={td}
           />
-        </section>
+          </div>
+        </details>
       )}
     </>
   );

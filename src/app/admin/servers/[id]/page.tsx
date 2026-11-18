@@ -79,21 +79,20 @@ export default async function AdminServer({ params }: Props) {
     <>
       <Link className="back" href="/admin/servers">← {t.nav.servers}</Link>
       <header className="page-head">
-        <div>
+        <div className="row">
           <h2>{server.name}</h2>
+          <span className={`badge ${live}`}>{all.server.live[live]}</span>
         </div>
-        <span className={`badge ${live}`}>{all.server.live[live]}</span>
+        <div className="row">
+          <Link className="button small" href={`/dashboard/servers/${server.id}`}>
+            {t.openPanel}
+          </Link>
+          <CopyForClaude target={{ serverId: server.id }} t={t.copyForClaude} />
+        </div>
       </header>
-      <div className="row">
-        <Link className="button" href={`/dashboard/servers/${server.id}`}>
-          {t.openPanel}
-        </Link>
-        <CopyForClaude target={{ serverId: server.id }} t={t.copyForClaude} />
-      </div>
 
-      <section className="card stack">
-        <h3>{t.details}</h3>
-        <dl className="details">
+      <section className="card stack tight">
+        <dl className="details tight">
           {details.map(([label, value]) => (
             <div key={label}>
               <dt>{label}</dt>
@@ -103,40 +102,42 @@ export default async function AdminServer({ params }: Props) {
         </dl>
       </section>
 
-      {server.plan !== "FREE" && (
-        <section className="card stack">
-          <h3>{t.gift.title}</h3>
-          <p className="muted small">{t.gift.hint}</p>
-          <GiftForm id={server.id} t={t.gift} />
-        </section>
-      )}
-
-      {(server.edition === "JAVA" || server.edition === "BEDROCK") && (
-        <section className="card stack">
-          <h3>{t.slots.title}</h3>
-          <p className="muted small">{t.slots.hint}</p>
-          <SlotsForm id={server.id} slots={server.playerSlots} t={t.slots} />
-        </section>
-      )}
-
-      {otherNodes.length > 0 && server.status !== "AWAITING_PAYMENT" && (
-        <section className="card stack">
-          <h3>{t.move.title}</h3>
-          <p className="muted small">{t.move.hint}</p>
-          <MoveForm id={server.id} nodes={otherNodes} t={t.move} />
-        </section>
-      )}
+      <div className="admin-actions">
+        {server.plan !== "FREE" && (
+          <section className="card stack">
+            <h3>{t.gift.title}</h3>
+            <p className="muted small">{t.gift.hint}</p>
+            <GiftForm id={server.id} t={t.gift} />
+          </section>
+        )}
+        {(server.edition === "JAVA" || server.edition === "BEDROCK") && (
+          <section className="card stack">
+            <h3>{t.slots.title}</h3>
+            <p className="muted small">{t.slots.hint}</p>
+            <SlotsForm id={server.id} slots={server.playerSlots} t={t.slots} />
+          </section>
+        )}
+        {otherNodes.length > 0 && server.status !== "AWAITING_PAYMENT" && (
+          <section className="card stack">
+            <h3>{t.move.title}</h3>
+            <p className="muted small">{t.move.hint}</p>
+            <MoveForm id={server.id} nodes={otherNodes} t={t.move} />
+          </section>
+        )}
+      </div>
 
       <section className="stack">
         <h3>{t.payments}</h3>
         <PaymentTable rows={server.payments} all={all} f={f} showServer={false} />
       </section>
 
-      <section className="card stack">
-        <h3>{t.remove.title}</h3>
-        <p className="muted small">{t.remove.hint}</p>
-        <DeleteButton id={server.id} name={server.name} t={t.remove} />
-      </section>
+      <details className="fold">
+        <summary>{t.remove.title}</summary>
+        <div className="fold-body stack tight">
+          <p className="muted small">{t.remove.hint}</p>
+          <DeleteButton id={server.id} name={server.name} t={t.remove} />
+        </div>
+      </details>
     </>
   );
 }

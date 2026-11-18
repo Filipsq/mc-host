@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { cache, Suspense } from "react";
 import type { Server, ServerStatus } from "@prisma/client";
 import { requireAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { heldMemoryMb, memoryLimitMb, overbook, overbookOf, salesLimitMb } from "@/lib/capacity";
+import { heldMemoryMb, overbook, overbookOf } from "@/lib/capacity";
 import { nodeById, nodes } from "@/lib/nodes";
 import { nbpRates, toPln } from "@/lib/exchange";
 import { saveMachineCostsAction } from "./actions";
@@ -22,107 +23,464 @@ const DAY = 24 * 60 * 60 * 1000;
 const VAT = 0.23;
 const ON_HOST: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
+// The overview is cut into parts that load on their own: what comes from our database shows at once,
+// and the parts that ask the game machines (or NBP) fill in when they answer, instead of the whole page
+// waiting for the slowest machine. Each part asks for what it needs; cache() makes one request ask once.
+const now = cache(() => new Date());
+const allServers = cache(() => db.server.findMany({ orderBy: { createdAt: "desc" } }));
+const recentActivity = cache(() => activity(now()));
+const signupDates = cache(() =>
+  db.user.findMany({ where: { createdAt: { gte: signupsSince(now()) } }, select: { createdAt: true } }).then((rows) => rows.map((u) => u.createdAt)),
+);
+const paidLast31 = cache(() =>
+  db.payment.findMany({
+    where: { status: "PAID", paidAt: { gte: new Date(now().getTime() - 31 * DAY) } },
+    select: { amount: true, currency: true, paidAt: true, stripeSessionId: true },
+  }),
+);
+const texts = cache(async () => {
+  const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
+  return { all, t: all.admin, f: formats(locale), locale };
+});
+
 export default async function AdminOverview() {
   await requireAdmin();
-  const now = new Date();
-  const [all, { locale }, stats, users, newUsers, joined, servers, paid, pending, ai, costs, rates, recent] = await Promise.all([
-    getMessages(),
-    getPreferences(),
-    machineStats(),
-    db.user.count(),
-    db.user.count({ where: { createdAt: { gte: new Date(now.getTime() - 7 * DAY) } } }),
-    db.user.findMany({ where: { createdAt: { gte: signupsSince(now) } }, select: { createdAt: true } }),
-    db.server.findMany({ orderBy: { createdAt: "desc" } }),
-    db.payment.findMany({
-      where: { status: "PAID", paidAt: { gte: new Date(now.getTime() - 31 * DAY) } },
-      select: { amount: true, currency: true, paidAt: true, stripeSessionId: true },
-    }),
-    // Checkouts started but not paid yet: open ones and BLIK/Przelewy24 still being confirmed.
-    db.payment.findMany({
-      where: { status: "PENDING", createdAt: { gte: new Date(now.getTime() - 30 * DAY) } },
-      select: { amount: true, currency: true, stripeSessionId: true },
-    }),
-    aiUsageThisMonth(),
-    db.machineCost.findMany(),
-    nbpRates(),
-    activity(now),
-  ]);
-  const t = all.admin;
-  const f = formats(locale);
+  const { t } = await texts();
+  const o = t.overview;
+  return (
+    <div className="overview">
+      <Suspense fallback={<Loading text={o.checking} />}>
+        <Attention />
+      </Suspense>
+
+      <Suspense fallback={<div className="kpis skeleton" />}>
+        <Numbers />
+      </Suspense>
+
+      <div className="overview-cols">
+        <section className="stack">
+          <h2>{t.activity.title}</h2>
+          <Suspense fallback={<Loading text={o.loading} />}>
+            <Activity />
+          </Suspense>
+        </section>
+        <section className="stack">
+          <h2>{o.machines}</h2>
+          <Suspense fallback={<Loading text={o.checking} />}>
+            <Machines />
+          </Suspense>
+        </section>
+      </div>
+
+      <Suspense fallback={<Fold title={t.signups} />}>
+        <Signups />
+      </Suspense>
+      <Suspense fallback={<Fold title={t.costs.title} />}>
+        <Costs />
+      </Suspense>
+      <details className="fold">
+        <summary>{o.tools}</summary>
+        <div className="fold-body">
+          <RebuildBedrock t={t.bedrockRebuild} />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+/** Crashed, over disk, stuck, ending and suspended servers in one short table; empty is a single green line. */
+async function Attention() {
+  const [{ all, t, f }, servers, stats] = await Promise.all([texts(), allServers(), machineStats()]);
   const live = liveStates(servers, stats);
-
-  const sold = servers.reduce((sum, s) => sum + heldMemoryMb(s), 0);
-  const online = servers.filter((s) => ["online", "starting", "restarting"].includes(live[s.id].state)).length;
-  // Admins' test servers aren't sales, so they're counted on their own.
-  const tests = servers.filter((s) => s.adminTest).length;
-  const byPlan = (["FREE", "STARTER", "STANDARD", "PRO", "MAX"] as const).map((plan) => ({
-    plan,
-    n: servers.filter((s) => s.plan === plan && !s.adminTest).length,
-  }));
-  // Test payments took no money, so they never count as revenue.
-  const last30All = paid.filter((p) => p.paidAt! >= new Date(now.getTime() - 30 * DAY));
-  const last30 = last30All.filter((p) => !isTestPayment(p));
-  const tests30 = last30All.filter(isTestPayment);
-  const thisMonth = paid.filter((p) => !isTestPayment(p) && p.paidAt! >= monthStart(now));
-  const waiting = pending.filter((p) => !isTestPayment(p));
-
-  // Costs: each machine's monthly price (net) in złoty at today's NBP rate, against the last 30 days' sales without VAT.
-  const machines = nodes().map((n) => {
-    const cost = costs.find((c) => c.node === n.id);
-    return { id: n.id, cost, pln: cost ? toPln(cost.amount, cost.currency, rates) : null };
-  });
-  const costPln = machines.reduce((sum, m) => sum + (m.pln ?? 0), 0);
-  const costMissing = machines.some((m) => m.cost && m.pln === null);
-  const revenueGross = last30.map((p) => toPln(p.amount, p.currency, rates));
-  const revenueNet = Math.round(revenueGross.reduce<number>((sum, v) => sum + (v ?? 0), 0) / (1 + VAT));
-  const profit = revenueNet - costPln;
-  const zl = (minor: number) => f.money(minor, "PLN");
-  const a = t.activity;
-  const activityRows = [
-    { label: a.signups, counts: countSince(joined.map((u) => u.createdAt), recent.since) },
-    { label: a.newFree, counts: recent.newFree, hint: a.newFreeHint },
-    { label: a.newPaying, counts: recent.newPaying, hint: a.newPayingHint },
-    { label: a.payments, counts: recent.payments },
-  ];
-
+  const at = now().getTime();
   const crashed = servers.filter((s) => live[s.id].state === "crashed");
   const overDisk = servers.filter((s) => (live[s.id].diskMb ?? 0) > diskLimitMb(s));
-  const stuck = servers.filter((s) => s.status === "PROVISIONING" && s.updatedAt.getTime() < now.getTime() - 10 * 60_000);
+  const stuck = servers.filter((s) => s.status === "PROVISIONING" && s.updatedAt.getTime() < at - 10 * 60_000);
   const ending = servers
-    .filter((s) => s.plan !== "FREE" && ON_HOST.includes(s.status) && s.paidUntil && s.paidUntil.getTime() < now.getTime() + 3 * DAY)
+    .filter((s) => s.plan !== "FREE" && ON_HOST.includes(s.status) && s.paidUntil && s.paidUntil.getTime() < at + 3 * DAY)
     .sort((a, b) => a.paidUntil!.getTime() - b.paidUntil!.getTime());
   const suspended = servers
     .filter((s) => s.status === "SUSPENDED")
     .sort((a, b) => (a.paidUntil?.getTime() ?? 0) - (b.paidUntil?.getTime() ?? 0));
-  const groups: { title: string; rows: Server[]; note?: (s: Server) => string; hint?: string }[] = [
-    { title: t.crashed, rows: crashed },
+  type Group = { title: string; rows: Server[]; level: "bad" | "warn" | "info"; note?: (s: Server) => string; hint?: string };
+  const groups = ([
+    { title: t.crashed, rows: crashed, level: "bad" },
     {
       title: t.overDisk,
       rows: overDisk,
+      level: "bad",
       note: (s) => `${f.size(live[s.id].diskMb ?? 0)} / ${f.size(diskLimitMb(s))}`,
       hint: t.overDiskHint,
     },
-    { title: t.stuck, rows: stuck, hint: t.stuckHint },
-    { title: t.ending, rows: ending, note: (s) => format(t.endsOn, { date: f.dateTime(s.paidUntil!) }) },
+    { title: t.stuck, rows: stuck, level: "bad", hint: t.stuckHint },
+    { title: t.ending, rows: ending, level: "warn", note: (s) => format(t.endsOn, { date: f.dateTime(s.paidUntil!) }) },
     {
       title: t.suspendedList,
       rows: suspended,
+      level: "info",
       note: (s) =>
-        [s.paidUntil && format(t.suspendedSince, { date: f.date(s.paidUntil) }), format(t.deletesOn, { date: f.date(deletionDate(s, now)) })]
+        [s.paidUntil && format(t.suspendedSince, { date: f.date(s.paidUntil) }), format(t.deletesOn, { date: f.date(deletionDate(s, now())) })]
           .filter(Boolean)
           .join(" · "),
     },
+  ] satisfies Group[] as Group[]).filter((g) => g.rows.length > 0);
+
+  if (groups.length === 0) {
+    return (
+      <p className="all-good">
+        <span aria-hidden>✓</span> {t.attention}: {t.allGood}
+        {!stats && <span className="over"> {t.agentDown}</span>}
+      </p>
+    );
+  }
+  return (
+    <section className="stack tight">
+      <h2>
+        {t.attention}
+        <span className="chips">
+          {groups.map((g) => (
+            <a key={g.title} href={`#uwaga-${groups.indexOf(g)}`} className={`chip ${g.level}`} title={g.hint}>
+              {g.title}: {g.rows.length}
+            </a>
+          ))}
+        </span>
+      </h2>
+      {!stats && <p className="notice warn">{t.agentDown}</p>}
+      <div className="table-scroll card flush attention-scroll">
+        <table className="admin-table compact">
+          <tbody>
+            {groups.map((g, gi) =>
+              g.rows.map((s, i) => (
+                <tr key={`${gi}-${s.id}`} id={i === 0 ? `uwaga-${gi}` : undefined}>
+                  <td className="fit">
+                    <span className={`adot ${g.level}`} aria-hidden /> <span title={g.hint}>{g.title}</span>
+                  </td>
+                  <td className="fit">
+                    <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
+                  </td>
+                  <td className="muted fit">{all.plans[s.plan]}</td>
+                  <td className="muted">{g.note?.(s)}</td>
+                </tr>
+              )),
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/** The key numbers as one row of small tiles. Only our database, so it shows at once. */
+async function Numbers() {
+  const [{ all, t, f, locale }, users, newUsers, servers, paid, pending, ai, recent] = await Promise.all([
+    texts(),
+    db.user.count(),
+    db.user.count({ where: { createdAt: { gte: new Date(now().getTime() - 7 * DAY) } } }),
+    allServers(),
+    paidLast31(),
+    // Checkouts started but not paid yet: open ones and BLIK/Przelewy24 still being confirmed.
+    db.payment.findMany({
+      where: { status: "PENDING", createdAt: { gte: new Date(now().getTime() - 30 * DAY) } },
+      select: { amount: true, currency: true, stripeSessionId: true },
+    }),
+    aiUsageThisMonth(),
+    recentActivity(),
+  ]);
+  const o = t.overview;
+  // Admins' test servers aren't sales, so they're counted on their own.
+  const tests = servers.filter((s) => s.adminTest).length;
+  const byPlan = (["FREE", "STARTER", "STANDARD", "PRO", "MAX"] as const)
+    .map((plan) => ({ plan, n: servers.filter((s) => s.plan === plan && !s.adminTest).length }))
+    .filter((p) => p.n > 0);
+  // Test payments took no money, so they never count as revenue.
+  const last30All = paid.filter((p) => p.paidAt! >= new Date(now().getTime() - 30 * DAY));
+  const last30 = last30All.filter((p) => !isTestPayment(p));
+  const tests30 = last30All.filter(isTestPayment);
+  const thisMonth = paid.filter((p) => !isTestPayment(p) && p.paidAt! >= monthStart(now()));
+  const waiting = pending.filter((p) => !isTestPayment(p));
+  const usd = new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(ai.usd);
+
+  return (
+    <div className="kpis">
+      <Kpi label={t.users} href="/admin/users" value={String(users)} hint={format(o.newIn7, { n: newUsers })} />
+      <Kpi
+        label={t.activity.paying}
+        value={String(recent.paying)}
+        hint={format(o.share, { share: users ? f.number((recent.paying / users) * 100) : "0" })}
+        title={t.activity.payingHint.replace(/\s*\(.*\)/, "")}
+      />
+      <Kpi
+        label={t.serversTotal}
+        href="/admin/servers"
+        value={String(servers.length)}
+        hint={[...byPlan.map((p) => `${all.plans[p.plan]} ${p.n}`), tests ? format(t.testServers, { n: tests }) : ""].filter(Boolean).join(" · ")}
+      />
+      <Kpi
+        label={t.revenue30}
+        href="/admin/payments?status=PAID"
+        value={f.totals(last30) || t.none}
+        hint={format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}
+        title={tests30.length > 0 ? format(t.revenueTests, { amount: f.totals(tests30) }) : undefined}
+        tone="good"
+      />
+      <Kpi
+        label={format(t.revenuePending, { n: waiting.length })}
+        href="/admin/payments?status=PENDING"
+        value={f.totals(waiting) || t.none}
+        title={t.revenuePendingHint}
+        tone={waiting.length > 0 ? "warn" : undefined}
+      />
+      <Kpi
+        label={t.aiUsage}
+        value={aiEnabled() || ai.calls > 0 ? format(t.aiValue, { n: ai.calls, limit: ai.limit }) : t.aiOff}
+        share={aiEnabled() ? ai.calls / ai.limit : undefined}
+        hint={usd}
+        title={t.aiCost.replace("{usd}", usd)}
+      />
+    </div>
+  );
+}
+
+/** Sign-ups, new servers, payments and refusals today / 7 / 30 days, plus the last refusals folded away. */
+async function Activity() {
+  const [{ all, t, f }, joined, recent] = await Promise.all([texts(), signupDates(), recentActivity()]);
+  const a = t.activity;
+  const rows = [
+    { label: a.signups, counts: countSince(joined, recent.since) },
+    { label: a.newFree, counts: recent.newFree, hint: a.newFreeHint },
+    { label: a.newPaying, counts: recent.newPaying, hint: a.newPayingHint },
+    { label: a.payments, counts: recent.payments },
   ];
-  const attention = groups.filter((group) => group.rows.length > 0);
-  const signups = signupBuckets(joined.map((u) => u.createdAt), now);
+  return (
+    <>
+      <div className="card flush">
+        <table className="admin-table compact">
+          <thead>
+            <tr>
+              <th>{a.traffic}</th>
+              <th className="num">{a.today}</th>
+              <th className="num">{a.days7}</th>
+              <th className="num">{a.days30}</th>
+              <th className="num" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label}>
+                <td>
+                  <span className={row.hint ? "has-hint" : undefined} title={row.hint}>
+                    {row.label}
+                  </span>
+                </td>
+                {row.counts.map((n, i) => (
+                  <td key={i} className="num">
+                    {i === 0 ? <strong>{n}</strong> : n}
+                  </td>
+                ))}
+                <td />
+              </tr>
+            ))}
+          </tbody>
+          <thead>
+            <tr>
+              <th>
+                <span className="has-hint" title={a.refusalsHint}>
+                  {a.refusals}
+                </span>
+              </th>
+              <th className="num">{a.today}</th>
+              <th className="num">{a.days7}</th>
+              <th className="num">{a.days30}</th>
+              <th className="num" title={a.people}>
+                {t.overview.people}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {REFUSAL_KINDS.map((kind) => {
+              const row = recent.refusals[kind];
+              return (
+                <tr key={kind}>
+                  <td>
+                    <span className="has-hint" title={a.kindHints[kind]}>
+                      {a.kinds[kind]}
+                    </span>
+                  </td>
+                  {row.counts.map((n, i) => (
+                    <td key={i} className={`num${n > 0 && kind !== "startFailed" && kind !== "createFailed" ? " over" : ""}`}>
+                      {i === 0 ? <strong>{n}</strong> : n}
+                    </td>
+                  ))}
+                  <td className="num">{row.people}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      {recent.recent.length > 0 && (
+        <details className="fold">
+          <summary>
+            {a.recent} <span className="muted">({recent.recent.length})</span>
+          </summary>
+          <div className="table-scroll card flush">
+            <table className="admin-table compact">
+              <tbody>
+                {recent.recent.map((r) => (
+                  <tr key={r.id}>
+                    <td className="nowrap muted">{f.dateTime(r.createdAt)}</td>
+                    <td>{a.kinds[r.kind] ?? r.kind}</td>
+                    <td>
+                      {r.userId && (
+                        <Link className="email" href={`/admin/users/${r.userId}`}>
+                          {r.email ?? r.userId}
+                        </Link>
+                      )}
+                    </td>
+                    <td className="muted nowrap">
+                      {[all.plans[r.plan], r.node].filter(Boolean).join(" · ")}
+                      {r.serverId && (
+                        <>
+                          {" · "}
+                          <Link href={`/admin/servers/${r.serverId}`}>{a.server}</Link>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
+    </>
+  );
+}
+
+/** One row per machine (and a total on top): sold memory, real RAM, disk, CPU and how many servers run there. */
+async function Machines() {
+  const [{ t, f }, servers, stats] = await Promise.all([texts(), allServers(), machineStats()]);
+  if (!stats) return <p className="notice warn">{t.agentDown}</p>;
+  const o = t.overview;
+  const live = liveStates(servers, stats);
+  const running = (s: Server) => ["online", "starting", "restarting"].includes(live[s.id].state);
+  const rows = stats.machines.map((m) => {
+    const node = nodeById(m.id);
+    const here = servers.filter((s) => nodeById(s.node).id === m.id);
+    return {
+      id: m.id,
+      href: `/admin/servers?node=${encodeURIComponent(m.id)}`,
+      arch: node.arch,
+      host: m.host,
+      sold: here.reduce((sum, s) => sum + heldMemoryMb(s), 0),
+      limit: Math.floor(node.memoryLimitMb * overbookOf(node)),
+      servers: here.length,
+      online: here.filter(running).length,
+    };
+  });
+  const total =
+    rows.length > 1
+      ? {
+          id: o.total,
+          href: "/admin/servers",
+          arch: undefined,
+          host: stats.host,
+          sold: rows.reduce((sum, r) => sum + r.sold, 0),
+          limit: rows.reduce((sum, r) => sum + r.limit, 0),
+          servers: servers.length,
+          online: servers.filter(running).length,
+        }
+      : null;
+  const soldHint = overbook() > 1 ? format(o.overbookShort, { factor: f.number(overbook()) }) : t.heldHint;
+
+  return (
+    <div className="table-scroll card flush">
+      <table className="admin-table compact machines">
+        <thead>
+          <tr>
+            <th>{t.machine}</th>
+            <th>
+              <span className="has-hint" title={soldHint}>
+                {o.sold}
+              </span>
+            </th>
+            <th>{o.ram}</th>
+            <th>{t.disk}</th>
+            <th>
+              <span className="has-hint" title={t.loadHint}>
+                {o.cpu}
+              </span>
+            </th>
+            <th className="num">{o.running}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...(total ? [total] : []), ...rows].map((r) => {
+            const h = r.host;
+            return (
+              <tr key={r.id} className={r === total ? "sum-row" : undefined}>
+                <td className="nowrap">
+                  <Link href={r.href}>
+                    <strong>{r.id}</strong>
+                  </Link>
+                  {h && (
+                    <span className="muted small">
+                      {" "}
+                      {[r.arch && (r.arch === "arm64" ? "Arm" : "x86"), format(o.cores, { cpus: h.cpus })].filter(Boolean).join(" · ")}
+                    </span>
+                  )}
+                </td>
+                <td>
+                  <Cell value={r.limit > 0 ? `${f.gb(r.sold)} / ${f.gb(r.limit)}` : f.gb(r.sold)} share={r.limit > 0 ? r.sold / r.limit : undefined} />
+                </td>
+                {h ? (
+                  <>
+                    <td>
+                      <Cell
+                        value={`${f.gb(h.memoryTotalMb - h.memoryAvailableMb)} / ${f.gb(h.memoryTotalMb)}`}
+                        share={1 - h.memoryAvailableMb / h.memoryTotalMb}
+                      />
+                    </td>
+                    <td>
+                      <Cell
+                        value={`${f.gb(h.diskTotalMb - h.diskFreeMb)} / ${f.gb(h.diskTotalMb)}`}
+                        share={h.diskTotalMb > 0 ? 1 - h.diskFreeMb / h.diskTotalMb : undefined}
+                      />
+                    </td>
+                    <td>
+                      <Cell value={`${h.load.map(f.number).join(" · ")}`} share={h.load[1] / h.cpus} />
+                    </td>
+                  </>
+                ) : (
+                  <td colSpan={3} className="over">
+                    {t.machineDown}
+                  </td>
+                )}
+                <td className="num nowrap">
+                  <strong>{r.online}</strong> <span className="muted">/ {r.servers}</span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** New accounts per day, week and month, folded away; the header still shows today's count. */
+async function Signups() {
+  const [{ t, locale }, joined] = await Promise.all([texts(), signupDates()]);
+  const n = now();
+  const signups = signupBuckets(joined, n);
   // Rows from before the first account ever are always 0, so they go; each bucket ends where the newer one above starts.
-  const first = Math.min(...joined.map((u) => u.createdAt.getTime()));
+  const first = Math.min(...joined.map((d) => d.getTime()));
   const sinceStart = (rows: Bucket[]) => rows.filter((_, i) => i === 0 || rows[i - 1].start.getTime() > first);
   const utc = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" });
   const dayLabel = utc({ weekday: "short", day: "numeric", month: "short" });
   const shortDay = utc({ day: "numeric", month: "short" });
   const monthLabel = utc({ month: "long", year: "numeric" });
-  const signupTables = [
+  const tables = [
     { title: t.signupsDaily, rows: sinceStart(signups.days), label: (b: Bucket, i: number) => (i === 0 ? t.signupsToday : dayLabel.format(b.start)) },
     {
       title: t.signupsWeekly,
@@ -132,405 +490,182 @@ export default async function AdminOverview() {
     },
     { title: t.signupsMonthly, rows: sinceStart(signups.months), label: (b: Bucket, i: number) => (i === 0 ? t.signupsThisMonth : monthLabel.format(b.start)) },
   ];
-
   return (
-    <>
-      <section className="stack">
-        <h2>{t.attention}</h2>
-        {attention.length === 0 ? (
-          <p className="muted">{t.allGood}</p>
-        ) : (
-          attention.map((group) => (
-            <div key={group.title} className="card stack">
-              <h3>
-                {group.title} <span className="muted">({group.rows.length})</span>
-              </h3>
-              {group.hint && <p className="muted small">{group.hint}</p>}
-              <ul className="attention-list">
-                {group.rows.map((s) => (
-                  <li key={s.id}>
-                    <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
-                    <span className="muted small">
-                      {[all.plans[s.plan], group.note?.(s)].filter(Boolean).join(" · ")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
-        )}
-      </section>
-      <section className="stack">
-        <h2>{t.numbers}</h2>
-        <div className="admin-grid">
-          <Tile label={t.users} value={String(users)} hint={format(t.usersNew, { n: newUsers })} href="/admin/users" />
-          <Tile
-            label={a.paying}
-            value={String(recent.paying)}
-            hint={format(a.payingHint, { share: users ? f.number((recent.paying / users) * 100) : "0" })}
-          />
-          <Tile
-            label={t.serversTotal}
-            value={String(servers.length)}
-            hint={[stats ? format(t.serversOnline, { n: online }) : "", ...byPlan.map((p) => `${all.plans[p.plan]}: ${p.n}`), tests ? format(t.testServers, { n: tests }) : ""]
-              .filter(Boolean)
-              .join(" · ")}
-            href="/admin/servers"
-          />
-          <div className="card stat">
-            <p className="stat-label">
-              <Link href="/admin/payments">{t.revenue30}</Link>
-            </p>
-            <div className="revenue-split">
-              <Link href="/admin/payments?status=PAID">
-                <span className="muted small">{t.revenuePaid}</span>
-                <span className="stat-value">{f.totals(last30) || t.none}</span>
-              </Link>
-              <Link href="/admin/payments?status=PENDING">
-                <span className="muted small">{format(t.revenuePending, { n: waiting.length })}</span>
-                <span className="stat-value pending">{f.totals(waiting) || t.none}</span>
-              </Link>
-            </div>
-            <p className="muted small">{format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}</p>
-            <p className="muted small">{t.revenuePendingHint}</p>
-            {tests30.length > 0 && (
-              <p className="muted small">{format(t.revenueTests, { amount: f.totals(tests30) })}</p>
-            )}
-          </div>
-          <Tile
-            label={t.aiUsage}
-            value={aiEnabled() || ai.calls > 0 ? format(t.aiValue, { n: ai.calls, limit: ai.limit }) : t.aiOff}
-            share={aiEnabled() ? ai.calls / ai.limit : undefined}
-            hint={format(t.aiCost, { usd: new Intl.NumberFormat(locale, { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(ai.usd) })}
-          />
-        </div>
-      </section>
-
-      <section className="stack">
-        <h2>{a.title}</h2>
-        <div className="admin-grid signup-tables">
-          <div className="card flush">
-            <table className="admin-table">
+    <Fold
+      title={t.signups}
+      extra={format(t.overview.signupsSummary, { today: signups.days[0]?.count ?? 0, week: signups.weeks[0]?.count ?? 0, month: signups.months[0]?.count ?? 0 })}
+    >
+      <div className="signup-tables">
+        {tables.map((table) => (
+          <div key={table.title} className="card flush table-scroll short">
+            <table className="admin-table compact">
               <thead>
                 <tr>
-                  <th>{a.traffic}</th>
-                  <th className="num">{a.today}</th>
-                  <th className="num">{a.days7}</th>
-                  <th className="num">{a.days30}</th>
+                  <th>{table.title}</th>
+                  <th className="num">{t.signupsCount}</th>
                 </tr>
               </thead>
               <tbody>
-                {activityRows.map((row) => (
-                  <tr key={row.label}>
-                    <td>
-                      {row.label}
-                      {row.hint && <div className="muted small activity-hint">{row.hint}</div>}
-                    </td>
-                    {row.counts.map((n, i) => (
-                      <td key={i} className="num">
-                        {i === 0 ? <strong>{n}</strong> : n}
-                      </td>
-                    ))}
+                {table.rows.map((b, i) => (
+                  <tr key={b.start.getTime()}>
+                    <td className="nowrap">{table.label(b, i)}</td>
+                    <td className="num">{i === 0 ? <strong>{b.count}</strong> : b.count}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="card flush">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{a.refusals}</th>
-                  <th className="num">{a.today}</th>
-                  <th className="num">{a.days7}</th>
-                  <th className="num">{a.days30}</th>
-                  <th className="num">{a.people}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {REFUSAL_KINDS.map((kind) => {
-                  const row = recent.refusals[kind];
-                  return (
-                    <tr key={kind}>
-                      <td>
-                        {a.kinds[kind]}
-                        <div className="muted small activity-hint">{a.kindHints[kind]}</div>
-                      </td>
-                      {row.counts.map((n, i) => (
-                        <td key={i} className={`num${n > 0 && kind !== "startFailed" && kind !== "createFailed" ? " over" : ""}`}>
-                          {i === 0 ? <strong>{n}</strong> : n}
-                        </td>
-                      ))}
-                      <td className="num">{row.people}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <p className="muted small">{a.refusalsHint}</p>
-        {recent.recent.length > 0 && (
-          <div className="card stack">
-            <h3>{a.recent}</h3>
-            <ul className="attention-list">
-              {recent.recent.map((r) => (
-                <li key={r.id}>
-                  <span className="nowrap">{f.dateTime(r.createdAt)}</span>
-                  <span>{a.kinds[r.kind] ?? r.kind}</span>
-                  {r.userId && (
-                    <Link className="break" href={`/admin/users/${r.userId}`}>
-                      {r.email ?? r.userId}
-                    </Link>
-                  )}
-                  <span className="muted small">
-                    {[all.plans[r.plan], r.node, r.serverId && <Link key="s" href={`/admin/servers/${r.serverId}`}>{a.server}</Link>]
-                      .filter(Boolean)
-                      .map((part, i) => (
-                        <span key={i}>
-                          {i > 0 && " · "}
-                          {part}
-                        </span>
-                      ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
-
-      <section className="stack">
-        <h2>{t.machine}</h2>
-        {!stats ? (
-          <p className="notice warn">{t.agentDown}</p>
-        ) : (
-          <div className="admin-grid">
-            {overbook() > 1 ? (
-              // Overbooked, what matters is how much is sold; real use is in the machine's RAM.
-              <Tile
-                label={t.soldLabel}
-                value={format(t.soldValue, { used: f.gb(sold), limit: f.gb(salesLimitMb()) })}
-                share={sold / salesLimitMb()}
-                hint={format(t.overbookHint, { factor: f.number(overbook()), limit: f.gb(memoryLimitMb()) })}
-              />
-            ) : (
-              <Tile
-                label={t.held}
-                value={
-                  stats.memoryLimitMb > 0
-                    ? format(t.heldValue, { used: f.gb(stats.memoryHeldMb), limit: f.gb(stats.memoryLimitMb) })
-                    : format(t.heldNoLimit, { used: f.gb(stats.memoryHeldMb) })
-                }
-                share={stats.memoryLimitMb > 0 ? stats.memoryHeldMb / stats.memoryLimitMb : undefined}
-                hint={`${t.heldHint} ${t.sold}: ${f.gb(sold)}.`}
-              />
-            )}
-            <Tile
-              label={t.hostMemory}
-              value={format(t.hostMemoryValue, {
-                used: f.gb(stats.host.memoryTotalMb - stats.host.memoryAvailableMb),
-                total: f.gb(stats.host.memoryTotalMb),
-              })}
-              share={1 - stats.host.memoryAvailableMb / stats.host.memoryTotalMb}
-            />
-            <Tile
-              label={t.disk}
-              value={format(t.diskValue, {
-                used: f.gb(stats.host.diskTotalMb - stats.host.diskFreeMb),
-                total: f.gb(stats.host.diskTotalMb),
-                free: f.gb(stats.host.diskFreeMb),
-              })}
-              share={1 - stats.host.diskFreeMb / stats.host.diskTotalMb}
-            />
-            <Tile
-              label={t.load}
-              value={format(t.loadValue, { load: stats.host.load.map(f.number).join(" · "), cpus: stats.host.cpus })}
-              share={stats.host.load[1] / stats.host.cpus}
-              hint={t.loadHint}
-            />
-          </div>
-        )}
-        {stats && stats.machines.length > 1 && (
-          <div className="table-scroll card flush">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t.machine}</th>
-                  <th>{t.soldLabel}</th>
-                  <th>{t.hostMemory}</th>
-                  <th>{t.disk}</th>
-                  <th>{t.load}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.machines.map((m) => {
-                  const node = nodeById(m.id);
-                  const soldHere = servers.filter((s) => nodeById(s.node).id === m.id).reduce((sum, s) => sum + heldMemoryMb(s), 0);
-                  const limit = Math.floor(node.memoryLimitMb * overbookOf(node));
-                  const h = m.host;
-                  return (
-                    <tr key={m.id}>
-                      <td>
-                        <Link href={`/admin/servers?node=${encodeURIComponent(m.id)}`}>
-                          <strong>{m.id}</strong>
-                        </Link>
-                        {node.arch && <span className="muted small"> · {node.arch === "arm64" ? "Arm" : "x86"}</span>}
-                        {h && <div className="muted small">{format(t.machineCores, { cpus: h.cpus, ram: f.gb(h.memoryTotalMb) })}</div>}
-                      </td>
-                      <td>
-                        <Cell
-                          value={limit > 0 ? format(t.machineOf, { used: f.gb(soldHere), total: f.gb(limit) }) : f.gb(soldHere)}
-                          share={limit > 0 ? soldHere / limit : undefined}
-                        />
-                      </td>
-                      {h ? (
-                        <>
-                          <td>
-                            <Cell
-                              value={format(t.machineOf, { used: f.gb(h.memoryTotalMb - h.memoryAvailableMb), total: f.gb(h.memoryTotalMb) })}
-                              share={1 - h.memoryAvailableMb / h.memoryTotalMb}
-                            />
-                          </td>
-                          <td>
-                            <Cell
-                              value={format(t.machineOf, { used: f.gb(h.diskTotalMb - h.diskFreeMb), total: f.gb(h.diskTotalMb) })}
-                              share={h.diskTotalMb > 0 ? 1 - h.diskFreeMb / h.diskTotalMb : undefined}
-                            />
-                          </td>
-                          <td>
-                            <Cell
-                              value={format(t.loadValue, { load: h.load.map(f.number).join(" · "), cpus: h.cpus })}
-                              share={h.load[1] / h.cpus}
-                            />
-                          </td>
-                        </>
-                      ) : (
-                        <td colSpan={3} className="over">
-                          {t.machineDown}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      <section className="stack">
-        <h2>{t.signups}</h2>
-        <div className="admin-grid signup-tables">
-          {signupTables.map((table) => (
-            <div key={table.title} className="card flush">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>{table.title}</th>
-                    <th className="num">{t.signupsCount}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {table.rows.map((b, i) => (
-                    <tr key={b.start.getTime()}>
-                      <td className="nowrap">{table.label(b, i)}</td>
-                      <td className="num">{i === 0 ? <strong>{b.count}</strong> : b.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="stack">
-        <h2>{t.costs.title}</h2>
-        <form action={saveMachineCostsAction} className="stack">
-          <div className="table-scroll card flush">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>{t.machine}</th>
-                  <th>{t.costs.price}</th>
-                  <th className="num">{t.costs.inPln}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {machines.map((m) => (
-                  <tr key={m.id}>
-                    <td>
-                      <strong>{m.id}</strong>
-                    </td>
-                    <td>
-                      <div className="cost-input">
-                        <input
-                          name={`amount_${m.id}`}
-                          inputMode="decimal"
-                          aria-label={`${t.costs.price} ${m.id}`}
-                          defaultValue={m.cost ? (m.cost.amount / 100).toFixed(2).replace(".", ",") : ""}
-                          placeholder="0,00"
-                        />
-                        <select name={`currency_${m.id}`} defaultValue={m.cost?.currency ?? "EUR"} aria-label={t.costs.currency}>
-                          <option value="EUR">€</option>
-                          <option value="PLN">zł</option>
-                        </select>
-                      </div>
-                    </td>
-                    <td className="num">{m.pln !== null ? zl(m.pln) : m.cost ? t.costs.noRate : <span className="muted">{t.costs.notSet}</span>}</td>
-                  </tr>
-                ))}
-                <tr>
-                  <td>
-                    <strong>{t.costs.total}</strong>
-                  </td>
-                  <td />
-                  <td className="num">
-                    <strong>{zl(costPln)}</strong>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="row">
-            <p className="muted small">
-              {rates
-                ? format(t.costs.rate, { eur: f.number4(rates.perPln.EUR ?? 0), date: rates.date })
-                : t.costs.rateDown}
-              {costMissing && ` ${t.costs.noRateHint}`} {t.costs.netHint}
-            </p>
-            <button type="submit" className="secondary">
-              {t.costs.save}
-            </button>
-          </div>
-        </form>
-        <div className="admin-grid">
-          <Tile label={t.costs.monthly} value={zl(costPln)} hint={format(t.costs.perDay, { amount: zl(Math.round(costPln / 30)) })} />
-          <Tile label={t.costs.revenueNet} value={zl(revenueNet)} hint={t.costs.revenueNetHint} />
-          <div className="card stat">
-            <p className="stat-label">{t.costs.profit}</p>
-            <p className={`stat-value ${profit < 0 ? "over" : "good"}`}>{zl(profit)}</p>
-            <p className="muted small">{t.costs.profitHint}</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="stack">
-        <RebuildBedrock t={t.bedrockRebuild} />
-      </section>
-    </>
+        ))}
+      </div>
+    </Fold>
   );
 }
 
-function Tile({ label, value, hint, share, href }: { label: string; value: string; hint?: string; share?: number; href?: string }) {
+/** Machine prices against the last 30 days' sales; the header shows what's left, the form to change prices is inside. */
+async function Costs() {
+  const [{ t, f }, costs, rates, paid] = await Promise.all([texts(), db.machineCost.findMany(), nbpRates(), paidLast31()]);
+  const c = t.costs;
+  // Each machine's monthly price (net) in złoty at today's NBP rate, against the last 30 days' sales without VAT.
+  const machines = nodes().map((n) => {
+    const cost = costs.find((x) => x.node === n.id);
+    return { id: n.id, cost, pln: cost ? toPln(cost.amount, cost.currency, rates) : null };
+  });
+  const costPln = machines.reduce((sum, m) => sum + (m.pln ?? 0), 0);
+  const costMissing = machines.some((m) => m.cost && m.pln === null);
+  const last30 = paid.filter((p) => p.paidAt! >= new Date(now().getTime() - 30 * DAY) && !isTestPayment(p));
+  const revenueNet = Math.round(last30.map((p) => toPln(p.amount, p.currency, rates)).reduce<number>((sum, v) => sum + (v ?? 0), 0) / (1 + VAT));
+  const profit = revenueNet - costPln;
+  const zl = (minor: number) => f.money(minor, "PLN");
+
   return (
-    <div className="card stat">
-      <p className="stat-label">{href ? <Link href={href}>{label}</Link> : label}</p>
-      <p className="stat-value">{value}</p>
+    <Fold
+      title={c.title}
+      extra={
+        <>
+          {format(t.overview.costsSummary, { costs: zl(costPln), revenue: zl(revenueNet) })}{" "}
+          <strong className={profit < 0 ? "over" : "good"}>{zl(profit)}</strong>
+        </>
+      }
+    >
+      <div className="kpis">
+        <Kpi label={c.monthly} value={zl(costPln)} hint={format(c.perDay, { amount: zl(Math.round(costPln / 30)) })} />
+        <Kpi label={c.revenueNet} value={zl(revenueNet)} title={c.revenueNetHint} />
+        <Kpi label={c.profit} value={zl(profit)} title={c.profitHint} tone={profit < 0 ? "bad" : "good"} />
+      </div>
+      <form action={saveMachineCostsAction} className="stack tight">
+        <div className="card flush">
+          <table className="admin-table compact costs">
+            <thead>
+              <tr>
+                <th>{t.machine}</th>
+                <th>{c.price}</th>
+                <th className="num">{c.inPln}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {machines.map((m) => (
+                <tr key={m.id}>
+                  <td>
+                    <strong>{m.id}</strong>
+                  </td>
+                  <td>
+                    <div className="cost-input">
+                      <input
+                        name={`amount_${m.id}`}
+                        inputMode="decimal"
+                        aria-label={`${c.price} ${m.id}`}
+                        defaultValue={m.cost ? (m.cost.amount / 100).toFixed(2).replace(".", ",") : ""}
+                        placeholder="0,00"
+                      />
+                      <select name={`currency_${m.id}`} defaultValue={m.cost?.currency ?? "EUR"} aria-label={c.currency}>
+                        <option value="EUR">€</option>
+                        <option value="PLN">zł</option>
+                      </select>
+                    </div>
+                  </td>
+                  <td className="num">{m.pln !== null ? zl(m.pln) : m.cost ? c.noRate : <span className="muted">{c.notSet}</span>}</td>
+                </tr>
+              ))}
+              <tr className="sum-row">
+                <td>
+                  <strong>{c.total}</strong>
+                </td>
+                <td />
+                <td className="num">
+                  <strong>{zl(costPln)}</strong>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="row">
+          <p className="muted small">
+            {rates ? format(c.rate, { eur: f.number4(rates.perPln.EUR ?? 0), date: rates.date }) : c.rateDown}
+            {costMissing && ` ${c.noRateHint}`} {c.netHint}
+          </p>
+          <button type="submit" className="secondary small">
+            {c.save}
+          </button>
+        </div>
+      </form>
+    </Fold>
+  );
+}
+
+/** A section folded away by default, with a short summary beside its title. */
+function Fold({ title, extra, children }: { title: string; extra?: React.ReactNode; children?: React.ReactNode }) {
+  return (
+    <details className="fold">
+      <summary>
+        {title}
+        {extra && <span className="fold-extra">{extra}</span>}
+      </summary>
+      {children && <div className="fold-body stack tight">{children}</div>}
+    </details>
+  );
+}
+
+function Loading({ text }: { text: string }) {
+  return (
+    <p className="muted small loading-line" role="status">
+      <span className="spinner" aria-hidden /> {text}
+    </p>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  hint,
+  title,
+  share,
+  href,
+  tone,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  title?: string;
+  share?: number;
+  href?: string;
+  tone?: "good" | "warn" | "bad";
+}) {
+  const body = (
+    <>
+      <span className={`kpi-label${title ? " has-hint" : ""}`} title={title}>
+        {label}
+      </span>
+      <span className={`kpi-value${tone ? ` ${tone}` : ""}${value.length > 16 ? " long" : ""}`}>{value}</span>
       {share !== undefined && <Meter share={share} />}
-      {hint && <p className="muted small">{hint}</p>}
-    </div>
+      {hint && <span className="kpi-hint">{hint}</span>}
+    </>
+  );
+  return href ? (
+    <Link href={href} className="kpi card">
+      {body}
+    </Link>
+  ) : (
+    <div className="kpi card">{body}</div>
   );
 }
 
@@ -553,7 +688,8 @@ function Meter({ share }: { share: number }) {
 }
 
 /** Midnight on the 1st of this month, Polish time. */
-function monthStart(now: Date) {
-  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(now);
-  return warsawMidnight(now, `${day.slice(0, 8)}01`);
+function monthStart(at: Date) {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Warsaw" }).format(at);
+  return warsawMidnight(at, `${day.slice(0, 8)}01`);
 }
+
