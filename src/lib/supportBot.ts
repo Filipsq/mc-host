@@ -5,6 +5,7 @@ import { db } from "./db";
 import { BRAND_NAME } from "./brand";
 import { chatContextText } from "./claudeContext";
 import { SUPPORT_KNOWLEDGE } from "./supportKnowledge";
+import { screenPicture, SUPPORT_SCREENS, takeScreenMarker } from "./supportScreens";
 import { IMAGE_MAX_BYTES, imageType, MAX_LENGTH, notify } from "./support";
 import { botActive, BOT_PAUSE_MS } from "./supportBotState";
 
@@ -16,7 +17,7 @@ import { botActive, BOT_PAUSE_MS } from "./supportBotState";
 //    (OPENBOT_WEBHOOK_URL), signed the way OpenBot checks it: HMAC-SHA256 with
 //    OPENBOT_WEBHOOK_SECRET over "<unix seconds>.<delivery id>.<body>", sent as
 //    x-openbot-timestamp / x-openbot-delivery-id / x-openbot-signature: sha256=<hex>.
-// 3. The OpenBot routine answers by POSTing { token, text, escalate } to
+// 3. The OpenBot routine answers by POSTing { token, text, escalate, screenshot? } to
 //    /api/support/bot (handleBotReply). The token comes with the question, so no
 //    other key is needed. The answer shows in the chat as the bot's message.
 // 4. If the bot hands over (escalate), the webhook fails, or no answer comes within
@@ -37,7 +38,7 @@ const PERSON_AFTER_MS = 2 * 60 * 60_000;
 /** How the bot should write (Fiq asked 2026-11-18: casually). Sent with every question. */
 const STYLE =
   "Pisz na luzie, po koleżeńsku, jak gracz do gracza: na Ty, krótko (2-5 zdań), bez urzędowych formułek, emoji z umiarem. " +
-  "Jeśli pomoże, dołącz zrzut ekranu pokazujący, gdzie coś jest w panelu (pole image).";
+  "Gdy klient pyta, gdzie coś jest w panelu, dołącz gotowy zrzut z listy screenshots: wpisz jego key w pole screenshot. Nie rób własnych zrzutów.";
 
 const secret = () => process.env.OPENBOT_WEBHOOK_SECRET ?? "";
 const appUrl = () => process.env.APP_URL ?? "http://localhost:3000";
@@ -105,6 +106,7 @@ export async function askBot(userId: string, messageId: string) {
       site: BRAND_NAME,
       style: STYLE,
       knowledge: SUPPORT_KNOWLEDGE,
+      screenshots: SUPPORT_SCREENS,
       language: message.chat.user.locale,
       customerMessage: message.body || "",
       sentPicture: !!message.image,
@@ -114,7 +116,7 @@ export async function askBot(userId: string, messageId: string) {
         url: `${appUrl()}/api/support/bot`,
         method: "POST",
         token: replyToken(userId, now + TOKEN_MS),
-        body: '{"token": "<token>", "text": "<answer for the customer>", "escalate": false, "image": "<optional PNG/JPG screenshot as base64>"}',
+        body: '{"token": "<token>", "text": "<answer for the customer>", "escalate": false, "screenshot": "<optional key from screenshots>"}',
         maxLength: MAX_LENGTH,
         imageMaxBytes: IMAGE_MAX_BYTES,
       },
@@ -250,12 +252,21 @@ function botPicture(image: string): { data: Uint8Array; type: string } | "imageT
 }
 
 /** OpenBot's answer to a question askBot sent. */
-export async function handleBotReply(token: string, text: string, escalate: boolean, image?: string): Promise<BotReplyResult> {
+export async function handleBotReply(
+  token: string,
+  text: string,
+  escalate: boolean,
+  image?: string,
+  screenshot?: string,
+): Promise<BotReplyResult> {
   const checked = checkReplyToken(token);
   if (!checked) return { ok: false, error: "badToken", status: 401 };
   const { userId, askedAt } = checked;
   console.log(`[support-bot] chat ${userId}: OpenBot answered after ${((Date.now() - askedAt.getTime()) / 1000).toFixed(1)} s${escalate ? " (handed over)" : ""}`);
-  const body = text.replace(/\r\n?/g, "\n").trim();
+  // A ready screenshot named in the "screenshot" field or as [zrzut:key] in the text.
+  const marked = takeScreenMarker(text.replace(/\r\n?/g, "\n"));
+  const body = marked.text;
+  const screenKey = screenshot || marked.key;
   if (body.length > MAX_LENGTH) return { ok: false, error: "tooLong", status: 400 };
   const chat = await db.supportChat.findUnique({ where: { userId }, select: { botWaitingSince: true } });
   // Answered already, handed over after the wait, or an admin answered first.
@@ -264,8 +275,12 @@ export async function handleBotReply(token: string, text: string, escalate: bool
     await handOver(userId, body ? body : null, "bot");
     return { ok: true };
   }
-  const picture = image ? botPicture(image) : undefined;
+  let picture = image ? botPicture(image) : undefined;
   if (typeof picture === "string") return { ok: false, error: picture, status: 400 };
+  if (!picture && screenKey) {
+    picture = (await screenPicture(screenKey)) ?? undefined;
+    if (!picture) console.log(`[support-bot] unknown screenshot "${screenKey}", sent without it`);
+  }
   if (!body && !picture) return { ok: false, error: "empty", status: 400 };
   await postBotMessage(userId, body, picture);
   await db.supportBotCase

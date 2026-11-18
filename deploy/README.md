@@ -142,7 +142,7 @@ estimated cost.
 
 An [OpenBot](https://openbot.site) routine can answer simple questions in the help chat. Each
 customer message goes to the routine's webhook with the customer's servers and the chat
-(`src/lib/supportBot.ts`); the routine answers by POSTing `{ "token", "text", "escalate", "image"? }` (image: base64) to
+(`src/lib/supportBot.ts`); the routine answers by POSTing `{ "token", "text", "escalate", "screenshot"?, "image"? }` (screenshot: a key of a ready panel screenshot, image: base64) to
 `/api/support/bot`. A hand-over (`"escalate": true`), a failed webhook, or no answer within 2 minutes
 sends the question to the admins as before, and the bot then stays quiet in that chat for 24 hours,
 as it does after an admin answers. Customers can also press "Chcę rozmawiać z człowiekiem".
@@ -155,6 +155,21 @@ as it does after an admin answers. Customers can also press "Chcę rozmawiać z 
 
 OpenBot runs on the admin's computer, so while it's off every question waits the 2 minutes and goes
 to the admins.
+
+### Screenshots the bot sends
+
+When a customer asks where something is, the bot can send a ready screenshot of the panel with the
+spot outlined. They live in `public/pomoc/<key>.png`; `src/lib/supportScreens.json` lists them with
+the page, what to outline and when each fits (the bot gets that list with every question). After a
+panel change, retake them with a **test account** that has one made-up server (never a customer's or
+an admin's account), on a computer with Playwright (`npm i -g playwright && npx playwright install chromium`):
+
+```
+SHOTS_URL=https://mchosting.pl SHOTS_EMAIL=<test account> SHOTS_PASSWORD=<its password> NODE_PATH=$(npm root -g) node scripts/support-screenshots.mjs
+```
+
+Keep the password in your shell or `deploy/.env`, never in the repo. Look the pictures over, then
+commit them; the site serves them after the next update.
 
 ## CurseForge mod packs
 

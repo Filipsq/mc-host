@@ -5,7 +5,9 @@ export const dynamic = "force-dynamic";
 
 /**
  * The support bot's answer (src/lib/supportBot.ts): OpenBot POSTs
- * { token, text, escalate, image? } (image: a PNG/JPG/WebP/GIF as base64) with the token that came with the question.
+ * { token, text, escalate, screenshot?, image? } with the token that came with the question.
+ * screenshot: a key from src/lib/supportScreens.json (a ready panel screenshot);
+ * image: a PNG/JPG/WebP/GIF as base64.
  * `escalate: true` hands the chat to the admins, with `text` as the bot's
  * goodbye if given.
  */
@@ -21,7 +23,8 @@ export async function POST(req: Request) {
   const text = typeof o.text === "string" ? o.text : "";
   const escalate = o.escalate === true || o.escalate === "true";
   const image = typeof o.image === "string" && o.image ? o.image : undefined;
-  const result = await handleBotReply(token, text, escalate, image);
+  const screenshot = typeof o.screenshot === "string" && o.screenshot ? o.screenshot : undefined;
+  const result = await handleBotReply(token, text, escalate, image, screenshot);
   if (result.ok) return NextResponse.json({ ok: true });
   return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
 }
