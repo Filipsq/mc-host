@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 // GET /stats: the machine and every server on it at a glance, for the admin panel.
@@ -45,7 +46,7 @@ func (a *agent) stats(w http.ResponseWriter, r *http.Request) {
 	}
 	servers := make([]serverStats, len(list))
 	var wg sync.WaitGroup
-	slots := make(chan struct{}, 8) // Docker answers stats slowly; don't ask about all at once
+	slots := make(chan struct{}, 16) // Docker answers slowly when asked about all at once
 	for i, c := range list {
 		wg.Add(1)
 		go func() {
@@ -88,6 +89,12 @@ func (a *agent) serverStats(ctx context.Context, c containerSummary) serverStats
 	}
 	s.StartedAt = info.State.StartedAt
 	s.Players, s.MaxPlayers = a.playersOnline(id)
+	// The metrics sampler measured it moments ago; asking Docker again for every
+	// server is what made the admin overview slow on a busy machine.
+	if mb, ok := a.recentMemory(id, info.State.StartedAt); ok {
+		s.MemoryUsedMb = &mb
+		return s
+	}
 	var st struct {
 		Memory struct {
 			Usage int64            `json:"usage"`
@@ -139,6 +146,26 @@ func (a *agent) hostStats() hostStats {
 }
 
 // playersOnline is who the metrics sampler last saw online; nil before its first sample.
+// recentMemory is the memory of the metrics sampler's last sample of this run,
+// when it is at most two sampling rounds old.
+func (a *agent) recentMemory(id, startedAt string) (int, bool) {
+	v, ok := a.metrics.Load(id)
+	if !ok {
+		return 0, false
+	}
+	m := v.(*serverMetrics)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.samples) == 0 || m.startedAt != startedAt {
+		return 0, false
+	}
+	last := m.samples[len(m.samples)-1]
+	if time.Since(time.Unix(last.T, 0)) > 2*metricsEvery+10*time.Second {
+		return 0, false
+	}
+	return last.MemMb, true
+}
+
 func (a *agent) playersOnline(id string) (*int, int) {
 	v, ok := a.metrics.Load(id)
 	if !ok {

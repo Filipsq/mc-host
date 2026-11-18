@@ -3,12 +3,24 @@ import type { Server } from "@prisma/client";
 import { getStats, type HostStats } from "@/lib/agent";
 import { liveStateFrom, type LiveState } from "@/lib/servers";
 
-/** What the game machine reports, or null when it can't be reached (the pages still show our records). */
-export async function machineStats(): Promise<HostStats | null> {
-  return getStats().catch((err) => {
+// Asking every machine takes a while, so admin pages share one answer for a few seconds:
+// going from the overview to the server list (or reloading) doesn't ask again.
+const FRESH_MS = 15_000;
+let last: { at: number; stats: Promise<HostStats | null> } | null = null;
+
+/** What the game machines report, or null when they can't be reached (the pages still show our records). */
+export function machineStats(): Promise<HostStats | null> {
+  if (last && Date.now() - last.at < FRESH_MS) return last.stats;
+  const stats = getStats().catch((err) => {
     console.error("admin: stats failed", err);
     return null;
   });
+  last = { at: Date.now(), stats };
+  // A failed answer isn't kept, so the next page tries the machines again.
+  stats.then((s) => {
+    if (s === null && last?.stats === stats) last = null;
+  });
+  return stats;
 }
 
 export type Live = { state: LiveState; memoryUsedMb?: number; diskMb?: number; players?: number; maxPlayers?: number; startedAt?: Date };

@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestStats(t *testing.T) {
@@ -99,5 +100,25 @@ func TestMemoryUsed(t *testing.T) {
 		if got := memoryUsed(c.usage, c.stats); got != c.want {
 			t.Errorf("%s: %d, want %d", c.name, got>>20, c.want>>20)
 		}
+	}
+}
+
+func TestRecentMemory(t *testing.T) {
+	a := &agent{}
+	if _, ok := a.recentMemory("x", "s1"); ok {
+		t.Fatal("no samples yet")
+	}
+	m := a.metricsFor("x")
+	m.startedAt = "s1"
+	m.samples = []metricSample{{T: time.Now().Add(-5 * time.Minute).Unix(), MemMb: 100}}
+	if _, ok := a.recentMemory("x", "s1"); ok {
+		t.Fatal("an old sample must not be used")
+	}
+	m.samples = append(m.samples, metricSample{T: time.Now().Add(-20 * time.Second).Unix(), MemMb: 1234})
+	if mb, ok := a.recentMemory("x", "s1"); !ok || mb != 1234 {
+		t.Fatalf("recent = %d %v", mb, ok)
+	}
+	if _, ok := a.recentMemory("x", "s2"); ok {
+		t.Fatal("a sample from an earlier run must not be used")
 	}
 }
