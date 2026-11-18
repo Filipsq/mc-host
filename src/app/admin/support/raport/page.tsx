@@ -50,7 +50,7 @@ export default async function BotReport({ searchParams }: Props) {
     getPreferences(),
     db.supportBotCase.findMany({
       where: { askedAt: { gte: from, lt: to } },
-      orderBy: { askedAt: "asc" },
+      orderBy: { askedAt: "desc" }, // newest first (Fiq asked 2026-11-18)
       include: { user: { select: { email: true } } },
     }),
   ]);
