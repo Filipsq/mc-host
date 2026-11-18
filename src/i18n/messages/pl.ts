@@ -1961,6 +1961,12 @@ const pl = {
     signupsToday: "Dziś",
     signupsThisWeek: "Ten tydzień",
     signupsThisMonth: "Ten miesiąc",
+    restartCrashed: {
+      one: "Uruchom",
+      all: "Uruchom wszystkie awarie",
+      working: "Uruchamiam…",
+      results: { started: "Uruchomiony", queued: "Czeka w kolejce na miejsce", full: "Brak miejsca na maszynie", failed: "Nie udało się" },
+    },
     bedrockRebuild: {
       title: "Bedrock od 27.10: przebuduj serwery",
       hint: "Od 27 października Bedrock łączy się po nowemu (NetherNet). Kliknij raz po aktualizacji, a serwery Bedrock i z crossplayem dostaną nowe ustawienia. Działające uruchomią się ponownie (gracze zostaną na chwilę rozłączeni), wyłączone i uśpione dostaną je przy następnym starcie.",
