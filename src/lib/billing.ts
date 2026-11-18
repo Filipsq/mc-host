@@ -1,4 +1,5 @@
 import "server-only";
+import { handOverLate } from "./supportBot";
 import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
@@ -601,12 +602,18 @@ export async function removeLeftoverContainers(now = new Date()) {
 }
 
 export async function runBillingJob(now = new Date()) {
-  const result = { renewed: 0, xboxStopped: 0, adBoostsEnded: 0, domainsStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0, queueStarted: 0 };
+  const result = { renewed: 0, xboxStopped: 0, adBoostsEnded: 0, domainsStopped: 0, suspended: 0, reminded: 0, warned: 0, deleted: 0, idleWarned: 0, idleDeleted: 0, comeback: 0, startOffers: 0, abandoned: 0, provisioned: 0, leftovers: 0, queueStarted: 0, botHandedOver: 0 };
   const onHost: ServerStatus[] = ["RUNNING", "STOPPED", "PROVISIONING"];
 
   // Free servers waiting for room: start those that fit now.
   result.queueStarted = await startQueued(now).catch((err) => {
     console.error("queued starts failed", err);
+    return 0;
+  });
+
+  // Help chat questions the support bot never answered (a restart lost its timer) go to the admins.
+  result.botHandedOver = await handOverLate(now).catch((err) => {
+    console.error("support bot hand-over failed", err);
     return 0;
   });
 

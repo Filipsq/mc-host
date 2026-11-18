@@ -10,6 +10,7 @@ import { formatPrice } from "@/lib/plans";
 import { addonOptions } from "@/lib/planOptions";
 import { ADDONS, ADDON_SPECS, DOMAIN_DAYS, FLAT_ADDONS, addonCost, addonFits, canBuyAddons, domainPaidFor, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
 import { paysafecardEnabled } from "@/lib/cashbill";
+import { serverIps } from "@/lib/ownDomain";
 import { BuyAddonsForm, BuyDomainForm, DomainForm, RemoveAddonButton } from "./AddonForms";
 
 // The server's paid add-ons (src/lib/addons.ts): the ones it has, turning one
@@ -23,6 +24,8 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
 
   const [all, { locale, currency }] = await Promise.all([getMessages(), getPreferences()]);
   const t = all.paidAddons;
+  // The A record's value: our IP, so the owner's DNS never names mchosting.
+  const ips = hasOwnDomain(server) ? await serverIps(javaHost(server)) : [];
   // An admin's own test server: buying is offered for 0 too.
   const adminTest = server.adminTest && (await isAdmin(session.user.id));
   const money = (n: number) => formatPrice(n, currency, locale);
@@ -78,7 +81,7 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
               <h2 className="card-title">
                 <Globe size={18} aria-hidden /> {t.domain.title}
               </h2>
-              <DomainForm serverId={server.id} current={server.customDomain} target={javaHost(server)} address={javaHost(server)} t={t.domain} />
+              <DomainForm serverId={server.id} current={server.customDomain} target={javaHost(server)} ips={ips} address={javaHost(server)} t={t.domain} copy={{ label: all.server.copy, copied: all.server.copied }} />
             </section>
           )}
           <section className="card row">
@@ -117,7 +120,7 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
               <h2 className="card-title">
                 <Globe size={18} aria-hidden /> {t.domain.title}
               </h2>
-              <DomainForm serverId={server.id} current={server.customDomain} target={javaHost(server)} address={javaHost(server)} t={t.domain} />
+              <DomainForm serverId={server.id} current={server.customDomain} target={javaHost(server)} ips={ips} address={javaHost(server)} t={t.domain} copy={{ label: all.server.copy, copied: all.server.copied }} />
             </section>
           )}
 

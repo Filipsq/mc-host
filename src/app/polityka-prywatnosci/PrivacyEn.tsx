@@ -128,6 +128,11 @@ export default function PrivacyEn({ site }: { site: string }) {
           transferred to the USA under standard contractual clauses.
         </li>
         <li>
+          <strong>OpenBot</strong>: the admin’s AI assistant that answers simple questions in the help chat. It
+          receives the conversation and your servers’ details (names, settings, state, console), not your email
+          address. It passes harder questions to the admin, and you can ask for a person at any time.
+        </li>
+        <li>
           Your browser’s or phone’s notification service (such as Google for Chrome and Android, Apple for iPhone,
           Mozilla for Firefox), only if you turn on notifications in the panel. It delivers them to your device; the
           notification’s content is encrypted and the service can’t read it.

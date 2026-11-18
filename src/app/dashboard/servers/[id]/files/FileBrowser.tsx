@@ -52,6 +52,7 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
   const [renaming, setRenaming] = useState<string | null>(null);
   const [creating, setCreating] = useState<"folder" | "file" | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const picker = useRef<HTMLInputElement>(null);
 
   const base = `/dashboard/servers/${id}/files`;
@@ -60,6 +61,29 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
   const edit = (path: string) => `${base}/edit?path=${encodeURIComponent(path)}`;
   const download = (path: string) => `/api/servers/${id}/files?path=${encodeURIComponent(path)}`;
   const busy = pending || progress !== null;
+  // Only rows still in this folder count (after a delete or moving to another folder).
+  const selected = rows.filter((r) => picked.has(r.path));
+  const allPicked = rows.length > 0 && selected.length === rows.length;
+  const toggle = (path: string) =>
+    setPicked((s) => {
+      const next = new Set(s);
+      if (!next.delete(path)) next.add(path);
+      return next;
+    });
+
+  function removeSelected() {
+    const folders = selected.filter((r) => r.dir).length;
+    const text = format(folders ? t.deleteManyFoldersConfirm : t.deleteManyConfirm, { n: selected.length, folders });
+    if (!confirm(text)) return;
+    setMessage(null);
+    startTransition(async () => {
+      const res = await fileAction(id, { removeMany: selected.map((r) => r.path) });
+      setPicked(new Set());
+      const n = res.files ?? 0;
+      if (res.error) setMessage({ text: `${format(t.deletedMany, { n })} ${t.errors[res.error]}`, error: true });
+      else setMessage({ text: format(t.deletedMany, { n }), error: false });
+    });
+  }
 
   function run(op: FileOp, done?: (files?: number) => string) {
     setMessage(null);
@@ -196,6 +220,32 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
           upload([...e.dataTransfer.files]);
         }}
       >
+        {canChange && rows.length > 0 && (
+          <div className="file-select-bar">
+            <label className="file-check">
+              <input
+                type="checkbox"
+                checked={allPicked}
+                ref={(el) => {
+                  if (el) el.indeterminate = selected.length > 0 && !allPicked;
+                }}
+                onChange={() => setPicked(allPicked ? new Set() : new Set(rows.map((r) => r.path)))}
+              />
+              {t.selectAll}
+            </label>
+            {selected.length > 0 && (
+              <>
+                <span className="muted small">{format(t.selectedCount, { n: selected.length })}</span>
+                <button className="danger small" disabled={busy} onClick={removeSelected}>
+                  <Trash2 size={15} aria-hidden /> {t.deleteSelected}
+                </button>
+                <button className="secondary small" disabled={busy} onClick={() => setPicked(new Set())}>
+                  {t.clearSelection}
+                </button>
+              </>
+            )}
+          </div>
+        )}
         <ul className="file-list">
           {dir && (
             <li>
@@ -229,7 +279,16 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
                 </form>
               </li>
             ) : (
-              <li key={r.path}>
+              <li key={r.path} className={picked.has(r.path) ? "picked" : undefined}>
+                {canChange && (
+                  <input
+                    type="checkbox"
+                    className="file-pick"
+                    checked={picked.has(r.path)}
+                    onChange={() => toggle(r.path)}
+                    aria-label={format(t.selectOne, { name: r.name })}
+                  />
+                )}
                 <span className="file-name">
                   {r.dir ? (
                     <Folder size={18} aria-hidden className="file-icon dir" />

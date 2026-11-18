@@ -34,6 +34,7 @@ export async function setDomainAction(id: string, _: DomainState, form: FormData
   }
   await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
   revalidatePath(`/dashboard/servers/${id}/addons`);
+  revalidatePath(`/dashboard/servers/${id}/address`);
   return { saved: true };
 }
 
@@ -44,4 +45,5 @@ export async function clearDomainAction(id: string) {
   await db.server.update({ where: { id: server.id }, data: { customDomain: null } });
   await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
   revalidatePath(`/dashboard/servers/${id}/addons`);
+  revalidatePath(`/dashboard/servers/${id}/address`);
 }

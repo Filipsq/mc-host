@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ImagePlus, MessageCircle, Send, Trash2, X } from "lucide-react";
+import { Bot, ImagePlus, MessageCircle, Send, Trash2, UserRound, X } from "lucide-react";
 import { format, type Messages } from "@/i18n/messages";
-import { deleteSupportMessage, sendSupportMessage } from "@/app/dashboard/support/actions";
+import { askForPersonAction, deleteSupportMessage, sendSupportMessage } from "@/app/dashboard/support/actions";
 import CopyButton from "./CopyButton";
 import type { ChatMessage, ChatRate, ChatState, SendError } from "@/lib/support";
 
@@ -62,6 +62,7 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
   const router = useRouter();
   const [messages, setMessages] = useState(initial.messages);
   const [seenAt, setSeenAt] = useState(initial.seenAt);
+  const [bot, setBot] = useState(initial.bot);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +90,7 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
       if (!res.ok) return;
       const state = (await res.json()) as ChatState;
       setSeenAt(state.seenAt);
+      if (state.bot) setBot(state.bot);
       const gone = new Set(state.deleted ?? []);
       if (state.messages.length > 0 || gone.size > 0) {
         setMessages((list) => merge(list, state.messages).filter((m) => !gone.has(m.id)));
@@ -161,6 +163,8 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
       if (result.ok) {
         stick.current = true;
         setMessages((list) => merge(list, [result.message]));
+        // The bot starts on it right away; the next poll confirms.
+        if (!staff && bot?.on) setBot({ on: true, waiting: true });
         setText("");
         setPicture(null);
       } else if (result.error === "signedOut") {
@@ -187,12 +191,38 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
     }
   }
 
+  async function askPerson() {
+    try {
+      await askForPersonAction();
+      stick.current = true;
+      await poll();
+    } catch {
+      setError(t.errors.failed);
+    }
+  }
+
   const mine = (m: ChatMessage) => m.fromStaff === staff;
   const lastMine = [...messages].reverse().find(mine);
   const lastIsMine = messages.length > 0 && messages.at(-1) === lastMine;
 
   return (
     <section className="card chat">
+      {!staff && (bot?.on || bot?.person) && (
+        <div className="chat-bot-badge">
+          {bot.on ? (
+            <button type="button" className="chat-bot-icon" aria-label={t.askPerson} onClick={() => void askPerson()}>
+              <Bot size={18} aria-hidden />
+            </button>
+          ) : (
+            <button type="button" className="chat-bot-icon person" aria-label={t.personHint}>
+              <UserRound size={18} aria-hidden />
+            </button>
+          )}
+          <div className="chat-bot-pop" role="note">
+            <p className="small">{bot.on ? t.botHint : t.personHint}</p>
+          </div>
+        </div>
+      )}
       <div
         className="chat-log"
         ref={log}
@@ -223,10 +253,10 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
           <ol className="chat-messages">
             {messages.map((m, i) => {
               const own = mine(m);
-              const first = i === 0 || messages[i - 1].fromStaff !== m.fromStaff;
+              const first = i === 0 || messages[i - 1].fromStaff !== m.fromStaff || !messages[i - 1].bot !== !m.bot;
               return (
-                <li key={m.id} className={`chat-msg${own ? " own" : ""}${m.fromStaff ? " staff" : ""}${first ? " first" : ""}`}>
-                  {first && <span className="chat-author">{own ? t.you : otherName}</span>}
+                <li key={m.id} className={`chat-msg${own ? " own" : ""}${m.fromStaff ? " staff" : ""}${m.bot ? " bot" : ""}${first ? " first" : ""}`}>
+                  {first && <span className="chat-author">{m.bot ? t.bot : own ? t.you : otherName}</span>}
                   <div className="chat-row">
                     <div className={`chat-bubble${m.image ? " with-image" : ""}`}>
                       {m.image && (
@@ -273,6 +303,13 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
                 </li>
               );
             })}
+            {!staff && bot?.waiting && (
+              <li className="chat-msg staff bot first chat-typing" aria-live="polite">
+                <div className="chat-row">
+                  <div className="chat-bubble"><p className="muted"><span className="chat-spinner" aria-hidden /> {t.botWriting}</p></div>
+                </div>
+              </li>
+            )}
           </ol>
         )}
       </div>
