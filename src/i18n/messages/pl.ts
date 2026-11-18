@@ -2646,6 +2646,7 @@ const pl = {
     removeAttachment: "Usuń zdjęcie",
     attachHint: "Możesz też wkleić zrzut ekranu (Ctrl+V).",
     openImage: "Otwórz zdjęcie w pełnym rozmiarze",
+    closeImage: "Zamknij zdjęcie",
     deleteMessage: "Usuń wiadomość",
     deleteConfirm: "Usunąć tę wiadomość? Zniknie u obu stron i nie da się jej przywrócić.",
     deleteFailed: "Nie udało się usunąć wiadomości.",
