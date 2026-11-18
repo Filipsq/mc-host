@@ -24,9 +24,10 @@ type Props = {
   addons: ComponentProps<typeof PlanPicker>["addons"];
   paysafecard: boolean; // offered too (cashbill.ts)
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
+  renewCode?: string | null; // a paid server: the renewal code field (renewCode.ts), filled in with this
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, paysafecard, adminTest }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, paysafecard, adminTest, renewCode }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -46,6 +47,13 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
           <span className="muted small">{t.autoRenewHint}</span>
         </span>
       </label>
+      {renewCode !== null && renewCode !== undefined && (
+        <label className="stack-tight">
+          <span>{t.renewCode}</span>
+          <input name="renewCode" defaultValue={renewCode} placeholder="ODNOW-XXXXXX" autoComplete="off" spellCheck={false} />
+          <span className="muted small">{t.renewCodeHint}</span>
+        </label>
+      )}
       <p className="muted small">{paysafecard ? t.methodsCashbill : t.methods}</p>
       {paysafecard && <p className="muted small">{t.paysafecardHint}</p>}
       <PaymentConsent legal={legal} />

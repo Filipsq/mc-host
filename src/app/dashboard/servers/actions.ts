@@ -1,5 +1,6 @@
 "use server";
 
+import { isRenewCodeFor } from "@/lib/renewCode";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -147,6 +148,7 @@ async function checkoutUrl(
   promoCode?: string,
   paysafecard = false,
   adminTest = false,
+  renewCode?: string,
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -167,6 +169,7 @@ async function checkoutUrl(
     promoCode,
     paysafecard,
     adminTest,
+    renewCode,
   });
 }
 
@@ -440,6 +443,9 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
   if (!parsed.success) return { error: "invalidPlan" };
   const adminTest = await adminTestBuy(form, server, user.id);
   if (!adminTest && form.get("startNow") !== "on") return { error: "consentRequired" };
+  // The server's renewal code (renewCode.ts), typed or filled in from the reminder's link.
+  const renewCode = adminTest ? "" : String(form.get("renewCode") ?? "").trim();
+  if (renewCode && !isRenewCodeFor(server, renewCode)) return { error: "renewCodeInvalid" };
   // Renewing the same plan needs nothing new; an upgrade only needs the difference.
   // Admins may go over the sales limit to test buying, as when creating a server.
   const planMb = planById(parsed.data.plan).ramGb * 1024;
@@ -465,6 +471,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       server.status === "AWAITING_PAYMENT" ? (server.promoCode ?? undefined) : undefined,
       form.get("method") === "paysafecard",
       adminTest,
+      renewCode || undefined,
     );
   } catch (err) {
     console.error("checkout failed", server.id, err);

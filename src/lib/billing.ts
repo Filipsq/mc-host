@@ -29,6 +29,7 @@ import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type Cr
 import { fulfillGiftPurchase } from "./gifts";
 import { isHalloweenCode, withHalloweenDiscount } from "./halloween";
 import { startOffers, startOfferEnds, withStartOfferDiscount } from "./startOffer";
+import { RENEW_CODE_DISCOUNT, isRenewCodeFor, issueRenewCode, normalizeRenewCode, renewCodeDiscount } from "./renewCode";
 import { startQueued } from "./startQueue";
 import { xboxAllowed, xboxUntilAfter } from "./xbox";
 import type { Currency, Locale } from "@/i18n/config";
@@ -43,6 +44,12 @@ const OWNER = { owner: { select: { email: true, locale: true } } } as const;
 /** What `days` of the plan cost, with the add-ons (addons.ts). */
 export function priceFor(plan: Plan, days: PeriodDays, currency: Currency, addons: readonly AddonId[] = []) {
   return periodPrice(monthlyWithAddons(plan, addons, currency), days);
+}
+
+/** Whether `code` is the server's renewal code and can still be used. */
+async function renewCodeFits(serverId: string, code: string) {
+  const s = await db.server.findUnique({ where: { id: serverId }, select: { renewCode: true, renewCodeUntil: true, renewCodeUsedAt: true } });
+  return !!s && isRenewCodeFor(s, code);
 }
 
 /** Creates a pending payment and a Stripe Checkout page for it; returns the page URL. */
@@ -63,6 +70,7 @@ export async function startCheckout(opts: {
   domain?: { days: number; amount: number }; // an own domain for a free server (DOMAIN_DAYS in addons.ts); the same
   creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
   promoCode?: string; // the Halloween code (halloween.ts): the same, without a creator
+  renewCode?: string; // the server's renewal code (renewCode.ts): a fifth off extending it, at most a month's worth
   paysafecard?: boolean; // paid with paysafecard through CashBill (cashbill.ts) instead of Stripe
   adminTest?: boolean; // an admin's test server (Server.adminTest): bought for 0, applied at once, no Stripe
 }) {
@@ -84,8 +92,20 @@ export async function startCheckout(opts: {
   const creatorId = plain ? opts.creatorId : undefined;
   const promoCode = plain && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
   // Without a code, a first payment while the user's start offer runs (startOffer.ts) is cheaper too.
-  const startOffer = plain && !creatorId && !promoCode && (await startOfferEnds(user.id)) ? "start" : undefined;
-  const amount = adminTest ? 0 : creatorId ? withCreatorDiscount(full) : promoCode ? withHalloweenDiscount(full) : startOffer ? withStartOfferDiscount(full) : full;
+  const renewCode =
+    plain && !creatorId && !promoCode && opts.renewCode && (await renewCodeFits(server.id, opts.renewCode)) ? normalizeRenewCode(opts.renewCode) : undefined;
+  const startOffer = plain && !creatorId && !promoCode && !renewCode && (await startOfferEnds(user.id)) ? "start" : undefined;
+  const amount = adminTest
+    ? 0
+    : creatorId
+      ? withCreatorDiscount(full)
+      : promoCode
+        ? withHalloweenDiscount(full)
+        : renewCode
+          ? full - renewCodeDiscount(full, Math.round(priceFor(plan, 30, currency, addons) * 100))
+          : startOffer
+            ? withStartOfferDiscount(full)
+            : full;
   const payment = await db.payment.create({
     data: {
       userId: user.id,
@@ -102,7 +122,7 @@ export async function startCheckout(opts: {
       xboxDays: xbox?.days ?? 0,
       domainDays: domain?.days ?? 0,
       creatorId,
-      promoCode: promoCode ?? startOffer,
+      promoCode: promoCode ?? renewCode ?? startOffer,
       paysafecard,
     },
   });
@@ -210,6 +230,8 @@ export async function fulfillPayment(paymentId: string) {
         memoryMb: planById(payment.plan).ramGb * 1024,
         paidUntil,
         deletionWarnedAt: null,
+        // Paid with its renewal code: used up.
+        ...(payment.promoCode && payment.promoCode === server.renewCode && { renewCodeUsedAt: now }),
         ...(needsHost && { status: "PROVISIONING" }),
       },
       include: OWNER,
@@ -687,7 +709,12 @@ export async function runBillingJob(now = new Date()) {
       data: { reminderSentFor: s.paidUntil },
     });
     if (claim.count === 0) continue;
-    if (await sendPlanMail("reminder", s)) result.reminded++;
+    // With a one-off code for a fifth off extending it (renewCode.ts); not for an admin's test server.
+    const code = s.adminTest ? null : await issueRenewCode(s.id, now).catch((err) => (console.error("renewal code not made", s.id, err), null));
+    const extra: Record<string, string> = code
+      ? { code: code.code, n: String(RENEW_CODE_DISCOUNT), codeUntil: code.until.toISOString() }
+      : {};
+    if (await sendPlanMail("reminder", s, undefined, extra)) result.reminded++;
     else await db.server.updateMany({ where: { id: s.id, reminderSentFor: s.paidUntil }, data: { reminderSentFor: s.reminderSentFor } });
   }
 

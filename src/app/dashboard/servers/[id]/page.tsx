@@ -12,6 +12,7 @@ import { formatPrice, planById } from "@/lib/plans";
 import { ADDON_SPECS, hasOwnDomain } from "@/lib/addons";
 import { canUpgrade } from "@/lib/upgrade";
 import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
+import { RENEW_CODE_DISCOUNT, activeRenewCode } from "@/lib/renewCode";
 import type { Difficulty, GameMode } from "@/lib/settings";
 import { ISLAND_COMMAND, LOADER_NAMES, isModLoader, isServerKind, modpackPage } from "@/lib/modpacks";
 import { canCrossplay, canRunNonPremium } from "@/lib/plugins";
@@ -113,6 +114,8 @@ export default async function ServerPage({ params, searchParams }: Props) {
   const waiting = payment === "success" && unpaid;
   // A running start offer (startOffer.ts), shown to the owner on their free servers.
   const offerEnds = server.plan === "FREE" && can("owner") ? await startOfferEnds(session.user.id) : null;
+  // The renewal code sent with the reminder (renewCode.ts), until it's used or runs out.
+  const renewCode = server.plan !== "FREE" && !server.autoRenew && can("owner") ? activeRenewCode(server) : null;
   // The "watch an ad" reward (adReward.ts): free servers, their owner, once Ad Manager is set up.
   const adsOn = !!AD_MANAGER_REWARDED_UNIT && server.plan === "FREE" && can("owner") && !unpaid;
   const watches = adsOn
@@ -175,6 +178,23 @@ export default async function ServerPage({ params, searchParams }: Props) {
           </span>
           <Link className="button" href={`/dashboard/servers/${server.id}/billing`}>
             <Gift size={16} aria-hidden /> {all.startOffer.button}
+          </Link>
+        </div>
+      )}
+      {renewCode && (
+        <div className="notice success row">
+          <span className="stack-tight">
+            <strong>{format(b.renewCodeTitle, { n: RENEW_CODE_DISCOUNT })}</strong>
+            <span>
+              {format(b.renewCodeText, {
+                n: RENEW_CODE_DISCOUNT,
+                code: renewCode.code,
+                until: renewCode.until.toLocaleDateString(locale, { dateStyle: "long", timeZone: "Europe/Warsaw" }),
+              })}
+            </span>
+          </span>
+          <Link className="button" href={`/dashboard/servers/${server.id}/billing?kod=${renewCode.code}`}>
+            <Gift size={16} aria-hidden /> {b.renewCodeButton}
           </Link>
         </div>
       )}

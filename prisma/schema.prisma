@@ -372,6 +372,11 @@ model Server {
   paidUntil        DateTime?
   // The paidUntil its owner was last reminded of, so each period gets one reminder.
   reminderSentFor  DateTime?
+  // The renewal code (src/lib/renewCode.ts) sent with that reminder: a fifth off extending this server,
+  // valid until renewCodeUntil, used once (renewCodeUsedAt).
+  renewCode        String?        @unique
+  renewCodeUntil   DateTime?
+  renewCodeUsedAt  DateTime?
   // When its owner was told a suspended server will be deleted; cleared by a payment.
   // For a free server: told it will be deleted for nobody playing; cleared when someone plays.
   deletionWarnedAt DateTime?
