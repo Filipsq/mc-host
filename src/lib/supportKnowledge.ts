@@ -30,7 +30,7 @@ MENU SERWERA W PANELU (po lewej, na telefonie na dole "Więcej"; Ctrl+K = wyszuk
 - Ustawienia: nazwa, adres, wersja Minecrafta ("Najnowsza" albo konkretna), typ serwera, tryb gry, trudność, PvP, sloty, MOTD, whitelist, non-premium, crossplay, latanie, Nether, potwory, zasięg widzenia. Zmiana typu/wersji: przez 7 dni można cofnąć ("Cofnij zmianę").
 - Światy: wgranie ZIP-a ze światem (Bedrock: .mcworld), nowy świat z ziarnem i wersją, pobranie świata.
 - Kopie zapasowe: tworzenie i przywracanie (płatne plany).
-- Pluginy (Paper/Spigot, Java bez modów): wyszukiwarka Modrinth, instalacja jednym kliknięciem, pluginy dopasowują się do wersji serwera.
+- Pluginy (Java bez modów; zwykły serwer to już Paper, więc pluginy działają od razu, nie trzeba zmieniać typu): wyszukiwarka Modrinth, instalacja jednym kliknięciem, pluginy dopasowują się do wersji serwera.
 - Mody (Fabric/Forge/NeoForge i paczki modów): dodawanie modów z Modrinth i CurseForge. Na serwerze z modami nie ma pluginów.
 - Addony (Bedrock): wgrywanie .mcaddon / .mcpack.
 - Paczka tekstur (Java): link do resource packa.
