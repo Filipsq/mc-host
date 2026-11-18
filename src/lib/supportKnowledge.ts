@@ -38,6 +38,7 @@ MENU SERWERA W PANELU (po lewej, na telefonie na dole "Więcej"; Ctrl+K = wyszuk
 - Połączone serwery: przejście między dwoma serwerami klienta komendą /rg.
 - Dostęp znajomych: zaproszenie po e-mailu, wybór uprawnień.
 - Płatności / Ulepsz plan / Dodatki.
+- Usunięcie serwera: Ustawienia > na dole "Usuń serwer". Nie da się tego cofnąć: znika świat razem z kopiami zapasowymi, więc kto chce go zachować, niech najpierw pobierze świat (Światy).
 
 TYPY SERWERA: Vanilla/Paper, Skyblock, OneBlock, Minigry, paczki modów (Modrinth, CurseForge; w płatnych planach), własne mody na Fabric/Forge/NeoForge. Mody i Skyblock działają też w darmowym planie.
 

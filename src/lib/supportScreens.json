@@ -76,5 +76,12 @@
     "highlight": "text=Ulepsz serwer",
     "title": "Plan i płatności (przedłużanie, ulepszenie, automatyczne odnawianie)",
     "when": "jak przedłużyć, opłacić, ulepszyć plan, do kiedy jest opłacony"
+  },
+  {
+    "key": "usun-serwer",
+    "path": "settings",
+    "highlight": "button.danger:has-text('Usuń serwer')",
+    "title": "Ustawienia > Usuń serwer (na dole strony)",
+    "when": "jak usunąć serwer (nie da się cofnąć, kopie też znikają, najpierw pobierz świat)"
   }
 ]
