@@ -99,3 +99,28 @@ func TestFindModCrashUsesTheJarLog4jNames(t *testing.T) {
 		t.Fatalf("%+v", c)
 	}
 }
+
+// A mod whose mixins need Java 25 on a Java 21 server is set aside; the others stay.
+func TestFixBrokenModsSetsAsideAModForANewerJava(t *testing.T) {
+	a, data := modGuardAgent(t, "[main/ERROR]: Error encountered reading mixin config easyauth.mixins.json: java.lang.IllegalArgumentException: The requested compatibility level JAVA_25 could not be set. Level is not supported by the active JRE or ASM version\n")
+	writeJar(t, filepath.Join(data, "mods", "easyauth.jar"), map[string]string{
+		"fabric.mod.json":      `{"id":"easyauth"}`,
+		"easyauth.mixins.json": `{"compatibilityLevel":"JAVA_25"}`,
+	})
+	a.fixBrokenMods(context.Background(), "abc12345")
+	if _, err := os.Stat(filepath.Join(data, "mods-disabled", "easyauth.jar")); err != nil {
+		t.Fatal("not set aside:", err)
+	}
+	for _, jar := range []string{"jei.jar", "lifesteal-1.0.jar"} {
+		if _, err := os.Stat(filepath.Join(data, "mods", jar)); err != nil {
+			t.Fatal(jar, "went too:", err)
+		}
+	}
+}
+
+func TestFindModCrashReadsUnsupportedClassVersion(t *testing.T) {
+	c := findModCrash([]string{"java.lang.UnsupportedClassVersionError: nightfallmods/lifesteal/command/Revive has been compiled by a more recent version of the Java Runtime (class file version 69.0)"})
+	if len(c.classes) != 1 || c.classes[0] != "nightfallmods.lifesteal.command.Revive" {
+		t.Fatalf("%+v", c)
+	}
+}

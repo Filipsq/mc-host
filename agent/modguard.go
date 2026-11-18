@@ -89,11 +89,12 @@ type modCrash struct {
 	jarNames []string // jar file names log4j printed next to stack frames
 	classes  []string // classes in the stack that aren't the game's or the loader's
 	modIDs   []string // Fabric mod IDs that need another Minecraft version
+	mixins   []string // mixin configs (at a jar's top level) that need a newer Java
 	reason   string
 }
 
 func (c modCrash) empty() bool {
-	return len(c.jarNames) == 0 && len(c.classes) == 0 && len(c.modIDs) == 0
+	return len(c.jarNames) == 0 && len(c.classes) == 0 && len(c.modIDs) == 0 && len(c.mixins) == 0
 }
 
 var (
@@ -103,6 +104,12 @@ var (
 	stackFrame = regexp.MustCompile(`^\s*at\s+(?:\S*/)?([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+)\.[\w$<>]+\([^)]*\)(?:\s*~?\[([^\]:]+\.jar)[^\]]*\])?`)
 	// " - Mod 'Lifesteal' (lifesteal) 1.0.0 requires version 1.21.9 of 'Minecraft' (minecraft), but only the wrong version is present: 1.21.11!"
 	fabricWrongGame = regexp.MustCompile(`Mod '[^']*' \(([a-z][a-z0-9_-]{1,63})\) \S+ requires .*\(minecraft\)`)
+	// "java.lang.UnsupportedClassVersionError: com/sk89q/worldedit/WorldEdit has been compiled by a more recent version"
+	newerClass = regexp.MustCompile(`UnsupportedClassVersionError: ([\w/$]+) has been compiled`)
+	// "Error encountered reading mixin config easyauth.mixins.json: java.lang.IllegalArgumentException:
+	// The requested compatibility level JAVA_25 could not be set."
+	newerMixinLevel = regexp.MustCompile(`compatibility level JAVA_\d+ could not be set`)
+	mixinConfig     = regexp.MustCompile(`(?i)mixin config ([\w.-]+\.json)`)
 )
 
 // platformPackages are code that isn't a mod's own: when they're in a crash
@@ -132,6 +139,20 @@ func findModCrash(lines []string) modCrash {
 		line := lines[i]
 		if strings.Contains(line, "Done (") {
 			c = modCrash{}
+			continue
+		}
+		if m := newerClass.FindStringSubmatch(line); m != nil {
+			c.classes = appendNew(c.classes, strings.ReplaceAll(m[1], "/", "."))
+			c.reason = "made for a newer Java than the server runs"
+			continue
+		}
+		if newerMixinLevel.MatchString(line) {
+			for j := max(0, i-10); j < len(lines) && j <= i+10; j++ {
+				if m := mixinConfig.FindStringSubmatch(lines[j]); m != nil {
+					c.mixins = appendNew(c.mixins, m[1])
+					c.reason = "made for a newer Java than the server runs"
+				}
+			}
 			continue
 		}
 		if m := fabricWrongGame.FindStringSubmatch(line); m != nil {
@@ -188,7 +209,7 @@ func culpritJars(s *serverFiles, jars []string, c modCrash) []string {
 			out = appendNew(out, j)
 		}
 	}
-	if len(c.classes) == 0 && len(c.modIDs) == 0 {
+	if len(c.classes) == 0 && len(c.modIDs) == 0 && len(c.mixins) == 0 {
 		return out
 	}
 	for _, jar := range jars {
@@ -209,7 +230,7 @@ func culpritJars(s *serverFiles, jars []string, c modCrash) []string {
 			f.Close()
 			continue
 		}
-		if jarHasClass(z, c.classes) || contains(c.modIDs, fabricModID(z)) {
+		if jarHasClass(z, c.classes) || contains(c.modIDs, fabricModID(z)) || jarHasFile(z, c.mixins) {
 			out = append(out, jar)
 		}
 		f.Close()
@@ -220,6 +241,15 @@ func culpritJars(s *serverFiles, jars []string, c modCrash) []string {
 func contains(list []string, s string) bool {
 	for _, v := range list {
 		if v == s && s != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func jarHasFile(z *zip.Reader, names []string) bool {
+	for _, f := range z.File {
+		if contains(names, f.Name) {
 			return true
 		}
 	}
@@ -341,7 +371,7 @@ func (s *serverFiles) noteDisabledMods(jars []string, reason string) {
 	for _, j := range jars {
 		b.WriteString("  " + j + "\n")
 	}
-	b.WriteString("PL: Te mody zatrzymywały start serwera (są zrobione na inną wersję Minecrafta albo brakuje im innego moda), więc przenieśliśmy je tutaj i serwer startuje bez nich. Wgraj ich wersję dla wersji Twojego serwera do folderu mods (albo dodaj brakujący mod).\n")
+	b.WriteString("PL: Te mody zatrzymywały start serwera (są zrobione na inną wersję Minecrafta lub nowszą Javę albo brakuje im innego moda), więc przenieśliśmy je tutaj i serwer startuje bez nich. Wgraj ich wersję dla wersji Twojego serwera do folderu mods (albo dodaj brakujący mod).\n")
 	b.WriteString("EN: These mods stopped the server from starting (" + reason + "), so they were moved here and the server starts without them. Put a build made for your server's version into mods.\n\n")
 	_, _ = s.writeFile(disabledModsNote, strings.NewReader(b.String()))
 }

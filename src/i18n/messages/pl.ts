@@ -532,6 +532,10 @@ const pl = {
           title: "Plugin lub mod jest na nowszą wersję",
           fix: "Któryś plugin lub mod wymaga nowszej wersji Minecrafta, niż ma serwer. Zmień wersję w Ustawieniach albo usuń ten plugin lub mod.",
         },
+        noNetwork: {
+          title: "Chwilowy brak internetu na maszynie",
+          fix: "Serwer nie mógł pobrać plików, bo maszyna na chwilę straciła połączenie. Uruchomimy go sami, gdy sieć wróci. Jeśli po kilkunastu minutach dalej stoi, kliknij Uruchom.",
+        },
         outOfMemory: {
           title: "Serwerowi zabrakło pamięci",
           fix: "Serwer zużył cały RAM z planu. Usuń część modów lub pluginów albo ulepsz plan na większy.",

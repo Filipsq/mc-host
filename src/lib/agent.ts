@@ -147,7 +147,7 @@ export type AgentState = {
   restartCount: number;
   startedAt: string;
   health?: "starting" | "healthy" | "unhealthy";
-  stopReason?: "sleeping" | "stopped" | "crashed" | "disk";
+  stopReason?: "sleeping" | "stopped" | "crashed" | "disk" | "repairing";
   diskMb?: number; // what its files take, as last measured
   diskLimitMb?: number;
 };

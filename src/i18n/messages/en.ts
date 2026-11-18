@@ -533,6 +533,10 @@ const en: Messages = {
           title: "A plugin or mod is for a newer version",
           fix: "A plugin or mod needs a newer Minecraft version than the server's. Change the version in Settings or remove that plugin or mod.",
         },
+        noNetwork: {
+          title: "The machine briefly lost its internet",
+          fix: "The server couldn't download its files because the machine lost its connection for a while. We start it again ourselves once the network is back. If it's still down after a quarter of an hour, click Start.",
+        },
         outOfMemory: {
           title: "The server ran out of memory",
           fix: "The server used all the RAM in its plan. Remove some mods or plugins, or upgrade to a bigger plan.",

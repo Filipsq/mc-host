@@ -530,3 +530,45 @@ esac
 		t.Errorf("Balm fetched though new enough:\n%s", fetched)
 	}
 }
+
+// A mod the last start said was missing (written down by the agent), under its Modrinth slug with - for _.
+func TestPackScriptAddsWhatTheLastStartLacked(t *testing.T) {
+	for _, tool := range []string{"bash", "unzip", "jq"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip("no " + tool)
+		}
+	}
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "mods")
+	os.MkdirAll(mods, 0o755)
+	f, _ := os.Create(filepath.Join(mods, "aircraft.jar"))
+	z := zip.NewWriter(f)
+	w, _ := z.Create("fabric.mod.json")
+	w.Write([]byte(`{"id": "immersive_aircraft", "version": "1.2.2"}`))
+	z.Close()
+	f.Close()
+	os.WriteFile(filepath.Join(dir, packNeedsFile), []byte("immersive_lib\n"), 0o644)
+
+	bin := t.TempDir()
+	fake := `#!/bin/bash
+url="${@: -1}"; out=; prev=
+for a in "$@"; do [ "$prev" = -o ] && out=$a; prev=$a; done
+echo "$url" >>"$LOG"
+case $url in
+  *api.modrinth.com/v2/project/immersive-lib/*) echo '[{"files":[{"primary":true,"url":"https://cdn/immersive-lib-1.0.jar","filename":"immersive-lib-1.0.jar"}]}]' ;;
+  *api.modrinth.com/*) exit 22 ;;
+  *) echo jar >"$out" ;;
+esac
+`
+	os.WriteFile(filepath.Join(bin, "curl"), []byte(fake), 0o755)
+	cmd := exec.Command("bash", "-c", packScript)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "VERSION=1.20.1", "LOG="+filepath.Join(bin, "log"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	if _, err := os.Stat(filepath.Join(mods, "immersive-lib-1.0.jar")); err != nil {
+		t.Errorf("not added: %s", out)
+	}
+}

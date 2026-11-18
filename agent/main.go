@@ -225,6 +225,9 @@ type agent struct {
 	lastPlayed sync.Map // Terraria server id -> time.Time someone was last connected (see idle.go)
 	terrariaUp sync.Map // Terraria server id -> time.Time it was last seen still loading (see idle.go)
 	autostops  sync.Map // server id -> autostopExit, whether its last nonzero exit was going to sleep
+	repairs    sync.Map // server id -> *repairState, starts after crashes (see autorepair.go)
+
+	repairStart func(context.Context, string) error // tests: what auto-repair calls instead of startServer
 
 	udp *udpWaker // answers Bedrock players while their server is stopped (see bedrock.go)
 }
@@ -306,6 +309,7 @@ func main() {
 	go a.watchBackups(context.Background())
 	go a.watchDisk(context.Background())
 	go a.watchMetrics(context.Background())
+	go a.watchCrashes(context.Background())
 	go a.watchBedrockPorts(context.Background())
 	go a.warmCrossplay()
 
@@ -1139,6 +1143,8 @@ func (a *agent) stopReason(id string, info *ContainerInfo) string {
 		return "sleeping" // Java's built-in autostop exits cleanly
 	case info.Config.Labels["mchost.autostop"] == "true" && a.sleptOnExit(id, info):
 		return "sleeping" // autostop saved the world, but a mod kept Java running until it was killed
+	case info.State.ExitCode != 0 && a.repairPending(id, info):
+		return "repairing" // the agent starts it again with the cause fixed (see autorepair.go)
 	case info.State.ExitCode != 0:
 		return "crashed"
 	default:

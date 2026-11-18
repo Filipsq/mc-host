@@ -127,3 +127,19 @@ func TestPluginEnvPins(t *testing.T) {
 		t.Fatalf("pinned build not listed: %s", env)
 	}
 }
+
+// EasyAuth for 1.21.4: Java 21 classes, but mixins that need Java 25.
+func TestJarClassVersionReadsMixinLevel(t *testing.T) {
+	var buf bytes.Buffer
+	w := zip.NewWriter(&buf)
+	f, _ := w.Create("xyz/nikitacartes/easyauth/EasyAuth.class")
+	f.Write([]byte{0xCA, 0xFE, 0xBA, 0xBE, 0, 0, 0, 65})
+	f, _ = w.Create("easyauth.mixins.json")
+	f.Write([]byte(`{"required": true, "compatibilityLevel": "JAVA_25", "mixins": []}`))
+	f, _ = w.Create("assets/easyauth/lang/mixin_notes.json")
+	f.Write([]byte(`{"compatibilityLevel": "JAVA_99"}`))
+	w.Close()
+	if c, err := jarClassVersion(buf.Bytes()); err != nil || c != 69 {
+		t.Errorf("got %d, %v; want 69", c, err)
+	}
+}

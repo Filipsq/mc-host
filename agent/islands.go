@@ -243,7 +243,19 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
   # received from server").
   [[ "$have$need" =~ " "ftbquests" " ]] && need+="ftbquests ftbteams "
   [[ "$have$need" =~ " "ftb(quests|teams|chunks|essentials)" " ]] && need+="ftblibrary "
-  for lib in ` + strings.Join(packLibs, " ") + `; do
+  # What Fabric said the last start lacked, which the agent wrote down
+  # (packNeedsFile): any mod, not only the libraries above, and the version it
+  # wanted ("Immersive Aircraft" without Balm, Chipped with too old an Athena).
+  extra=
+  if [ -f ` + packNeedsFile + ` ]; then
+    while read -r dep min; do
+      [ -n "$dep" ] || continue
+      need+="$dep "
+      [[ " ` + strings.Join(packLibs, " ") + ` $extra" == *" $dep "* ]] || extra+="$dep "
+      [ -n "$min" ] && { [ -z "${least[$dep]}" ] || older "${least[$dep]}" "$min"; } && least[$dep]=$min
+    done < ` + packNeedsFile + `
+  fi
+  for lib in ` + strings.Join(packLibs, " ") + ` $extra; do
     stale=
     if [[ "$have" == *" $lib "* ]]; then
       # There, but older than a mod needs: fetch the newest and drop the old jar.
@@ -264,8 +276,13 @@ if [ -d mods ] && [ ! -d libraries/net/minecraftforge ] && [ ! -d libraries/net/
       *)
         slug=${lib%-fabric}
         [ "$lib" = athena ] && slug=athena-ctm
-        read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/$slug/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$VERSION%22%5D" |
-          jq -r '[.[0].files[] | select(.primary)][0] | .url + " " + .filename' 2>/dev/null) ;;
+        # A mod ID is nearly always its Modrinth slug, with - for _ (immersive_aircraft).
+        url= file=
+        for s in $slug ${slug//_/-}; do
+          read -r url file < <(curl -fsS "https://api.modrinth.com/v2/project/$s/version?loaders=%5B%22fabric%22%5D&game_versions=%5B%22$VERSION%22%5D" 2>/dev/null |
+            jq -r '[.[0].files[] | select(.primary)][0] | .url + " " + .filename' 2>/dev/null)
+          [ -n "$url" ] && break
+        done ;;
     esac
     if [ -n "$url" ] && curl -fsSL -o "mods/$file" "$url"; then
       echo "[mchost] added mods/$file (needed by the pack's mods)"

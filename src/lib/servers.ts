@@ -78,6 +78,8 @@ export function liveStateFrom(server: Pick<Server, "status">, s: KnownState | "m
   if (s.state === "restarting") return "restarting";
   if (s.state === "running") return s.health === "healthy" ? "online" : "starting";
   if (s.stopReason === "disk") return "diskFull";
+  // Crashed on something the agent fixes, and about to be started again by it.
+  if (s.stopReason === "repairing") return "starting";
   if (server.status === "STOPPED") return "offline";
   if (s.stopReason === "sleeping") return "sleeping";
   if (s.stopReason === "crashed") return "crashed";
