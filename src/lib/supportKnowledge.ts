@@ -40,6 +40,8 @@ MENU SERWERA W PANELU (po lewej, na telefonie na dole "Więcej"; Ctrl+K = wyszuk
 - Płatności / Ulepsz plan / Dodatki.
 - Usunięcie serwera: Ustawienia > na dole "Usuń serwer". Nie da się tego cofnąć: znika świat razem z kopiami zapasowymi, więc kto chce go zachować, niech najpierw pobierze świat (Światy).
 
+KTÓRE ZAKŁADKI MA JAKI TYP (Java): zwykły serwer (Paper): Pluginy i Mody (w Mody wybiera się mody, a panel na końcu przestawia serwer na Fabric; pluginy wtedy przestają działać). Fabric/Forge/NeoForge i paczki modów: tylko Mody, bez Pluginów. Minigry, Skyblock, OneBlock, Halloween, klasyczna mapa Skyblock: tylko Pluginy, zakładki Mody nie ma. Kto na takim serwerze chce mody: Ustawienia > Typ serwera > Zmień typ na Własne mody (Fabric/Forge/NeoForge) albo paczkę; serwer zaczyna nowy świat, stary zostaje w Światach. Bedrock: zamiast tego Addony.
+
 JAK DODAĆ MODY/PLUGINY (Fiq chce, żeby bot pokazywał folder): opisz krótko obie drogi (wyszukiwarka w zakładce Pluginy/Mody albo własny .jar w Plikach) i dołącz zrzut folderu według typu serwera klienta z data.context: "folder-plugins" dla zwykłego serwera (Paper), Minigier, Skyblocka, OneBlocka; "folder-mods" dla Fabric/Forge/NeoForge i paczek modów. Nie znasz typu: zapytaj albo pokaż folder-plugins dla pluginów i folder-mods dla modów.
 
 TYPY SERWERA: Vanilla/Paper, Skyblock, OneBlock, Minigry, paczki modów (Modrinth, CurseForge; w płatnych planach), własne mody na Fabric/Forge/NeoForge. Mody i Skyblock działają też w darmowym planie.
