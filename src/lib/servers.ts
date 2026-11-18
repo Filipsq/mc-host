@@ -10,6 +10,7 @@ import {
   getHost,
   getServerState,
   listWorlds,
+  portInUse,
   recreateServer,
   setHostAliases,
   setPeerRoutes,
@@ -386,6 +387,32 @@ export async function applyToHost(server: Server) {
   await recreateServer(agentSpec(server), { keepStopped: true });
   // The rebuild brought the plugin list up to date too.
   if (server.pluginsPending) await db.server.update({ where: { id: server.id }, data: { pluginsPending: false } });
+}
+
+/**
+ * Starts a server whose start failed because its port was taken: its container
+ * may still publish a port it no longer has (lre on n6, 2026-11-18: the
+ * container held 30051, which the agent kept open for another, sleeping
+ * crossplay server, while its own was 30094). It is rebuilt with its own port
+ * and started; if that one is taken too, it moves to the next free port.
+ * Returns the server as it now is, or null if no port worked.
+ */
+export async function startOnFreePort(server: Server): Promise<Server | null> {
+  const busy = new Set<number>();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await recreateServer(agentSpec(server));
+      return server;
+    } catch (err) {
+      if (!portInUse(err) || server.port === null) throw err;
+      busy.add(server.port);
+      const moved = await changePort(server, busy);
+      if (!moved) return null;
+      console.info("port taken, moved", server.id, "from", server.port, "to", moved.port);
+      server = moved;
+    }
+  }
+  return null;
 }
 
 // Servers being moved right now, so a retry doesn't start a second move.

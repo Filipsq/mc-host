@@ -19,6 +19,7 @@ import {
   isValidSubdomain,
   onHost,
   startElsewhere,
+  startOnFreePort,
   syncHostAliases,
   syncPeerRoutes,
   worldTooNew,
@@ -693,6 +694,12 @@ export async function startServerAction(id: string): Promise<{ error?: ServerErr
         await agent.recreateServer(agentSpec(server));
       });
   } catch (err) {
+    // Its port is taken on its machine: rebuilt with its own port (or the next free one) and started.
+    if (agent.portInUse(err) && (await startOnFreePort(server).catch((e) => (console.error("start on a free port failed", server.id, e), null)))) {
+      await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false, queuedAt: null } });
+      revalidatePath(`/dashboard/servers/${id}`, "layout");
+      return {};
+    }
     // A free server's machine is full right now: it moves to one with room and starts there.
     if (agent.isFull(err) && server.plan === "FREE" && (await startElsewhere(server).catch(() => null))) {
       await db.server.update({ where: { id: server.id }, data: { status: "RUNNING", pluginsPending: false, queuedAt: null } });
