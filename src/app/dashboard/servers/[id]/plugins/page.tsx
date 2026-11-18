@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ExternalLink, Map as MapIcon, Mic, Package, Puzzle, Search } from "lucide-react";
+import { Ban, ExternalLink, Map as MapIcon, Mic, Package, Puzzle, Search } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format, type Messages } from "@/i18n/messages";
 import { allows, getServerAccess } from "@/lib/access";
 import UndoNotice from "../undo/UndoNotice";
-import { ADDON_CATEGORIES, addonBuilds, addonCategory, addonLoaders, autoBuild, getPluginInfos, searchAddons, type AddonBuild } from "@/lib/modrinth";
+import { ADDON_CATEGORIES, addonBuilds, addonCategory, addonLoaders, autoBuild, getPluginInfos, searchAddonMisses, searchAddons, versionSpan, type AddonBuild, type MissHit } from "@/lib/modrinth";
 import { curseforgeEnabled, getCurseforgeModInfos, searchCurseforgeMods } from "@/lib/curseforge";
 import { getSitePluginInfos, searchSitePlugins } from "@/lib/sitePlugins";
 import { downloadVersion, versionsToCheck } from "@/lib/addonVersions";
@@ -145,7 +145,7 @@ export default async function PluginsPage({ params, searchParams }: Props) {
   // A Modrinth category picked from the chips over the results.
   const category = active === "" ? addonCategory(type, cat) : undefined;
   const cfIds = server.plugins.map((p) => curseforgeMod(p)?.modId).filter((m) => m !== undefined);
-  const [infos, cfInfos, siteInfos, results, cfResults, siteResults] = await Promise.all([
+  const [infos, cfInfos, siteInfos, results, cfResults, siteResults, missed] = await Promise.all([
     getPluginInfos(server.plugins.filter((p) => !curseforgeMod(p) && !sitePlugin(p))),
     getCurseforgeModInfos(cfIds),
     getSitePluginInfos(server.plugins.filter((p) => sitePlugin(p))),
@@ -153,7 +153,12 @@ export default async function PluginsPage({ params, searchParams }: Props) {
     // A CurseForge file is picked for one Minecraft version, so "newest" has none.
     fromCf && mc ? searchCurseforgeMods(query, { gameVersion: mc, loader: server.kind }) : null,
     site ? searchSitePlugins(site, query, site === "hangar" ? runsOn : undefined) : null,
+    // A searched name that the filters hide (another version or loader, players-only) is
+    // shown greyed out with why, instead of just missing from the list.
+    fromCf || site ? [] : searchAddonMisses(type, query, { gameVersion: runsOn, loader: server.kind }),
   ]);
+  const found = new Set(Array.isArray(results) ? results.map((r) => r.id) : []);
+  const misses = missed.filter((m) => !found.has(m.id) && !server.plugins.includes(m.id)).slice(0, 5);
   // The builds each plugin has for the version the server runs: what the image
   // installs (or the one the owner picked), shown instead of the newest
   // Minecraft the plugin supports, which read as if 26.x builds were installed.
@@ -312,9 +317,11 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           )
         ) : results === null ? null : results === "modrinthUnavailable" ? (
           <p className="notice warn">{t.errors.modrinthUnavailable}</p>
-        ) : results.length === 0 ? (
+        ) : results.length === 0 && misses.length === 0 ? (
           <p className="muted">{t.noResults}</p>
         ) : (
+          <>
+            {results.length > 0 && (
           <ul className="card plugin-list">
             {results.map((p) => (
               <li key={p.id}>
@@ -338,6 +345,19 @@ export default async function PluginsPage({ params, searchParams }: Props) {
               </li>
             ))}
           </ul>
+            )}
+            {misses.length > 0 && (
+              <Misses
+                misses={misses}
+                type={type}
+                mc={runsOn}
+                loader={loader}
+                serverId={server.id}
+                versionPicked={server.kind === "vanilla" || server.kind === "halloween" || type === "mod"}
+                t={t}
+              />
+            )}
+          </>
         )}
       </section>
 
@@ -538,6 +558,73 @@ function PluginIcon({ src }: { src?: string }) {
 }
 
 type PluginTexts = Messages["plugins"];
+
+/** Search hits the server can't take, greyed out, each saying why and what would fix it. */
+function Misses({
+  misses,
+  type,
+  mc,
+  loader,
+  serverId,
+  versionPicked,
+  t,
+}: {
+  misses: MissHit[];
+  type: "plugin" | "mod";
+  mc?: string;
+  loader: string;
+  serverId: string;
+  // The owner picks the server's version in Settings (game modes run their own).
+  versionPicked: boolean;
+  t: PluginTexts;
+}) {
+  const why = (m: MissHit) => {
+    const r = m.reason;
+    if (r.kind === "client") return t.missClient;
+    if (r.kind === "loader") {
+      const names = r.loaders.map((l) => LOADER_NAMES[l] ?? l.charAt(0).toUpperCase() + l.slice(1)).join(", ");
+      return names ? format(t.missLoader, { loaders: names, loader }) : t.missLoaderNone;
+    }
+    if (r.below && r.above) return format(t.missGap, { mc: mc ?? "", below: r.below, above: r.above });
+    return r.versions.length ? format(t.missVersion, { span: versionSpan(r.versions), mc: mc ?? "" }) : format(t.missVersionNone, { mc: mc ?? "" });
+  };
+  return (
+    <>
+      <h3 className="miss-title">{t.missTitle}</h3>
+      <ul className="card plugin-list miss-list">
+        {misses.map((m) => {
+          const text = why(m);
+          return (
+            <li key={m.id}>
+              <PluginIcon src={m.icon} />
+              <span className="plugin-main">
+                <a href={pluginPage(m.slug, type)} target="_blank" rel="noreferrer">
+                  <strong>{m.title}</strong>
+                </a>
+                <span className="miss-why small">{text}</span>
+                {m.reason.kind === "version" && versionPicked && (
+                  <Link className="small" href={`/dashboard/servers/${serverId}/settings`}>
+                    {t.missFixVersion}
+                  </Link>
+                )}
+                {m.reason.kind === "loader" && type === "mod" && (
+                  <Link className="small" href={`/dashboard/servers/${serverId}/type`}>
+                    {t.missFixType}
+                  </Link>
+                )}
+              </span>
+              <span className="plugin-action">
+                <button className="secondary small" disabled title={text} aria-label={`${m.title}: ${text}`}>
+                  <Ban size={15} aria-hidden /> {t.missButton}
+                </button>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}
 
 /** What a search result installs on the server's version. */
 function hitBuildText(list: AddonBuild[] | null | undefined, type: "plugin" | "mod", mc: string, t: PluginTexts) {

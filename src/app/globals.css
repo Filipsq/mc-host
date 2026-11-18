@@ -704,6 +704,12 @@ textarea.editor:focus { box-shadow: none; }
 .type-notes:empty { display: none; }
 .plugin-search { display: flex; gap: 8px; }
 .plugin-search input { flex: 1; min-width: 0; width: auto; }
+/* Search hits the server can't take: greyed, the reason kept readable. */
+.miss-title { margin: 8px 0 0; font-size: 1rem; color: var(--muted); }
+.miss-list .plugin-icon img { filter: grayscale(1); opacity: 0.6; }
+.miss-list .plugin-main strong { color: var(--muted); }
+.miss-list .miss-why { color: #c3cfdd; }
+.miss-list button:disabled { cursor: not-allowed; }
 .category-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .category-chips .chip { text-decoration: none; min-height: 36px; padding: 6px 12px; font-weight: 500; transition: border-color 0.15s, color 0.15s; }
 .category-chips .chip:hover { color: var(--fg); border-color: var(--border-strong); }
