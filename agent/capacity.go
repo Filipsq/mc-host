@@ -109,6 +109,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 	a.fixPaperConfig(ctx, id)
 	a.limitPaperEntities(ctx, id)
 	a.fixBrokenMods(ctx, id)
+	a.notePackNeeds(ctx, id)
 	a.fixOwners(ctx, id)
 	a.fixCrossplay(ctx, id)
 	a.fixLogin(ctx, id)

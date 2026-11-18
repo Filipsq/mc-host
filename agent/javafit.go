@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -300,8 +301,11 @@ func (f *javaFitter) readClassVersion(u string) (int, error) {
 	return jarClassVersion(data)
 }
 
-// jarClassVersion reads the class file version of the jar's classes and returns
-// the newest. Multi-release copies under META-INF are skipped: the server's
+// jarClassVersion reads the class file version of the jar's classes, and the
+// Java its mixin configs ask for, and returns the newest. EasyAuth's builds for
+// 1.21.4 have Java 21 classes but mixins at JAVA_25, which stop a Java 21
+// server ("The requested compatibility level JAVA_25 could not be set",
+// 2026-11-17). Multi-release copies under META-INF are skipped: the server's
 // Java only loads the ones it can.
 func jarClassVersion(data []byte) (int, error) {
 	r, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
@@ -310,6 +314,9 @@ func jarClassVersion(data []byte) (int, error) {
 	}
 	newest, read := 0, 0
 	for _, file := range r.File {
+		if c := mixinClassVersion(file); c > newest {
+			newest = c
+		}
 		if !strings.HasSuffix(file.Name, ".class") || strings.HasPrefix(file.Name, "META-INF/") {
 			continue
 		}
@@ -331,4 +338,29 @@ func jarClassVersion(data []byte) (int, error) {
 		}
 	}
 	return newest, nil
+}
+
+// mixinClassVersion is the class file version a mixin config at the jar's top
+// level asks for ("compatibilityLevel": "JAVA_25" is 69), 0 for anything else.
+func mixinClassVersion(file *zip.File) int {
+	name := strings.ToLower(file.Name)
+	if strings.Contains(name, "/") || !strings.HasSuffix(name, ".json") || !strings.Contains(name, "mixin") || file.UncompressedSize64 > 1<<20 {
+		return 0
+	}
+	rc, err := file.Open()
+	if err != nil {
+		return 0
+	}
+	defer rc.Close()
+	var cfg struct {
+		CompatibilityLevel string `json:"compatibilityLevel"`
+	}
+	if json.NewDecoder(io.LimitReader(rc, 1<<20)).Decode(&cfg) != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimPrefix(cfg.CompatibilityLevel, "JAVA_"))
+	if err != nil || n < 8 {
+		return 0
+	}
+	return n + 44
 }

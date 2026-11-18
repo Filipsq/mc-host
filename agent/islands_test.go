@@ -471,3 +471,104 @@ esac
 		t.Errorf("fetched again:\n%s", fetched)
 	}
 }
+
+// Prominence II ships Athena 3.0.0 next to a Chipped that needs 3.1.1: the newest Athena replaces it.
+func TestPackScriptReplacesTooOldLibrary(t *testing.T) {
+	for _, tool := range []string{"bash", "unzip", "jq"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip("no " + tool)
+		}
+	}
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "mods")
+	if err := os.MkdirAll(mods, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	jar := func(name, meta string) {
+		f, _ := os.Create(filepath.Join(mods, name))
+		z := zip.NewWriter(f)
+		w, _ := z.Create("fabric.mod.json")
+		w.Write([]byte(meta))
+		z.Close()
+		f.Close()
+	}
+	jar("chipped-fabric-1.20.1-3.0.7.jar", `{"id": "chipped", "version": "3.0.7", "depends": {"athena": ">=3.1.1", "fabricloader": ">=0.14"}}`)
+	jar("athena-fabric-1.20.1-3.0.0.jar", `{"id": "athena", "version": "3.0.0+1.20.1"}`)
+	jar("balm-fabric-1.20.1-7.3.44.jar", `{"id": "balm", "version": "7.3.44"}`)
+	jar("waystones.jar", `{"id": "waystones", "depends": {"balm": ">=7.0.0"}}`)
+
+	bin := t.TempDir()
+	fake := `#!/bin/bash
+url="${@: -1}"; out=; prev=
+for a in "$@"; do [ "$prev" = -o ] && out=$a; prev=$a; done
+echo "$url" >>"$LOG"
+case $url in
+  *api.modrinth.com/v2/project/athena-ctm/*loaders=*fabric*game_versions=*1.20.1*) echo '[{"files":[{"primary":true,"url":"https://cdn/athena-fabric-1.20.1-3.1.2.jar","filename":"athena-fabric-1.20.1-3.1.2.jar"}]}]' ;;
+  *api.modrinth.com/*) echo '[]' ;;
+  *) echo jar >"$out" ;;
+esac
+`
+	os.WriteFile(filepath.Join(bin, "curl"), []byte(fake), 0o755)
+	log := filepath.Join(bin, "log")
+	cmd := exec.Command("bash", "-c", packScript)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "VERSION=1.20.1", "LOG="+log)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	if _, err := os.Stat(filepath.Join(mods, "athena-fabric-1.20.1-3.1.2.jar")); err != nil {
+		t.Errorf("new Athena not added: %s", out)
+	}
+	if _, err := os.Stat(filepath.Join(mods, "athena-fabric-1.20.1-3.0.0.jar")); err == nil {
+		t.Errorf("old Athena left next to the new one: %s", out)
+	}
+	if _, err := os.Stat(filepath.Join(mods, "balm-fabric-1.20.1-7.3.44.jar")); err != nil {
+		t.Errorf("Balm new enough but removed: %s", out)
+	}
+	if fetched, _ := os.ReadFile(log); strings.Contains(string(fetched), "balm") {
+		t.Errorf("Balm fetched though new enough:\n%s", fetched)
+	}
+}
+
+// A mod the last start said was missing (written down by the agent), under its Modrinth slug with - for _.
+func TestPackScriptAddsWhatTheLastStartLacked(t *testing.T) {
+	for _, tool := range []string{"bash", "unzip", "jq"} {
+		if _, err := exec.LookPath(tool); err != nil {
+			t.Skip("no " + tool)
+		}
+	}
+	dir := t.TempDir()
+	mods := filepath.Join(dir, "mods")
+	os.MkdirAll(mods, 0o755)
+	f, _ := os.Create(filepath.Join(mods, "aircraft.jar"))
+	z := zip.NewWriter(f)
+	w, _ := z.Create("fabric.mod.json")
+	w.Write([]byte(`{"id": "immersive_aircraft", "version": "1.2.2"}`))
+	z.Close()
+	f.Close()
+	os.WriteFile(filepath.Join(dir, packNeedsFile), []byte("immersive_lib\n"), 0o644)
+
+	bin := t.TempDir()
+	fake := `#!/bin/bash
+url="${@: -1}"; out=; prev=
+for a in "$@"; do [ "$prev" = -o ] && out=$a; prev=$a; done
+echo "$url" >>"$LOG"
+case $url in
+  *api.modrinth.com/v2/project/immersive-lib/*) echo '[{"files":[{"primary":true,"url":"https://cdn/immersive-lib-1.0.jar","filename":"immersive-lib-1.0.jar"}]}]' ;;
+  *api.modrinth.com/*) exit 22 ;;
+  *) echo jar >"$out" ;;
+esac
+`
+	os.WriteFile(filepath.Join(bin, "curl"), []byte(fake), 0o755)
+	cmd := exec.Command("bash", "-c", packScript)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "VERSION=1.20.1", "LOG="+filepath.Join(bin, "log"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	if _, err := os.Stat(filepath.Join(mods, "immersive-lib-1.0.jar")); err != nil {
+		t.Errorf("not added: %s", out)
+	}
+}

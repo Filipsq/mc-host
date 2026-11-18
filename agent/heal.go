@@ -30,6 +30,11 @@ const (
 
 // lastStartNeededAlpha tells whether the last start stopped on a mod with only alpha builds.
 func (a *agent) lastStartNeededAlpha(ctx context.Context, id string) bool {
+	return a.lastStartHad(ctx, id, needsAlpha)
+}
+
+// lastStartHad tells whether a line near the end of the server's log matches.
+func (a *agent) lastStartHad(ctx context.Context, id string, match func(string) bool) bool {
 	if a.docker == nil {
 		return false
 	}
@@ -37,10 +42,35 @@ func (a *agent) lastStartNeededAlpha(ctx context.Context, id string) bool {
 	defer cancel()
 	found := false
 	_ = a.docker.Logs(logCtx, containerName(id), LogOptions{Tail: 300}, func(line string) error {
-		found = found || needsAlpha(line)
+		found = found || match(line)
 		return nil
 	})
 	return found
+}
+
+// javaTooNew is a jar (or its mixins) made for a newer Java than the server runs.
+var javaTooNew = regexp.MustCompile(`UnsupportedClassVersionError|compiled by a more recent version of the Java Runtime|compatibility level JAVA_\d+ could not be set`)
+
+// envKinds are the server kinds whose TYPE the image runs plugins or mods on.
+var envKinds = map[string]string{"TYPE=FABRIC": "fabric", "TYPE=FORGE": "forge", "TYPE=NEOFORGE": "neoforge", "TYPE=PAPER": "vanilla"}
+
+// refitEnv pins, in a built container's env, the plugin and mod builds that
+// load on its Java (fitPluginEnv), for a server built before the agent could
+// tell (EasyAuth's JAVA_25 mixins, javafit.go).
+func refitEnv(id, image string, env []string) []string {
+	req := &createRequest{ID: id}
+	for _, e := range env {
+		if k, ok := envKinds[e]; ok {
+			req.Kind = k
+		}
+		if v, ok := strings.CutPrefix(e, "VERSION="); ok {
+			req.Version = v
+		}
+	}
+	if req.Kind == "" {
+		return env
+	}
+	return fitPluginEnv(req, image, env)
 }
 
 // needsAlpha tells whether a log line is the image refusing a mod (or a mod's
@@ -118,6 +148,15 @@ func (a *agent) healEnv(ctx context.Context, id string) {
 			why += ", "
 		}
 		why += "with " + strings.Join(missing, ", ") + " a mod needs"
+	}
+	if image, _ := c.Config["Image"].(string); a.lastStartHad(ctx, id, javaTooNew.MatchString) {
+		if refit := refitEnv(id, image, fixed); !slices.Equal(refit, fixed) {
+			fixed = refit
+			if why != "" {
+				why += ", "
+			}
+			why += "with builds made for its Java"
+		}
 	}
 	if i := slices.Index(fixed, betaMods); i >= 0 && a.lastStartNeededAlpha(ctx, id) {
 		fixed[i] = alphaMods
