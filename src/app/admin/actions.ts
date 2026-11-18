@@ -17,6 +17,7 @@ import { PLAYERS_MAX } from "@/lib/settings";
 import { sendPaymentHelp } from "@/lib/paymentHelp";
 import { deleteAccount } from "@/lib/accountDeletion";
 import type { DeleteAccountState } from "@/components/DeleteAccountForm";
+import { startServerAction } from "@/app/dashboard/servers/actions";
 
 export type GiftState = { error?: "invalid" | "free" | "soldOut" | "failed"; days?: number; date?: string };
 
@@ -223,4 +224,27 @@ export async function paymentHelpAction(paymentId: string) {
   const result = await sendPaymentHelp(paymentId, session.user!.id!);
   console.info("admin payment help", paymentId, result);
   revalidatePath("/admin", "layout");
+}
+
+export type RestartResult = "started" | "queued" | "full" | "failed";
+
+/**
+ * Starts crashed servers again, one after another, e.g. after an update that
+ * fixes what stopped them. The same start as the owner's Uruchom (the agent's
+ * fixes run on every start); admins may start any server.
+ */
+export async function restartCrashedAction(ids: string[]): Promise<Record<string, RestartResult>> {
+  await requireAdmin();
+  const out: Record<string, RestartResult> = {};
+  for (const id of ids.slice(0, 100)) {
+    try {
+      const r = await startServerAction(id);
+      out[id] = r.queued ? "queued" : r.error === "full" ? "full" : r.error ? "failed" : "started";
+    } catch (err) {
+      console.error("admin: restart after crash failed", id, err);
+      out[id] = "failed";
+    }
+  }
+  revalidatePath("/admin");
+  return out;
 }

@@ -15,6 +15,7 @@ import { liveStates, machineStats } from "./data";
 import { formats } from "./format";
 import { aiEnabled, aiUsageThisMonth } from "@/lib/ai";
 import RebuildBedrock from "./RebuildBedrock";
+import { RestartAllCrashed, RestartCrashed, RestartCrashedProvider } from "./RestartCrashed";
 import { signupBuckets, signupsSince, type Bucket } from "./signups";
 import { activity, countSince, warsawMidnight } from "./activity";
 import { REFUSAL_KINDS } from "@/lib/refusals";
@@ -134,39 +135,43 @@ async function Attention() {
     );
   }
   return (
-    <section className="stack tight">
-      <h2>
-        {t.attention}
-        <span className="chips">
-          {groups.map((g) => (
-            <a key={g.title} href={`#uwaga-${groups.indexOf(g)}`} className={`chip ${g.level}`} title={g.hint}>
-              {g.title}: {g.rows.length}
-            </a>
-          ))}
-        </span>
-      </h2>
-      {!stats && <p className="notice warn">{t.agentDown}</p>}
-      <div className="table-scroll card flush attention-scroll">
-        <table className="admin-table compact">
-          <tbody>
-            {groups.map((g, gi) =>
-              g.rows.map((s, i) => (
-                <tr key={`${gi}-${s.id}`} id={i === 0 ? `uwaga-${gi}` : undefined}>
-                  <td className="fit">
-                    <span className={`adot ${g.level}`} aria-hidden /> <span title={g.hint}>{g.title}</span>
-                  </td>
-                  <td className="fit">
-                    <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
-                  </td>
-                  <td className="muted fit">{all.plans[s.plan]}</td>
-                  <td className="muted">{g.note?.(s)}</td>
-                </tr>
-              )),
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
+    <RestartCrashedProvider t={all.admin.restartCrashed}>
+      <section className="stack tight">
+        <h2>
+          {t.attention}
+          <span className="chips">
+            {groups.map((g) => (
+              <a key={g.title} href={`#uwaga-${groups.indexOf(g)}`} className={`chip ${g.level}`} title={g.hint}>
+                {g.title}: {g.rows.length}
+              </a>
+            ))}
+          </span>
+          {crashed.length > 0 && <RestartAllCrashed ids={crashed.map((s) => s.id)} />}
+        </h2>
+        {!stats && <p className="notice warn">{t.agentDown}</p>}
+        <div className="table-scroll card flush attention-scroll">
+          <table className="admin-table compact">
+            <tbody>
+              {groups.map((g, gi) =>
+                g.rows.map((s, i) => (
+                  <tr key={`${gi}-${s.id}`} id={i === 0 ? `uwaga-${gi}` : undefined}>
+                    <td className="fit">
+                      <span className={`adot ${g.level}`} aria-hidden /> <span title={g.hint}>{g.title}</span>
+                    </td>
+                    <td className="fit">
+                      <Link href={`/admin/servers/${s.id}`}>{s.name}</Link>
+                    </td>
+                    <td className="muted fit">{all.plans[s.plan]}</td>
+                    <td className="muted">{g.note?.(s)}</td>
+                    <td className="fit">{g.rows === crashed && <RestartCrashed id={s.id} />}</td>
+                  </tr>
+                )),
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </RestartCrashedProvider>
   );
 }
 

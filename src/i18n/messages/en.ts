@@ -1962,6 +1962,12 @@ const en: Messages = {
     signupsToday: "Today",
     signupsThisWeek: "This week",
     signupsThisMonth: "This month",
+    restartCrashed: {
+      one: "Start",
+      all: "Start all crashed",
+      working: "Starting…",
+      results: { started: "Started", queued: "Waiting in line for room", full: "No room on the machine", failed: "Failed" },
+    },
     bedrockRebuild: {
       title: "Bedrock from 27.10: rebuild servers",
       hint: "From 27 October Bedrock connects a new way (NetherNet). Click once after the update and Bedrock and crossplay servers get the new setup. Running ones restart (players are disconnected for a moment); stopped and sleeping ones get it on their next start.",
