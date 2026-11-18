@@ -396,6 +396,11 @@ const en: Messages = {
     upgradeHint: "Upgrade your plan now and pay only the difference for the days left. Your world stays.",
     credit: "Unused days on your current plan are converted to the new plan.",
     extendNote: "The time you pay for is added to your current period.",
+    renewCode: "Discount code",
+    renewCodeHint: "Got a renewal code? Type it here and the discount comes off on the payment page.",
+    renewCodeTitle: "{n}% off renewing your server",
+    renewCodeText: "Your code {code} works until {until}. Renew the server with it and pay {n}% less (the discount covers up to 30 days).",
+    renewCodeButton: "Renew with the discount",
     success: "Thank you! Payment received. Your server will start in a moment.",
     cancelled: "Payment cancelled. You can try again.",
     awaiting: "This server is waiting for payment. We'll start it as soon as the payment is confirmed.",
@@ -771,6 +776,7 @@ const en: Messages = {
       restoreFailed: "Couldn't restore the backup. Try again in a moment.",
       noAddons: "Tick at least one add-on",
       creatorCodeInvalid: "There's no such creator code. Check that you typed it right",
+      renewCodeInvalid: "This code doesn't work: it's wrong, expired, already used or for another server",
       creatorCodeOwn: "You can't use your own creator code",
       giftInvalid: "There's no such gift code. Check that you typed it right",
       giftUsed: "This gift code has already been used",
@@ -1674,6 +1680,12 @@ const en: Messages = {
     productName: "Upgrade {from} → {to}: {server}",
   },
   planMail: {
+    reminderCodeSubject: "{server} ends on {date}: {n}% off renewing it",
+    reminderCode: [
+      "Here's a code for {n}% off renewing {server}: {code}",
+      "It works until {until}, once, for this server only. The button below fills it in for you. The discount covers up to 30 days (a longer period gets a month's worth off) and can't be combined with other codes.",
+    ],
+    reminderCodePush: "{server} ends on {date}. Code {code} takes {n}% off renewing it, until {until}.",
     paidAutoRenew:
       "The {plan} plan is paid until {date}. It renews automatically: a day before it ends we charge your card {card}. Turn it off in the panel under Plan and payments.",
     priceChange: {

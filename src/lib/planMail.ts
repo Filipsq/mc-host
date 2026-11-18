@@ -53,21 +53,27 @@ export async function sendPlanMail(
     // A free server about to go is offered the cheapest way to keep it: a week of Starter.
     starter: starterWeekPrice(locale === "pl" ? "PLN" : "EUR", locale),
     ...extra,
+    // The renewal code's last day (renewCode.ts), sent as an ISO date.
+    until: extra.codeUntil ? when(new Date(extra.codeUntil)) : "",
   };
-  const page = `${app}/dashboard/servers/${server.id}${kind === "paid" || kind.startsWith("adminCreated") ? "" : "/billing"}`;
+  // The reminder with a renewal code: its own subject and a paragraph about it; the button fills the code in.
+  const withCode = kind === "reminder" && !!extra.code;
+  const page =
+    `${app}/dashboard/servers/${server.id}${kind === "paid" || kind.startsWith("adminCreated") ? "" : "/billing"}` +
+    (withCode ? `?kod=${encodeURIComponent(extra.code)}` : "");
+  const paragraphs =
+    kind === "paid" && server.autoRenew ? [t.paragraphs[0], all.planMail.paidAutoRenew] : withCode ? [...t.paragraphs, ...all.planMail.reminderCode] : t.paragraphs;
   const mail = buttonMail({
     to: server.owner.email,
-    subject: format(t.subject, vars),
+    subject: format(withCode ? all.planMail.reminderCodeSubject : t.subject, vars),
     // A server that renews by itself says so instead of "it won't renew".
-    paragraphs: (kind === "paid" && server.autoRenew ? [t.paragraphs[0], all.planMail.paidAutoRenew] : t.paragraphs).map((p) =>
-      format(p, { ...vars, card: server.renewCardLabel ?? "" }),
-    ),
+    paragraphs: paragraphs.map((p) => format(p, { ...vars, card: server.renewCardLabel ?? "" })),
     button: t.button,
     url: page,
     footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
   });
   // The phone notification says the same in short; the email stays the full record.
-  await sendPush([server.ownerId], { title: mail.subject, body: format(t.paragraphs[0], vars), url: page });
+  await sendPush([server.ownerId], { title: mail.subject, body: format(withCode ? all.planMail.reminderCodePush : t.paragraphs[0], vars), url: page });
   try {
     await sendMail(mail);
     return true;

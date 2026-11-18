@@ -395,6 +395,11 @@ const pl = {
     upgradeHint: "Ulepsz plan teraz i dopłać tylko różnicę za dni, które zostały. Świat zostaje.",
     credit: "Niewykorzystane dni obecnego planu przeliczymy na nowy plan.",
     extendNote: "Opłacony czas doliczymy do obecnego okresu.",
+    renewCode: "Kod rabatowy",
+    renewCodeHint: "Masz kod na przedłużenie? Wpisz go tutaj, zniżkę odejmiemy na stronie płatności.",
+    renewCodeTitle: "−{n}% na przedłużenie serwera",
+    renewCodeText: "Twój kod {code} działa do {until}. Przedłuż serwer z tym kodem, a zapłacisz {n}% mniej (zniżka obejmuje do 30 dni).",
+    renewCodeButton: "Przedłuż ze zniżką",
     success: "Dziękujemy! Płatność przyjęta. Serwer uruchomi się za chwilę.",
     cancelled: "Płatność anulowana. Możesz spróbować ponownie.",
     awaiting: "Ten serwer czeka na płatność. Uruchomimy go zaraz po jej potwierdzeniu.",
@@ -770,6 +775,7 @@ const pl = {
       restoreFailed: "Nie udało się przywrócić kopii. Spróbuj ponownie za chwilę.",
       noAddons: "Zaznacz co najmniej jeden dodatek",
       creatorCodeInvalid: "Nie ma takiego kodu twórcy. Sprawdź, czy dobrze go przepisałeś",
+      renewCodeInvalid: "Ten kod nie działa: jest błędny, wygasł, był już użyty albo jest do innego serwera",
       creatorCodeOwn: "Nie możesz użyć własnego kodu twórcy",
       giftInvalid: "Nie ma takiego kodu prezentowego. Sprawdź, czy dobrze go przepisałeś",
       giftUsed: "Ten kod prezentowy został już wykorzystany",
@@ -1673,6 +1679,12 @@ const pl = {
     productName: "Ulepszenie {from} → {to}: {server}",
   },
   planMail: {
+    reminderCodeSubject: "Serwer {server} kończy się {date}: −{n}% na przedłużenie",
+    reminderCode: [
+      "Mamy dla Ciebie kod −{n}% na przedłużenie serwera {server}: {code}",
+      "Kod działa do {until}, raz, tylko dla tego serwera. Przycisk niżej wpisze go za Ciebie. Zniżka obejmuje do 30 dni (przy dłuższym okresie odejmiemy tyle, ile przy miesiącu) i nie łączy się z innymi kodami.",
+    ],
+    reminderCodePush: "{server} kończy się {date}. Kod {code} daje −{n}% na przedłużenie, do {until}.",
     paidAutoRenew:
       "Plan {plan} jest opłacony do {date}. Odnawia się automatycznie: dzień przed końcem pobierzemy opłatę z karty {card}. Wyłączysz to w panelu, w Plan i płatności.",
     priceChange: {

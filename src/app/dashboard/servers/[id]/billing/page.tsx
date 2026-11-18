@@ -11,6 +11,7 @@ import { addonFits, serverAddons } from "@/lib/addons";
 import { formatPrice, plans } from "@/lib/plans";
 import { canUpgrade } from "@/lib/upgrade";
 import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
+import { RENEW_CODE_DISCOUNT, activeRenewCode } from "@/lib/renewCode";
 import { RENEW_BEFORE_MS } from "@/lib/renewal";
 import { renewalPriceFor } from "@/lib/priceChange";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
@@ -21,7 +22,7 @@ import AutoRenewButton from "./AutoRenewButton";
 
 const HOUR = 60 * 60 * 1000;
 
-export default async function BillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ plan?: string }> }) {
+export default async function BillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ plan?: string; kod?: string }> }) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -35,6 +36,9 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
   const dateTime = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" });
   // The start offer (startOffer.ts) takes a first payment's discount off at checkout.
   const offerEnds = activePaid ? null : await startOfferEnds(session.user.id, now);
+  // The renewal code from the reminder (renewCode.ts): paid servers get a code field, filled in from ?kod= or with their own code.
+  const code = server.plan !== "FREE" && server.status !== "AWAITING_PAYMENT" ? activeRenewCode(server, now) : null;
+  const codeField = server.plan === "FREE" || server.status === "AWAITING_PAYMENT" ? null : (query.kod?.slice(0, 40) ?? code?.code ?? "");
 
   const status =
     server.plan === "FREE"
@@ -114,6 +118,16 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         </section>
       )}
 
+      {code && (
+        <p className="notice success">
+          {format(b.renewCodeText, {
+            n: RENEW_CODE_DISCOUNT,
+            code: code.code,
+            until: dateTime.format(code.until),
+          })}
+        </p>
+      )}
+
       {offerEnds && (
         <p className="notice success">
           {format(t.startOffer.billing, {
@@ -137,6 +151,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         autoRenew={server.autoRenew}
         paysafecard={paysafecardEnabled(currency)}
         adminTest={server.adminTest && (await isAdmin(session.user.id))}
+        renewCode={codeField}
         addons={{
           // The own domain is for Java addresses only.
           options: addonOptions(t, currency).filter((o) => addonFits(o.id, server.edition)),
