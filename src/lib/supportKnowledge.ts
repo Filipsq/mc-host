@@ -26,7 +26,7 @@ JAK DOŁĄCZYĆ: Java: Tryb wieloosobowy > Dodaj serwer > adres np. nazwa.mchost
 MENU SERWERA W PANELU (po lewej, na telefonie na dole "Więcej"; Ctrl+K = wyszukiwarka):
 - Przegląd: stan, Uruchom / Zatrzymaj / Restart, adres, gracze online, RAM i CPU.
 - Konsola: logi i komendy (bez "/"), np. op Nick, gamemode creative Nick. Przycisk "Skopiuj i wyślij do admina".
-- Pliki: przeglądanie, wgrywanie, edycja plików.
+- Pliki: przeglądanie, wgrywanie, edycja plików. Własny plik .jar (płatny plugin, mod spoza Modrinth/CurseForge): Pliki > wejdź do folderu > Wgraj pliki, potem Restart. Na Paper (zwykły serwer) pluginy idą do folderu plugins; na Fabric/Forge/NeoForge mody do folderu mods. Na gotowej paczce modów własny mod dodaje się tak samo do mods (strona Mody, ramka "Własny mod do paczki"). Mod/plugin musi pasować do silnika i wersji Minecrafta serwera, a mody, które nie są tylko na serwer, gracze też muszą mieć u siebie.
 - Ustawienia: nazwa, adres, wersja Minecrafta ("Najnowsza" albo konkretna), typ serwera, tryb gry, trudność, PvP, sloty, MOTD, whitelist, non-premium, crossplay, latanie, Nether, potwory, zasięg widzenia. Zmiana typu/wersji: przez 7 dni można cofnąć ("Cofnij zmianę").
 - Światy: wgranie ZIP-a ze światem (Bedrock: .mcworld), nowy świat z ziarnem i wersją, pobranie świata.
 - Kopie zapasowe: tworzenie i przywracanie (płatne plany).

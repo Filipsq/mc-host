@@ -64,6 +64,13 @@
     "when": "jak wgrać albo edytować pliki, configi, jary"
   },
   {
+    "key": "wlasne-pliki",
+    "path": "files?path=plugins",
+    "highlight": "text=Wgraj pliki",
+    "title": "Pliki > folder plugins > Wgraj pliki (własny .jar)",
+    "when": "jak wgrać własny plik .jar (plugin do plugins, mod do mods), plugin/mod spoza Modrinth, płatny plugin, swój config"
+  },
+  {
     "key": "swiaty",
     "path": "worlds",
     "highlight": "text=Wgraj świat",
