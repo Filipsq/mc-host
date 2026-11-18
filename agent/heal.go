@@ -165,6 +165,16 @@ func (a *agent) healEnv(ctx context.Context, id string) {
 		}
 		why += "with alpha builds, a mod needs one"
 	}
+	// Free servers built before they were the first the kernel kills.
+	if labels, _ := c.Config["Labels"].(map[string]any); labels["mchost.autostop"] == "true" && c.HostConfig != nil {
+		if adj, _ := c.HostConfig["OomScoreAdj"].(float64); int(adj) != freeOOMScoreAdj {
+			c.HostConfig["OomScoreAdj"] = freeOOMScoreAdj
+			if why != "" {
+				why += ", "
+			}
+			why += "killed first when the machine runs out of memory"
+		}
+	}
 	if why == "" {
 		return
 	}

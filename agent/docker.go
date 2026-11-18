@@ -193,6 +193,7 @@ type ContainerInfo struct {
 		StartedAt  string `json:"StartedAt"`
 		FinishedAt string `json:"FinishedAt"`
 		ExitCode   int    `json:"ExitCode"`
+		OOMKilled  bool   `json:"OOMKilled"`
 		Health     *struct {
 			Status string `json:"Status"`
 		} `json:"Health"`

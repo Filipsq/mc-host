@@ -220,3 +220,9 @@ func TestPackNeeds(t *testing.T) {
 		t.Errorf("cause %q", got)
 	}
 }
+
+func TestOOMScoreAdjInSpec(t *testing.T) {
+	if oomScoreAdj(true) <= oomScoreAdj(false) {
+		t.Fatal("free servers aren't killed first")
+	}
+}
