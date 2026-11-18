@@ -40,6 +40,16 @@
     "when": "jak dodać plugin (EssentialsX, WorldEdit, AuthMe itd.)"
   },
   {
+    "key": "mody",
+    "path": "mods",
+    "highlight": "main input[name='q']",
+    "hide": [
+      ".notice"
+    ],
+    "title": "Mody > wyszukiwarka (Modrinth i CurseForge)",
+    "when": "jak dodać mod albo paczkę modów, Fabric/Forge/NeoForge"
+  },
+  {
     "key": "konsola",
     "path": "console",
     "highlight": "input[placeholder*='komend'], textarea[placeholder*='komend']",

@@ -1170,7 +1170,12 @@ a.kpi.card:hover .kpi-label { color: var(--fg); }
 .chat-bubble p { margin: 0; }
 .chat-bubble.with-image { padding: 4px; }
 .chat-bubble.with-image p { padding: 5px 9px 4px; }
-.chat-image { display: block; }
+.chat-image { display: block; cursor: zoom-in; }
+.image-zoom { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 56px 16px 16px; background: rgba(0, 0, 0, .85); cursor: zoom-out; animation: image-zoom-in .15s ease-out; }
+.image-zoom img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); cursor: default; }
+.image-zoom-close { position: fixed; top: 12px; right: 12px; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, .14); color: #fff; border: 1px solid rgba(255, 255, 255, .3); cursor: pointer; }
+.image-zoom-close:hover { background: rgba(255, 255, 255, .26); }
+@keyframes image-zoom-in { from { opacity: 0; } to { opacity: 1; } }
 .chat-console { margin-top: 6px; white-space: normal; }
 .chat-console summary { cursor: pointer; font-weight: 600; font-size: 0.9rem; }
 .chat-console pre {

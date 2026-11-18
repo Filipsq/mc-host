@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { Bot, ImagePlus, MessageCircle, Send, Trash2, UserRound, X } from "lucide-react";
 import { format, type Messages } from "@/i18n/messages";
 import { askForPersonAction, deleteSupportMessage, sendSupportMessage } from "@/app/dashboard/support/actions";
@@ -67,6 +68,14 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picture, setPicture] = useState<{ file: File; url: string } | null>(null);
+  // A chat picture opened large over the page (Fiq asked 2026-11-18: not in a new tab).
+  const [zoomed, setZoomed] = useState<string | null>(null);
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZoomed(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomed]);
   const fileInput = useRef<HTMLInputElement>(null);
   const log = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
@@ -260,7 +269,16 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
                   <div className="chat-row">
                     <div className={`chat-bubble${m.image ? " with-image" : ""}`}>
                       {m.image && (
-                        <a className="chat-image" href={m.image} target="_blank" rel="noopener" title={t.openImage}>
+                        <a
+                          className="chat-image"
+                          href={m.image}
+                          title={t.openImage}
+                          onClick={(e) => {
+                            if (e.ctrlKey || e.metaKey || e.shiftKey || e.button !== 0) return;
+                            e.preventDefault();
+                            setZoomed(m.image ?? null);
+                          }}
+                        >
                           {/* eslint-disable-next-line @next/next/no-img-element -- a private picture, not an optimizable asset */}
                           <img
                             src={m.image}
@@ -382,6 +400,17 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
         {error ? <p className="error small" role="alert">{error}</p> : <p className="muted small hide-phone">{t.keys} {t.attachHint}</p>}
         {text.length > maxLength - 200 && <span className="muted small">{text.length}/{maxLength}</span>}
       </div>
+      {zoomed &&
+        createPortal(
+          <div className="image-zoom" role="dialog" aria-modal="true" aria-label={t.photo} onClick={() => setZoomed(null)}>
+            <button type="button" className="image-zoom-close" onClick={() => setZoomed(null)} aria-label={t.closeImage} title={t.closeImage}>
+              <X size={26} aria-hidden />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a private picture, not an optimizable asset */}
+            <img src={zoomed} alt={t.photo} onClick={(e) => e.stopPropagation()} />
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }

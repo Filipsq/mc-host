@@ -2647,6 +2647,7 @@ const en: Messages = {
     removeAttachment: "Remove picture",
     attachHint: "You can also paste a screenshot (Ctrl+V).",
     openImage: "Open the picture at full size",
+    closeImage: "Close picture",
     deleteMessage: "Delete message",
     deleteConfirm: "Delete this message? It disappears for both sides and can't be restored.",
     deleteFailed: "Couldn't delete the message.",
