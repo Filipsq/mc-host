@@ -183,6 +183,60 @@ export async function searchAddons(
   }
 }
 
+/** Why a search hit can't go on this server: only in players' games, another loader, or no build for its version. */
+export type MissReason = { kind: "client" } | { kind: "loader"; loaders: string[] } | { kind: "version"; versions: string[]; below?: string; above?: string };
+export type MissHit = PluginHit & { reason: MissReason };
+
+const MOD_LOADERS = ["fabric", "forge", "neoforge", "quilt"];
+
+/**
+ * What a named search finds that the server can't take, so a missing mod
+ * isn't just absent from the list: the same query without the version,
+ * loader and server-side filters; the caller drops what the real search found.
+ */
+export async function searchAddonMisses(
+  type: "plugin" | "mod",
+  query: string,
+  o: { gameVersion?: string; loader?: string } = {},
+): Promise<MissHit[]> {
+  if (!query) return [];
+  const facets = type === "plugin" ? [["project_type:plugin"]] : [["project_type:mod"]];
+  const params = new URLSearchParams({ query: query.slice(0, 100), limit: "10", index: "relevance", facets: JSON.stringify(facets) });
+  try {
+    const res = await get<{ hits: (SearchHit & { categories?: string[]; server_side?: string })[] }>(`/v2/search?${params}`);
+    const misses: MissHit[] = [];
+    for (const h of res?.hits ?? []) {
+      const cats = h.categories ?? [];
+      const loaders = type === "plugin" ? cats.filter((c) => PLUGIN_LOADERS.includes(c)) : cats.filter((c) => MOD_LOADERS.includes(c));
+      const versions = h.versions.filter((g) => RELEASE.test(g)).sort(compareVersions);
+      let reason: MissReason;
+      if (h.server_side === "unsupported") reason = { kind: "client" };
+      else if (type === "plugin" ? loaders.length === 0 : !!o.loader && !loaders.includes(o.loader)) {
+        // A plugin for proxies (Velocity, BungeeCord), or a mod for another loader.
+        reason = { kind: "loader", loaders: type === "plugin" ? cats.filter((c) => ["velocity", "bungeecord", "waterfall"].includes(c)) : loaders };
+      } else if (o.gameVersion && !h.versions.includes(o.gameVersion)) {
+        // The nearest versions it has on both sides, when the server's sits in a gap.
+        const mc = o.gameVersion;
+        const below = versions.filter((v) => compareVersions(v, mc) < 0).at(-1);
+        const above = versions.find((v) => compareVersions(v, mc) > 0);
+        reason = { kind: "version", versions, ...(below && above && { below, above }) };
+      }
+      else continue; // it fits, the search just ranked it out (or a category hid it)
+      misses.push({ ...info(h, h.project_id), downloads: h.downloads, newestVersion: newest(h.versions), reason });
+    }
+    return misses;
+  } catch (err) {
+    console.error("modrinth miss search failed", query, err);
+    return [];
+  }
+}
+
+/** Minecraft versions for a sentence: a few listed, more as a range. */
+export function versionSpan(versions: string[]) {
+  if (versions.length === 0) return "";
+  return versions.length <= 3 ? versions.join(", ") : `${versions[0]}–${versions.at(-1)}`;
+}
+
 /** A plugin that runs on Paper servers, or a mod for the loader, by project ID or slug. */
 export async function getAddon(
   ref: string,
