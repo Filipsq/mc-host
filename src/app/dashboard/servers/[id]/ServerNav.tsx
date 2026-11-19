@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSheetDrag } from "@/components/useSheetDrag";
 import {
   ArrowLeft,
   Blocks,
@@ -68,6 +69,9 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
   // The item just clicked: lit at once, before its page has arrived.
   const [going, setGoing] = useState<string | null>(null);
   const aside = useRef<HTMLElement>(null);
+  const body = useRef<HTMLElement>(null);
+  const grip = useRef<HTMLDivElement>(null);
+  const shade = useRef<HTMLDivElement>(null);
   const base = `/dashboard/servers/${id}`;
   // The new page is here: the real path decides what is lit again.
   useEffect(() => {
@@ -86,6 +90,15 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
     setOpen(false); // the phone menu folds at once, the page loads under it
   };
   const all = groups.flatMap((g) => g.items);
+  // Phones: the full menu is a panel from the bottom; pull it down (or tap outside) to close.
+  const closeMenu = useCallback(() => setOpen(false), []);
+  useSheetDrag(body, grip, closeMenu, { active: open, backdrop: shade });
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
   // The phone's bottom bar: the places people go most, plus the full menu.
   // Plugins or mods sit there too, so finding one doesn't start in "More".
   const addons = all.find((item) => item.key === "plugins") ?? all.find((item) => item.key === "mods") ?? all.find((item) => item.key === "bedrockAddons");
@@ -103,7 +116,9 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
         <span>{current?.label ?? t.menu}</span>
         <ChevronDown size={18} aria-hidden className="server-nav-chevron" />
       </button>
-      <nav className="server-nav-body" aria-label={t.menu}>
+      {open && <div className="server-nav-shade" ref={shade} onClick={closeMenu} aria-hidden />}
+      <nav className="server-nav-body" aria-label={t.menu} ref={body}>
+        <div className="sheet-grip" ref={grip} aria-hidden><span /></div>
         {others.length > 0 ? (
           <details className="server-switch">
             <summary title={t.switchServer}>
@@ -159,7 +174,6 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
             aria-expanded={open}
             onClick={() => {
               setOpen(true);
-              aside.current?.scrollIntoView({ behavior: "smooth", block: "start" });
             }}
           >
             <MoreHorizontal size={20} aria-hidden />
