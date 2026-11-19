@@ -8,7 +8,7 @@
 //   SHOTS_URL=https://mchosting.pl SHOTS_EMAIL=test@... SHOTS_PASSWORD=... node scripts/support-screenshots.mjs
 //
 // Optional: SHOTS_SERVER=<server id> (otherwise the account's first server),
-// SHOTS_ONLY=adres,konsola. Keep the password in deploy/.env or your shell, never in the repo.
+// SHOTS_ONLY=adres,konsola. folder-mods needs a mod server: run it alone with SHOTS_SERVER=<a Fabric test server>. Keep the password in deploy/.env or your shell, never in the repo.
 // Needs Playwright with Chromium: npm i -g playwright && npx playwright install chromium,
 // then run with NODE_PATH=$(npm root -g).
 import { readFileSync, mkdirSync } from "node:fs";
@@ -49,6 +49,7 @@ if (!server) throw new Error("The test account has no server.");
 
 for (const shot of shots) {
   if (only && !only.includes(shot.key)) continue;
+  await page.setViewportSize({ width: 1180, height: shot.tall ? 1180 : 760 });
   await page.goto(`${base}/dashboard/servers/${server}/${shot.path}`, { timeout: 90_000 });
   await page.waitForLoadState("networkidle").catch(() => {});
   await page.waitForTimeout(800);
@@ -63,8 +64,13 @@ for (const shot of shots) {
     console.error(`${shot.key}: "${shot.highlight}" not found on /${shot.path}, skipped`);
     continue;
   }
-  await target.scrollIntoViewIfNeeded();
-  await page.evaluate(() => window.scrollBy(0, -160));
+  if (shot.tall) {
+    // A menu item: a taller picture from the top of the page, so the whole menu and the tab both show.
+    await page.evaluate(() => window.scrollTo(0, 0));
+  } else {
+    await target.scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, -160));
+  }
   const box = await target.boundingBox();
   if (!box) continue;
   // A red outline and an arrow pointing at it, drawn over the page.
