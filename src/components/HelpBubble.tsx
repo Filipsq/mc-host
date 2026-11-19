@@ -7,6 +7,7 @@ import { Maximize2, MessageCircle, X } from "lucide-react";
 import type { Messages } from "@/i18n/messages";
 import type { ChatRate, ChatState } from "@/lib/support";
 import SupportChat from "./SupportChat";
+import { useSheetDrag } from "./useSheetDrag";
 
 type Props = {
   t: Messages["support"];
@@ -61,6 +62,7 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
   const loading = useRef(false);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const head = useRef<HTMLElement>(null);
   // The full chat page and the admin panel have their own chat.
   const hidden = path.startsWith("/dashboard/support") || path.startsWith("/admin");
 
@@ -188,6 +190,10 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
     return () => document.removeEventListener("keydown", onKey);
   }, [open, chat]);
 
+  // On a phone the open chat fills the screen; pulling its header down closes it.
+  const closePanel = useCallback(() => setOpen(false), []);
+  useSheetDrag(panel, head, closePanel, { active: open, when: "(max-width: 640px)" });
+
   if (hidden) return null;
 
   const badge = count > 0 && <span className="count-badge" aria-hidden>{count > 9 ? "9+" : count}</span>;
@@ -208,7 +214,7 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
     <div className={open ? "help open" : "help"}>
       {open && (
         <div className="help-panel" ref={panel} role="dialog" aria-modal="false" aria-labelledby="help-title">
-          <header className="help-head">
+          <header className="help-head" ref={head}>
             <span className="help-avatar" aria-hidden><MessageCircle size={20} /></span>
             <div className="help-head-text">
               <strong id="help-title">{t.title}</strong>

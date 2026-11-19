@@ -2299,3 +2299,67 @@ p.error, .error[role="alert"] { animation: ui-shake 0.36s ease-out; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* A form error: the field it is about shakes once and gets a red edge (UiFeel.tsx). */
+.ui-shake { animation: ui-shake 0.36s ease-out; }
+input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--error); box-shadow: 0 0 0 3px rgb(248 113 113 / 0.18); }
+
+/* "Zapisano" toast at the bottom; a short note that the toast already says leaves the page. */
+.ui-toasted { display: none; }
+.ui-toast-area { position: fixed; left: 0; right: 0; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 150; display: flex; justify-content: center; pointer-events: none; padding: 0 16px; }
+body:has(.server-tabbar) .ui-toast-area { bottom: max(84px, calc(env(safe-area-inset-bottom) + 76px)); }
+@media (min-width: 901px) { body:has(.server-tabbar) .ui-toast-area { bottom: max(20px, env(safe-area-inset-bottom)); } }
+.ui-toast {
+  display: inline-flex; align-items: center; gap: 10px; max-width: min(420px, 100%); padding: 10px 16px 10px 10px;
+  background: var(--surface-2); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 999px;
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.5); font-weight: 600; font-size: 0.92rem;
+  animation: toast-in var(--dur-enter) var(--ease-out-ui), toast-out 0.2s ease-in 3s forwards;
+}
+.ui-toast-check {
+  display: grid; place-items: center; width: 26px; height: 26px; flex: none; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink); animation: toast-check 0.4s cubic-bezier(0.3, 1.6, 0.6, 1) 0.1s both;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateY(12px) scale(0.97); } }
+@keyframes toast-out { to { opacity: 0; transform: translateY(6px); } }
+@keyframes toast-check { from { transform: scale(0.4); } }
+
+/* Tooltips for icon buttons: after 600 ms, at once when moving to the next one. */
+.ui-tip {
+  position: fixed; z-index: 300; max-width: 260px; padding: 6px 10px; pointer-events: none;
+  background: #f1f5f9; color: #0b0f14; border-radius: 7px; font-size: 0.8rem; font-weight: 600; line-height: 1.3;
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.4); text-wrap: balance;
+  animation: tip-in 0.14s var(--ease-out-ui); transform-origin: bottom center;
+}
+.ui-tip[data-side="bottom"] { transform-origin: top center; }
+.ui-tip.instant { animation: none; }
+@keyframes tip-in { from { opacity: 0; transform: scale(0.97); } }
+
+/* Phones: the full server menu is a panel from the bottom that can be pulled down. */
+.sheet-grip { display: none; }
+.server-nav-shade { display: none; }
+@media (max-width: 900px) {
+  .server-nav.open { z-index: 90; }
+  .server-nav-shade { display: block; position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); animation: fade-in 0.2s ease-out; }
+  .server-nav.open .server-nav-body {
+    position: fixed; left: 0; right: 0; bottom: 0; margin: 0; max-height: 82dvh; overflow-y: auto; overscroll-behavior: contain;
+    padding: 0 max(14px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    border-radius: 18px 18px 0 0; border-bottom: 0; box-shadow: 0 -16px 48px rgb(0 0 0 / 0.5);
+    animation: sheet-up 0.32s var(--ease-out-ui); transform-origin: bottom; will-change: transform;
+  }
+  .server-nav.open .sheet-grip {
+    display: flex; justify-content: center; position: sticky; top: 0; z-index: 1; margin: 0 -14px; padding: 10px 0 12px;
+    background: var(--surface); touch-action: none; cursor: grab;
+  }
+  .sheet-grip span, .help-head::before { width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong); }
+  .server-nav-group a { min-height: 44px; }
+}
+@keyframes sheet-up { from { transform: translate3d(0, 100%, 0); } }
+/* The phone chat: a grab bar on its header, which can be pulled down to close. */
+@media (max-width: 640px) {
+  .help-head { position: relative; touch-action: none; padding-top: 18px; }
+  .help-head::before { content: ""; position: absolute; top: 6px; left: calc(50% - 20px); }
+  .help.open .help-panel { animation: sheet-up 0.32s var(--ease-out-ui); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-shake, .ui-toast, .ui-toast-check, .ui-tip { animation: none; }
+}
