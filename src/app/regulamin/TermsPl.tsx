@@ -230,6 +230,24 @@ export default function TermsPl({ site }: { site: string }) {
         </li>
       </ol>
 
+      <h3 id="czat-graczy">Czat graczy</h3>
+      <ol>
+        <li>
+          Czat graczy w panelu to publiczna rozmowa wszystkich zalogowanych Użytkowników. Wiadomości, nick i
+          polecany Serwer (jego nazwę i adres, tylko gdy Użytkownik sam go doda) widzą wszyscy zalogowani.
+        </li>
+        <li>
+          Na czacie nie wolno obrażać innych, używać wulgaryzmów, spamować, reklamować innych usług ani podawać
+          danych osobowych swoich lub cudzych (imienia i nazwiska, telefonu, adresu, e-maila). Linki są dozwolone
+          tylko do Serwisu.
+        </li>
+        <li>
+          Wiadomości mogą zostać zgłoszone przez innych Użytkowników. Usługodawca moderuje czat: może usunąć
+          wiadomość, zmienić nick, czasowo lub na stałe zablokować pisanie na czacie albo wyłączyć czat. Wiadomość
+          zgłoszona przez kilka osób może zostać ukryta do czasu sprawdzenia.
+        </li>
+      </ol>
+
       <h2>§8. Prawo odstąpienia od umowy</h2>
       <ol>
         <li>

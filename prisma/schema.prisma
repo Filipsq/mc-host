@@ -70,6 +70,14 @@ model User {
   // The account was deleted (src/lib/accountDeletion.ts) but had paid payments,
   // which the law says to keep: the row stays, with no email, password or servers.
   deletedAt          DateTime?
+  // The players' chat (src/lib/lobby.ts): the nickname others see there (never the
+  // email), the same in lower case so two can't differ only by case, and until
+  // when an admin muted them there (year 9999: for good).
+  chatName           String?
+  chatNameKey        String?            @unique
+  chatMutedUntil     DateTime?
+  lobbyMessages      LobbyMessage[]
+  lobbyReports       LobbyReport[]
 
   @@index([referredById])
 }
@@ -116,7 +124,7 @@ model SupportBot {
   id          Int      @id @default(1)
   whenOnline  Boolean  @default(false)
   whenOffline Boolean  @default(true)
-  updatedAt DateTime @updatedAt
+  updatedAt   DateTime @updatedAt
 }
 
 // One question the support bot got, for the admin's daily report
@@ -168,23 +176,23 @@ model AiUsage {
 // created by its first message. The unread counters drive the badges and
 // decide when to email: only the first unread message of a run sends one.
 model SupportChat {
-  userId        String           @id
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lastMessageAt DateTime         @default(now())
-  lastFromStaff Boolean          @default(false)
+  userId          String           @id
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastMessageAt   DateTime         @default(now())
+  lastFromStaff   Boolean          @default(false)
   // Messages the user hasn't seen yet, and when they last had the chat open.
-  userUnread    Int              @default(0)
-  userReadAt    DateTime?
+  userUnread      Int              @default(0)
+  userReadAt      DateTime?
   // Messages no admin has seen yet, and when an admin last had the chat open.
-  staffUnread   Int              @default(0)
-  staffReadAt   DateTime?
+  staffUnread     Int              @default(0)
+  staffReadAt     DateTime?
   // The support bot (OpenBot, src/lib/supportBot.ts): when the user's latest
   // question went to the bot and no answer came yet, and until when the bot
   // stays quiet in this chat (an admin answered, it handed over, or the user
   // asked for a person).
   botWaitingSince DateTime?
   botPausedUntil  DateTime?
-  messages      SupportMessage[]
+  messages        SupportMessage[]
 
   @@index([lastMessageAt])
 }
@@ -264,45 +272,45 @@ enum ServerStatus {
 }
 
 model Server {
-  id               String         @id @default(cuid())
-  name             String
+  id                   String         @id @default(cuid())
+  name                 String
   // Whose creator code it was bought with (src/lib/creator.ts), and when it counted for them.
-  creator          User?          @relation("CreatorServers", fields: [creatorId], references: [id], onDelete: SetNull)
-  creatorId        String?
-  creatorCountedAt DateTime?
+  creator              User?          @relation("CreatorServers", fields: [creatorId], references: [id], onDelete: SetNull)
+  creatorId            String?
+  creatorCountedAt     DateTime?
   // A promo code it was bought with (src/lib/halloween.ts), kept for a checkout that was left and paid later.
-  promoCode        String?
-  edition          Edition        @default(JAVA)
-  plan             Plan           @default(FREE)
-  status           ServerStatus   @default(PROVISIONING)
-  memoryMb         Int
+  promoCode            String?
+  edition              Edition        @default(JAVA)
+  plan                 Plan           @default(FREE)
+  status               ServerStatus   @default(PROVISIONING)
+  memoryMb             Int
   // The game machine it runs on: "main", or an extra machine from NODES (src/lib/nodes.ts).
-  node             String         @default("main")
-  version          String         @default("LATEST")
+  node                 String         @default("main")
+  version              String         @default("LATEST")
   // Game settings from the panel's Settings page (see src/lib/settings.ts).
-  gameMode         String         @default("survival")
-  difficulty       String         @default("easy") // Terraria: the world's classic, expert, master or journey
-  motd             String         @default("") // empty: the server's name
-  pvp              Boolean        @default(true) // Java only
+  gameMode             String         @default("survival")
+  difficulty           String         @default("easy") // Terraria: the world's classic, expert, master or journey
+  motd                 String         @default("") // empty: the server's name
+  pvp                  Boolean        @default(true) // Java only
   // Most players at once, picked by the owner; null: the plan's limit. Never above the plan's.
-  maxPlayers       Int?
+  maxPlayers           Int?
   // Set by an admin: player slots instead of the plan's limit (RAM stays the plan's). null: the plan's.
-  playerSlots      Int?
+  playerSlots          Int?
   // Java only: players may fly (on by default for mods, whose jetpacks and wings need it),
   // one life, command blocks, and how far from spawn only operators may build.
-  allowFlight      Boolean        @default(false)
-  hardcore         Boolean        @default(false)
-  commandBlocks    Boolean        @default(false)
+  allowFlight          Boolean        @default(false)
+  hardcore             Boolean        @default(false)
+  commandBlocks        Boolean        @default(false)
   // Java only: players may go to the Nether, everyone joins in the server's game mode
   // (not the one they had), and hostile mobs spawn.
-  allowNether      Boolean        @default(true)
+  allowNether          Boolean        @default(true)
   // Java only: players may go to the End (agent/end.go: bukkit.yml on Paper, a data pack elsewhere).
-  allowEnd         Boolean        @default(true)
-  forceGamemode    Boolean        @default(false)
-  spawnMonsters    Boolean        @default(true)
-  spawnProtection  Int            @default(16)
+  allowEnd             Boolean        @default(true)
+  forceGamemode        Boolean        @default(false)
+  spawnMonsters        Boolean        @default(true)
+  spawnProtection      Int            @default(16)
   // Chunks around each player; null: the plan's default (8 free, 10 paid). Java only.
-  viewDistance     Int?
+  viewDistance         Int?
   // Java only: the resource pack players get on joining (src/lib/resourcePack.ts), a direct
   // link to its .zip and the zip's SHA-1. null: never set, so a pack written into
   // server.properties by hand stays; "": taken off.
@@ -310,115 +318,115 @@ model Server {
   resourcePackSha1     String?
   resourcePackRequired Boolean        @default(false) // players who decline it can't join
   resourcePackPrompt   String         @default("") // shown when the game asks, if set
-  whitelist        Boolean        @default(false)
-  whitelistPlayers String[]       @default([])
+  whitelist            Boolean        @default(false)
+  whitelistPlayers     String[]       @default([])
   // Java on Paper only: false lets in players without a bought Minecraft ("non-premium"),
   // who log in with a password through the AuthMe plugin.
-  onlineMode       Boolean        @default(true)
+  onlineMode           Boolean        @default(true)
   // Non-premium with the owner's own login plugin or mod: the agent doesn't add AuthMe/EasyAuth/EasyLogin.
   // True for servers made since 2026-11-14 (owners add a login plugin themselves); older
   // non-premium servers keep our AuthMe until non-premium is turned off and on again.
-  ownLogin         Boolean        @default(true)
+  ownLogin             Boolean        @default(true)
   // Java on Paper only: Bedrock players (phones, consoles, Windows) join too, through the
   // Geyser plugin on the server's port over UDP.
-  crossplay        Boolean        @default(false)
+  crossplay            Boolean        @default(false)
   // Console players (Xbox, PlayStation, Switch) join from their Friends tab through an Xbox account the owner signs in (src/lib/xbox.ts)
-  xbox             Boolean        @default(false)
+  xbox                 Boolean        @default(false)
   // A free server's console joining is paid for on its own, per 30 days, until this date (paid plans have it included).
-  xboxUntil        DateTime?
+  xboxUntil            DateTime?
   // A free server's own domain (customDomain) is paid for on its own, per 30 days, until this date (src/lib/addons.ts).
-  domainUntil      DateTime?
+  domainUntil          DateTime?
   // A free server's reward for watched ads (src/lib/adReward.ts): how many rewards it has, until when.
   // Left above 0 after it ends until the server is rebuilt without them.
-  adBoost          Int            @default(0)
-  adBoostUntil     DateTime?
+  adBoost              Int            @default(0)
+  adBoostUntil         DateTime?
   // The world folder the server runs (the image's default if null), and the seed and
   // type it was made with (src/lib/worlds.ts). On Terraria the type is the world's size.
-  level            String?
-  levelSeed        String?
-  levelType        String?
+  level                String?
+  levelSeed            String?
+  levelType            String?
   // Minigames turned on from the panel (src/lib/minigamesSwitch.ts): what the server ran
   // before, to go back to, and the minigames world, to come back to next time.
-  minigamesBack    Json?
+  minigamesBack        Json?
   // What the server ran before its last type or version change, for "Cofnij zmianę" (src/lib/undoChange.ts).
-  undoChange       Json?
-  minigamesLevel   String?
+  undoChange           Json?
+  minigamesLevel       String?
   // What the server runs: on Java vanilla (Paper), skyblock, skymap, halloween, minigames, oneblock, modpack, fabric, forge or neoforge
   // (src/lib/modpacks.ts); on Terraria vanilla, tshock or tmodloader (src/lib/terraria.ts).
-  kind             String         @default("vanilla")
+  kind                 String         @default("vanilla")
   // A mod pack's Modrinth project and the exact pack version players must install too.
-  modpack          String?
-  modpackSource    String? // where the pack comes from: null for Modrinth, or "curseforge"
-  modpackTitle     String?
-  modpackVersionId String?
-  modpackVersion   String? // the pack version's number, e.g. "1.6.1"
-  modpackLoader    String? // fabric, forge, neoforge or quilt
+  modpack              String?
+  modpackSource        String? // where the pack comes from: null for Modrinth, or "curseforge"
+  modpackTitle         String?
+  modpackVersionId     String?
+  modpackVersion       String? // the pack version's number, e.g. "1.6.1"
+  modpackLoader        String? // fabric, forge, neoforge or quilt
   // Modrinth project IDs of the plugins (Paper) or mods (mod loaders) the owner added (src/lib/plugins.ts);
   // on tModLoader, Steam Workshop IDs of its mods.
-  plugins          String[]       @default([])
+  plugins              String[]       @default([])
   // Builds the owner picked for some Modrinth plugins or mods, "<project ID>:<version ID>:<server version>";
   // one counts only while the server is on that version (src/lib/plugins.ts pinsFor).
-  pluginVersions   String[]       @default([])
+  pluginVersions       String[]       @default([])
   // The list changed while the server ran; the container gets it on its next rebuild.
-  pluginsPending   Boolean        @default(false)
+  pluginsPending       Boolean        @default(false)
   // Terraria only: the password players type to join; none if null.
-  serverPassword   String?
+  serverPassword       String?
   // Host port of the server: behind the router for Java, public for Bedrock (UDP) and Terraria (TCP).
   // Unique on its machine only: each machine has the whole range (src/lib/servers.ts).
-  port             Int?
+  port                 Int?
   // Java address is <subdomain>.<GAME_DOMAIN>, routed by hostname on port 25565.
-  subdomain        String?        @unique
+  subdomain            String?        @unique
   // Paid plans are prepaid; the server is suspended once this passes.
-  paidUntil        DateTime?
+  paidUntil            DateTime?
   // The paidUntil its owner was last reminded of, so each period gets one reminder.
-  reminderSentFor  DateTime?
+  reminderSentFor      DateTime?
   // The renewal code (src/lib/renewCode.ts) sent with that reminder: a fifth off extending this server,
   // valid until renewCodeUntil, used once (renewCodeUsedAt).
-  renewCode        String?        @unique
-  renewCodeUntil   DateTime?
-  renewCodeUsedAt  DateTime?
+  renewCode            String?        @unique
+  renewCodeUntil       DateTime?
+  renewCodeUsedAt      DateTime?
   // When its owner was told a suspended server will be deleted; cleared by a payment.
   // For a free server: told it will be deleted for nobody playing; cleared when someone plays.
-  deletionWarnedAt DateTime?
+  deletionWarnedAt     DateTime?
   // A free server that found no room when started: since when it waits to be started
   // by itself once there is room (src/lib/startQueue.ts).
-  queuedAt         DateTime?
+  queuedAt             DateTime?
   // When players were last seen on it (or when it was made); free servers nobody plays on are deleted.
-  lastPlayedAt     DateTime       @default(now())
+  lastPlayedAt         DateTime       @default(now())
   // When its owner was asked to come back and play (src/lib/comeback.ts); cleared when someone plays.
-  comebackSentAt   DateTime?
+  comebackSentAt       DateTime?
   // Automatic renewal (src/lib/renewal.ts): a card saved with Stripe is charged for
   // renewDays of the current plan a day before paidUntil, in renewCurrency.
-  autoRenew        Boolean        @default(false)
-  renewDays        Int?
-  renewCurrency    String?
-  renewCard        String? // Stripe PaymentMethod id
-  renewCardLabel   String? // e.g. "Visa •••• 4242"
+  autoRenew            Boolean        @default(false)
+  renewDays            Int?
+  renewCurrency        String?
+  renewCard            String? // Stripe PaymentMethod id
+  renewCardLabel       String? // e.g. "Visa •••• 4242"
   // The paidUntil a renewal was last tried for, so each period is charged at most once.
-  renewTriedFor    DateTime?
+  renewTriedFor        DateTime?
   // Renewals before this date still charge the earlier prices (src/lib/priceChange.ts),
   // so the owner gets the 14 days' notice the terms promise; when that notice went out.
-  oldPriceUntil    DateTime?
-  priceNoticeAt    DateTime?
+  oldPriceUntil        DateTime?
+  priceNoticeAt        DateTime?
   // Paid add-ons (src/lib/addons.ts): "disk", "backups", "domain". Paid for with the plan.
-  addons           String[]       @default([])
+  addons               String[]       @default([])
   // With the "domain" add-on: the owner's own domain players type, e.g. graj.mojserwer.pl.
-  customDomain     String?        @unique
+  customDomain         String?        @unique
   // Linked servers (src/lib/links.ts): servers of one owner with the same group
   // send players to each other in the game (/trigger <name>, Minecraft's transfer).
   // links: the others, as "<name>=<java address>", kept in step for the agent.
-  linkGroup        String?
-  links            String[]       @default([])
+  linkGroup            String?
+  links                String[]       @default([])
   // Made by an admin to try things out, without paying: kept out of sales numbers.
-  adminTest        Boolean        @default(false)
-  payments         Payment[]
-  owner            User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  ownerId          String
+  adminTest            Boolean        @default(false)
+  payments             Payment[]
+  owner                User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId              String
   // Friends the owner let into the server's panel.
-  members          ServerMember[]
-  adWatches        AdWatch[]
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  members              ServerMember[]
+  adWatches            AdWatch[]
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 
   @@unique([node, port])
   @@index([ownerId])
@@ -551,25 +559,25 @@ model MachineCost {
 // (src/lib/reviews.ts). The home page shows it only after an admin lets it;
 // the average there counts every opinion, shown or not.
 model Review {
-  id        String    @id @default(cuid())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String    @unique
-  stars     Int
-  text      String
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @unique
+  stars       Int
+  text        String
   // The signature they picked (a nick or first name), shown under the text.
-  name      String
+  name        String
   // The game of their oldest server, shown as "Survival" etc. under the name.
-  game      String?
-  shown     Boolean   @default(false)
+  game        String?
+  shown       Boolean   @default(false)
   // When an admin last looked at it: unchecked ones are counted on the admin tab.
-  checkedAt DateTime?
+  checkedAt   DateTime?
   // The admin's public answer, shown under the opinion on the home page.
-  reply          String?
-  repliedAt      DateTime?
+  reply       String?
+  repliedAt   DateTime?
   // When the author saw the answer in the panel; until then the panel shows it.
-  replySeenAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  replySeenAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([shown, createdAt])
 }
@@ -587,4 +595,49 @@ model Refusal {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+// The players' chat: one room every signed-in user can read and write in
+// (src/lib/lobby.ts). Messages are kept for LOBBY_KEEP_DAYS.
+model LobbyMessage {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Written by an admin: shows a badge.
+  fromAdmin       Boolean       @default(false)
+  body            String
+  // A server its owner shared with "Wklej mój serwer": its name and address as they were then.
+  serverId        String?
+  serverName      String?
+  serverAddress   String?
+  createdAt       DateTime      @default(now())
+  // Removed by an admin, or hidden after LOBBY_HIDE_REPORTS reports (hiddenByReports) until an admin looks.
+  deletedAt       DateTime?
+  hiddenByReports Boolean       @default(false)
+  reports         LobbyReport[]
+
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@index([userId, createdAt])
+}
+
+// A user reported a message in the players' chat; an admin resolves it.
+model LobbyReport {
+  id         String       @id @default(cuid())
+  messageId  String
+  message    LobbyMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String
+  createdAt  DateTime     @default(now())
+  resolvedAt DateTime?
+
+  @@unique([messageId, reporterId])
+  @@index([resolvedAt])
+}
+
+// Whether the players' chat is on: one row, switched in the admin panel.
+model LobbySwitch {
+  id      Int     @id @default(1)
+  enabled Boolean @default(true)
 }

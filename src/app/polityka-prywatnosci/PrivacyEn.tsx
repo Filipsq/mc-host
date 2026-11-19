@@ -78,6 +78,11 @@ export default function PrivacyEn({ site }: { site: string }) {
               <td>art. 6(1)(b), (c) and (f)</td>
             </tr>
             <tr>
+              <td>Players’ chat: nickname, message contents, a shared Server (name and address), message reports</td>
+              <td>A public conversation between Users and its moderation (deleting messages, muting)</td>
+              <td>art. 6(1)(b) and (f): the contract and legitimate interest (Users’ safety)</td>
+            </tr>
+            <tr>
               <td>Data needed in a dispute</td>
               <td>Establishing, pursuing or defending claims</td>
               <td>art. 6(1)(f): legitimate interest</td>
@@ -152,6 +157,11 @@ export default function PrivacyEn({ site }: { site: string }) {
         <li>Technical logs: continuously replaced by newer entries, and deleted at the latest with the Server.</li>
         <li>Correspondence: while the matter is handled, then until any claims would be time-barred.</li>
         <li>Chat messages in the panel, with the pictures sent: until the Account is deleted or an administrator deletes the message.</li>
+        <li>
+          Players’ chat: messages and reports for up to 90 days after sending, less if an administrator deletes the
+          message or the User deletes the Account. All signed-in Users see the messages, but only with the nickname,
+          never the email address.
+        </li>
         <li>A device’s notification address: until you turn notifications off, log out on that device or delete the Account.</li>
         <li>A friend’s access to a Server: until the owner removes it, the friend leaves the Server, or the Server is deleted.</li>
       </ul>

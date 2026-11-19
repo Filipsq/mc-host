@@ -3,14 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Maximize2, MessageCircle, X } from "lucide-react";
+import { Maximize2, MessageCircle, MessagesSquare, X } from "lucide-react";
 import type { Messages } from "@/i18n/messages";
 import type { ChatRate, ChatState } from "@/lib/support";
 import SupportChat from "./SupportChat";
+import LobbyChat from "./LobbyChat";
 import { useSheetDrag } from "./useSheetDrag";
 
 type Props = {
   t: Messages["support"];
+  /** The players' chat, a tab next to the admin chat (left out while it's switched off). */
+  lobby?: { t: Messages["lobby"]; maxLength: number };
   signedIn: boolean;
   admin: boolean;
   /** Whether an admin was on the site when the page was rendered; kept up to date by polling. */
@@ -33,6 +36,8 @@ const OPEN_KEY = "help-open-after-login";
 /** The sleeping Steve ("admin offline") shows once per browser session, briefly; after that a grey dot on the button says it. */
 const SLEEP_KEY = "help-sleep-shown";
 const SLEEP_SHOW_MS = 6_000;
+/** Which tab the window last showed, for this browser session. */
+const TAB_KEY = "help-tab";
 
 function storage(fn: (s: Storage) => string | null | void, kind: "session" | "local" = "session") {
   try {
@@ -48,7 +53,7 @@ function storage(fn: (s: Storage) => string | null | void, kind: "session" | "lo
  * shows the number of unread replies, and greets new visitors with a short note
  * saying it is a chat with an admin. Admins are taken to their chat list.
  */
-export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength, rate }: Props) {
+export default function HelpBubble({ t, lobby, signedIn, admin, adminOnline, maxLength, rate }: Props) {
   const path = usePathname();
   const [count, setCount] = useState(0);
   const [online, setOnline] = useState(adminOnline);
@@ -59,12 +64,21 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [openedUnread, setOpenedUnread] = useState(false);
+  const [tab, setTabState] = useState<"help" | "lobby">("help");
+  const onLobby = tab === "lobby" && !!lobby;
+  useEffect(() => {
+    if (storage((s) => s.getItem(TAB_KEY)) === "lobby") setTabState("lobby");
+  }, []);
+  const setTab = (next: "help" | "lobby") => {
+    setTabState(next);
+    storage((s) => s.setItem(TAB_KEY, next));
+  };
   const loading = useRef(false);
   const button = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const head = useRef<HTMLElement>(null);
   // The full chat page and the admin panel have their own chat.
-  const hidden = path.startsWith("/dashboard/support") || path.startsWith("/admin");
+  const hidden = path.startsWith("/dashboard/support") || path.startsWith("/dashboard/chat") || path.startsWith("/admin");
 
   const check = useCallback(async () => {
     if (!admin) {
@@ -173,8 +187,14 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
 
   // Opening the window shows the replies, so the badge clears.
   useEffect(() => {
-    if (open && chat) setCount(0);
-  }, [open, chat]);
+    if (open && chat && !onLobby) setCount(0);
+  }, [open, chat, onLobby]);
+
+  // New replies from the admin come first: the window opens on that tab.
+  useEffect(() => {
+    if (open && count > 0) setTabState("help");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -215,15 +235,18 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
       {open && (
         <div className="help-panel" ref={panel} role="dialog" aria-modal="false" aria-labelledby="help-title">
           <header className="help-head" ref={head}>
-            <span className="help-avatar" aria-hidden><MessageCircle size={20} /></span>
+            <span className="help-avatar" aria-hidden>{onLobby ? <MessagesSquare size={20} /> : <MessageCircle size={20} />}</span>
             <div className="help-head-text">
-              <strong id="help-title">{t.title}</strong>
-              <span className="muted small">
-                <span className={online ? "dot online" : "dot"} aria-hidden /> {online ? t.bubble.status : t.bubble.offlineStatus}
-              </span>
+              <strong id="help-title">{onLobby ? lobby.t.title : t.title}</strong>
+              {!onLobby && (
+                <span className="muted small">
+                  <span className={online ? "dot online" : "dot"} aria-hidden /> {online ? t.bubble.status : t.bubble.offlineStatus}
+                </span>
+              )}
+              {onLobby && <span className="muted small">{lobby.t.subtitle}</span>}
             </div>
             {signedIn && (
-              <Link className="help-icon" href="/dashboard/support" aria-label={t.bubble.fullScreen} title={t.bubble.fullScreen} onClick={() => setOpen(false)}>
+              <Link className="help-icon" href={onLobby ? "/dashboard/chat" : "/dashboard/support"} aria-label={t.bubble.fullScreen} title={t.bubble.fullScreen} onClick={() => setOpen(false)}>
                 <Maximize2 size={17} aria-hidden />
               </Link>
             )}
@@ -231,7 +254,31 @@ export default function HelpBubble({ t, signedIn, admin, adminOnline, maxLength,
               <X size={20} aria-hidden />
             </button>
           </header>
-          {!signedIn ? (
+          {lobby && (
+            <div className="help-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected={!onLobby} className={!onLobby ? "active" : undefined} onClick={() => setTab("help")}>
+                <MessageCircle size={16} aria-hidden /> {lobby.t.helpTab}
+                {count > 0 && <span className="count-badge" aria-hidden>{count > 9 ? "9+" : count}</span>}
+              </button>
+              <button type="button" role="tab" aria-selected={onLobby} className={onLobby ? "active" : undefined} onClick={() => setTab("lobby")}>
+                <MessagesSquare size={16} aria-hidden /> {lobby.t.tab}
+              </button>
+            </div>
+          )}
+          {onLobby ? (
+            signedIn ? (
+              <LobbyChat t={lobby.t} maxLength={lobby.maxLength} />
+            ) : (
+              <div className="help-guest">
+                <span className="chat-empty-icon"><MessagesSquare size={28} aria-hidden /></span>
+                <p>{lobby.t.guest}</p>
+                <div className="help-guest-actions">
+                  <Link className="button" href="/login" onClick={() => storage((s) => s.setItem(OPEN_KEY, "1"))}>{t.bubble.logIn}</Link>
+                  <Link className="button secondary" href="/signup" onClick={() => storage((s) => s.setItem(OPEN_KEY, "1"))}>{t.bubble.signUp}</Link>
+                </div>
+              </div>
+            )
+          ) : !signedIn ? (
             <div className="help-guest">
               <span className="chat-empty-icon"><MessageCircle size={28} aria-hidden /></span>
               <p>{t.bubble.guest}</p>

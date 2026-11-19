@@ -24,6 +24,8 @@ import { getAnnouncement } from "@/lib/announcement";
 import { HALLOWEEN_DISCOUNT, HUNT_PUMPKINS, halloweenOn } from "@/lib/halloween";
 import { format } from "@/i18n/messages";
 import { CHAT_RATE, MAX_LENGTH } from "@/lib/support";
+import { lobbyOn } from "@/lib/lobby";
+import { LOBBY_MAX_LENGTH } from "@/lib/lobbyFilter";
 import { logOut } from "./actions";
 import "./globals.css";
 
@@ -63,6 +65,7 @@ export default async function RootLayout({
   ]);
   const signedIn = !!session?.user;
   const admin = session?.user?.id ? await isAdmin(session.user.id) : false;
+  const lobby = await lobbyOn();
   // Switches itself off after the event (lib/halloween.ts).
   const halloween = halloweenOn();
 
@@ -179,6 +182,7 @@ export default async function RootLayout({
         </footer>
         <HelpBubble
           t={t.support}
+          lobby={lobby ? { t: t.lobby, maxLength: LOBBY_MAX_LENGTH } : undefined}
           signedIn={signedIn}
           admin={admin}
           adminOnline={adminOnline()}

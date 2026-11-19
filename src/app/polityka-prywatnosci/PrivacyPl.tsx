@@ -77,6 +77,11 @@ export default function PrivacyPl({ site }: { site: string }) {
               <td>art. 6 ust. 1 lit. b, c i f</td>
             </tr>
             <tr>
+              <td>Czat graczy: nick, treść wiadomości, polecany Serwer (nazwa i adres), zgłoszenia wiadomości</td>
+              <td>Publiczna rozmowa Użytkowników i jej moderacja (usuwanie wiadomości, wyciszanie)</td>
+              <td>art. 6 ust. 1 lit. b i f – umowa i prawnie uzasadniony interes (bezpieczeństwo Użytkowników)</td>
+            </tr>
+            <tr>
               <td>Dane potrzebne w sporze</td>
               <td>Ustalenie, dochodzenie lub obrona roszczeń</td>
               <td>art. 6 ust. 1 lit. f – prawnie uzasadniony interes</td>
@@ -152,6 +157,11 @@ export default function PrivacyPl({ site }: { site: string }) {
         <li>Logi techniczne – na bieżąco zastępowane nowszymi wpisami; usuwamy je najpóźniej z usunięciem Serwera.</li>
         <li>Korespondencja – przez czas obsługi sprawy, a potem do upływu terminu przedawnienia roszczeń.</li>
         <li>Wiadomości z czatu w panelu, razem z wysłanymi zdjęciami – do usunięcia Konta albo usunięcia wiadomości przez administratora.</li>
+        <li>
+          Czat graczy – wiadomości i zgłoszenia do 90 dni od wysłania, krócej, jeśli administrator usunie
+          wiadomość albo Użytkownik usunie Konto. Wiadomości widzą wszyscy zalogowani Użytkownicy, ale tylko z
+          nickiem, bez adresu e-mail.
+        </li>
         <li>Adres powiadomień urządzenia – do wyłączenia powiadomień, wylogowania się na tym urządzeniu albo usunięcia Konta.</li>
         <li>Dostęp znajomego do Serwera – do odebrania go przez właściciela, opuszczenia Serwera przez znajomego albo usunięcia Serwera.</li>
       </ul>

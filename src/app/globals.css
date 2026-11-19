@@ -2363,3 +2363,90 @@ body:has(.server-tabbar) .ui-toast-area { bottom: max(84px, calc(env(safe-area-i
 @media (prefers-reduced-motion: reduce) {
   .ui-shake, .ui-toast, .ui-toast-check, .ui-tip { animation: none; }
 }
+
+/* ---- Players' chat (LobbyChat.tsx), also a tab in the help bubble ---- */
+.help-tabs { display: flex; gap: 4px; padding: 6px 8px 0; border-bottom: 1px solid var(--border); background: var(--bg-alt); }
+.help-tabs button {
+  flex: 1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px;
+  background: none; color: var(--muted); box-shadow: none; border: 0; border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; font-weight: 600; font-size: 0.92rem;
+  transition: none; /* used all the time: switches instantly */
+}
+.help-tabs button:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); transform: none; }
+.help-tabs button.active { color: var(--fg); border-bottom-color: var(--accent); }
+.help-tabs .count-badge { margin-left: 2px; }
+.help-head-text .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.lobby { position: relative; }
+.lobby-bar { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--border); }
+.lobby-bar > .small:first-child { display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.lobby-bar .dot { width: 7px; height: 7px; box-shadow: none; }
+.lobby-icon {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 4px 10px; margin-left: auto;
+  background: none; color: var(--muted); border: 0; box-shadow: none; font-weight: 600;
+}
+.lobby-icon:hover:not(:disabled) { background: var(--surface-2); color: var(--fg); transform: none; }
+.lobby-icon + .lobby-icon, .lobby-me + .lobby-icon { margin-left: 0; }
+.lobby-me { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.lobby-rules { padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-alt); animation: ui-enter var(--dur-enter) var(--ease-out-ui); transform-origin: top; }
+.lobby-rules p { margin: 0 0 6px; text-wrap: pretty; }
+.lobby-off, .lobby-muted { margin: 12px; }
+.lobby-msg { animation: ui-enter var(--dur-enter) var(--ease-out-ui); }
+.lobby-msg:not(.own) { transform-origin: bottom left; }
+.lobby-msg.own { transform-origin: bottom right; }
+.lobby-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; vertical-align: 1px;
+  background: var(--accent-soft); color: var(--accent-strong); border: 1px solid rgb(91 194 54 / 0.35);
+}
+.lobby-msg.staff .chat-bubble { border-color: rgb(91 194 54 / 0.45); }
+.lobby-server { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg-alt); border: 1px solid var(--border); white-space: normal; }
+.chat-bubble > .lobby-server:first-child { margin-top: 0; }
+.lobby-server-icon { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 8px; background: var(--accent-soft); color: var(--accent-strong); }
+.lobby-server-text { flex: 1; min-width: 120px; display: flex; flex-direction: column; gap: 2px; }
+.lobby-server-text code { font-size: 0.85rem; color: var(--muted); }
+.lobby-act {
+  display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0; flex: none;
+  background: none; color: var(--muted); border: 0; box-shadow: none; opacity: 0.55;
+}
+.lobby-act:hover:not(:disabled), .lobby-act:focus-visible, .lobby-act[aria-expanded="true"] { opacity: 1; background: var(--surface-2); color: var(--fg); transform: none; }
+@media (hover: hover) and (pointer: fine) {
+  .lobby-act { width: 32px; height: 32px; opacity: 0; }
+  .lobby-msg:hover .lobby-act, .lobby-msg:focus-within .lobby-act { opacity: 0.7; }
+}
+.lobby-menu { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 2px; animation: ui-enter var(--dur-enter) var(--ease-out-ui); transform-origin: top left; }
+.lobby-menu .chip { cursor: pointer; font: inherit; font-size: 0.85rem; padding: 6px 12px; min-height: 36px; box-shadow: none; display: inline-flex; align-items: center; gap: 5px; }
+.lobby-menu .small { display: inline-flex; align-items: center; gap: 4px; }
+.lobby-cancel { color: var(--muted); }
+.lobby-note { color: var(--accent-strong); font-weight: 600; }
+.lobby-pick { padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg-alt); animation: ui-enter var(--dur-enter) var(--ease-out-ui); transform-origin: bottom left; }
+.lobby-pick-head { display: flex; align-items: center; justify-content: space-between; }
+.lobby-pick p { margin: 2px 0 8px; }
+.lobby-pick-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+.lobby-pick-item { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px; text-align: left; padding: 8px 12px; }
+.lobby-pick-item code { color: var(--muted); }
+.lobby .chat-attachment { padding-bottom: 0; }
+.lobby .chat-form textarea { min-height: 46px; }
+.lobby-name { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px 14px; border-top: 1px solid var(--border); background: var(--bg-alt); }
+.lobby-name p { margin: 0; text-wrap: pretty; }
+.lobby-name-row { display: flex; gap: 8px; }
+.lobby-name-row input { flex: 1; min-width: 0; min-height: 44px; }
+.lobby-name-row button { min-height: 44px; }
+.help-panel .lobby-bar { padding-left: 12px; }
+.help-panel .lobby-off, .help-panel .lobby-muted { margin: 10px; }
+
+/* Admin page */
+.lobby-switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.lobby-switch span { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+.lobby-reports { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.lobby-report-head { justify-content: flex-start; gap: 8px 12px; flex-wrap: wrap; }
+.lobby-quote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--border-strong); background: var(--bg-alt); border-radius: 6px; white-space: pre-wrap; }
+.lobby-report-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.lobby-report-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.lobby-report-actions .small.muted { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
+.lobby-muted-list { list-style: none; margin: 0; padding: 0; }
+.lobby-muted-list li { display: flex; align-items: center; gap: 12px; padding: 10px 16px; flex-wrap: wrap; }
+.lobby-muted-list li + li { border-top: 1px solid var(--border); }
+.lobby-muted-list li > span:first-child { flex: 1; min-width: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .lobby-msg, .lobby-menu, .lobby-pick, .lobby-rules { animation: none; }
+}
+.lobby .tabular { font-variant-numeric: tabular-nums; }

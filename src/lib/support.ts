@@ -75,7 +75,7 @@ export function imageType(data: Uint8Array): string | null {
 }
 
 /** Times like "10:25" today and "12 paź, 10:25" before, formatted on the server so pages hydrate cleanly. */
-function timeFormat(locale: string) {
+export function timeFormat(locale: string) {
   const zone = "Europe/Warsaw";
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: zone, dateStyle: "short" });
   const time = new Intl.DateTimeFormat(locale, { timeZone: zone, timeStyle: "short" });
