@@ -2251,3 +2251,9 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .dns-record .dns-field { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
 .dns-record .dns-value { justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .dns-record .dns-value strong { word-break: break-all; }
+
+/* Worlds > Trim the world */
+.code-block { margin: 0; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9rem; white-space: pre-wrap; overflow-wrap: anywhere; user-select: all; }
+.trim-cuts { display: flex; flex-direction: column; gap: 6px; border: 0; padding: 0; margin: 0; }
+.trim-cuts label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 400; }
+.trim-cuts input[type="number"] { width: 140px; }

@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
-import { Download, Globe } from "lucide-react";
+import Link from "next/link";
+import { Download, Globe, Scissors } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
@@ -11,7 +12,7 @@ import { diskLimitMb, formatMb } from "@/lib/disk";
 import { planById } from "@/lib/plans";
 import { biggerPlans, canUpgrade } from "@/lib/upgrade";
 import { serverAddons } from "@/lib/addons";
-import { activeLevel, nextWorldName, worldTypes } from "@/lib/worlds";
+import { activeLevel, canTrim, nextWorldName, worldTypes } from "@/lib/worlds";
 import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
 import { isMinecraft } from "@/lib/otherGames";
 import { shownVersion } from "@/lib/serverType";
@@ -134,6 +135,18 @@ export default async function WorldsPage({ params, searchParams }: Props) {
         <p className="muted small">{java ? t.downloadHint : t.downloadHintBedrock}</p>
         {gameMode && <p className="muted small">{t.gameModeNote}</p>}
       </section>
+
+      {canChange && canTrim(server) && worlds.length > 0 && (
+        <section className="card row">
+          <span className="stack-tight">
+            <strong>{t.trim.cardTitle}</strong>
+            <span className="muted small">{t.trim.cardText}</span>
+          </span>
+          <Link className="button secondary small" href={`/dashboard/servers/${server.id}/worlds/trim`}>
+            <Scissors size={14} aria-hidden /> {t.trim.open}
+          </Link>
+        </section>
+      )}
 
       {canChange && !gameMode && (
         <>

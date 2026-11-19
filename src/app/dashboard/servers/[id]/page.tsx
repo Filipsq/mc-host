@@ -20,7 +20,7 @@ import { usesClassicPanel } from "@/lib/panelView";
 import { kindLabel, shownVersion } from "@/lib/serverType";
 import { latestVersionNumber } from "@/lib/addonVersions";
 import { ArrowUpCircle, Gift, Globe } from "lucide-react";
-import { activeLevel } from "@/lib/worlds";
+import { activeLevel, canTrim } from "@/lib/worlds";
 import { isTerrariaKind, isWorldDifficulty, isWorldSize } from "@/lib/terraria";
 import { isOtherGame, isValheimPreset } from "@/lib/otherGames";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -198,8 +198,16 @@ export default async function ServerPage({ params, searchParams }: Props) {
           </Link>
         </div>
       )}
-      {live === "diskFull" && diskVars && <p className="notice warn">{format(t.diskStopped, diskVars)}</p>}
-      {live !== "diskFull" && diskVars && (diskUsed ?? 0) > diskLimit && <p className="notice warn">{format(t.diskOver, diskVars)}</p>}
+      {live === "diskFull" && diskVars && (
+        <p className="notice warn">
+          {format(t.diskStopped, diskVars)} {canTrim(server) && <Link href={`/dashboard/servers/${server.id}/worlds/trim`}>{all.worlds.trim.cardText}</Link>}
+        </p>
+      )}
+      {live !== "diskFull" && diskVars && (diskUsed ?? 0) > diskLimit && (
+        <p className="notice warn">
+          {format(t.diskOver, diskVars)} {canTrim(server) && <Link href={`/dashboard/servers/${server.id}/worlds/trim`}>{all.worlds.trim.cardText}</Link>}
+        </p>
+      )}
       {live === "sleeping" && (
         <p className="notice">{server.edition === "JAVA" ? t.sleepingJava : server.edition === "BEDROCK" ? t.sleepingBedrock : t.sleepingTerraria}</p>
       )}

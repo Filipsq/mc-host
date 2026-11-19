@@ -205,6 +205,7 @@ type agent struct {
 	backupDir   string   // where the agent keeps backups
 	backupMount string   // the same place as helper containers mount it: a volume name or host path
 	serverLocks sync.Map // server id -> *sync.Mutex, held during backups, restores and file changes
+	trimming    sync.Map // server id -> true while trim.go deletes far regions; it can't start meanwhile
 	volumesDir  string   // Docker's volume directory, mounted at the same path; "" turns the file manager off
 	diskReserve int64    // bytes of disk the file manager leaves free
 	uploadMax   int64    // the biggest file the file manager takes
@@ -371,6 +372,9 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("GET /servers/{id}/worlds/{name}/download", a.worldDownload)
 	mux.HandleFunc("POST /servers/{id}/worlds/import", a.worldImport)
 	mux.HandleFunc("DELETE /servers/{id}/worlds/{name}", a.worldDelete)
+	mux.HandleFunc("GET /servers/{id}/worlds/{name}/trim", a.worldTrimPreview)
+	mux.HandleFunc("POST /servers/{id}/worlds/{name}/trim", a.worldTrim)
+	mux.HandleFunc("GET /servers/{id}/usage", a.filesUsage)
 	return a.auth(mux)
 }
 
@@ -1450,6 +1454,8 @@ func (a *agent) handleDockerErr(w http.ResponseWriter, err error) bool {
 		writeError(w, http.StatusServiceUnavailable, "full")
 	case errors.Is(err, errDiskFull):
 		writeError(w, http.StatusInsufficientStorage, "diskFull")
+	case errors.Is(err, errTrimming):
+		writeError(w, http.StatusConflict, "busy")
 	case errors.Is(err, errNoBackups):
 		writeError(w, http.StatusForbidden, err.Error())
 	case errors.Is(err, errBackupNotFound):
