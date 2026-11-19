@@ -2813,7 +2813,7 @@ const pl = {
     changeName: "Zmień nick",
     yourName: "Twój nick: {name}",
     you: "Ty",
-    adminBadge: "Admin",
+    adminBadge: "[Owner]",
     emptyTitle: "Cisza na czacie",
     emptyHint: "Napisz coś jako pierwszy!",
     suggestions: ["Szukam ekipy na survival", "Jaki modpack polecacie?", "Zapraszam na mój serwer!"],
@@ -2888,7 +2888,7 @@ const pl = {
       until: "do {until}",
       forever: "na stałe",
       roomTitle: "Na żywo",
-      roomHint: "Piszesz jako admin, z odznaką. Przy każdej wiadomości możesz ją usunąć albo wyciszyć autora.",
+      roomHint: "Piszesz jako admin, z czerwonym [Owner] przy nicku. Przy każdej wiadomości możesz ją usunąć albo wyciszyć autora.",
     },
     mail: {
       subject: "🚩 Zgłoszenie na czacie graczy: {name}",

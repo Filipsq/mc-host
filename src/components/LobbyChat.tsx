@@ -252,8 +252,8 @@ export default function LobbyChat({ t, initial, maxLength }: Props) {
                   <li key={m.id} className={`chat-msg lobby-msg${m.own ? " own" : ""}${m.admin ? " staff" : ""}${first ? " first" : ""}`}>
                     {first && (
                       <span className="chat-author">
-                        {m.own ? t.you : m.author}
-                        {m.admin && <span className="lobby-badge">{t.adminBadge}</span>}
+                        {m.admin && <span className="lobby-owner">{t.adminBadge}</span>}
+                        {m.own && !m.admin ? t.you : m.author}
                       </span>
                     )}
                     <div className="chat-row">
