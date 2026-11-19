@@ -2814,7 +2814,7 @@ const en: Messages = {
     changeName: "Change nickname",
     yourName: "Your nickname: {name}",
     you: "You",
-    adminBadge: "Admin",
+    adminBadge: "[Owner]",
     emptyTitle: "It's quiet here",
     emptyHint: "Be the first to say something!",
     suggestions: ["Looking for people to play survival", "Which modpack do you recommend?", "Come play on my server!"],
@@ -2889,7 +2889,7 @@ const en: Messages = {
       until: "until {until}",
       forever: "for good",
       roomTitle: "Live",
-      roomHint: "You write as the admin, with a badge. Next to each message you can delete it or mute its author.",
+      roomHint: "You write as the admin, with a red [Owner] tag by your name. Next to each message you can delete it or mute its author.",
     },
     mail: {
       subject: "🚩 Report in the players' chat: {name}",

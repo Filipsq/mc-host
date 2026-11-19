@@ -36,6 +36,8 @@ export default function LobbyAdminControls({ t, on, reports, muted }: Props) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const a = t.admin;
+  // What the switch shows: flips at once, so a second click before the page refreshes turns it back, not off again.
+  const [isOn, setIsOn] = useState(on);
 
   function run(action: ModAction, confirmText?: string) {
     if (confirmText && !window.confirm(confirmText)) return;
@@ -55,12 +57,20 @@ export default function LobbyAdminControls({ t, on, reports, muted }: Props) {
 
   return (
     <div className="stack">
-      <div className={`notice ${on ? "success" : "warn"} lobby-switch`}>
+      <div className={`notice ${isOn ? "success" : "warn"} lobby-switch`}>
         <span>
-          <Power size={16} aria-hidden /> {on ? a.on : a.offNow}
+          <Power size={16} aria-hidden /> {isOn ? a.on : a.offNow}
         </span>
-        <button type="button" className={on ? "secondary small" : "small"} disabled={pending} onClick={() => run({ kind: "switch", on: !on })}>
-          {on ? a.turnOff : a.turnOn}
+        <button
+          type="button"
+          className={isOn ? "secondary small" : "small"}
+          disabled={pending}
+          onClick={() => {
+            setIsOn(!isOn);
+            run({ kind: "switch", on: !isOn });
+          }}
+        >
+          {isOn ? a.turnOff : a.turnOn}
         </button>
       </div>
       {error && <p className="error small" role="alert">{error}</p>}

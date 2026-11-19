@@ -2393,11 +2393,9 @@ body:has(.server-tabbar) .ui-toast-area { bottom: max(84px, calc(env(safe-area-i
 .lobby-msg { animation: ui-enter var(--dur-enter) var(--ease-out-ui); }
 .lobby-msg:not(.own) { transform-origin: bottom left; }
 .lobby-msg.own { transform-origin: bottom right; }
-.lobby-badge {
-  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 0.7rem; font-weight: 700; vertical-align: 1px;
-  background: var(--accent-soft); color: var(--accent-strong); border: 1px solid rgb(91 194 54 / 0.35);
-}
-.lobby-msg.staff .chat-bubble { border-color: rgb(91 194 54 / 0.45); }
+/* The site owner's tag, red like a Minecraft server rank: "[Owner] Fiqolas". */
+.lobby-owner { margin-right: 5px; color: #ff4d4d; font-weight: 800; letter-spacing: 0.02em; }
+.lobby-msg.staff .chat-bubble { border-color: rgb(255 77 77 / 0.45); }
 .lobby-server { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 6px; padding: 8px 10px; border-radius: 10px; background: var(--bg-alt); border: 1px solid var(--border); white-space: normal; }
 .chat-bubble > .lobby-server:first-child { margin-top: 0; }
 .lobby-server-icon { display: inline-grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 8px; background: var(--accent-soft); color: var(--accent-strong); }
