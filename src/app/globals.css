@@ -22,6 +22,11 @@
   --font-body: "Inter Variable", system-ui, -apple-system, sans-serif;
   --font-display: "Jersey 10", var(--font-body);
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  /* Motion: things that appear start a touch small and settle fast, never linear. */
+  --ease-out-ui: cubic-bezier(0.32, 0.72, 0, 1);
+  --dur-enter: 250ms;
+  --dur-press: 150ms;
+  interpolate-size: allow-keywords; /* lets folds animate to height: auto */
 }
 
 * { box-sizing: border-box; }
@@ -98,10 +103,10 @@ button, .button {
   background: var(--accent); color: var(--accent-ink);
   font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; white-space: nowrap;
   box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.25);
-  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  transition: background var(--dur-press) ease-out, transform var(--dur-press) ease-out, box-shadow var(--dur-press) ease-out;
 }
 button:hover:not(:disabled), .button:hover { background: var(--accent-strong); color: var(--accent-ink); transform: translateY(-1px); }
-button:active:not(:disabled), .button:active { transform: translateY(1px); box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.25); }
+button:active:not(:disabled), .button:active { transform: translateY(1px) scale(0.97); box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.25); }
 button.secondary, .button.secondary {
   background: var(--surface-2); color: var(--fg); border: 1px solid var(--border-strong); box-shadow: inset 0 -3px 0 rgb(0 0 0 / 0.3);
 }
@@ -1178,7 +1183,7 @@ a.kpi.card:hover .kpi-label { color: var(--fg); }
 .chat-bubble.with-image p { padding: 5px 9px 4px; }
 .chat-image { display: block; cursor: zoom-in; }
 .image-zoom { position: fixed; inset: 0; z-index: 100000; display: flex; align-items: center; justify-content: center; padding: 56px 16px 16px; background: rgba(0, 0, 0, .85); cursor: zoom-out; animation: image-zoom-in .15s ease-out; }
-.image-zoom img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); cursor: default; }
+.image-zoom img { max-width: 100%; max-height: 100%; border-radius: 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); cursor: default; animation: ui-enter var(--dur-enter) var(--ease-out-ui); }
 .image-zoom-close { position: fixed; top: 12px; right: 12px; width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(255, 255, 255, .14); color: #fff; border: 1px solid rgba(255, 255, 255, .3); cursor: pointer; }
 .image-zoom-close:hover { background: rgba(255, 255, 255, .26); }
 @keyframes image-zoom-in { from { opacity: 0; } to { opacity: 1; } }
@@ -1323,7 +1328,7 @@ a.kpi.card:hover .kpi-label { color: var(--fg); }
 .help-tip {
   position: relative; width: min(290px, calc(100vw - 40px)); margin-right: 6px;
   background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 12px 32px rgb(0 0 0 / 0.5);
-  animation: help-in 0.3s ease-out;
+  animation: help-in var(--dur-enter) var(--ease-out-ui); transform-origin: bottom right;
 }
 .help-tip::after {
   content: ""; position: absolute; right: 22px; bottom: -7px; width: 12px; height: 12px; background: var(--surface-2);
@@ -1377,7 +1382,7 @@ a.kpi.card:hover .kpi-label { color: var(--fg); }
 .help-panel {
   width: min(400px, calc(100vw - 40px)); height: min(600px, calc(100dvh - 120px)); display: flex; flex-direction: column;
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); box-shadow: 0 18px 48px rgb(0 0 0 / 0.55);
-  overflow: hidden; animation: help-in 0.2s ease-out;
+  overflow: hidden; animation: help-in var(--dur-enter) var(--ease-out-ui); transform-origin: bottom right;
 }
 .help-head { display: flex; align-items: center; gap: 10px; padding: 12px 10px 12px 14px; border-bottom: 1px solid var(--border); background: var(--bg-alt); }
 .help-avatar { display: inline-flex; padding: 8px; border-radius: 50%; background: var(--accent-soft); color: var(--accent-strong); }
@@ -1398,7 +1403,7 @@ a.kpi.card:hover .kpi-label { color: var(--fg); }
 .help-guest { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; }
 .help-guest p { margin: 0; }
 .help-guest-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
-@keyframes help-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes help-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
 @media (prefers-reduced-motion: reduce) { .help-tip, .help-panel, .help-sleep, .help-sleep-steve svg { animation: none; } .help-fab { transition: none; } .help-sleep-z { display: none; } }
 /* On a phone the open chat takes the whole screen, like a messaging app. */
 @media (max-width: 640px) {
@@ -2208,12 +2213,11 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .panel-search-backdrop {
   position: fixed; inset: 0; z-index: 100; display: flex; justify-content: center; align-items: flex-start;
   padding: max(12vh, env(safe-area-inset-top)) 16px 16px; background: rgb(5 8 12 / 0.7); backdrop-filter: blur(3px);
-  animation: panel-search-fade 0.12s ease-out;
 }
 .panel-search {
   width: min(640px, 100%); display: flex; flex-direction: column; max-height: min(560px, 76vh);
   background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 0.55); overflow: hidden; animation: panel-search-pop 0.14s ease-out;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.55); overflow: hidden; /* opened many times a day: no animation, it is just there */
 }
 .panel-search-input { display: flex; align-items: center; gap: 10px; padding: 6px 8px 6px 16px; border-bottom: 1px solid var(--border); color: var(--muted); }
 .panel-search-input input { flex: 1; min-width: 0; border: 0; background: transparent; box-shadow: none; font-size: 1.05rem; padding: 12px 0; outline: none; }
@@ -2236,15 +2240,10 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   0%, 30% { box-shadow: 0 0 0 3px var(--accent); background: var(--accent-soft); }
   100% { box-shadow: 0 0 0 3px transparent; background: transparent; }
 }
-@keyframes panel-search-fade { from { opacity: 0; } }
-@keyframes panel-search-pop { from { opacity: 0; transform: translateY(-8px) scale(0.98); } }
 @media (hover: none), (max-width: 640px) {
   .panel-search-button kbd, .panel-search-hint { display: none; }
   .panel-search-backdrop { padding-top: max(16px, env(safe-area-inset-top)); }
   .panel-search { max-height: 70vh; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .panel-search-backdrop, .panel-search { animation: none; }
 }
 
 /* Own domain record (AddonForms DomainForm): each field with its copy button. */
@@ -2257,3 +2256,46 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .trim-cuts { display: flex; flex-direction: column; gap: 6px; border: 0; padding: 0; margin: 0; }
 .trim-cuts label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 400; }
 .trim-cuts input[type="number"] { width: 140px; }
+
+/* ---- Feel: how things appear, press and fail (2026-11-19) ---- */
+
+/* Pop-ups and messages start at 97% and fade in, settling quickly. */
+@keyframes ui-enter { from { opacity: 0; transform: scale(0.97); } }
+.notice { animation: ui-enter var(--dur-enter) var(--ease-out-ui); }
+/* "Zapisano": a short green glow after it appears, so the save is noticed. */
+.notice.success { animation: ui-enter var(--dur-enter) var(--ease-out-ui), saved-glow 0.9s ease-out 0.15s; }
+@keyframes saved-glow { from { box-shadow: 0 0 0 3px rgb(91 194 54 / 0.35); } to { box-shadow: 0 0 0 3px transparent; } }
+/* A form error shakes once when it shows up. */
+p.error, .error[role="alert"] { animation: ui-shake 0.36s ease-out; }
+@keyframes ui-shake {
+  0%, 100% { transform: none; }
+  14% { transform: translateX(-10px); } 28% { transform: translateX(10px); }
+  43% { transform: translateX(-6px); } 57% { transform: translateX(6px); }
+  71% { transform: translateX(-3px); } 86% { transform: translateX(3px); }
+}
+/* "Are you sure?" window. */
+.confirm-dialog[open] { animation: ui-enter var(--dur-enter) var(--ease-out-ui); }
+.confirm-dialog[open]::backdrop { animation: fade-in 0.2s ease-out; }
+
+/* Folds (FAQ, admin and panel sections) slide open instead of jumping. */
+.faq details::details-content, details.fold::details-content {
+  block-size: 0; overflow: hidden;
+  transition: block-size var(--dur-enter) var(--ease-out-ui), content-visibility var(--dur-enter) allow-discrete;
+}
+.faq details[open]::details-content, details.fold[open]::details-content { block-size: auto; }
+
+/* Phones: no "lifted" button stuck after a tap. */
+@media (hover: none) {
+  button:hover:not(:disabled):not(:active), .button:hover:not(:active) { transform: none; }
+}
+
+/* Fingers: the remaining small tap targets reach 44px. */
+@media (pointer: coarse) {
+  .category-chips .chip, .empty-games .chip, .panel-search-button, .picker summary, .server-switch summary, .fold > summary { min-height: 44px; }
+  .category-chips .chip, .empty-games .chip, .picker summary { display: inline-flex; align-items: center; }
+}
+
+/* Reduce motion: anything not covered above stops too. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
