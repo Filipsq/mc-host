@@ -471,6 +471,33 @@ export async function openWorldDownload(id: string, edition: Edition, name: stri
   return agentFetch(`/servers/${id}/worlds/${encodeURIComponent(name)}/download?edition=${edition}`, { signal, timeoutMs: 60 * 60_000 });
 }
 
+// How a Java world's region files lie around the middle (agent/trim.go).
+export type TrimCut = { radius: number; files: number; bytes: number };
+export type TrimDimension = { dimension: string; files: number; bytes: number; reach: number; removeFiles: number; removeBytes: number };
+export type TrimPreview = { files: number; bytes: number; reach: number; dimensions: TrimDimension[]; cuts: TrimCut[]; cut?: TrimCut };
+export type TrimArea = { x: number; z: number; radius?: number };
+
+const trimQuery = (name: string, a: TrimArea) =>
+  `/worlds/${encodeURIComponent(name)}/trim?x=${a.x}&z=${a.z}${a.radius ? `&radius=${a.radius}` : ""}`;
+
+/** What trimming the Java world to each distance from (x, z) would free. Walks the world, so a big one takes a moment. */
+export async function previewTrim(id: string, name: string, area: TrimArea): Promise<TrimPreview> {
+  const res = await agentFetch(`/servers/${id}${trimQuery(name, area)}`, { timeoutMs: 2 * 60_000 });
+  return res.json();
+}
+
+/** Deletes the world's region files farther than radius blocks from (x, z). The server must be stopped ("running" otherwise). */
+export async function trimWorld(id: string, name: string, area: Required<TrimArea>): Promise<{ files: number; bytes: number }> {
+  const res = await agentFetch(`/servers/${id}${trimQuery(name, area)}`, { method: "POST", timeoutMs: 30 * 60_000 });
+  return res.json();
+}
+
+/** What is at the top of the server's files, biggest first (at most 30). */
+export async function diskUsage(id: string): Promise<{ entries: { name: string; type: "dir" | "file"; size: number }[]; total: number }> {
+  const res = await agentFetch(`/servers/${id}/usage`, { timeoutMs: 2 * 60_000 });
+  return res.json();
+}
+
 /** Makes the world `name` from a zip uploaded to `path`, which is deleted afterwards. */
 export async function importWorld(id: string, edition: Edition, path: string, name: string) {
   const q = `edition=${edition}&path=${encodeURIComponent(path)}&name=${encodeURIComponent(name)}`;
