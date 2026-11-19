@@ -2050,6 +2050,7 @@ const pl = {
     revenuePending: "Oczekujące ({n})",
     revenuePendingHint: "Oczekujące: rozpoczęte, jeszcze nieopłacone (np. BLIK w trakcie). Nie są wliczone do wpływów.",
     revenueTests: "Płatności testowe ({amount}) nie są liczone.",
+    revenueAllTime: "łącznie {amount}",
     revenueMonth: "W tym miesiącu: {amount}",
     aiUsage: "AI w tym miesiącu",
     aiValue: "{n} z {limit} użyć",

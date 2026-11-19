@@ -2051,6 +2051,7 @@ const en: Messages = {
     revenuePending: "Pending ({n})",
     revenuePendingHint: "Pending: started, not paid yet (e.g. BLIK being confirmed). Not counted as revenue.",
     revenueTests: "Test payments ({amount}) are not counted.",
+    revenueAllTime: "all time {amount}",
     revenueMonth: "This month: {amount}",
     aiUsage: "AI this month",
     aiValue: "{n} of {limit} uses",
