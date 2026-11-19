@@ -221,6 +221,24 @@ export default function TermsEn({ site }: { site: string }) {
         </li>
       </ol>
 
+      <h3 id="czat-graczy">Players’ chat</h3>
+      <ol>
+        <li>
+          The players’ chat in the panel is a public conversation between all signed-in Users. Messages, the
+          nickname and a shared Server (its name and address, only when the User adds it) are visible to everyone
+          signed in.
+        </li>
+        <li>
+          In the chat it is forbidden to insult others, swear, spam, advertise other services or share personal
+          details of oneself or others (full name, phone, address, email). Links are allowed only to the Service.
+        </li>
+        <li>
+          Other Users can report messages. The Provider moderates the chat: it may delete a message, change a
+          nickname, block writing in the chat for a time or for good, or switch the chat off. A message reported
+          by several people may be hidden until it is checked.
+        </li>
+      </ol>
+
       <h2>§8. Right of withdrawal</h2>
       <ol>
         <li>

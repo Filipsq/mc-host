@@ -75,6 +75,9 @@ export async function deleteAccount(userId: string): Promise<DeleteResult> {
     await tx.pushSubscription.deleteMany({ where: { userId } });
     await tx.passwordReset.deleteMany({ where: { userId } });
     await tx.supportChat.deleteMany({ where: { userId } });
+    // The players' chat: what they wrote and the reports they made.
+    await tx.lobbyMessage.deleteMany({ where: { userId } });
+    await tx.lobbyReport.deleteMany({ where: { reporterId: userId } });
     await tx.review.deleteMany({ where: { userId } });
     await tx.aiUsage.deleteMany({ where: { userId } });
     // People they invited keep their accounts, just not the link to this one.
@@ -97,6 +100,8 @@ export async function deleteAccount(userId: string): Promise<DeleteResult> {
         stripeCustomerId: null,
         referralCode: null,
         referredById: null,
+        chatName: null,
+        chatNameKey: null,
         // Every session still open is signed out (src/lib/session.ts).
         passwordChangedAt: new Date(),
         deletedAt: new Date(),
