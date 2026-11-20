@@ -69,7 +69,7 @@ export default function PackGallery({ t, cta, planNames, art, cf }: Props) {
                   <span className="ram-pill">{format(t.ramFrom, { gb: p.ramGb })}</span>
                   <span className="muted small">{format(t.packPlan, { plan: planNames[planForRam(p.ramGb)] })}</span>
                 </span>
-                <span className="button gallery-cta"><Play size={16} aria-hidden /> {cta}</span>
+                <span className="gallery-cta"><Play size={14} aria-hidden /> {cta}</span>
               </span>
             </Link>
           </li>
