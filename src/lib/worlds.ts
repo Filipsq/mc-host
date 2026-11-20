@@ -52,3 +52,13 @@ export const javaWorldFolders = (name: string) => [name, `${name}_nether`, `${na
 
 /** Where world uploads land, one zip each, before they're unpacked into a world. */
 export const WORLD_UPLOAD_DIR = ".world-uploads";
+
+// Trimming (agent/trim.go): deleting a Java world's region files far from the middle.
+export const TRIM_MIN_RADIUS = 1000;
+export const TRIM_MAX_RADIUS = 30_000_000;
+
+/** Java worlds can be trimmed, except where islands lie far apart on purpose. */
+export const canTrim = (s: Pick<Server, "edition" | "kind">) => s.edition === "JAVA" && s.kind !== "skyblock" && s.kind !== "oneblock";
+
+/** The console commands that keep a world inside the square trimmed to. */
+export const worldBorderCommands = (x: number, z: number, radius: number) => [`worldborder center ${x} ${z}`, `worldborder set ${radius * 2}`];

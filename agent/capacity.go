@@ -64,6 +64,9 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 	// One start at a time, so two free servers can't both take the last slot.
 	a.startMu.Lock()
 	defer a.startMu.Unlock()
+	if _, busy := a.trimming.Load(id); busy {
+		return errTrimming // its world is being cut down (trim.go)
+	}
 	if a.memoryLimit > 0 {
 		info, err := a.docker.InspectContainer(ctx, containerName(id))
 		if err != nil {

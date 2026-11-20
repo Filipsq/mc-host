@@ -39,6 +39,15 @@ const paidLast31 = cache(() =>
     select: { amount: true, currency: true, paidAt: true, stripeSessionId: true },
   }),
 );
+// Everything ever paid, test payments left out like in the 30-day sum. One sum per currency.
+async function paidAllTime() {
+  const groups = await db.payment.groupBy({
+    by: ["currency"],
+    where: { status: "PAID", OR: [{ stripeSessionId: null }, { NOT: { stripeSessionId: { startsWith: "cs_test_" } } }] },
+    _sum: { amount: true },
+  });
+  return groups.map((g) => ({ currency: g.currency, amount: g._sum.amount ?? 0 }));
+}
 const texts = cache(async () => {
   const [all, { locale }] = await Promise.all([getMessages(), getPreferences()]);
   return { all, t: all.admin, f: formats(locale), locale };
@@ -177,7 +186,7 @@ async function Attention() {
 
 /** The key numbers as one row of small tiles. Only our database, so it shows at once. */
 async function Numbers() {
-  const [{ all, t, f, locale }, users, newUsers, servers, paid, pending, ai, recent] = await Promise.all([
+  const [{ all, t, f, locale }, users, newUsers, servers, paid, pending, ai, recent, allTime] = await Promise.all([
     texts(),
     db.user.count(),
     db.user.count({ where: { createdAt: { gte: new Date(now().getTime() - 7 * DAY) } } }),
@@ -190,6 +199,7 @@ async function Numbers() {
     }),
     aiUsageThisMonth(),
     recentActivity(),
+    paidAllTime(),
   ]);
   const o = t.overview;
   // Admins' test servers aren't sales, so they're counted on their own.
@@ -224,6 +234,7 @@ async function Numbers() {
         label={t.revenue30}
         href="/admin/payments?status=PAID"
         value={f.totals(last30) || t.none}
+        side={format(t.revenueAllTime, { amount: f.totals(allTime) || t.none })}
         hint={format(t.revenueMonth, { amount: f.totals(thisMonth) || t.none })}
         title={tests30.length > 0 ? format(t.revenueTests, { amount: f.totals(tests30) }) : undefined}
         tone="good"
@@ -641,6 +652,7 @@ function Loading({ text }: { text: string }) {
 function Kpi({
   label,
   value,
+  side,
   hint,
   title,
   share,
@@ -649,6 +661,8 @@ function Kpi({
 }: {
   label: string;
   value: string;
+  /** A smaller second number shown beside the main one. */
+  side?: string;
   hint?: string;
   title?: string;
   share?: number;
@@ -660,7 +674,14 @@ function Kpi({
       <span className={`kpi-label${title ? " has-hint" : ""}`} title={title}>
         {label}
       </span>
-      <span className={`kpi-value${tone ? ` ${tone}` : ""}${value.length > 16 ? " long" : ""}`}>{value}</span>
+      {side ? (
+        <span className="kpi-row">
+          <span className={`kpi-value${tone ? ` ${tone}` : ""}${value.length > 16 ? " long" : ""}`}>{value}</span>
+          <span className="kpi-side">{side}</span>
+        </span>
+      ) : (
+        <span className={`kpi-value${tone ? ` ${tone}` : ""}${value.length > 16 ? " long" : ""}`}>{value}</span>
+      )}
       {share !== undefined && <Meter share={share} />}
       {hint && <span className="kpi-hint">{hint}</span>}
     </>

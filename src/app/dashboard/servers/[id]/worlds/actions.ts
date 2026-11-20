@@ -11,11 +11,14 @@ import { applyToHost, onHost, worldNeedsNewer, worldTooNew } from "@/lib/servers
 import { canChangeFiles, fileError, type FileError } from "@/lib/files";
 import {
   activeLevel,
+  canTrim,
   isKnownWorldName,
   isValidSeed,
   isValidWorldName,
   javaWorldFolders,
   randomSeed,
+  TRIM_MAX_RADIUS,
+  TRIM_MIN_RADIUS,
   WORLD_UPLOAD_DIR,
   worldTypes,
   type WorldType,
@@ -24,6 +27,7 @@ import { fitAddonsToVersion, newWorldVersions } from "@/lib/addonVersions";
 import { undoSnapshot } from "@/lib/undoChange";
 import type { Messages } from "@/i18n/messages";
 import { isMinecraft } from "@/lib/otherGames";
+import { backupsFor } from "@/lib/addons";
 
 export type WorldError = keyof Messages["worlds"]["errors"] | FileError;
 export type WorldState = { error?: WorldError; values?: Record<string, string> };
@@ -39,7 +43,7 @@ async function worldServer(id: string): Promise<Server | WorldError> {
 }
 
 function worldError(err: unknown): WorldError {
-  if (err instanceof agent.AgentError && ["active", "noWorld", "bedrockMap", "javaMap", "oldMap"].includes(err.message)) return err.message as WorldError;
+  if (err instanceof agent.AgentError && ["active", "noWorld", "bedrockMap", "javaMap", "oldMap", "running"].includes(err.message)) return err.message as WorldError;
   return fileError(err);
 }
 
@@ -151,4 +155,45 @@ export async function deleteWorldAction(id: string, name: string): Promise<World
   }
   revalidatePath(`/dashboard/servers/${id}/worlds`);
   redirect(`/dashboard/servers/${id}/worlds?deleted=1`);
+}
+
+/**
+ * Deletes the Java world's land farther than the chosen distance from the
+ * middle (agent/trim.go), after a backup when the plan has them and the owner
+ * kept it ticked. The server must be off.
+ */
+export async function trimWorldAction(id: string, _: WorldState, form: FormData): Promise<WorldState> {
+  const values = Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
+  const server = await worldServer(id);
+  if (typeof server === "string") return { error: server, values };
+  if (!canTrim(server)) return { error: "notFound", values };
+  const name = values.world ?? "";
+  if (!isKnownWorldName(name)) return { error: "notFound", values };
+  const radius = Number(values.radius === "custom" ? values.customRadius?.replace(/[\s.,]/g, "") : values.radius);
+  const x = Math.trunc(Number(values.x) || 0);
+  const z = Math.trunc(Number(values.z) || 0);
+  if (!Number.isInteger(radius) || radius < TRIM_MIN_RADIUS || radius > TRIM_MAX_RADIUS || Math.abs(x) > TRIM_MAX_RADIUS || Math.abs(z) > TRIM_MAX_RADIUS)
+    return { error: "badRadius", values };
+  if (values.confirm !== "on") return { error: "confirm", values };
+  const backup = values.backup === "on" && backupsFor(server) > 0;
+  let result: { files: number; bytes: number };
+  try {
+    // Checked first, so a running server isn't backed up for nothing.
+    const state = await agent.getServerState(server.id);
+    if (state.state === "running" || state.state === "restarting") return { error: "running", values };
+    if (backup) {
+      try {
+        await agent.createBackup(server.id);
+      } catch (err) {
+        console.error("pre-trim backup failed", server.id, err);
+        return { error: "backupFailed", values };
+      }
+    }
+    result = await agent.trimWorld(server.id, name, { x, z, radius });
+  } catch (err) {
+    return { error: worldError(err), values };
+  }
+  revalidatePath(`/dashboard/servers/${id}`, "layout");
+  const params = new URLSearchParams({ world: name, x: String(x), z: String(z), done: `${result.files}.${result.bytes}.${radius}`, ...(backup && { backup: "1" }) });
+  redirect(`/dashboard/servers/${id}/worlds/trim?${params}`);
 }
