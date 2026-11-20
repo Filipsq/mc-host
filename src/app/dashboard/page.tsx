@@ -3,7 +3,9 @@ import { Gift, KeyRound, MessageCircle, Plus, Shield } from "lucide-react";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
-import { isAdmin } from "@/lib/admin";
+import { isAdminAccount } from "@/lib/admin";
+import { pendingInvites } from "@/lib/emailVerify";
+import VerifyBanner from "./verify/VerifyBanner";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { addressLabel, getLiveState, type LiveState } from "@/lib/servers";
@@ -39,8 +41,8 @@ export default async function DashboardPage({ searchParams }: Props) {
     }),
     sharedServers(session.user.id),
     searchParams,
-    isAdmin(session.user.id),
-    db.user.findUnique({ where: { id: session.user.id }, select: { bonusDays: true } }),
+    isAdminAccount(session.user.id),
+    db.user.findUnique({ where: { id: session.user.id }, select: { bonusDays: true, email: true, emailVerifiedAt: true } }),
     getPreferences(),
     shouldAskReview(session.user.id),
     unseenReviewReply(session.user.id),
@@ -54,6 +56,8 @@ export default async function DashboardPage({ searchParams }: Props) {
     Promise.all(list.map((s, i) => (live[i] === "online" ? getMetrics(s.id, "hour").then((m) => m.online ?? m.players.length).catch(() => null) : null)));
   const [players, sharedPlayers] = await Promise.all([playersOn(servers, states), playersOn(shared, sharedStates)]);
   const t = all.dashboard;
+  // Friends' invitations wait for an unconfirmed address (src/lib/emailVerify.ts).
+  const waiting = me && !me.emailVerifiedAt ? await pendingInvites(me.email) : 0;
   // The panel's address as a code a phone camera can open (for the app card on a computer).
   const qr = await QRCode.toString(`${process.env.APP_URL ?? "https://mchosting.pl"}/dashboard`, {
     type: "svg",
@@ -111,6 +115,7 @@ export default async function DashboardPage({ searchParams }: Props) {
         </div>
       </header>
       {haslo === "zmienione" && <p className="notice success">{t.passwordChanged}</p>}
+      {me && waiting > 0 && <VerifyBanner t={all.emailVerify} email={me.email} count={waiting} />}
       <TestPaymentNotice userId={session.user.id} all={all} locale={locale} />
       {reviewReply && <ReviewReply t={all.reviews} review={reviewReply} />}
       {servers.length === 0 ? (

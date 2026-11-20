@@ -1,5 +1,7 @@
 "use server";
 
+import { after } from "next/server";
+
 import bcrypt from "bcryptjs";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -15,7 +17,7 @@ import { BRAND_NAME } from "@/lib/brand";
 import { buttonMail, sendMail } from "@/lib/mail";
 import { RESET_LINK_MINUTES, changePassword, createResetToken, resetPassword } from "@/lib/passwordReset";
 import { getSession } from "@/lib/session";
-import { linkInvites } from "@/lib/access";
+import { pendingInvites, sendVerifyMail } from "@/lib/emailVerify";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 import { PUSH_COOKIE } from "@/lib/pushEndpoint";
 import { deleteAccount } from "@/lib/accountDeletion";
@@ -77,8 +79,9 @@ export async function signUp(_: FormState, form: FormData): Promise<FormState> {
     },
   });
   if (inviter) jar.delete(REFERRAL_COOKIE);
-  // Servers friends shared with this address before it had an account.
-  await linkInvites(user.id, email);
+  // Servers friends shared with this address before it had an account join it once
+  // the address is confirmed (src/lib/emailVerify.ts): the link goes out right away.
+  if (await pendingInvites(email)) after(() => sendVerifyMail(user).catch((err) => console.error("[mail] email confirmation failed", user.id, err)));
 
   await signIn("credentials", { email, password, redirectTo: await afterSignIn(form) });
   return {};

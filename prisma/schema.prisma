@@ -19,6 +19,14 @@ model User {
   termsAcceptedAt    DateTime?
   // Sessions that signed in before this are no longer accepted (see src/lib/session.ts).
   passwordChangedAt  DateTime?
+  // When the user proved the email is theirs: a link from us, a password reset or Google.
+  // Friends' servers shared with the address join their list only after that (src/lib/emailVerify.ts).
+  emailVerifiedAt    DateTime?
+  // Admins' second step (src/lib/adminTwoFactor.ts): the authenticator app's secret (base32),
+  // when it was set up, and the last 30-second step a code was used for, so a code works once.
+  totpSecret         String?
+  totpEnabledAt      DateTime?
+  totpLastStep       Int?
   // The site's language the user last chose; emails are written in it.
   locale             String             @default("pl")
   // Can open the admin panel and every server's panel. Set on the server with deploy/admin.sh.

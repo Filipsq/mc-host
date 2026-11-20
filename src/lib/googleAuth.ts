@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { getPreferences } from "@/i18n/server";
 import { linkInvites } from "@/lib/access";
+import { markVerified } from "@/lib/emailVerify";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 
 /** "Sign in with Google" shows only once the OAuth client is set in deploy/.env. */
@@ -33,6 +34,8 @@ export async function googleUser(googleId: string, rawEmail: unknown, emailVerif
       where: { id: existing.id },
       data: { googleId, ...(existing.passwordHash ? { passwordHash: null, passwordChangedAt: new Date() } : {}) },
     });
+    // Google confirmed the address: friends' servers waiting for it join the account.
+    await markVerified(existing.id, email);
     return { id: existing.id, email };
   }
 
@@ -42,7 +45,7 @@ export async function googleUser(googleId: string, rawEmail: unknown, emailVerif
   const jar = await cookies();
   const inviter = await inviterFor(jar.get(REFERRAL_COOKIE)?.value);
   const user = await db.user.create({
-    data: { email, googleId, termsAcceptedAt: new Date(), locale, referredById: inviter?.id },
+    data: { email, googleId, emailVerifiedAt: new Date(), termsAcceptedAt: new Date(), locale, referredById: inviter?.id },
     select: { id: true, email: true },
   });
   if (inviter) jar.delete(REFERRAL_COOKIE);
