@@ -44,10 +44,10 @@ export default function HeroStage({ children }: { children: ReactNode }) {
 }
 
 /** A blocky grass edge the hero stands on: grass with a stepped top, then dirt
- *  that darkens into the page. Square 16px blocks; wide screens crop the sides. */
+ *  that darkens into the page. Square 8px blocks; wide screens crop the sides. */
 export function HeroGround() {
   // Grass height of each column in blocks (1 or 2), a fixed uneven pattern.
-  const n = 120;
+  const n = 240;
   const steps = Array.from({ length: n }, (_, i) => ((i * 7 + (i >> 2) * 3) % 5 < 3 ? 1 : 2));
   return (
     <svg className="hero-ground" viewBox={`0 0 ${n} 4`} preserveAspectRatio="xMidYMax slice" shapeRendering="crispEdges" aria-hidden>

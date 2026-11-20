@@ -114,18 +114,12 @@ export default async function Home() {
             </ul>
           </div>
           <HeroStage>
-            {/* A small diorama: the island behind, blocks floating around, and the
+            {/* A small diorama: the island behind and the
                 real flow (pick a game, it installs, the address is online) in front. */}
             <div className="hero-island depth" style={depth(-14, -5)} aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/art/island.svg" alt="" width={560} height={520} />
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="hero-block hb-grass depth" style={depth(24, 10)} src="/art/block-grass.svg" alt="" width={64} height={73} aria-hidden />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="hero-block hb-stone depth" style={depth(18, 8)} src="/art/block-stone.svg" alt="" width={44} height={50} aria-hidden />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img className="hero-block hb-server depth" style={depth(30, 12)} src="/art/block-server.svg" alt="" width={54} height={61} aria-hidden />
             {pumpkin("hero")}
             <div className="hero-panel depth" style={depth(6, 3)}>
               <PanelDemo
