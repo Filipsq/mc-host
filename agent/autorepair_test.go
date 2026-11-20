@@ -226,3 +226,60 @@ func TestOOMScoreAdjInSpec(t *testing.T) {
 		t.Fatal("free servers aren't killed first")
 	}
 }
+
+func TestAutoRepairStartsANetworkCrashAfterAnAgentRestart(t *testing.T) {
+	old := networkUp
+	networkUp = func(context.Context) bool { return true }
+	t.Cleanup(func() { networkUp = old })
+	now := time.Now()
+	c := newCrashAgent(t, "[mc-image-helper] ERROR : UnknownHostException: Failed to resolve 'fill.papermc.io'\n", now.Add(-2*time.Hour))
+	c.repairServer(context.Background(), "abc12345", now)
+	if c.startCount() != 1 {
+		t.Fatalf("started %d times, want 1", c.startCount())
+	}
+}
+
+func TestWhitelistNameWithNoAccount(t *testing.T) {
+	log := []string{"[mc-image-helper] 11:57:27.564 ERROR : Invalid parameter provided for 'manage-users' command: Could not resolve user from Playerdb: 11Habcio_lk"}
+	if got := crashCauseFrom(log, []string{"TYPE=PAPER"}); got != "whitelist 11Habcio_lk" {
+		t.Errorf("cause %q", got)
+	}
+	if got := crashCauseFrom(append(log, "UnknownHostException: playerdb.co"), []string{"TYPE=PAPER"}); got != causeNetwork {
+		t.Errorf("with no network: %q", got)
+	}
+	env := offlineWhitelist([]string{"TYPE=PAPER", "WHITELIST=Steve,11Habcio_lk"}, []string{"11Habcio_lk"})
+	if env[1] != "WHITELIST=Steve,11Habcio_lk:offline" {
+		t.Errorf("env %q", env)
+	}
+}
+
+func TestAutoRepairWaitsForRoom(t *testing.T) {
+	now := time.Now()
+	c := newCrashAgent(t, lifestealCrash, now.Add(-10*time.Second))
+	full := true
+	c.repairStart = func(context.Context, string) error {
+		c.mu.Lock()
+		defer c.mu.Unlock()
+		c.starts++
+		if full {
+			return errFull
+		}
+		return nil
+	}
+	ctx := context.Background()
+	c.repairServer(ctx, "abc12345", now)
+	c.repairServer(ctx, "abc12345", now.Add(repairEvery))
+	if c.startCount() != 1 {
+		t.Fatalf("tried %d times within the minute, want 1", c.startCount())
+	}
+	c.mu.Lock()
+	full = false
+	c.mu.Unlock()
+	c.repairServer(ctx, "abc12345", now.Add(2*time.Minute))
+	if c.startCount() != 2 {
+		t.Fatalf("tried %d times, want 2 once there was room", c.startCount())
+	}
+	if r := c.reason(t); r != "crashed" {
+		t.Fatalf("stop reason %q after the start, want crashed (the fake never runs)", r)
+	}
+}

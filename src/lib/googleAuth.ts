@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { db } from "@/lib/db";
 import { getPreferences } from "@/i18n/server";
 import { linkInvites } from "@/lib/access";
+import { markVerified } from "@/lib/emailVerify";
 import { REFERRAL_COOKIE, inviterFor } from "@/lib/referrals";
 
 /** "Sign in with Google" shows only once the OAuth client is set in deploy/.env. */
@@ -21,11 +22,20 @@ export async function googleUser(googleId: string, rawEmail: unknown, emailVerif
   if (typeof rawEmail !== "string" || emailVerified !== true) return null;
   const email = rawEmail.trim().toLowerCase();
 
-  const existing = await db.user.findUnique({ where: { email }, select: { id: true, googleId: true } });
+  const existing = await db.user.findUnique({ where: { email }, select: { id: true, googleId: true, passwordHash: true } });
   if (existing) {
     // Already linked to a different Google account with this address: keep that one.
     if (existing.googleId) return null;
-    await db.user.update({ where: { id: existing.id }, data: { googleId } });
+    // Sign-up never checks the email, so a password on this account may have been
+    // set by someone else who signed up with this address first. Google has now
+    // proved who owns it: that password stops working and its sessions end. The
+    // owner can set a new one in the panel or with "Nie pamiętam hasła".
+    await db.user.update({
+      where: { id: existing.id },
+      data: { googleId, ...(existing.passwordHash ? { passwordHash: null, passwordChangedAt: new Date() } : {}) },
+    });
+    // Google confirmed the address: friends' servers waiting for it join the account.
+    await markVerified(existing.id, email);
     return { id: existing.id, email };
   }
 
@@ -35,7 +45,7 @@ export async function googleUser(googleId: string, rawEmail: unknown, emailVerif
   const jar = await cookies();
   const inviter = await inviterFor(jar.get(REFERRAL_COOKIE)?.value);
   const user = await db.user.create({
-    data: { email, googleId, termsAcceptedAt: new Date(), locale, referredById: inviter?.id },
+    data: { email, googleId, emailVerifiedAt: new Date(), termsAcceptedAt: new Date(), locale, referredById: inviter?.id },
     select: { id: true, email: true },
   });
   if (inviter) jar.delete(REFERRAL_COOKIE);

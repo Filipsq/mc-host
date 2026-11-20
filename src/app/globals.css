@@ -179,15 +179,15 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
 
 /* Home: hero */
 .hero {
-  position: relative; overflow: hidden; padding: 72px 0 64px;
+  position: relative; overflow: hidden; padding: 72px 0 80px;
   background:
     radial-gradient(600px 400px at 78% 40%, rgb(91 194 54 / 0.16), transparent 70%),
     radial-gradient(500px 360px at 10% 0%, rgb(77 208 225 / 0.08), transparent 70%),
     linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px) 0 0 / 40px 40px,
     linear-gradient(90deg, rgb(255 255 255 / 0.025) 1px, transparent 1px) 0 0 / 40px 40px,
     var(--bg);
-  border-bottom: 1px solid var(--border);
 }
+.hero-ground { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 32px; display: block; pointer-events: none; }
 .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.05fr 1fr; gap: 40px; align-items: center; }
 .clouds { position: absolute; inset: 0; pointer-events: none; }
 .cloud { position: absolute; left: 0; opacity: 0.14; animation: drift linear infinite; will-change: transform; }
@@ -201,25 +201,39 @@ button.option[aria-pressed="true"] { border-color: var(--accent); background: va
   background: var(--accent-soft); border: 1px solid rgb(91 194 54 / 0.35); color: var(--accent-strong);
   font-weight: 600; font-size: 0.85rem;
 }
-.hero h1 { font-size: clamp(2.5rem, 4.3vw, 3.6rem); line-height: 1.02; margin-bottom: 20px; text-wrap: balance; }
+.hero h1 { font-size: clamp(2.6rem, 4.6vw, 4rem); line-height: 0.98; margin-bottom: 22px; text-wrap: balance; }
+.hero h1 .title-tail { color: var(--accent-strong); }
+/* Entrance: the copy rises in, one line after another, then stays. */
+.hero .rise { animation: rise 800ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.hero .rise:nth-child(2) { animation-delay: 90ms; }
+.hero .rise:nth-child(3) { animation-delay: 180ms; }
+.hero .rise:nth-child(4) { animation-delay: 270ms; }
+.hero .rise:nth-child(5) { animation-delay: 360ms; }
+.hero .rise:nth-child(6) { animation-delay: 450ms; }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); filter: blur(8px); } }
 .lead { font-size: 1.15rem; color: #c3cfdd; margin: 0 0 28px; max-width: 540px; }
 .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .perks { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 24px; color: var(--muted); font-size: 0.95rem; }
 .perks li { display: inline-flex; align-items: center; gap: 6px; }
 .perks svg { color: var(--accent); }
-.hero-art { position: relative; display: flex; justify-content: center; padding-top: 60px; }
-/* The island peeks out from behind the panel window: brand art, but the
-   product itself is what the eye lands on. It floats as one ready-drawn layer
-   (no filter on an animated element). */
-.hero-island {
-  position: absolute; right: -36px; top: -34px; width: 170px; z-index: 2; pointer-events: none;
-  animation: float 6s ease-in-out infinite; will-change: transform;
+.hero-art {
+  position: relative; display: flex; justify-content: center; padding: 120px 0 24px; --mx: 0; --my: 0;
+  animation: settle 900ms 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
-.hero-island img { display: block; width: 100%; height: auto; }
-.hero-art .demo { position: relative; z-index: 1; margin: 0; }
-.hero-art .demo-window { zoom: 1.12; box-shadow: 0 30px 70px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(91 194 54 / 0.18); }
 @keyframes float { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -12px, 0); } }
-@media (prefers-reduced-motion: reduce) { .hero-island { animation: none; } }
+@keyframes settle { from { opacity: 0; transform: scale(0.97); } }
+/* Each layer drifts with the mouse by its own --dx/--dy (HeroStage sets --mx/--my).
+   Static pictures only: no filter or shadow animates. */
+.hero-art .depth { transform: translate3d(calc(var(--mx) * var(--dx) * 1px), calc(var(--my) * var(--dy) * 1px), 0); }
+.hero-island { position: absolute; right: -70px; top: -64px; width: 270px; z-index: 0; pointer-events: none; }
+.hero-island img { display: block; width: 100%; height: auto; }
+.hero-panel { position: relative; z-index: 1; }
+.hero-art .demo { position: relative; margin: 0; }
+.hero-art .demo-window { zoom: 1.12; box-shadow: 0 30px 70px rgb(0 0 0 / 0.55), 0 0 0 1px rgb(91 194 54 / 0.18); }
+@media (prefers-reduced-motion: reduce) {
+  .hero .rise, .hero-art { animation: none; }
+  .hero-art .depth { transform: none; }
+}
 
 /* Home: sections */
 .section { padding: 80px 0; }
@@ -1117,7 +1131,8 @@ a.kpi.card:hover .kpi-label { color: var(--fg); }
 /* Phones and small tablets */
 @media (max-width: 960px) {
   .topnav { display: none; }
-  .hero { padding: 44px 0 40px; }
+  .hero-art { padding-top: 80px; }
+  .hero { padding: 44px 0 56px; }
   .hero-grid { grid-template-columns: 1fr; }
   .hero-art { max-width: 420px; margin: 0 auto; }
   .feature-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1988,7 +2003,8 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 @media (max-width: 520px) {
   /* Scale the fixed stage to the phone: 480px wide becomes about 340px. */
   .demo-window, .hero-art .demo-window { zoom: 0.72; }
-  .hero-island { width: 120px; right: -8px; top: -20px; }
+  .hero-island { width: 150px; right: -10px; top: -30px; }
+  .hero-ground { height: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .demo * { animation: none !important; }
@@ -2033,8 +2049,11 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .gallery-tile { min-height: 0; }
 .gallery-tile .pack-art-frame { height: 140px; }
 .gallery-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.gallery-cta { margin-top: 10px; justify-content: center; width: 100%; }
-.gallery-tile:hover .gallery-cta, .gallery-tile:focus-visible .gallery-cta { filter: brightness(1.08); }
+/* The whole tile is the link, so its action is a quiet line, not one more big green button. */
+.gallery-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; min-height: 24px; font-size: 0.9rem; font-weight: 700; color: var(--accent-strong); }
+.gallery-cta svg { transition: transform 0.15s var(--ease-out-ui, ease-out); }
+.gallery-tile:hover .gallery-cta, .gallery-tile:focus-visible .gallery-cta { text-decoration: underline; text-underline-offset: 3px; }
+.gallery-tile:hover .gallery-cta svg, .gallery-tile:focus-visible .gallery-cta svg { transform: translateX(2px); }
 .center { text-align: center; }
 @media (max-width: 960px) { .pack-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 420px) {
@@ -2042,7 +2061,6 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   .gallery-tile .pack-art-frame { height: 96px; }
   .gallery-tile .pack-body { padding: 0 12px 12px; }
   .gallery-tile .pack-meta .muted { display: none; }
-  .gallery-cta { padding-left: 8px; padding-right: 8px; font-size: 0.9rem; }
   .gallery-tile .pack-icon { width: 44px; height: 44px; margin-top: -22px; }
 }
 
@@ -2548,3 +2566,17 @@ button.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offse
 .app-steps { list-style: decimal; }
 .app-steps li::marker { color: var(--accent); font-weight: 700; }
 .app-card-head h2 + * { margin-top: 0; }
+
+/* Browser parts in the site's colours: selected text, the caret, scrollbars and the keyboard ring. */
+::selection { background: rgb(91 194 54 / 0.35); color: var(--fg); }
+input, textarea { caret-color: var(--accent-strong); }
+html { scrollbar-color: var(--border-strong) var(--bg); }
+:where(a, button, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+/* Phones: a smaller help button, so it covers less of the cards it floats over. */
+@media (max-width: 640px) {
+  .help { right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); }
+  .help-fab { width: 48px; height: 48px; }
+  .help-fab svg { width: 22px; height: 22px; }
+  .help-offline-dot { width: 11px; height: 11px; bottom: 1px; right: 1px; }
+}

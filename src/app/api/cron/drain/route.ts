@@ -1,3 +1,4 @@
+import { sameSecret } from "@/lib/sameSecret";
 import { db } from "@/lib/db";
 import { rankNodes } from "@/lib/capacity";
 import { applyToHost, moveServer } from "@/lib/servers";
@@ -11,7 +12,7 @@ export const maxDuration = 21600; // six hours: Next.js reads it as a plain numb
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!secret || !sameSecret(req.headers.get("authorization") ?? "", `Bearer ${secret}`)) {
     return new Response("Unauthorized", { status: 401 });
   }
   const from = new URL(req.url).searchParams.get("node");
