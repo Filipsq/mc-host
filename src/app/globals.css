@@ -2559,6 +2559,14 @@ button.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offse
   .auth-card .auth-head h1 { font-size: 2.1rem; }
 }
 
+/* /aplikacja: Android APK download and iPhone steps */
+.app-card-head h2 { margin: 0; }
+.app-page-qr { display: none; }
+@media (pointer: fine) { .app-page-qr { display: flex; } }
+.app-steps { list-style: decimal; }
+.app-steps li::marker { color: var(--accent); font-weight: 700; }
+.app-card-head h2 + * { margin-top: 0; }
+
 /* Browser parts in the site's colours: selected text, the caret, scrollbars and the keyboard ring. */
 ::selection { background: rgb(91 194 54 / 0.35); color: var(--fg); }
 input, textarea { caret-color: var(--accent-strong); }

@@ -4,3 +4,5 @@ node_modules
 agent
 deploy
 *.md
+android
+.github

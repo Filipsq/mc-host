@@ -154,6 +154,7 @@ export default async function RootLayout({
               <Link href="/#faq">{t.nav.faq}</Link>
               <Link href="/porownanie">{t.compare.nav}</Link>
               <Link href="/prezent">{t.gifts.homeTitle}</Link>
+              <Link href="/aplikacja">{t.mobileApp.nav}</Link>
             </div>
             <div className="footer-col">
               <p className="footer-title">{t.legal.footerTitle}</p>
