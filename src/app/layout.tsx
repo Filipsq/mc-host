@@ -18,7 +18,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { siteUrl } from "@/lib/site";
 import { ADSENSE_CLIENT } from "@/lib/ads";
-import { isAdmin } from "@/lib/admin";
+import { isAdminAccount } from "@/lib/admin";
 import { adminOnline } from "@/lib/presence";
 import { getAnnouncement } from "@/lib/announcement";
 import { HALLOWEEN_DISCOUNT, HUNT_PUMPKINS, halloweenOn } from "@/lib/halloween";
@@ -64,7 +64,8 @@ export default async function RootLayout({
     getAnnouncement(),
   ]);
   const signedIn = !!session?.user;
-  const admin = session?.user?.id ? await isAdmin(session.user.id) : false;
+  // The way to /admin shows for admin accounts even before the second step, which /admin asks for.
+  const admin = session?.user?.id ? await isAdminAccount(session.user.id) : false;
   const lobby = await lobbyOn();
   // Switches itself off after the event (lib/halloween.ts).
   const halloween = halloweenOn();

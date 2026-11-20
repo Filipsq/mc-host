@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { db } from "@/lib/db";
+import { markVerified } from "@/lib/emailVerify";
 
 export const RESET_LINK_MINUTES = 60;
 // Links one account can ask for per hour, so nobody can flood someone's inbox.
@@ -79,6 +80,8 @@ export async function resetPassword(token: string, password: string): Promise<st
     db.user.update({ where: { id: reset.userId }, data: { passwordHash, passwordChangedAt: now } }),
     db.passwordReset.updateMany({ where: { userId: reset.userId, usedAt: null }, data: { usedAt: now } }),
   ]);
+  // The link came by email, so the address is theirs.
+  await markVerified(reset.userId, reset.user.email);
   return reset.user.email;
 }
 

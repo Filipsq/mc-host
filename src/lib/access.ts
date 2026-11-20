@@ -62,7 +62,7 @@ export function sharedServers(userId: string) {
   });
 }
 
-/** Gives a new account the servers its email was invited to before it existed. */
+/** Gives an account the servers its email was invited to, once the address is confirmed (src/lib/emailVerify.ts). */
 export async function linkInvites(userId: string, email: string) {
   await db.serverMember.updateMany({ where: { email, userId: null }, data: { userId } });
 }
@@ -88,12 +88,12 @@ export async function inviteFriend(
     db.serverMember.count({
       where: { server: { ownerId: server.ownerId }, createdAt: { gt: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
     }),
-    db.user.findUnique({ where: { email }, select: { id: true, locale: true } }),
+    db.user.findUnique({ where: { email }, select: { id: true, locale: true, emailVerifiedAt: true } }),
   ]);
   if (count >= MEMBERS_MAX) return "tooMany";
   if (today >= INVITES_PER_DAY) return "tooManyToday";
   try {
-    await db.serverMember.create({ data: { serverId: server.id, email, userId: user?.id, perms } });
+    await db.serverMember.create({ data: { serverId: server.id, email, userId: user?.emailVerifiedAt ? user.id : undefined, perms } });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return "already";
     throw err;
@@ -106,7 +106,7 @@ async function sendInvite(
   server: Pick<Server, "id" | "name">,
   ownerEmail: string,
   to: string,
-  user: { locale: string } | null,
+  user: { locale: string; emailVerifiedAt: Date | null } | null,
   fallbackLocale: string,
 ) {
   const locale = user && isLocale(user.locale) ? user.locale : isLocale(fallbackLocale) ? fallbackLocale : defaultLocale;
@@ -117,9 +117,10 @@ async function sendInvite(
   const mail = buttonMail({
     to,
     subject: format(t.subject, vars),
-    paragraphs: [format(t.intro, vars), format(user ? t.hasAccount : t.noAccount, vars)],
-    button: user ? t.open : t.signUp,
-    url: user ? `${app}/dashboard/servers/${server.id}` : `${app}/signup`,
+    // An account whose address isn't confirmed yet gets the server after confirming it (the panel asks).
+    paragraphs: [format(t.intro, vars), format(!user ? t.noAccount : user.emailVerifiedAt ? t.hasAccount : t.confirmFirst, vars)],
+    button: !user ? t.signUp : user.emailVerifiedAt ? t.open : t.openPanel,
+    url: !user ? `${app}/signup` : user.emailVerifiedAt ? `${app}/dashboard/servers/${server.id}` : `${app}/dashboard`,
     footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
   });
   try {
