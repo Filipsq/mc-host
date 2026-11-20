@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { Plan } from "@prisma/client";
 import { Check, CreditCard, Flame, Gift, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
@@ -23,6 +24,7 @@ import EditionIcon from "@/components/EditionIcon";
 import HalloweenGames from "@/components/HalloweenGames";
 import { FeatureArt, GameArt, PanelDemo, StepArt } from "@/components/HomeArt";
 import ShowMore from "@/components/ShowMore";
+import HeroStage, { HeroGround } from "@/components/HeroStage";
 import StickyCta from "@/components/StickyCta";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
@@ -31,6 +33,9 @@ import { halloweenOn } from "@/lib/halloween";
 import HalloweenBand from "@/components/HalloweenBand";
 import { HuntPumpkin } from "@/components/Halloween";
 import { REFERRAL_COOKIE, REFERRAL_DAYS, REFERRAL_MIN_DAYS } from "@/lib/referrals";
+
+// How far a hero layer drifts with the mouse, in px (see HeroStage).
+const depth = (dx: number, dy: number) => ({ "--dx": dx, "--dy": dy }) as CSSProperties;
 
 // The order of the feature cards; each card has its own picture, so no extra icon.
 const featureKeys = ["free", "editions", "sleep", "address", "console", "payments"] as const;
@@ -52,6 +57,10 @@ export default async function Home() {
   const start = session?.user ? "/dashboard/new" : "/signup";
   const free = planById("FREE");
   const h = t.home;
+  // The headline's second half ("który budzi się, gdy wchodzisz") is set in green.
+  const comma = h.title.indexOf(", ");
+  const titleHead = comma > 0 ? h.title.slice(0, comma) : h.title;
+  const titleTail = comma > 0 ? h.title.slice(comma + 2) : "";
   // The pumpkin hunt (lib/halloween.ts): one pumpkin hidden in each of these spots.
   const halloween = halloweenOn();
   const pumpkin = (id: string) => halloween && <HuntPumpkin id={id} label={t.halloween.pumpkin} className={`hunt-${id}`} />;
@@ -71,9 +80,9 @@ export default async function Home() {
                 <Link className="button small" href="/signup">{t.referrals.homeBannerButton}</Link>
               </p>
             )}
-            <p className="eyebrow">{h.eyebrow}</p>
-            <h1 className="display">{h.title}</h1>
-            <p className="lead">{h.subtitle}</p>
+            <p className="eyebrow rise">{h.eyebrow}</p>
+            <h1 className="display rise">{titleHead}{titleTail && <>, <span className="title-tail">{titleTail}</span></>}</h1>
+            <p className="lead rise">{h.subtitle}</p>
             {aiEnabled() && (
               // Signed out, this goes through sign-up first; the description comes along.
               <form className="ai-hero" action={session?.user ? "/dashboard/new" : "/signup"} method="get">
@@ -94,32 +103,42 @@ export default async function Home() {
                 <p className="muted small">{t.ai.heroHint}</p>
               </form>
             )}
-            <div className="hero-actions">
+            <div className="hero-actions rise">
               <Link className="button large" href={start}>{h.cta}</Link>
               <Link className="button large secondary" href="#cennik">{h.ctaSecondary}</Link>
             </div>
-            <ul className="perks">
+            <ul className="perks rise">
               {[h.perkNoCard, h.perkBlik, h.perkAddress].map((perk) => (
                 <li key={perk}><Check size={16} aria-hidden /> {perk}</li>
               ))}
             </ul>
           </div>
-          <div className="hero-art">
-            {/* The real flow, big and first: pick a game, it installs, the address is online. */}
-            <div className="hero-island" aria-hidden>
+          <HeroStage>
+            {/* A small diorama: the island behind, blocks floating around, and the
+                real flow (pick a game, it installs, the address is online) in front. */}
+            <div className="hero-island depth" style={depth(-14, -5)} aria-hidden>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/art/island.svg" alt="" width={560} height={520} />
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="hero-block hb-grass depth" style={depth(24, 10)} src="/art/block-grass.svg" alt="" width={64} height={73} aria-hidden />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="hero-block hb-stone depth" style={depth(18, 8)} src="/art/block-stone.svg" alt="" width={44} height={50} aria-hidden />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img className="hero-block hb-server depth" style={depth(30, 12)} src="/art/block-server.svg" alt="" width={54} height={61} aria-hidden />
             {pumpkin("hero")}
-            <PanelDemo
-              demo={h.demo}
-              games={[t.server.games.survival, t.server.games.lifesteal, t.server.games.mods]}
-              freePlan={t.plans.FREE}
-              online={t.server.live.online}
-              domain={domain}
-            />
-          </div>
+            <div className="hero-panel depth" style={depth(6, 3)}>
+              <PanelDemo
+                demo={h.demo}
+                games={[t.server.games.survival, t.server.games.lifesteal, t.server.games.mods]}
+                freePlan={t.plans.FREE}
+                online={t.server.live.online}
+                domain={domain}
+              />
+            </div>
+          </HeroStage>
         </div>
+        <HeroGround />
       </section>
 
       {halloween && (
