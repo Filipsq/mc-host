@@ -3068,6 +3068,12 @@ const pl = {
     ctaButton: "Załóż darmowy serwer",
     pricingButton: "Zobacz cennik",
   },
+  notFound: {
+    title: "Nie ma takiej strony",
+    text: "Ten adres nie prowadzi nigdzie. Może link był stary albo zabrakło w nim literki.",
+    home: "Strona główna",
+    panel: "Mój panel",
+  },
   legal: {
     footerTitle: "Informacje",
     terms: "Regulamin",

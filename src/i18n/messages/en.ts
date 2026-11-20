@@ -3067,6 +3067,12 @@ const en: Messages = {
     ctaButton: "Create a free server",
     pricingButton: "See pricing",
   },
+  notFound: {
+    title: "Page not found",
+    text: "This address doesn't lead anywhere. The link may be old or missing a letter.",
+    home: "Home page",
+    panel: "My panel",
+  },
   legal: {
     footerTitle: "Legal",
     terms: "Terms of Service",
