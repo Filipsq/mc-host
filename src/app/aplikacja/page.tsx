@@ -53,7 +53,7 @@ export default async function AppPage() {
           </div>
         )}
         <h3>{t.stepsTitle}</h3>
-        <ol className="invite-steps">
+        <ol className="invite-steps app-steps">
           <li>{t.step1}</li>
           <li>{t.step2}</li>
           <li>{t.step3}</li>
@@ -70,7 +70,7 @@ export default async function AppPage() {
           <h2>{t.iosTitle}</h2>
         </div>
         <p>{t.iosText}</p>
-        <ol className="invite-steps">
+        <ol className="invite-steps app-steps">
           <li>{t.ios1}</li>
           <li>{t.ios2}</li>
           <li>{t.ios3}</li>

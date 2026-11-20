@@ -2545,3 +2545,6 @@ button.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offse
 .app-card-head h2 { margin: 0; }
 .app-page-qr { display: none; }
 @media (pointer: fine) { .app-page-qr { display: flex; } }
+.app-steps { list-style: decimal; }
+.app-steps li::marker { color: var(--accent); font-weight: 700; }
+.app-card-head h2 + * { margin-top: 0; }
