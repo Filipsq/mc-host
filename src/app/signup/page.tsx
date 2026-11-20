@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AuthForm from "../AuthForm";
 import GoogleButton from "../GoogleButton";
+import AuthShell from "../AuthShell";
 import { googleEnabled } from "@/lib/googleAuth";
 import { signUp } from "../actions";
 import { getMessages } from "@/i18n/server";
@@ -18,13 +19,15 @@ export default async function SignUpPage({ searchParams }: Props) {
   const opis = raw?.trim().slice(0, 500) || undefined;
   const t = all.auth;
   return (
-    <main className="narrow stack">
-      <header className="auth-head">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/art/block-grass.svg" alt="" width={56} height={56} />
-        <h1>{t.signUpTitle}</h1>
-        <p className="muted">{t.signUpSubtitle}</p>
-      </header>
+    <AuthShell
+      title={t.signUpTitle}
+      subtitle={t.signUpSubtitle}
+      below={
+        <p className="auth-switch muted">
+          {t.haveAccount} <Link href={opis ? `/login?opis=${encodeURIComponent(opis)}` : "/login"}>{t.logInSubmit}</Link>
+        </p>
+      }
+    >
       {invited && (
         <p className="notice success">
           <Gift size={16} aria-hidden /> {format(all.referrals.signupNotice, { days: REFERRAL_DAYS, min: REFERRAL_MIN_DAYS })}
@@ -35,11 +38,13 @@ export default async function SignUpPage({ searchParams }: Props) {
           <Sparkles size={16} aria-hidden /> {format(all.ai.signupNote, { text: opis })}
         </p>
       )}
-      {googleEnabled && <GoogleButton t={t} legal={all.legal} opis={opis} signUp />}
       <AuthForm action={signUp} submitLabel={t.signUpSubmit} t={t} legal={all.legal} opis={opis} />
-      <p className="auth-switch muted">
-        {t.haveAccount} <Link href={opis ? `/login?opis=${encodeURIComponent(opis)}` : "/login"}>{t.logInSubmit}</Link>
-      </p>
-    </main>
+      {googleEnabled && (
+        <>
+          <p className="auth-or muted small">{t.or}</p>
+          <GoogleButton t={t} legal={all.legal} opis={opis} signUp />
+        </>
+      )}
+    </AuthShell>
   );
 }
