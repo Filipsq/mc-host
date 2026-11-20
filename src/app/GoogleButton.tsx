@@ -9,7 +9,7 @@ type Props = {
   signUp?: boolean; // only changes the label: either page makes the account if needed
 };
 
-/** "Sign in with Google" above the email form, on both log-in and sign-up. */
+/** "Sign in with Google" under the email form ("lub"), on both log-in and sign-up. */
 export default function GoogleButton({ t, legal, opis, signUp }: Props) {
   return (
     <div className="stack google-sign-in">
@@ -28,7 +28,6 @@ export default function GoogleButton({ t, legal, opis, signUp }: Props) {
       <p className="muted small google-terms">
         <LinkedText text={t.googleTerms} href="/regulamin" label={legal.termsLink} newTab />
       </p>
-      <p className="auth-or muted small">{t.or}</p>
     </div>
   );
 }

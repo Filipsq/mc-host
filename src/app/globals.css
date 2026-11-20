@@ -2450,3 +2450,93 @@ body:has(.server-tabbar) .ui-toast-area { bottom: max(84px, calc(env(safe-area-i
   .lobby-msg, .lobby-menu, .lobby-pick, .lobby-rules { animation: none; }
 }
 .lobby .tabular { font-variant-numeric: tabular-nums; }
+
+/* Log-in and sign-up: one card in a Minecraft evening sky (AuthShell.tsx). */
+main.auth-scene {
+  position: relative; overflow: hidden; isolation: isolate; max-width: none;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: clamp(28px, 7vh, 72px) 16px 120px;
+  background: linear-gradient(180deg, #0c1530 0%, #1a2c57 45%, #3b4f7e 75%, #6c6a8e 100%);
+}
+.auth-scene .cloud { opacity: 0.22; }
+.auth-scene .cloud-side { fill: #6f7fa6; }
+.auth-ground {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: -1;
+  background:
+    linear-gradient(180deg, #5bc236 0 12px, #3e8a24 12px 16px, transparent 16px),
+    repeating-linear-gradient(90deg, #6b4a2b 0 16px, #5d3f24 16px 32px, #74522f 32px 48px);
+  box-shadow: 0 -24px 60px rgb(91 194 54 / 0.08);
+}
+.auth-wrap { position: relative; width: 100%; max-width: 420px; gap: 16px; }
+.auth-card {
+  gap: 16px; padding: 28px 24px 24px; border-radius: 18px;
+  background: rgb(20 26 34 / 0.92); border: 1px solid rgb(120 150 200 / 0.18);
+  /* Shadow tinted by the sky, so the card sits in the scene instead of on top of it. */
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.05) inset, 0 24px 60px -12px rgb(6 12 32 / 0.75), 0 8px 20px -8px rgb(40 60 120 / 0.5);
+  backdrop-filter: blur(6px);
+  animation: auth-in var(--dur-enter) var(--ease-out-ui) both;
+}
+@keyframes auth-in { from { opacity: 0; transform: scale(0.97); } }
+.auth-card .auth-head h1 { margin-top: 8px; font-size: 2.4rem; }
+.auth-logo { transition: transform 300ms var(--ease-out-ui); }
+.auth-card:focus-within .auth-logo { transform: translateY(-4px) rotate(-4deg); }
+.auth-card .auth-or { margin: 0; }
+.auth-form { gap: 16px; }
+.auth-form button[type="submit"] { min-height: 46px; }
+.auth-switch { color: #c3cde0; }
+
+/* Password field with a creeper peeking over its top edge (PasswordField.tsx). */
+.pw-label { display: flex; flex-direction: column; gap: 6px; }
+.pw-label > label { font-weight: 500; }
+.pw-field { position: relative; display: flex; }
+.pw-field input { flex: 1; min-width: 0; min-height: 44px; padding-right: 50px; }
+.pw-field input[type="text"] { font-family: var(--font-mono); letter-spacing: 0.02em; }
+button.pw-toggle {
+  position: absolute; right: 0; top: 50%; translate: 0 -50%;
+  width: 44px; height: 44px; padding: 0; background: transparent; color: var(--muted); box-shadow: none;
+}
+button.pw-toggle:hover:not(:disabled) { background: transparent; color: var(--fg); transform: none; }
+button.pw-toggle:active:not(:disabled) { transform: scale(0.9); box-shadow: none; }
+button.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; border-radius: var(--radius-sm); }
+.pw-hint { margin: 0; color: var(--muted); transition: color 200ms; }
+.pw-hint.good { color: var(--accent-strong); }
+.pw-hint.bad { color: var(--error); }
+.pw-hint.good::before { content: "✓ "; }
+
+.creeper { position: absolute; right: 56px; bottom: 100%; width: 46px; height: 44px; pointer-events: none; }
+.creeper-clip { position: absolute; inset: 0; overflow: hidden; }
+.creeper-head {
+  position: absolute; left: 0; bottom: -2px; width: 46px; height: 46px; display: block;
+  transform: translateY(var(--creeper-y, 30%));
+  transition: transform 380ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.creeper.up .creeper-head { --creeper-y: 0%; }
+.creeper.hide .creeper-head { --creeper-y: 105%; transition-duration: 200ms; transition-timing-function: var(--ease-out-ui); }
+.creeper-eyes { transition: transform 160ms ease-out; transform-box: fill-box; }
+.creeper .eye-open { transform-box: fill-box; transform-origin: center; animation: creeper-blink 5s infinite; }
+.creeper .eye-happy { display: none; }
+.creeper.happy .eye-open { display: none; }
+.creeper.happy .eye-happy { display: inline; }
+.creeper-hand {
+  position: absolute; bottom: -5px; width: 9px; height: 8px; border-radius: 1px;
+  background: #5fb846; box-shadow: inset 0 -2px 0 #2c6420;
+  transition: transform 250ms var(--ease-out-ui);
+}
+.creeper-hand.left { left: -3px; }
+.creeper-hand.right { right: -3px; }
+.creeper.idle .creeper-hand { transform: translateY(2px); }
+@keyframes creeper-blink { 0%, 94%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.15); } }
+.pw-shake { animation: pw-shake 360ms ease-out; }
+@keyframes pw-shake {
+  0%, 100% { transform: translateX(0); } 15% { transform: translateX(-10px); } 30% { transform: translateX(10px); }
+  45% { transform: translateX(-6px); } 60% { transform: translateX(6px); } 75% { transform: translateX(-3px); } 90% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-card, .pw-shake, .creeper .eye-open { animation: none; }
+  .creeper-head, .creeper-hand, .creeper-eyes, .auth-logo { transition: none; }
+  .auth-card:focus-within .auth-logo { transform: none; }
+}
+@media (max-width: 480px) {
+  .auth-card { padding: 22px 16px 18px; }
+  .auth-card .auth-head h1 { font-size: 2.1rem; }
+}
