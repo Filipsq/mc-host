@@ -2540,3 +2540,9 @@ button.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offse
   .auth-card { padding: 22px 16px 18px; }
   .auth-card .auth-head h1 { font-size: 2.1rem; }
 }
+
+/* CountUp: the invisible final text holds the width; the counting copy sits on top of it. */
+.count-up { display: inline-grid; font-variant-numeric: tabular-nums; }
+.count-up > .count-up-size, .count-up > .count-up-live { grid-area: 1 / 1; }
+.count-up > .count-up-size { visibility: hidden; }
+.price .count-up, .price .count-up span { font: inherit; color: inherit; letter-spacing: inherit; }
