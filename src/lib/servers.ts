@@ -14,6 +14,7 @@ import {
   recreateServer,
   setHostAliases,
   setPeerRoutes,
+  usedPorts,
   type AgentState,
   type CreateServerSpec,
   type World,
@@ -117,12 +118,20 @@ export async function destroyServer(server: Pick<Server, "id">) {
 const PORT_START = Number(process.env.PORT_RANGE_START ?? 30000);
 const PORT_END = Number(process.env.PORT_RANGE_END ?? 30999);
 
-/** The lowest port free on machine `node` that isn't in `busy`, or null if none is. */
+/**
+ * The lowest port free on machine `node` that isn't in `busy`, or null if none is. Free means no
+ * server has it and nothing on the machine holds it: a container left behind, or a stopped one still
+ * bound to a port its server moved off, which the Bedrock waker keeps open (on n6 on 2026-11-20 it
+ * held six ports the database thought free, and every new server there failed to start).
+ */
 export async function freePortOn(node: string, busy: ReadonlySet<number> = new Set()): Promise<number | null> {
-  const taken = await db.server.findMany({ where: { node, port: { gte: PORT_START, lte: PORT_END } }, select: { port: true } });
+  const [taken, held] = await Promise.all([
+    db.server.findMany({ where: { node, port: { gte: PORT_START, lte: PORT_END } }, select: { port: true } }),
+    usedPorts(nodeById(node)),
+  ]);
   const used = new Set(taken.map((s) => s.port));
   let port = PORT_START;
-  while ((used.has(port) || busy.has(port)) && port <= PORT_END) port++;
+  while ((used.has(port) || busy.has(port) || held.has(port)) && port <= PORT_END) port++;
   return port > PORT_END ? null : port;
 }
 

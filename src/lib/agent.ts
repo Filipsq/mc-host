@@ -293,6 +293,17 @@ export async function listContainers(node: GameNode): Promise<{ id: string; stat
   return ((await res.json()) as { containers: { id: string; state: string; created: number }[] }).containers;
 }
 
+/**
+ * Every port the machine holds or has promised (sockets, including the Bedrock
+ * waker's, and every container's published ports), or none if it doesn't answer.
+ */
+export async function usedPorts(node: GameNode): Promise<Set<number>> {
+  return agentFetch("/ports", { timeoutMs: 5_000, node })
+    .then((res) => res.json() as Promise<{ ports: number[] }>)
+    .then((body) => new Set(body.ports))
+    .catch(() => new Set<number>());
+}
+
 /** Removes only a server's container on `node`, keeping its files and backups. */
 export async function removeContainer(id: string, node: GameNode) {
   await agentFetch(`/servers/${id}/container`, { method: "DELETE", timeoutMs: 60_000, node });
