@@ -2033,8 +2033,11 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 .gallery-tile { min-height: 0; }
 .gallery-tile .pack-art-frame { height: 140px; }
 .gallery-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.gallery-cta { margin-top: 10px; justify-content: center; width: 100%; }
-.gallery-tile:hover .gallery-cta, .gallery-tile:focus-visible .gallery-cta { filter: brightness(1.08); }
+/* The whole tile is the link, so its action is a quiet line, not one more big green button. */
+.gallery-cta { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; min-height: 24px; font-size: 0.9rem; font-weight: 700; color: var(--accent-strong); }
+.gallery-cta svg { transition: transform 0.15s var(--ease-out-ui, ease-out); }
+.gallery-tile:hover .gallery-cta, .gallery-tile:focus-visible .gallery-cta { text-decoration: underline; text-underline-offset: 3px; }
+.gallery-tile:hover .gallery-cta svg, .gallery-tile:focus-visible .gallery-cta svg { transform: translateX(2px); }
 .center { text-align: center; }
 @media (max-width: 960px) { .pack-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 420px) {
@@ -2042,7 +2045,6 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   .gallery-tile .pack-art-frame { height: 96px; }
   .gallery-tile .pack-body { padding: 0 12px 12px; }
   .gallery-tile .pack-meta .muted { display: none; }
-  .gallery-cta { padding-left: 8px; padding-right: 8px; font-size: 0.9rem; }
   .gallery-tile .pack-icon { width: 44px; height: 44px; margin-top: -22px; }
 }
 
@@ -2539,4 +2541,18 @@ button.pw-toggle:focus-visible { outline: 2px solid var(--accent); outline-offse
 @media (max-width: 480px) {
   .auth-card { padding: 22px 16px 18px; }
   .auth-card .auth-head h1 { font-size: 2.1rem; }
+}
+
+/* Browser parts in the site's colours: selected text, the caret, scrollbars and the keyboard ring. */
+::selection { background: rgb(91 194 54 / 0.35); color: var(--fg); }
+input, textarea { caret-color: var(--accent-strong); }
+html { scrollbar-color: var(--border-strong) var(--bg); }
+:where(a, button, summary, [tabindex]):focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+/* Phones: a smaller help button, so it covers less of the cards it floats over. */
+@media (max-width: 640px) {
+  .help { right: max(12px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); }
+  .help-fab { width: 48px; height: 48px; }
+  .help-fab svg { width: 22px; height: 22px; }
+  .help-offline-dot { width: 11px; height: 11px; bottom: 1px; right: 1px; }
 }

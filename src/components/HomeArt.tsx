@@ -190,7 +190,6 @@ export function PanelDemo({ demo, games, freePlan, online, domain }: { demo: Dem
           <MousePointer2 className="demo-cursor" size={22} />
         </div>
       </div>
-      <figcaption className="muted small">{demo.title}</figcaption>
     </figure>
   );
 }
