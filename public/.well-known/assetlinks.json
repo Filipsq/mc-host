@@ -1,0 +1,10 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "pl.mchosting.app",
+      "sha256_cert_fingerprints": ["37:4A:05:6C:63:3F:9C:B0:39:B0:DC:EC:18:96:2B:17:42:B1:F6:4F:27:68:99:EB:DE:62:AA:B9:3D:CE:82:0B"]
+    }
+  }
+]

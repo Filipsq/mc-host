@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Bell, BellOff, Download, Smartphone } from "lucide-react";
 import type { Messages } from "@/i18n/messages";
 
@@ -170,6 +171,12 @@ export default function AppInstall({ labels, pushKey, qr }: { labels: Labels; pu
           </>
         )}
       </div>
+      {/* Android phones can also get the real app (an APK from /aplikacja). */}
+      {!installed && !ios && phone && (
+        <Link className="small" href="/aplikacja">
+          <Download size={14} aria-hidden /> {labels.apkLink}
+        </Link>
+      )}
       {!installed && !prompt && (ios || phone || !qr) && <p className="muted small">{ios ? labels.iosSteps : phone ? labels.otherSteps : labels.desktopSteps}</p>}
       {/* On a computer that can't install it: a code to scan, which opens the panel on the phone. */}
       {!installed && !prompt && !ios && !phone && qr && (

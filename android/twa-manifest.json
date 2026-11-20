@@ -47,7 +47,7 @@
   "isChromeOSOnly": false,
   "isMetaQuest": false,
   "fullScopeUrl": "https://mchosting.pl/",
-  "minSdkVersion": 21,
+  "minSdkVersion": 24,
   "orientation": "portrait",
   "fingerprints": [],
   "additionalTrustedOrigins": [],
