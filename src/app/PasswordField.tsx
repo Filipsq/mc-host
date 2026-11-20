@@ -87,18 +87,25 @@ export default function PasswordField({ label, t, isNew, errorTick, pending }: P
       <div className="pw-field" ref={field}>
         <span className={`creeper ${pose} ${mood}`} aria-hidden>
           <span className="creeper-clip">
-            <svg className="creeper-head" viewBox="0 0 8 8" shapeRendering="crispEdges">
-              <CreeperSkin />
-              <g className="creeper-mouth" fill="#0d1a0a">
-                <rect x="3" y="4" width="2" height="2" />
-                <rect x="2" y="5" width="1" height="3" />
-                <rect x="5" y="5" width="1" height="3" />
-                <rect x="3" y="6" width="2" height="1" />
+            <svg className="creeper-head" viewBox="0 0 20 20" shapeRendering="crispEdges">
+              <rect width="20" height="20" fill="#5fb846" />
+              {/* Mouth: dark green shadow on top, then black. */}
+              <g className="creeper-mouth">
+                <rect x="8" y="8" width="4" height="1" fill="#2c6420" />
+                <rect x="6" y="10" width="2" height="1" fill="#2c6420" />
+                <rect x="12" y="10" width="2" height="1" fill="#2c6420" />
+                <path d="M8 9h4v2h2v6h-2v-3H8v3H6v-6h2z" fill="#0d1a0a" />
               </g>
-              <g className="creeper-eyes" fill="#0d1a0a" style={{ transform: `translate(${(look * 0.5).toFixed(2)}px, ${pose === "up" ? 0.3 : 0}px)` }}>
-                <rect className="eye-open" x="1" y="2" width="2" height="2" />
-                <rect className="eye-open" x="5" y="2" width="2" height="2" />
-                <path className="eye-happy" d="M1 3.4h.7v-.7h.6v-.7h.4v.7h.6v.7h.7v.6H1zM5 3.4h.7v-.7h.6v-.7h.4v.7h.6v.7h.7v.6H5z" />
+              <g className="creeper-eyes" style={{ transform: `translate(${look.toFixed(2)}px, ${pose === "up" ? 0.6 : 0}px)` }}>
+                <g className="eye-open">
+                  <rect x="4" y="4" width="4" height="4" fill="#2c6420" />
+                  <rect x="5" y="5" width="3" height="3" fill="#0d1a0a" />
+                </g>
+                <g className="eye-open">
+                  <rect x="12" y="4" width="4" height="4" fill="#2c6420" />
+                  <rect x="12" y="5" width="3" height="3" fill="#0d1a0a" />
+                </g>
+                <path className="eye-happy" fill="#0d1a0a" d="M4 7h1V6h1V5h1v1h1v1h1v1H4zM11 7h1V6h1V5h1v1h1v1h1v1h-5z" />
               </g>
             </svg>
           </span>
@@ -150,18 +157,5 @@ export default function PasswordField({ label, t, isNew, errorTick, pending }: P
         </p>
       )}
     </div>
-  );
-}
-
-// Mottled green 8×8 skin, drawn once (fixed pattern so it never flickers between renders).
-const SHADES = ["#4f9a3a", "#5fb846", "#3e7f2d", "#6dc94f", "#56a83f"];
-const PATTERN = "0132410224013402130420131402410320143012340241032014302103412042";
-function CreeperSkin() {
-  return (
-    <g>
-      {Array.from(PATTERN).map((c, i) => (
-        <rect key={i} x={i % 8} y={Math.floor(i / 8)} width="1" height="1" fill={SHADES[Number(c)]} />
-      ))}
-    </g>
   );
 }
