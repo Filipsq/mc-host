@@ -165,6 +165,15 @@ func (a *agent) healEnv(ctx context.Context, id string) {
 		}
 		why += "with alpha builds, a mod needs one"
 	}
+	if names := a.lastStartUnknownPlayers(ctx, id); len(names) > 0 {
+		if listed := offlineWhitelist(fixed, names); !slices.Equal(listed, fixed) {
+			fixed = listed
+			if why != "" {
+				why += ", "
+			}
+			why += "whitelist " + strings.Join(names, ", ") + " by offline ID"
+		}
+	}
 	// Free servers built before they were the first the kernel kills.
 	if labels, _ := c.Config["Labels"].(map[string]any); labels["mchost.autostop"] == "true" && c.HostConfig != nil {
 		if adj, _ := c.HostConfig["OomScoreAdj"].(float64); int(adj) != freeOOMScoreAdj {

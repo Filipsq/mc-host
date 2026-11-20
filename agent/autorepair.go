@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -28,9 +29,11 @@ import (
 //   - a fixable cause: started again at once, each cause once an hour;
 //   - no network (the image couldn't reach Modrinth, Paper's or Mojang's
 //     servers by name): started again once the machine resolves names again,
-//     after 1, 3 and 10 minutes;
+//     after 1, 3 and 10 minutes, for up to networkFresh after the crash;
 //   - killed for lack of memory (OOMKilled): started again once, if the
 //     machine has its plan's memory free now;
+//   - a whitelist name with no Minecraft account ("Could not resolve user
+//     from Playerdb"): started again with that name by its offline ID;
 //   - anything else (a world saved by a newer Minecraft, an unknown crash):
 //     left as it is, and the console says what happened.
 //
@@ -44,6 +47,11 @@ const (
 	// A crash older than this (the agent was restarted, or it happened long
 	// before) is left for the owner: they may have left it that way.
 	repairFresh = 15 * time.Minute
+	// A crash for want of network stays worth starting again for longer: an
+	// outage can outlast repairFresh, and an agent restarted meanwhile (an
+	// update) forgets the crashes it was waiting on. On 2026-11-20 at 11:56 UTC
+	// servers on n5, n6 and n7 lost their network at once and stayed "Awaria".
+	networkFresh = 6 * time.Hour
 )
 
 var networkWaits = []time.Duration{time.Minute, 3 * time.Minute, 10 * time.Minute}
@@ -54,7 +62,8 @@ type repairState struct {
 	tries    []time.Time          // starts the agent made, within repairWindow
 	causes   map[string]time.Time // fixable causes given their one start, and when
 	crash    string               // FinishedAt of the crash being handled
-	waitTill time.Time            // a network crash: not before this
+	waitTill time.Time            // not before this (a network crash, or a machine with no room)
+	network  bool                 // the crash being handled was for want of network
 	done     bool                 // this crash is left for the owner
 }
 
@@ -130,14 +139,17 @@ func (a *agent) repairServer(ctx context.Context, id string, now time.Time) {
 	if !known {
 		// A new crash: read why, before it counts as pending (stopReason).
 		cause := causeNone
-		if now.Sub(finished) <= repairFresh && a.stopReason(id, info) == "crashed" {
+		if now.Sub(finished) <= networkFresh && a.stopReason(id, info) == "crashed" {
 			cause = a.crashCause(ctx, id, info)
 			if cause == causeNone && info.State.OOMKilled && a.roomFor(info) {
 				cause = "out of memory" // killed when memory ran out (its own or the machine's): started again while there's room
 			}
+			if cause != causeNetwork && now.Sub(finished) > repairFresh {
+				cause = causeNone
+			}
 		}
 		r.mu.Lock()
-		r.crash, r.done, r.waitTill = info.State.FinishedAt, true, time.Time{}
+		r.crash, r.done, r.waitTill, r.network = info.State.FinishedAt, true, time.Time{}, cause == causeNetwork
 		r.tries = slices.DeleteFunc(r.tries, func(t time.Time) bool { return now.Sub(t) > repairWindow })
 		switch {
 		case cause == causeNone:
@@ -161,10 +173,10 @@ func (a *agent) repairServer(ctx context.Context, id string, now time.Time) {
 		r.mu.Unlock()
 		return
 	}
-	waitNet := !r.waitTill.IsZero()
+	waitNet := r.network
 	r.mu.Unlock()
 	if waitNet && !a.networkUp(ctx) {
-		if now.Sub(finished) > repairWindow { // still no network after an hour: Awaria, and the console says why
+		if now.Sub(finished) > networkFresh { // still no network after hours: Awaria, and the console says why
 			r.mu.Lock()
 			r.done = true
 			r.mu.Unlock()
@@ -180,6 +192,14 @@ func (a *agent) repairServer(ctx context.Context, id string, now time.Time) {
 		start = a.repairStart
 	}
 	if err := start(ctx, id); err != nil {
+		if errors.Is(err, errFull) && now.Sub(finished) < repairWindow {
+			// The machine has no free server's room awake now: try again in a minute, not counted.
+			r.mu.Lock()
+			r.tries = r.tries[:len(r.tries)-1]
+			r.done, r.waitTill = false, now.Add(time.Minute)
+			r.mu.Unlock()
+			return
+		}
 		log.Printf("auto-repair %s: start: %v", id, err)
 		return
 	}
@@ -255,6 +275,9 @@ func crashCauseFrom(lines []string, env []string) string {
 		return "broken mods"
 	case network:
 		return causeNetwork
+	case len(unknownPlayers(lines)) > 0:
+		// A whitelist name with no Minecraft account (healEnv lists it by its offline ID).
+		return "whitelist " + strings.Join(unknownPlayers(lines), ",")
 	}
 	return causeNone
 }
