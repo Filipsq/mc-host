@@ -335,6 +335,7 @@ func (a *agent) routes() http.Handler {
 	// The machine alone, without asking Docker about every server: quick enough to ask before a start.
 	mux.HandleFunc("GET /host", func(w http.ResponseWriter, _ *http.Request) { writeJSON(w, 200, a.hostStats()) })
 	mux.HandleFunc("GET /containers", a.containersList)
+	mux.HandleFunc("GET /ports", a.ports)
 	mux.HandleFunc("PUT /disk-limits", a.putDiskLimits)
 	mux.HandleFunc("PUT /peer-routes", a.putPeerRoutes)
 	mux.HandleFunc("PUT /host-aliases", a.putHostAliases)
@@ -840,6 +841,19 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 // as big as the heap) so they stay inside that room.
 const directMemoryMb = 256
 
+// oomScoreAdj is how readily the kernel kills a server's processes when the
+// machine runs out of memory: a free one (autostop) first. On n6 (2026-11-18,
+// 32 GB, no swap) it killed the biggest process, a paid Pro server's Java
+// with 6 GB, though dozens of free servers were running.
+func oomScoreAdj(free bool) int {
+	if free {
+		return freeOOMScoreAdj
+	}
+	return 0
+}
+
+const freeOOMScoreAdj = 500
+
 func javaHeadroomMb(planMb int) int { return max(1024, planMb/4) }
 
 // crossplayHeadroomMb is the room a Java server with Geyser and Floodgate gets:
@@ -1085,6 +1099,9 @@ func serverSpec(req createRequest, image string, env []string, labels map[string
 			"NanoCpus":  nanoCPUs,
 			"CpuShares": cpuShares,
 			"PidsLimit": 512,
+			// When the whole machine runs out of memory, the kernel kills free
+			// servers before paid ones (see oomScoreAdj).
+			"OomScoreAdj": oomScoreAdj(req.Autostop),
 			// Keep only the newest console output: it holds players' IP addresses and would otherwise fill the disk.
 			"LogConfig": map[string]any{"Type": "json-file", "Config": map[string]string{"max-size": "10m", "max-file": "3"}},
 			// Restarts once after a crash; a clean exit (e.g. going to sleep) stays down.

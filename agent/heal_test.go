@@ -159,3 +159,45 @@ func TestNeedsAlpha(t *testing.T) {
 		t.Error("no builds at all is not an alpha problem")
 	}
 }
+
+// A free server's container built before free servers were the kernel's first pick is rebuilt with it; a paid one isn't.
+func TestHealEnvMakesFreeServersFirstToGoOnLowMemory(t *testing.T) {
+	for _, free := range []bool{true, false} {
+		sock := filepath.Join(t.TempDir(), "docker.sock")
+		ln, err := net.Listen("unix", sock)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var created map[string]any
+		fake := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case r.Method == http.MethodGet && r.URL.Path == "/containers/mc-abc12345/json":
+				writeJSON(w, 200, map[string]any{
+					"Config":     map[string]any{"Image": "itzg/minecraft-server", "Env": []string{"TYPE=PAPER", "EULA=TRUE"}, "Labels": map[string]string{"mchost.autostop": map[bool]string{true: "true", false: "false"}[free]}},
+					"HostConfig": map[string]any{"Memory": 1},
+					"State":      map[string]any{"Running": false},
+				})
+			case r.Method == http.MethodDelete:
+				w.WriteHeader(204)
+			case r.Method == http.MethodPost && r.URL.Path == "/containers/create":
+				json.NewDecoder(r.Body).Decode(&created)
+				writeJSON(w, 201, map[string]string{"Id": "new"})
+			default:
+				writeError(w, 404, "not found")
+			}
+		})}
+		go fake.Serve(ln)
+		(&agent{docker: NewDocker(sock)}).healEnv(context.Background(), "abc12345")
+		fake.Close()
+		if !free {
+			if created != nil {
+				t.Fatal("rebuilt a paid server")
+			}
+			continue
+		}
+		hc, _ := created["HostConfig"].(map[string]any)
+		if adj, _ := hc["OomScoreAdj"].(float64); int(adj) != freeOOMScoreAdj {
+			t.Fatalf("free server rebuilt with %v", created["HostConfig"])
+		}
+	}
+}

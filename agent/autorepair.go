@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,8 +29,10 @@ import (
 //   - no network (the image couldn't reach Modrinth, Paper's or Mojang's
 //     servers by name): started again once the machine resolves names again,
 //     after 1, 3 and 10 minutes;
-//   - anything else (a world saved by a newer Minecraft, out of memory, an
-//     unknown crash): left as it is, and the console says what happened.
+//   - killed for lack of memory (OOMKilled): started again once, if the
+//     machine has its plan's memory free now;
+//   - anything else (a world saved by a newer Minecraft, an unknown crash):
+//     left as it is, and the console says what happened.
 //
 // At most repairMax starts per server in repairWindow, so a crash that keeps
 // coming back stays "Awaria" instead of loading the machine.
@@ -129,6 +132,9 @@ func (a *agent) repairServer(ctx context.Context, id string, now time.Time) {
 		cause := causeNone
 		if now.Sub(finished) <= repairFresh && a.stopReason(id, info) == "crashed" {
 			cause = a.crashCause(ctx, id, info)
+			if cause == causeNone && info.State.OOMKilled && a.roomFor(info) {
+				cause = "out of memory" // killed when memory ran out (its own or the machine's): started again while there's room
+			}
 		}
 		r.mu.Lock()
 		r.crash, r.done, r.waitTill = info.State.FinishedAt, true, time.Time{}
@@ -251,4 +257,12 @@ func crashCauseFrom(lines []string, env []string) string {
 		return causeNetwork
 	}
 	return causeNone
+}
+
+// roomFor tells whether the machine has the server's plan memory free now, so
+// a server killed for lack of memory isn't started into the same shortage.
+func (a *agent) roomFor(info *ContainerInfo) bool {
+	need, _ := strconv.Atoi(info.Config.Labels["mchost.memory"])
+	_, avail, ok := readMeminfo()
+	return ok && avail >= int64(need)
 }
