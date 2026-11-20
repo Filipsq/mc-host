@@ -23,7 +23,6 @@ import EditionIcon from "@/components/EditionIcon";
 import HalloweenGames from "@/components/HalloweenGames";
 import { FeatureArt, GameArt, PanelDemo, StepArt } from "@/components/HomeArt";
 import ShowMore from "@/components/ShowMore";
-import CountUp from "@/components/CountUp";
 import StickyCta from "@/components/StickyCta";
 import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
@@ -138,7 +137,7 @@ export default async function Home() {
                 <span className="review-stars" aria-hidden>
                   {[1, 2, 3, 4, 5].map((n) => <Star key={n} size={18} className={n <= Math.round(reviews.average) ? "on" : undefined} />)}
                 </span>
-                <strong><CountUp text={format(h.reviewsAverage, { avg: reviews.average.toLocaleString(locale), n: reviews.count })} /></strong>
+                <strong>{format(h.reviewsAverage, { avg: reviews.average.toLocaleString(locale), n: reviews.count })}</strong>
               </p>
             </header>
             <ReviewMarquee items={reviews.items} starsAria={t.reviews.starsAria} replyFrom={format(t.reviews.replyFrom, { brand: BRAND_NAME })} label={h.reviewsTitle} />
@@ -296,14 +295,14 @@ export default async function Home() {
             <span><Check size={16} aria-hidden /> {t.plans.ddos}</span>
           </p>
           <ul className="plans">
-            {plans.map((p, i) => {
+            {plans.map((p) => {
               const recommended = p.id === "STANDARD";
               return (
                 <li key={p.id} className={`plan${recommended ? " recommended" : ""}`}>
                   {recommended && <span className="ribbon">{h.recommended}</span>}
                   <h3>{t.plans[p.id]}</h3>
                   <p className="price">
-                    <CountUp text={formatPrice(p.price[currency], currency, locale)} delay={i * 90} /> <span>{h.perMonth}</span>
+                    {formatPrice(p.price[currency], currency, locale)} <span>{h.perMonth}</span>
                   </p>
                   <p className="price-note">
                     {p.price[currency] > 0
