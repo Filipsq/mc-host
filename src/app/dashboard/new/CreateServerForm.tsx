@@ -8,6 +8,7 @@ import PlanPicker, { type AddonOption, type PlanOption } from "@/components/Plan
 import { addonFits, addonList, type AddonId } from "@/lib/addons";
 import PayBadges from "@/components/PayBadges";
 import PaysafecardButton from "@/components/PaysafecardButton";
+import CashbillButton from "@/components/CashbillButton";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
 import { CURATED_PACKS, MODPACK_MIN_PLAN, isModLoader, planAtLeast, planForRam, type ModLoader } from "@/lib/modpacks";
@@ -57,6 +58,7 @@ type Props = {
   curseforge: boolean; // whether CurseForge links work
   admin: boolean; // admins also get a button to make a test server without paying
   // An admin making the server on a customer's account: nothing to pay, one button.
+  cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
   forUser?: { id: string; banner: string; hint: string; submit: string };
   // The creator code to start with (whoever invited the user) and free Starters they earned with their own (creator.ts).
   creator: {
@@ -98,7 +100,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, forUser, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, forUser, cashbill, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -615,7 +617,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
       )}
       {paying && (
         <>
-          <p className="muted small">{billing.methods}</p>
+          <p className="muted small">{cashbill ? billing.methodsSplit : billing.methods}</p>
           <PaymentConsent legal={legal} />
         </>
       )}
@@ -628,15 +630,16 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
             {!pending && <span className="new-submit-total">{formatPrice(0, money.currency as Currency, money.locale)}</span>}
           </button>
         ) : (
-        <button type="submit" disabled={pending} className={paying ? "pay-button" : undefined}>
+        <button type="submit" {...(paying && cashbill && { name: "method", value: "card" })} disabled={pending} className={paying ? "pay-button" : undefined}>
           <span className="pay-label">
             {pending && !testing ? (paying ? billing.redirecting : t.creating) : paying ? t.createAndPay : forUser ? forUser.submit : t.create}
             {paying && total && !pending && <span className="new-submit-total">{total}</span>}
           </span>
-          {paying && <PayBadges />}
+          {paying && <PayBadges method={cashbill ? "cards" : "main"} />}
         </button>
         )}
-        {/* Both ways to pay stay in sight together. */}
+        {/* Every way to pay stays in sight together. */}
+        {paying && cashbill && <CashbillButton t={billing} disabled={pending} />}
         {paying && <PaysafecardButton t={billing} what={billing.paysafecardFor.newServer} disabled={pending} />}
         {/* A paid plan is ticked, but the free server is still one tap away. */}
         {plan !== "FREE" && freeOk && !gifted && !forUser && (

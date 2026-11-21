@@ -7,6 +7,7 @@ import { getOwnedServer } from "@/lib/servers";
 import { formatPrice, plans } from "@/lib/plans";
 import { canUpgrade, upgradeCost } from "@/lib/upgrade";
 import UpgradeForm from "./UpgradeForm";
+import { paysafecardEnabled } from "@/lib/cashbill";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -32,6 +33,7 @@ export default async function UpgradePage({ params }: { params: Promise<{ id: st
     <div className="wide-form stack">
       <h2>{t.title}</h2>
       <UpgradeForm
+        cashbill={paysafecardEnabled(currency)}
         serverId={server.id}
         current={server.plan}
         plans={plans

@@ -11,6 +11,7 @@ import CopyButton from "@/components/CopyButton";
 import AutoRefresh from "@/components/AutoRefresh";
 import GiftBuyForm from "./GiftBuyForm";
 import GiftCodeForm from "./GiftCodeForm";
+import { paysafecardEnabled } from "@/lib/cashbill";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = (await getMessages()).gifts;
@@ -104,6 +105,7 @@ export default async function GiftPage({ searchParams }: Props) {
 
       {userId ? (
         <GiftBuyForm
+          cashbill={paysafecardEnabled(currency)}
           plans={planOptions(all, currency, (p) => p !== "FREE")}
           defaultPlan="STARTER"
           t={t}

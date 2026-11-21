@@ -11,6 +11,7 @@ import { addonOptions } from "@/lib/planOptions";
 import { ADDONS, ADDON_SPECS, DOMAIN_DAYS, FLAT_ADDONS, addonCost, addonFits, canBuyAddons, domainPaidFor, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
 import { serverIps } from "@/lib/ownDomain";
 import { BuyAddonsForm, BuyDomainForm, DomainForm, RemoveAddonButton } from "./AddonForms";
+import { paysafecardEnabled } from "@/lib/cashbill";
 
 // The server's paid add-ons (src/lib/addons.ts): the ones it has, turning one
 // off, buying more for the rest of the period, and setting the own domain.
@@ -62,6 +63,7 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
                 <p className="notice success">{format(t.free.paidUntil, { date: new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(server.domainUntil!) })}</p>
               )}
               <BuyDomainForm
+                cashbill={paysafecardEnabled(currency)}
                 serverId={server.id}
                 price={money(ADDON_SPECS.domain.price[currency])}
                 days={DOMAIN_DAYS}
@@ -133,6 +135,7 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
             <p className="muted small">{t.noneLeft}</p>
           ) : (
             <BuyAddonsForm
+              cashbill={paysafecardEnabled(currency)}
               serverId={server.id}
               options={missing}
               costs={costs}

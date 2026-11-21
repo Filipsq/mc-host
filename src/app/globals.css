@@ -1913,6 +1913,12 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
   body:has(.new-submit .free-alt) .help { bottom: max(140px, calc(env(safe-area-inset-bottom) + 130px)); }
   main.new-page:has(.new-submit .pay-button + .pay-button):has(.new-submit .free-alt) { padding-bottom: 215px; }
   body:has(.new-submit .pay-button + .pay-button):has(.new-submit .free-alt) .help { bottom: max(195px, calc(env(safe-area-inset-bottom) + 185px)); }
+  /* Three ways to pay (cards, BLIK and transfers, paysafecard): the two extra ones are slimmer, and the bar taller still. */
+  .new-submit .pay-button.secondary { padding-top: 7px; padding-bottom: 7px; font-size: 0.98rem; }
+  main.new-page:has(.new-submit .pay-button + .pay-button + .pay-button) { padding-bottom: 220px; }
+  body:has(.new-submit .pay-button + .pay-button + .pay-button) .help { bottom: max(200px, calc(env(safe-area-inset-bottom) + 190px)); }
+  main.new-page:has(.new-submit .pay-button + .pay-button + .pay-button):has(.new-submit .free-alt) { padding-bottom: 265px; }
+  body:has(.new-submit .pay-button + .pay-button + .pay-button):has(.new-submit .free-alt) .help { bottom: max(245px, calc(env(safe-area-inset-bottom) + 235px)); }
 }
 @media (max-width: 720px) {
   /* Phones: games slide sideways like a carousel instead of stacking */
