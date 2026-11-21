@@ -557,10 +557,18 @@ model GiftCode {
 // invoice: amount in minor units (cents, grosze) of EUR or PLN. Set on the
 // admin overview, converted to złoty at the NBP rate (src/lib/exchange.ts).
 model MachineCost {
-  node      String   @id
-  amount    Int
-  currency  String
-  updatedAt DateTime @updatedAt
+  node         String    @id
+  amount       Int
+  currency     String
+  // The amount above includes VAT (as on netcup's price list); the page takes 23% off.
+  gross        Boolean   @default(false)
+  // How many months one payment covers (netcup "1 Months", a yearly plan is 12).
+  periodMonths Int       @default(1)
+  // The next day the provider charges for this machine; the page moves it on by periodMonths once it passes.
+  nextPayment  DateTime? @db.Date
+  // The provider's name for the machine, e.g. netcup's v2202610439884541368, to match it with the invoice.
+  label        String?
+  updatedAt    DateTime  @updatedAt
 }
 
 // A player's opinion, asked for in the panel once they've played for a while

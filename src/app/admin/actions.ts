@@ -18,6 +18,7 @@ import { sendPaymentHelp } from "@/lib/paymentHelp";
 import { deleteAccount } from "@/lib/accountDeletion";
 import type { DeleteAccountState } from "@/components/DeleteAccountForm";
 import { startServerAction } from "@/app/dashboard/servers/actions";
+import { PAYMENT_PERIODS, parseDay } from "@/lib/machinePayments";
 
 export type GiftState = { error?: "invalid" | "free" | "soldOut" | "failed"; days?: number; date?: string };
 
@@ -196,7 +197,10 @@ export async function resetLinkAdminAction(userId: string): Promise<{ url?: stri
 
 const COST_CURRENCIES = ["EUR", "PLN"] as const;
 
-/** Saves what each machine costs a month (net); an empty field forgets that machine's price. */
+/**
+ * Saves each machine's price, whether it was typed with VAT, how long one payment covers, the next payment day
+ * and the provider's name for it. An empty price forgets the machine.
+ */
 export async function saveMachineCostsAction(form: FormData) {
   await requireAdmin();
   for (const node of nodes()) {
@@ -209,11 +213,13 @@ export async function saveMachineCostsAction(form: FormData) {
     const amount = Math.round(Number(raw) * 100);
     if (!Number.isFinite(amount) || amount < 0 || amount > 10_000_000) continue;
     if (!(COST_CURRENCIES as readonly string[]).includes(currency)) continue;
-    await db.machineCost.upsert({
-      where: { node: node.id },
-      create: { node: node.id, amount, currency },
-      update: { amount, currency },
-    });
+    const gross = form.get(`gross_${node.id}`) === "on";
+    const period = Number(form.get(`period_${node.id}`));
+    const periodMonths = (PAYMENT_PERIODS as readonly number[]).includes(period) ? period : 1;
+    const nextPayment = parseDay(String(form.get(`next_${node.id}`) ?? "").trim());
+    const label = String(form.get(`label_${node.id}`) ?? "").trim().slice(0, 60) || null;
+    const data = { amount, currency, gross, periodMonths, nextPayment, label };
+    await db.machineCost.upsert({ where: { node: node.id }, create: { node: node.id, ...data }, update: data });
   }
   revalidatePath("/admin");
 }
