@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { buyAddonsAction, buyDomainAction, removeAddonAction } from "../../actions";
 import PayBadges from "@/components/PayBadges";
+import PaysafecardButton from "@/components/PaysafecardButton";
 import CopyButton from "@/components/CopyButton";
 import { clearDomainAction, setDomainAction } from "./actions";
 import PaymentConsent from "@/components/PaymentConsent";
@@ -62,9 +63,13 @@ export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, le
       <p className="muted small">{billing.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
-      <button type="submit" disabled={pending || !key}>
-        {pending ? billing.redirecting : t.buy}
-      </button>
+      <div className="pay-buttons">
+        <button type="submit" className="pay-button" disabled={pending || !key}>
+          <span className="pay-label">{pending ? billing.redirecting : t.buy}</span>
+          <PayBadges />
+        </button>
+        {key && <PaysafecardButton t={billing} what={billing.paysafecardFor.addon} disabled={pending} />}
+      </div>
       {key && <AdminTestBuy show={adminTest} pending={pending} t={billing} />}
     </form>
   );
@@ -227,7 +232,6 @@ type BuyDomainProps = {
   serverId: string;
   price: string;
   days: number;
-  paysafecard: boolean;
   again: boolean; // already paid for: this adds more days
   t: Messages["paidAddons"]["free"];
   billing: Messages["billing"];
@@ -237,27 +241,22 @@ type BuyDomainProps = {
 };
 
 /** Buys an own domain for a free server, for `days` at a time (like console joining). */
-export function BuyDomainForm({ serverId, price, days, paysafecard, again, t, billing, legal, errors, adminTest }: BuyDomainProps) {
+export function BuyDomainForm({ serverId, price, days, again, t, billing, legal, errors, adminTest }: BuyDomainProps) {
   const [state, action, pending] = useActionState(buyDomainAction.bind(null, serverId), {});
   return (
     <form action={action} className="stack">
       <p>
         <strong>{format(again ? t.buyMore : t.buyTitle, { price, days })}</strong>
       </p>
-      <p className="muted small">{paysafecard ? billing.methodsCashbill : billing.methods}</p>
+      <p className="muted small">{billing.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <div className="pay-buttons">
         <button type="submit" className="pay-button" disabled={pending}>
           <span className="pay-label">{pending ? billing.redirecting : t.buy}</span>
-          <PayBadges method={paysafecard ? "cards" : "stripe"} />
+          <PayBadges />
         </button>
-        {paysafecard && (
-          <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
-            <span className="pay-label">{billing.paysafecard}</span>
-            <PayBadges method="cashbill" />
-          </button>
-        )}
+        <PaysafecardButton t={billing} what={billing.paysafecardFor.addon} disabled={pending} />
       </div>
       <AdminTestBuy show={adminTest} pending={pending} t={billing} />
     </form>

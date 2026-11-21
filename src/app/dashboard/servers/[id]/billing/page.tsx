@@ -17,7 +17,6 @@ import { renewalPriceFor } from "@/lib/priceChange";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import type { Currency } from "@/i18n/config";
 import CheckoutForm from "./CheckoutForm";
-import { paysafecardEnabled } from "@/lib/cashbill";
 import AutoRenewButton from "./AutoRenewButton";
 
 const HOUR = 60 * 60 * 1000;
@@ -148,8 +147,6 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         errors={t.server.errors}
         legal={t.legal}
         money={{ locale, currency }}
-        autoRenew={server.autoRenew}
-        paysafecard={paysafecardEnabled(currency)}
         adminTest={server.adminTest && (await isAdmin(session.user.id))}
         renewCode={codeField}
         addons={{

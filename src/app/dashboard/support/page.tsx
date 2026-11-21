@@ -12,10 +12,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: (await getMessages()).support.title };
 }
 
-export default async function SupportPage() {
+export default async function SupportPage({ searchParams }: { searchParams: Promise<{ text?: string | string[] }> }) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
+  // A message written ahead (the paysafecard button), put in the box for the user to send.
+  const { text } = await searchParams;
+  const draft = typeof text === "string" ? text.slice(0, MAX_LENGTH) : undefined;
   // Admins answer chats rather than having one.
   if (await isAdmin(userId)) redirect("/admin/support");
 
@@ -41,6 +44,7 @@ export default async function SupportPage() {
         maxLength={MAX_LENGTH}
         rate={CHAT_RATE}
         hadUnread={(before?.userUnread ?? 0) > 0}
+        draft={draft}
       />
     </main>
   );

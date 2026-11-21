@@ -9,7 +9,6 @@ import { getOwnedServer, javaHost } from "@/lib/servers";
 import { formatPrice } from "@/lib/plans";
 import { addonOptions } from "@/lib/planOptions";
 import { ADDONS, ADDON_SPECS, DOMAIN_DAYS, FLAT_ADDONS, addonCost, addonFits, canBuyAddons, domainPaidFor, hasOwnDomain, serverAddons, type AddonId } from "@/lib/addons";
-import { paysafecardEnabled } from "@/lib/cashbill";
 import { serverIps } from "@/lib/ownDomain";
 import { BuyAddonsForm, BuyDomainForm, DomainForm, RemoveAddonButton } from "./AddonForms";
 
@@ -66,7 +65,6 @@ export default async function AddonsPage({ params }: { params: Promise<{ id: str
                 serverId={server.id}
                 price={money(ADDON_SPECS.domain.price[currency])}
                 days={DOMAIN_DAYS}
-                paysafecard={paysafecardEnabled(currency)}
                 again={domainPaidFor(server)}
                 t={t.free}
                 billing={all.billing}

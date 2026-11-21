@@ -9,7 +9,6 @@ import { getOwnedServer, javaHost, joinAddress } from "@/lib/servers";
 import { formatPrice } from "@/lib/plans";
 import { addonOptions } from "@/lib/planOptions";
 import { ADDON_SPECS, DOMAIN_DAYS, addonCost, canBuyAddons, domainPaidFor, hasOwnDomain } from "@/lib/addons";
-import { paysafecardEnabled } from "@/lib/cashbill";
 import { serverIps } from "@/lib/ownDomain";
 import { BuyAddonsForm, BuyDomainForm, DomainForm } from "../addons/AddonForms";
 import AddressForm from "./AddressForm";
@@ -66,7 +65,6 @@ export default async function AddressPage({ params }: { params: Promise<{ id: st
                 serverId={server.id}
                 price={price}
                 days={DOMAIN_DAYS}
-                paysafecard={paysafecardEnabled(currency)}
                 again={false}
                 t={t.free}
                 billing={all.billing}

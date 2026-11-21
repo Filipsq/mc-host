@@ -6,6 +6,8 @@ import { ArrowRight, Info } from "lucide-react";
 import { upgradeAction } from "../../actions";
 import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
+import PayBadges from "@/components/PayBadges";
+import PaysafecardButton from "@/components/PaysafecardButton";
 import type { Messages } from "@/i18n/messages";
 
 export type UpgradeOption = {
@@ -119,9 +121,13 @@ export default function UpgradeForm({ serverId, current, plans, costHint, moveNo
         <p className="muted small">{billing.methods}</p>
         <PaymentConsent legal={legal} />
         {state.error && <p className="error">{errors[state.error]}</p>}
-        <button type="submit" disabled={pending}>
-          {pending ? t.redirecting : `${t.pay} · ${to.cost?.amount}`}
-        </button>
+        <div className="pay-buttons">
+          <button type="submit" className="pay-button" disabled={pending}>
+            <span className="pay-label">{pending ? t.redirecting : `${t.pay} · ${to.cost?.amount}`}</span>
+            <PayBadges />
+          </button>
+          <PaysafecardButton t={billing} what={billing.paysafecardFor.upgrade} disabled={pending} />
+        </div>
         <AdminTestBuy show={adminTest} pending={pending} t={billing} />
       </div>
     </form>
