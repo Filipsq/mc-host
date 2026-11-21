@@ -7,6 +7,8 @@ import { heldMemoryMb, overbook, overbookOf } from "@/lib/capacity";
 import { nodeById, nodes } from "@/lib/nodes";
 import { nbpRates, toPln } from "@/lib/exchange";
 import { saveMachineCostsAction } from "./actions";
+import { PAYMENT_PERIODS, daysUntil, monthlyNet, nextPaymentOn, warsawToday } from "@/lib/machinePayments";
+import { plans } from "@/lib/plans";
 import { diskLimitMb } from "@/lib/disk";
 import { deletionDate, isTestPayment } from "@/lib/billing";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -537,21 +539,45 @@ async function Signups() {
   );
 }
 
-/** Machine prices against the last 30 days' sales; the header shows what's left, the form to change prices is inside. */
+/**
+ * Machine prices against the last 30 days' sales, and when each machine is paid for next. The header shows what's left
+ * and the nearest payment; the form to change prices and dates is inside.
+ */
 async function Costs() {
   const [{ t, f }, costs, rates, paid] = await Promise.all([texts(), db.machineCost.findMany(), nbpRates(), paidLast31()]);
   const c = t.costs;
+  const today = warsawToday(now());
   // Each machine's monthly price (net) in złoty at today's NBP rate, against the last 30 days' sales without VAT.
+  // Machines are bought on different days, so both sides are counted per 30 days, not per calendar month.
   const machines = nodes().map((n) => {
     const cost = costs.find((x) => x.node === n.id);
-    return { id: n.id, cost, pln: cost ? toPln(cost.amount, cost.currency, rates) : null };
+    const next = cost?.nextPayment ? nextPaymentOn(cost.nextPayment, cost.periodMonths, today) : null;
+    return {
+      id: n.id,
+      host: n.host,
+      cost,
+      pln: cost ? toPln(monthlyNet(cost), cost.currency, rates) : null,
+      next,
+      days: next ? daysUntil(next, today) : null,
+      // What the provider takes on that day, as on its invoice.
+      chargePln: cost ? toPln(cost.amount, cost.currency, rates) : null,
+    };
   });
   const costPln = machines.reduce((sum, m) => sum + (m.pln ?? 0), 0);
   const costMissing = machines.some((m) => m.cost && m.pln === null);
   const last30 = paid.filter((p) => p.paidAt! >= new Date(now().getTime() - 30 * DAY) && !isTestPayment(p));
   const revenueNet = Math.round(last30.map((p) => toPln(p.amount, p.currency, rates)).reduce<number>((sum, v) => sum + (v ?? 0), 0) / (1 + VAT));
   const profit = revenueNet - costPln;
+  // How many more Starter servers a month would cover the machines (its price without VAT).
+  const starterNet = Math.round((plans.find((p) => p.id === "STARTER")!.price.PLN * 100) / (1 + VAT));
+  const starters = profit < 0 ? Math.ceil(-profit / starterNet) : 0;
+  const upcoming = machines.filter((m) => m.next).sort((x, y) => x.days! - y.days!);
+  const soon = upcoming.filter((m) => m.days! <= 7);
+  const soonPln = soon.reduce((sum, m) => sum + (m.chargePln ?? 0), 0);
+  const nearest = upcoming[0];
   const zl = (minor: number) => f.money(minor, "PLN");
+  const when = (days: number) => (days === 0 ? c.today : days === 1 ? c.tomorrow : format(c.inDays, { n: days }));
+  const typedAmount = (m: (typeof machines)[number]) => f.money(m.cost!.amount, m.cost!.currency);
 
   return (
     <Fold
@@ -560,21 +586,76 @@ async function Costs() {
         <>
           {format(t.overview.costsSummary, { costs: zl(costPln), revenue: zl(revenueNet) })}{" "}
           <strong className={profit < 0 ? "over" : "good"}>{zl(profit)}</strong>
+          {nearest && (
+            <>
+              {" · "}
+              <span className={nearest.days! <= 3 ? "over" : undefined}>
+                {format(c.nearest, { machine: nearest.id, when: when(nearest.days!), amount: typedAmount(nearest) })}
+              </span>
+            </>
+          )}
         </>
       }
     >
       <div className="kpis">
         <Kpi label={c.monthly} value={zl(costPln)} hint={format(c.perDay, { amount: zl(Math.round(costPln / 30)) })} />
         <Kpi label={c.revenueNet} value={zl(revenueNet)} title={c.revenueNetHint} />
-        <Kpi label={c.profit} value={zl(profit)} title={c.profitHint} tone={profit < 0 ? "bad" : "good"} />
+        {profit < 0 ? (
+          <Kpi label={c.missing} value={zl(-profit)} title={c.profitHint} hint={format(c.missingStarters, { n: starters })} tone="bad" />
+        ) : (
+          <Kpi label={c.profit} value={zl(profit)} title={c.profitHint} tone="good" />
+        )}
+        <Kpi
+          label={c.soon}
+          value={zl(soonPln)}
+          hint={soon.length ? format(c.soonCount, { n: soon.length }) : c.soonNone}
+          title={c.soonHint}
+          tone={soon.some((m) => m.days! <= 3) ? "warn" : undefined}
+        />
       </div>
+      <p className="muted small">{c.howItWorks}</p>
+
+      {upcoming.length > 0 && (
+        <div className="card flush table-scroll">
+          <table className="admin-table compact">
+            <thead>
+              <tr>
+                <th>{c.upcoming}</th>
+                <th>{c.label}</th>
+                <th>{c.date}</th>
+                <th className="num">{c.amount}</th>
+                <th className="num">{c.inPlnCharge}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {upcoming.map((m) => (
+                <tr key={m.id}>
+                  <td className="fit">
+                    <span className={`adot ${m.days! <= 3 ? "bad" : m.days! <= 7 ? "warn" : "info"}`} aria-hidden /> <strong>{m.id}</strong>
+                  </td>
+                  <td className="muted small">{m.cost!.label ?? ""}</td>
+                  <td className="nowrap">
+                    {f.date(m.next!)} <span className={m.days! <= 7 ? "over" : "muted"}>({when(m.days!)})</span>
+                  </td>
+                  <td className="num">{typedAmount(m)}</td>
+                  <td className="num">{m.chargePln !== null ? zl(m.chargePln) : c.noRate}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <form action={saveMachineCostsAction} className="stack tight">
-        <div className="card flush">
+        <div className="card flush table-scroll">
           <table className="admin-table compact costs">
             <thead>
               <tr>
                 <th>{t.machine}</th>
+                <th>{c.label}</th>
                 <th>{c.price}</th>
+                <th>{c.period}</th>
+                <th>{c.nextPayment}</th>
                 <th className="num">{c.inPln}</th>
               </tr>
             </thead>
@@ -583,6 +664,17 @@ async function Costs() {
                 <tr key={m.id}>
                   <td>
                     <strong>{m.id}</strong>
+                    <div className="muted small">{m.host}</div>
+                  </td>
+                  <td>
+                    <input
+                      className="cost-label"
+                      name={`label_${m.id}`}
+                      aria-label={`${c.label} ${m.id}`}
+                      defaultValue={m.cost?.label ?? ""}
+                      placeholder={c.labelPlaceholder}
+                      maxLength={60}
+                    />
                   </td>
                   <td>
                     <div className="cost-input">
@@ -598,15 +690,34 @@ async function Costs() {
                         <option value="PLN">zł</option>
                       </select>
                     </div>
+                    <label className="cost-gross small">
+                      <input type="checkbox" name={`gross_${m.id}`} defaultChecked={m.cost?.gross ?? true} /> {c.gross}
+                    </label>
+                  </td>
+                  <td>
+                    <select name={`period_${m.id}`} defaultValue={String(m.cost?.periodMonths ?? 1)} aria-label={`${c.period} ${m.id}`}>
+                      {PAYMENT_PERIODS.map((n) => (
+                        <option key={n} value={n}>
+                          {format(n === 1 ? c.months1 : c.monthsN, { n })}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      type="date"
+                      name={`next_${m.id}`}
+                      aria-label={`${c.nextPayment} ${m.id}`}
+                      defaultValue={m.next ? m.next.toISOString().slice(0, 10) : ""}
+                    />
                   </td>
                   <td className="num">{m.pln !== null ? zl(m.pln) : m.cost ? c.noRate : <span className="muted">{c.notSet}</span>}</td>
                 </tr>
               ))}
               <tr className="sum-row">
-                <td>
+                <td colSpan={5}>
                   <strong>{c.total}</strong>
                 </td>
-                <td />
                 <td className="num">
                   <strong>{zl(costPln)}</strong>
                 </td>

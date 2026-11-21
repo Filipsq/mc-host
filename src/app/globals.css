@@ -2593,3 +2593,7 @@ html { scrollbar-color: var(--border-strong) var(--bg); }
 
 /* Upload and check progress on the server type page (UploadPack.tsx). */
 .upload-progress { width: 100%; height: 10px; accent-color: var(--accent); }
+.admin-table.costs input[type="date"], .admin-table.costs .cost-label, .admin-table.costs select { padding: 5px 8px; }
+.admin-table.costs .cost-label { width: 190px; }
+.cost-gross { display: flex; flex-direction: row; font-weight: 400; align-items: center; gap: 4px; margin-top: 4px; color: var(--muted); }
+.cost-gross input { width: auto; }
