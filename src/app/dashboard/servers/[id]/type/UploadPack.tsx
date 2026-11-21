@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { format, type Messages } from "@/i18n/messages";
-import { PACK_UPLOAD_DIR } from "@/lib/modpacks";
+import { PACK_HAND_MODS_DIR, PACK_UPLOAD_DIR } from "@/lib/modpacks";
 import { uploadPackAction, type UploadPackState } from "./actions";
 
 // The agent's per-file upload limit (UPLOAD_MAX_MB).
@@ -21,6 +21,9 @@ export default function UploadPack({ id, t, server }: Props) {
   const [link, setLink] = useState("");
   const [progress, setProgress] = useState<string | null>(null);
   const [state, setState] = useState<UploadPackState & { tooBig?: boolean }>({});
+  // The zip already uploaded, kept for the next try once the hand-downloaded mods are in.
+  const [uploaded, setUploaded] = useState<string | null>(null);
+  const [handNote, setHandNote] = useState<string | null>(null);
 
   function send(f: File, path: string): Promise<boolean> {
     return new Promise((resolve) => {
@@ -48,11 +51,35 @@ export default function UploadPack({ id, t, server }: Props) {
       setProgress(null);
       return setState({ error: "failed" });
     }
+    setUploaded(path);
+    await check(path);
+  }
+
+  async function check(path: string) {
     setProgress(u.checking);
     // Success moves on to the server's page; only an error comes back.
     const result = await uploadPackAction(id, path, link);
     setProgress(null);
     if (result) setState(result);
+  }
+
+  /**
+   * Files picked from the pack's folders in the CurseForge app (all of them is
+   * fine): only the ones the pack still needs go up, then the pack is checked again.
+   */
+  async function sendHandMods(picked: File[]) {
+    const needed = new Set((state.handMods ?? []).map((m) => m.fileName));
+    const matching = picked.filter((f) => needed.has(f.name));
+    if (!matching.length || !uploaded) return setHandNote(u.handNone);
+    setHandNote(null);
+    for (const f of matching) {
+      if (!(await send(f, `${PACK_HAND_MODS_DIR}/${f.name}`))) {
+        setProgress(null);
+        return setState({ ...state, error: "failed" });
+      }
+    }
+    setHandNote(format(u.handSent, { n: matching.length }));
+    await check(uploaded);
   }
 
   const errorText = state.tooBig
@@ -94,11 +121,30 @@ export default function UploadPack({ id, t, server }: Props) {
           <span>{u.handMods}</span>
           <ul className="small">
             {state.handMods.map((m) => (
-              <li key={m}>{m}</li>
+              <li key={m.fileName}>
+                {m.name} ({m.fileName})
+              </li>
             ))}
           </ul>
+          <span className="small">{u.handPickHint}</span>
+          <label className="button small">
+            {u.handPick}
+            <input
+              type="file"
+              multiple
+              hidden
+              accept=".jar,.zip"
+              disabled={!!progress}
+              onChange={(e) => {
+                const picked = [...(e.target.files ?? [])];
+                e.target.value = "";
+                void sendHandMods(picked);
+              }}
+            />
+          </label>
         </div>
       )}
+      {handNote && <p className="muted small">{handNote}</p>}
       <button type="submit" disabled={!!progress || !file}>
         {progress ? t.submitting : u.submit}
       </button>

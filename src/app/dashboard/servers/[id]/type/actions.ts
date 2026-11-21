@@ -23,7 +23,7 @@ import type { ServerErrorCode } from "../../actions";
 
 export type TypeError = keyof Messages["serverType"]["errors"] | ServerErrorCode;
 export type UploadPackError = UploadedPackError | "modpackLink" | "packNeedsHandMods" | "modpackNeedsPro" | "modpackNeedsMax" | "modpackNeedsStandard" | "needsPlan" | "notOnHost" | "failed";
-export type UploadPackState = { error?: UploadPackError; handMods?: string[] };
+export type UploadPackState = { error?: UploadPackError; handMods?: { name: string; fileName: string }[] };
 
 // Where the browser puts the zip before it's checked (src/app/dashboard/servers/[id]/type/UploadPack.tsx).
 const uploadPattern = new RegExp(`^${PACK_UPLOAD_DIR}/upload-[a-z0-9]{8,32}\\.zip$`);
@@ -66,7 +66,7 @@ export async function uploadPackAction(id: string, path: string, link: string): 
       await agent.changeFiles(server.id, { mkdir: PACK_HAND_MODS_DIR }).catch(() => {});
       const have = new Set((await agent.listFiles(server.id, PACK_HAND_MODS_DIR)).entries.map((e) => e.name));
       const missing = pack.handMods.filter((m) => !have.has(m.fileName));
-      if (missing.length) return { error: "packNeedsHandMods", handMods: missing.slice(0, 40).map((m) => `${m.name} (${m.fileName})`) };
+      if (missing.length) return { error: "packNeedsHandMods", handMods: missing.slice(0, 100) };
     }
     // Kept under the pack's file ID: the agent hands it to the image on every start.
     const kept = `${PACK_UPLOAD_DIR}/${pack.fileId}.zip`;

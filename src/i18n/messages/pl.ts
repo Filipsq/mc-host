@@ -1125,7 +1125,11 @@ const pl = {
       checking: "Sprawdzamy paczkę na CurseForge...",
       confirm: "Serwer zacznie od nowego świata z paczką z tego pliku, a obecny świat zostanie w zakładce Światy. Kontynuować?",
       players: "Gracze muszą mieć tę samą wersję paczki: niech pobiorą dokładnie ten plik z CurseForge (albo zainstalują go w aplikacji CurseForge).",
-      handMods: "Autorzy tych modów nie pozwalają ich pobierać spoza CurseForge. Pobierz je ze strony CurseForge i wgraj w Plikach do folderu paczka-curseforge/mody (z tą samą nazwą pliku), a potem wgraj paczkę jeszcze raz:",
+      handPickHint: "Najprościej: zainstaluj tę paczkę w aplikacji CurseForge, kliknij ją prawym > Open Folder, wejdź do folderu mods i zaznacz wszystko (Ctrl+A). Wybierzemy z tego same potrzebne pliki. Potem to samo z folderem resourcepacks.",
+      handPick: "Wybierz pliki z folderu paczki",
+      handNone: "Wśród wybranych plików nie ma żadnego z listy. Wybierz pliki z folderu mods albo resourcepacks tej paczki w aplikacji CurseForge.",
+      handSent: "Wgraliśmy pasujące pliki: {n}. Sprawdzamy paczkę jeszcze raz.",
+      handMods: "Autorzy tych modów nie pozwalają ich pobierać spoza CurseForge. Trzeba je wgrać z Twojego komputera (do folderu paczka-curseforge/mody, z tą samą nazwą pliku):",
       errors: {
         packZipNoManifest: "W tym pliku nie ma manifest.json. Wgraj ZIP pobrany z CurseForge (nie folder serwera ani paczkę serwerową).",
         packZipMismatch: "Ten plik nie pasuje do paczki z linku. Wklej link do tej paczki, z której pochodzi plik, i wgraj go bez zmian.",

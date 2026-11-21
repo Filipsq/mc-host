@@ -1126,7 +1126,11 @@ const en: Messages = {
       checking: "Checking the pack on CurseForge...",
       confirm: "The server starts on a new world with the pack from this file, and the current world stays under Worlds. Continue?",
       players: "Players need the same pack version: they download exactly this file from CurseForge (or install it in the CurseForge app).",
-      handMods: "The authors of these mods don't allow downloads outside CurseForge. Download them from CurseForge and upload them under Files to the paczka-curseforge/mody folder (with the same file name), then upload the pack again:",
+      handPickHint: "Easiest: install this pack in the CurseForge app, right-click it > Open Folder, go into the mods folder and select everything (Ctrl+A). We pick only the files needed. Then the same with the resourcepacks folder.",
+      handPick: "Pick files from the pack's folder",
+      handNone: "None of the picked files is on the list. Pick files from this pack's mods or resourcepacks folder in the CurseForge app.",
+      handSent: "Uploaded the matching files: {n}. Checking the pack again.",
+      handMods: "The authors of these mods don't allow downloads outside CurseForge. They have to be uploaded from your computer (into the paczka-curseforge/mody folder, with the same file name):",
       errors: {
         packZipNoManifest: "This file has no manifest.json. Upload the ZIP downloaded from CurseForge (not a server folder or a server pack).",
         packZipMismatch: "This file doesn't match the pack in the link. Paste the link of the pack the file came from, and upload it unchanged.",
