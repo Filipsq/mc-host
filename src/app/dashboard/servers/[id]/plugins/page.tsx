@@ -34,6 +34,8 @@ import { LOADER_NAMES, isServerKind } from "@/lib/modpacks";
 import { shownVersion } from "@/lib/serverType";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
 import { getWorkshopTitles } from "@/lib/steam";
+import JarUpload from "./JarUpload";
+import { canChangeFiles } from "@/lib/files";
 import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, PluginVersionPicker, RemovePluginButton } from "./PluginButtons";
 
 const FABRIC_API = "P7dR8mSH"; // added for CurseForge mods that need it
@@ -445,6 +447,15 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           {t.config} <Link href={`/dashboard/servers/${server.id}/files?path=${type === "mod" ? "config" : "plugins"}`}>{t.openConfig}</Link>
         </p>
       </section>
+
+      {allows(access, "files") && canChangeFiles(server) && (
+        <JarUpload
+          id={server.id}
+          folder={type === "mod" ? "mods" : "plugins"}
+          intro={type === "mod" ? format(all.mods.jarIntro, { loader, version: runsOn ?? server.version }) : all.plugins.jarIntro}
+          t={t}
+        />
+      )}
 
       {voice && (
         <section className="stack">
