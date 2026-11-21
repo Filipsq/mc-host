@@ -4,6 +4,8 @@ import { useActionState } from "react";
 import type { Plan } from "@prisma/client";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import LinkedText from "@/components/legal/LinkedText";
+import PayBadges from "@/components/PayBadges";
+import PaysafecardButton from "@/components/PaysafecardButton";
 import type { Messages } from "@/i18n/messages";
 import { buyGiftAction } from "./actions";
 
@@ -40,7 +42,13 @@ export default function GiftBuyForm({ plans, defaultPlan, t, billing, legal, lab
         <LinkedText text={legal.payTerms} href="/regulamin" label={legal.termsLinkGenitive} newTab />
       </p>
       {state.error && <p className="error">{t.errors[state.error]}</p>}
-      <button type="submit" disabled={pending}>{pending ? t.redirecting : t.buy}</button>
+      <div className="pay-buttons">
+        <button type="submit" className="pay-button" disabled={pending}>
+          <span className="pay-label">{pending ? t.redirecting : t.buy}</span>
+          <PayBadges />
+        </button>
+        <PaysafecardButton t={billing} what={billing.paysafecardFor.gift} disabled={pending} />
+      </div>
     </form>
   );
 }

@@ -17,7 +17,6 @@ import { CREATOR_DISCOUNT, FREE_STARTER_DAYS, suggestedCreatorCode } from "@/lib
 import { usableGift } from "@/lib/gifts";
 import { HALLOWEEN_CODE, HALLOWEEN_DISCOUNT, halloweenOn } from "@/lib/halloween";
 import CreateServerForm from "./CreateServerForm";
-import { paysafecardEnabled } from "@/lib/cashbill";
 
 // What a pack from a Modrinth link is guessed to need (Modrinth doesn't say): most big packs run on Standard.
 const MR_PACK_RAM_GB = 6;
@@ -113,7 +112,6 @@ export default async function NewServerPage({ searchParams }: Props) {
               }
             : undefined
         }
-        paysafecard={paysafecardEnabled(currency)}
         creator={{
           t: t.creator,
           // A code from a link (the Halloween band on the home page) before the inviter's.

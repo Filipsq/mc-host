@@ -9,6 +9,7 @@ import type { ChatRate, ChatState } from "@/lib/support";
 import SupportChat from "./SupportChat";
 import LobbyChat from "./LobbyChat";
 import { useSheetDrag } from "./useSheetDrag";
+import { HELP_OPEN_EVENT, type HelpOpenDetail } from "./PaysafecardButton";
 
 type Props = {
   t: Messages["support"];
@@ -65,6 +66,8 @@ export default function HelpBubble({ t, lobby, signedIn, admin, adminOnline, max
   const [attempt, setAttempt] = useState(0);
   const [openedUnread, setOpenedUnread] = useState(false);
   const [tab, setTabState] = useState<"help" | "lobby">("help");
+  /** A message written ahead for the user (e.g. by the paysafecard button), put in the chat's box. */
+  const [draft, setDraft] = useState<string | undefined>();
   const onLobby = tab === "lobby" && !!lobby;
   useEffect(() => {
     if (storage((s) => s.getItem(TAB_KEY)) === "lobby") setTabState("lobby");
@@ -142,6 +145,22 @@ export default function HelpBubble({ t, lobby, signedIn, admin, adminOnline, max
     }, SLEEP_SHOW_MS);
     return () => clearTimeout(timer);
   }, [online, admin, hidden]);
+
+  // Another part of the page asks for the admin chat (PaysafecardButton): open it on
+  // that tab with the message typed in. Where the bubble is hidden, or for admins,
+  // the caller goes to the chat page instead.
+  useEffect(() => {
+    if (admin || hidden) return;
+    const onOpen = (e: Event) => {
+      e.preventDefault();
+      const text = (e as CustomEvent<HelpOpenDetail>).detail?.text;
+      if (text) setDraft(text);
+      setTabState("help");
+      setOpen(true);
+    };
+    window.addEventListener(HELP_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(HELP_OPEN_EVENT, onOpen);
+  }, [admin, hidden]);
 
   // Back from logging in through the bubble: open the chat right away.
   useEffect(() => {
@@ -296,6 +315,7 @@ export default function HelpBubble({ t, lobby, signedIn, admin, adminOnline, max
               rate={rate}
               hadUnread={chat.peeked ? openedUnread : chat.hadUnread}
               peeked={chat.peeked}
+              draft={draft}
             />
           ) : (
             <div className="help-guest">
