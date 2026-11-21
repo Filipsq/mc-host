@@ -118,9 +118,9 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
   const [aiSettings, setAiSettings] = useState<Pick<Suggestion, "gameMode" | "difficulty" | "pvp" | "motd" | "plugins"> | null>(null);
   // Bumped by each AI suggestion or helper pick so the plan picker starts from the suggested plan.
   const [aiRound, setAiRound] = useState(0);
-  // Controlled so "Pomóż mi zdecydować" can tick them. Crossplay is on unless the owner turned it off before an error sent the form back.
+  // Controlled so "Pomóż mi zdecydować" can tick them. Crossplay and non-premium are on unless the owner turned them off before an error sent the form back.
   const [crossplay, setCrossplay] = useState(v.name === undefined || v.crossplay === "on");
-  const [nonPremium, setNonPremium] = useState(v.nonPremium === "on");
+  const [nonPremium, setNonPremium] = useState(v.name === undefined || v.nonPremium === "on");
   const [helperOpen, setHelperOpen] = useState(false);
   const [addons, setAddons] = useState<AddonId[]>(addonList(v.addons?.split(",")));
   const [creatorCode, setCreatorCode] = useState(v.creatorCode ?? creator.code);
@@ -208,7 +208,8 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
     }
     setAddons(p.addons);
     setCrossplay(p.crossplay);
-    setNonPremium(p.nonPremium);
+    // Non-premium is on by default; the helper only ever turns it on, never off.
+    if (p.nonPremium) setNonPremium(true);
     setPlan(floor && !planAtLeast(p.plan, floor) ? floor : p.plan);
     setAiRound((n) => n + 1);
     // So the player sees the form that just filled in, starting with the name it still needs.
