@@ -162,6 +162,22 @@ export async function recreateServer(spec: CreateServerSpec, opts: { keepStopped
   await agentFetch(`/servers/${spec.id}${query}`, { method: "PUT", body: JSON.stringify(spec), timeoutMs: 5 * 60_000 });
 }
 
+/**
+ * Leaves the spec on the server's machine for its next start, keeping a running
+ * server as it is: whatever starts it next (its owner, or a player waking a
+ * sleeping one) builds the new container first. Machines not updated yet answer
+ * 404/405, which is fine: the panel still rebuilds it when its owner starts it.
+ */
+export async function setNextStart(spec: CreateServerSpec) {
+  spec = await withSignIns(spec);
+  try {
+    await agentFetch(`/servers/${spec.id}/next`, { method: "PUT", body: JSON.stringify(spec) });
+  } catch (err) {
+    if (err instanceof AgentError && (err.status === 404 || err.status === 405)) return;
+    throw err;
+  }
+}
+
 export type ServerStats = Pick<AgentState, "state" | "health" | "stopReason" | "diskMb" | "diskLimitMb"> & {
   id: string;
   memoryMb: number; // the plan's memory

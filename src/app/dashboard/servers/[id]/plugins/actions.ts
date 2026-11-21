@@ -270,6 +270,9 @@ async function savePlugins(server: Server, plugins: string[], pluginVersions?: s
     const state = await agent.getServerState(server.id);
     running = state.state === "running" || state.state === "restarting";
     if (!running) await agent.recreateServer(agentSpec(updated), { keepStopped: true });
+    // Running: its next start, even a player waking it from sleep, gets the new
+    // list (a removed plugin used to come back when a sleeping server woke up).
+    else await agent.setNextStart(agentSpec(updated));
   } catch (err) {
     console.error("apply plugins failed", server.id, err);
   }

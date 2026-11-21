@@ -187,7 +187,7 @@ func (a *agent) repairServer(ctx context.Context, id string, now time.Time) {
 	r.tries = append(r.tries, now)
 	r.done = true // this crash is handled; the next one has its own FinishedAt
 	r.mu.Unlock()
-	start := a.startServer
+	start := a.startWithNext
 	if a.repairStart != nil {
 		start = a.repairStart
 	}
