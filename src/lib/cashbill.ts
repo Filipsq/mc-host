@@ -3,12 +3,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import type { Payment } from "@prisma/client";
 import type { Currency } from "@/i18n/config";
 
-// CashBill (cashbill.pl, "Web Service" REST) is the main way to pay: BLIK,
-// Visa/Mastercard and bank transfers, on CashBill's own payment page (the
-// buyer picks the method there). It costs far less than Stripe on small
-// amounts. Stripe is left only for payments in other currencies and for
-// cards saved for automatic renewal before the switch (renewal.ts): CashBill
-// can't charge a saved card. startCheckout asks CashBill for a payment page and sends the
+// BLIK and bank transfers go through CashBill (cashbill.pl, "Web Service"
+// REST), on CashBill's own payment page: it costs far less than Stripe on
+// small amounts. Cards (Visa/Mastercard, and automatic renewal, renewal.ts)
+// stay with Stripe, as do payments in other currencies. startCheckout asks CashBill for a payment page and sends the
 // buyer there; when the payment's status changes CashBill calls
 // /api/cashbill/notify, which reads the payment back from CashBill and applies
 // it as Stripe's webhook does.
@@ -61,7 +59,7 @@ export async function createCashbillPayment(
     description: opts.title.slice(0, 100),
     negativeReturnUrl: "",
     additionalData: payment.id,
-    // Empty: the buyer picks BLIK, a card or a bank transfer on CashBill's page.
+    // Empty: the buyer picks BLIK or a bank transfer on CashBill's page.
     paymentChannel: process.env.CASHBILL_CHANNEL ?? "",
     languageCode: "PL",
     referer: "",

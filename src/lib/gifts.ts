@@ -64,9 +64,10 @@ export async function startGiftCheckout(opts: {
   currency: Currency;
   locale: Locale;
   productName: string;
+  method?: "card" | "cashbill"; // "card": Visa/Mastercard through Stripe; otherwise CashBill where it works
 }) {
   const { user, plan, days, currency, locale } = opts;
-  const viaCashbill = cashbillEnabled(currency);
+  const viaCashbill = opts.method !== "card" && cashbillEnabled(currency);
   if (!viaCashbill && stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
@@ -91,6 +92,7 @@ export async function startGiftCheckout(opts: {
   }
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
+    ...(cashbillEnabled(currency) && { payment_method_types: ["card" as const] }),
     line_items: [
       {
         quantity: 1,

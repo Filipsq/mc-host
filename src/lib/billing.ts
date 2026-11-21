@@ -62,7 +62,8 @@ export async function startCheckout(opts: {
   locale: Locale;
   productName: string;
   startConsent: boolean; // asked for the server to start before the withdrawal period ends
-  autoRenew?: boolean; // save the card and renew automatically (renewal.ts); Stripe only, so ignored where CashBill takes the payment
+  autoRenew?: boolean; // save the card and renew automatically (renewal.ts); Stripe cards only, ignored where CashBill takes the payment
+  method?: "card" | "cashbill"; // the pay button: "card" is Visa/Mastercard through Stripe, anything else BLIK/transfers through CashBill
   upgrade?: { from: Plan; amount: number }; // the price difference for the time left (upgrade.ts); days is 0
   addons?: readonly AddonId[]; // every add-on the server has once paid (addons.ts)
   addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
@@ -77,8 +78,10 @@ export async function startCheckout(opts: {
   const extra = xbox ?? domain; // days of one feature for a free server
   const addons = addonList(opts.addons);
   const adminTest = !!opts.adminTest;
-  // Every payment in złoty goes through CashBill (cashbill.ts); Payment.paysafecard marks it.
-  const paysafecard = !adminTest && cashbillEnabled(currency);
+  // Cards go through Stripe; BLIK and bank transfers in złoty through CashBill
+  // (cashbill.ts), which Payment.paysafecard marks.
+  const card = opts.method === "card";
+  const paysafecard = !adminTest && !card && cashbillEnabled(currency);
   // An admin's test purchase saves no card, so it can't renew by itself.
   const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !extra && !paysafecard && !adminTest;
   // Test keys take no money, so only admins may check out with them (to try the site).
@@ -141,8 +144,10 @@ export async function startCheckout(opts: {
   }
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
-    // Only payments CashBill can't take get here (other currencies, or
-    // PAYMENTS_PROVIDER=stripe); the Stripe Dashboard decides the methods.
+    // The card button takes cards only: BLIK and transfers cost much less at
+    // CashBill. Without CashBill (other currencies, or PAYMENTS_PROVIDER=stripe)
+    // the Stripe Dashboard decides the methods.
+    ...(card && cashbillEnabled(currency) && { payment_method_types: ["card" as const] }),
     line_items: [
       {
         quantity: 1,

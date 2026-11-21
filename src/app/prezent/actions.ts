@@ -7,6 +7,7 @@ import { getSession } from "@/lib/session";
 import { db } from "@/lib/db";
 import { BRAND_NAME } from "@/lib/brand";
 import { normalizeGiftCode, redeemGift, startGiftCheckout } from "@/lib/gifts";
+import { payMethod } from "@/lib/payMethod";
 import { GIFT_COOKIE } from "@/lib/giftCookie";
 import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import { getMessages, getPreferences } from "@/i18n/server";
@@ -42,6 +43,7 @@ export async function buyGiftAction(_: BuyGiftState, form: FormData): Promise<Bu
       currency,
       locale,
       productName: format(t.gifts.productName, { brand: BRAND_NAME, plan: t.plans[parsed.data.plan], days: parsed.data.days }),
+      method: payMethod(form),
     });
   } catch (err) {
     console.error("gift checkout failed", err);

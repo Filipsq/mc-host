@@ -29,6 +29,7 @@ import { MAIN_NODE } from "@/lib/nodes";
 import { getServerFor, type ServerNeed } from "@/lib/access";
 import { planById } from "@/lib/plans";
 import { startCheckout, syncDiskLimits } from "@/lib/billing";
+import { payMethod } from "@/lib/payMethod";
 import { sendPlanMail } from "@/lib/planMail";
 import { biggerPlans, canUpgrade, upgradeCost } from "@/lib/upgrade";
 import { ADDON_SPECS, DOMAIN_DAYS, addonCost, addonFits, addonList, canBuyAddons, domainPaidFor, serverAddons, type AddonId } from "@/lib/addons";
@@ -148,6 +149,7 @@ async function checkoutUrl(
   promoCode?: string,
   adminTest = false,
   renewCode?: string,
+  method: "card" | "cashbill" = "cashbill",
 ) {
   const [{ locale, currency }, t] = await Promise.all([getPreferences(), getMessages()]);
   // Emails about this payment go out in the language it was made in.
@@ -168,6 +170,7 @@ async function checkoutUrl(
     promoCode,
     adminTest,
     renewCode,
+    method,
   });
 }
 
@@ -362,7 +365,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (paying) {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode);
+      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode, false, undefined, payMethod(form));
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -469,6 +472,7 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       server.status === "AWAITING_PAYMENT" ? (server.promoCode ?? undefined) : undefined,
       adminTest,
       renewCode || undefined,
+      payMethod(form),
     );
   } catch (err) {
     console.error("checkout failed", server.id, err);
@@ -516,6 +520,7 @@ export async function upgradeAction(id: string, _: CheckoutState, form: FormData
       adminTest,
       // The add-ons stay; only the plan's difference is paid.
       addons: serverAddons(server),
+      method: payMethod(form),
     });
   } catch (err) {
     console.error("upgrade checkout failed", server.id, err);
@@ -553,6 +558,7 @@ export async function buyAddonsAction(id: string, _: CheckoutState, form: FormDa
       addons: [...have, ...added],
       addonsOnly: { amount },
       adminTest,
+      method: payMethod(form),
     });
   } catch (err) {
     console.error("add-ons checkout failed", server.id, err);
@@ -585,6 +591,7 @@ export async function buyXboxAction(id: string, _: CheckoutState, form: FormData
       startConsent: true,
       xbox: { days: XBOX_DAYS, amount: XBOX_PRICE[currency] },
       adminTest,
+      method: payMethod(form),
     });
   } catch (err) {
     console.error("console joining checkout failed", server.id, err);
@@ -617,6 +624,7 @@ export async function buyDomainAction(id: string, _: CheckoutState, form: FormDa
       startConsent: true,
       domain: { days: DOMAIN_DAYS, amount: ADDON_SPECS.domain.price[currency] },
       adminTest,
+      method: payMethod(form),
     });
   } catch (err) {
     console.error("own domain checkout failed", server.id, err);
