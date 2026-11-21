@@ -6,6 +6,7 @@ import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import LinkedText from "@/components/legal/LinkedText";
 import PayBadges from "@/components/PayBadges";
 import PaysafecardButton from "@/components/PaysafecardButton";
+import CashbillButton from "@/components/CashbillButton";
 import type { Messages } from "@/i18n/messages";
 import { buyGiftAction } from "./actions";
 
@@ -18,9 +19,10 @@ type Props = {
   labels: { plan: string; period: string };
   validity: string;
   money: { locale: string; currency: string };
+  cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
 };
 
-export default function GiftBuyForm({ plans, defaultPlan, t, billing, legal, labels, validity, money }: Props) {
+export default function GiftBuyForm({ plans, defaultPlan, t, billing, legal, labels, validity, money, cashbill }: Props) {
   const [state, action, pending] = useActionState(buyGiftAction, {});
   return (
     <form action={action} className="card stack">
@@ -33,7 +35,7 @@ export default function GiftBuyForm({ plans, defaultPlan, t, billing, legal, lab
         formatMoney={money}
       />
       <p className="muted small">{validity}</p>
-      <p className="muted small">{t.methods}</p>
+      <p className="muted small">{cashbill ? t.methodsSplit : t.methods}</p>
       <label className="check">
         <input name="consent" type="checkbox" required />
         <span>{t.consent}</span>
@@ -43,10 +45,11 @@ export default function GiftBuyForm({ plans, defaultPlan, t, billing, legal, lab
       </p>
       {state.error && <p className="error">{t.errors[state.error]}</p>}
       <div className="pay-buttons">
-        <button type="submit" className="pay-button" disabled={pending}>
+        <button type="submit" className="pay-button" {...(cashbill && { name: "method", value: "card" })} disabled={pending}>
           <span className="pay-label">{pending ? t.redirecting : t.buy}</span>
-          <PayBadges />
+          <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
+        {cashbill && <CashbillButton t={billing} disabled={pending} />}
         <PaysafecardButton t={billing} what={billing.paysafecardFor.gift} disabled={pending} />
       </div>
     </form>

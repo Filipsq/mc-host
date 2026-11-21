@@ -47,20 +47,43 @@ function Paysafecard() {
   );
 }
 
+function Transfer() {
+  return (
+    <svg width={44} height={H} viewBox="0 0 44 20" aria-hidden>
+      <rect width="44" height="20" rx="3" fill="#fff" />
+      <text x="22" y="13.5" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="9" fill="#1f2937">
+        przelew
+      </text>
+    </svg>
+  );
+}
+
 /**
- * The marks for one pay button: the main one (BLIK, Mastercard, Visa) or the
- * paysafecard one (PaysafecardButton), which for now leads to the admin chat.
+ * The marks for one pay button: cards (Visa, Mastercard; Stripe), BLIK and
+ * bank transfers (CashBill), paysafecard (PaysafecardButton, for now the admin
+ * chat), or "main" for one button that takes everything (Stripe without CashBill).
  */
-export default function PayBadges({ method = "main" }: { method?: "main" | "paysafecard" }) {
+export default function PayBadges({ method = "main" }: { method?: "main" | "cards" | "cashbill" | "paysafecard" }) {
   return (
     <span className="pay-badges">
-      {method === "paysafecard" ? (
-        <Paysafecard />
-      ) : (
+      {method === "paysafecard" && <Paysafecard />}
+      {method === "cashbill" && (
         <>
           <Blik />
-          <Mastercard />
+          <Transfer />
+        </>
+      )}
+      {method === "cards" && (
+        <>
           <Visa />
+          <Mastercard />
+        </>
+      )}
+      {method === "main" && (
+        <>
+          <Visa />
+          <Mastercard />
+          <Blik />
         </>
       )}
     </span>

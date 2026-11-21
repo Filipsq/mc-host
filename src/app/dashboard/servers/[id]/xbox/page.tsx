@@ -14,6 +14,7 @@ import BuyXbox from "./BuyXbox";
 import AutoRefresh from "@/components/AutoRefresh";
 import CopyButton from "@/components/CopyButton";
 import XboxButtons from "./XboxButtons";
+import { paysafecardEnabled } from "@/lib/cashbill";
 
 // Consoles (Xbox, PlayStation, Switch) can't add a server by its address. The
 // owner signs an Xbox account in here; players add it as a friend and join the
@@ -45,6 +46,7 @@ export default async function XboxPage({ params }: { params: Promise<{ id: strin
           <p>{format(t.freePrice, { price: formatPrice(XBOX_PRICE[currency], currency, locale), days: XBOX_DAYS })}</p>
           {paidFor && <p className="notice success">{format(t.paidUntil, { date: server.xboxUntil!.toLocaleDateString(locale) })}</p>}
           <BuyXbox
+            cashbill={paysafecardEnabled(currency)}
             serverId={server.id}
             price={formatPrice(XBOX_PRICE[currency], currency, locale)}
             days={XBOX_DAYS}

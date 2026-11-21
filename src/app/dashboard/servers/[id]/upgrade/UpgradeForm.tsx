@@ -8,6 +8,7 @@ import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
 import PaysafecardButton from "@/components/PaysafecardButton";
+import CashbillButton from "@/components/CashbillButton";
 import type { Messages } from "@/i18n/messages";
 
 export type UpgradeOption = {
@@ -34,11 +35,12 @@ type Props = {
   billing: Messages["billing"];
   legal: Messages["legal"];
   errors: Messages["server"]["errors"];
+  cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
 };
 
 /** The plan list, what changes, and what it costs now; submits `plan`. */
-export default function UpgradeForm({ serverId, current, plans, costHint, moveNote, t, billing, legal, errors, adminTest }: Props) {
+export default function UpgradeForm({ serverId, current, plans, costHint, moveNote, t, billing, legal, errors, adminTest, cashbill }: Props) {
   const [state, action, pending] = useActionState(upgradeAction.bind(null, serverId), {});
   const [plan, setPlan] = useState<Plan>(plans.find((p) => p.bigger)!.id);
   const from = plans.find((p) => p.id === current)!;
@@ -118,14 +120,15 @@ export default function UpgradeForm({ serverId, current, plans, costHint, moveNo
       </section>
 
       <div className="card stack">
-        <p className="muted small">{billing.methods}</p>
+        <p className="muted small">{cashbill ? billing.methodsSplit : billing.methods}</p>
         <PaymentConsent legal={legal} />
         {state.error && <p className="error">{errors[state.error]}</p>}
         <div className="pay-buttons">
-          <button type="submit" className="pay-button" disabled={pending}>
+          <button type="submit" className="pay-button" {...(cashbill && { name: "method", value: "card" })} disabled={pending}>
             <span className="pay-label">{pending ? t.redirecting : `${t.pay} · ${to.cost?.amount}`}</span>
-            <PayBadges />
+            <PayBadges method={cashbill ? "cards" : "main"} />
           </button>
+          {cashbill && <CashbillButton t={billing} disabled={pending} />}
           <PaysafecardButton t={billing} what={billing.paysafecardFor.upgrade} disabled={pending} />
         </div>
         <AdminTestBuy show={adminTest} pending={pending} t={billing} />

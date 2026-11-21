@@ -18,6 +18,7 @@ import { PERIOD_DAYS, type PeriodDays } from "@/lib/periods";
 import type { Currency } from "@/i18n/config";
 import CheckoutForm from "./CheckoutForm";
 import AutoRenewButton from "./AutoRenewButton";
+import { paysafecardEnabled } from "@/lib/cashbill";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -137,6 +138,8 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
       )}
 
       <CheckoutForm
+        cashbill={paysafecardEnabled(currency)}
+        autoRenew={server.autoRenew}
         serverId={server.id}
         plans={planOptions(t, currency, (p) => p !== "FREE")}
         // ?plan= comes from a "needs more space" link, e.g. on the Worlds page.

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { buyAddonsAction, buyDomainAction, removeAddonAction } from "../../actions";
 import PayBadges from "@/components/PayBadges";
 import PaysafecardButton from "@/components/PaysafecardButton";
+import CashbillButton from "@/components/CashbillButton";
 import CopyButton from "@/components/CopyButton";
 import { clearDomainAction, setDomainAction } from "./actions";
 import PaymentConsent from "@/components/PaymentConsent";
@@ -23,13 +24,14 @@ type BuyProps = {
   legal: Messages["legal"];
   errors: Messages["server"]["errors"];
   hint: string;
+  cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
   title?: string; // instead of "Dokup dodatki"
   preselect?: AddonId[]; // ticked from the start (the address page offers only the domain)
 };
 
 /** Ticks add-ons the server doesn't have and pays their share of the time left. */
-export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, legal, errors, hint, adminTest, title, preselect }: BuyProps) {
+export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, legal, errors, hint, adminTest, cashbill, title, preselect }: BuyProps) {
   const [state, action, pending] = useActionState(buyAddonsAction.bind(null, serverId), {});
   const [ticked, setTicked] = useState<AddonId[]>(preselect ?? []);
   const key = options.filter((o) => ticked.includes(o.id)).map((o) => o.id).join(",");
@@ -60,14 +62,15 @@ export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, le
           {t.buyTotal}: <strong>{costs[key]}</strong>
         </p>
       )}
-      <p className="muted small">{billing.methods}</p>
+      <p className="muted small">{cashbill ? billing.methodsSplit : billing.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <div className="pay-buttons">
-        <button type="submit" className="pay-button" disabled={pending || !key}>
+        <button type="submit" className="pay-button" {...(cashbill && { name: "method", value: "card" })} disabled={pending || !key}>
           <span className="pay-label">{pending ? billing.redirecting : t.buy}</span>
-          <PayBadges />
+          <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
+        {key && cashbill && <CashbillButton t={billing} disabled={pending} />}
         {key && <PaysafecardButton t={billing} what={billing.paysafecardFor.addon} disabled={pending} />}
       </div>
       {key && <AdminTestBuy show={adminTest} pending={pending} t={billing} />}
@@ -237,25 +240,27 @@ type BuyDomainProps = {
   billing: Messages["billing"];
   legal: Messages["legal"];
   errors: Messages["server"]["errors"];
+  cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
   adminTest?: boolean;
 };
 
 /** Buys an own domain for a free server, for `days` at a time (like console joining). */
-export function BuyDomainForm({ serverId, price, days, again, t, billing, legal, errors, adminTest }: BuyDomainProps) {
+export function BuyDomainForm({ serverId, price, days, again, t, billing, legal, errors, adminTest, cashbill }: BuyDomainProps) {
   const [state, action, pending] = useActionState(buyDomainAction.bind(null, serverId), {});
   return (
     <form action={action} className="stack">
       <p>
         <strong>{format(again ? t.buyMore : t.buyTitle, { price, days })}</strong>
       </p>
-      <p className="muted small">{billing.methods}</p>
+      <p className="muted small">{cashbill ? billing.methodsSplit : billing.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <div className="pay-buttons">
-        <button type="submit" className="pay-button" disabled={pending}>
+        <button type="submit" className="pay-button" {...(cashbill && { name: "method", value: "card" })} disabled={pending}>
           <span className="pay-label">{pending ? billing.redirecting : t.buy}</span>
-          <PayBadges />
+          <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
+        {cashbill && <CashbillButton t={billing} disabled={pending} />}
         <PaysafecardButton t={billing} what={billing.paysafecardFor.addon} disabled={pending} />
       </div>
       <AdminTestBuy show={adminTest} pending={pending} t={billing} />

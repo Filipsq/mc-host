@@ -12,6 +12,7 @@ import { ADDON_SPECS, DOMAIN_DAYS, addonCost, canBuyAddons, domainPaidFor, hasOw
 import { serverIps } from "@/lib/ownDomain";
 import { BuyAddonsForm, BuyDomainForm, DomainForm } from "../addons/AddonForms";
 import AddressForm from "./AddressForm";
+import { paysafecardEnabled } from "@/lib/cashbill";
 
 // "Zmień adres" on Przegląd (Fiq, 2026-11-16): the own domain for 5 zł comes
 // first, then the free change of the <name>.mchosting.pl address. Java only.
@@ -62,6 +63,7 @@ export default async function AddressPage({ params }: { params: Promise<{ id: st
             <>
               <p className="muted small">{format(a.promoFree, { price, days: DOMAIN_DAYS })}</p>
               <BuyDomainForm
+                cashbill={paysafecardEnabled(currency)}
                 serverId={server.id}
                 price={price}
                 days={DOMAIN_DAYS}
@@ -85,6 +87,7 @@ export default async function AddressPage({ params }: { params: Promise<{ id: st
       )}
       {!own && !free && buyable && (
         <BuyAddonsForm
+          cashbill={paysafecardEnabled(currency)}
           serverId={server.id}
           options={domainOption}
           costs={{ domain: formatPrice(addonCost(["domain"], server.paidUntil!, currency).amount, currency, locale) }}

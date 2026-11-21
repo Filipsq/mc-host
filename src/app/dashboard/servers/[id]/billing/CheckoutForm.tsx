@@ -9,6 +9,7 @@ import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
 import PaysafecardButton from "@/components/PaysafecardButton";
+import CashbillButton from "@/components/CashbillButton";
 import type { Messages } from "@/i18n/messages";
 
 type Props = {
@@ -22,11 +23,13 @@ type Props = {
   legal: Messages["legal"];
   money: { locale: string; currency: string };
   addons: ComponentProps<typeof PlanPicker>["addons"];
+  autoRenew: boolean; // ticked to start with (card payments only)
+  cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
   renewCode?: string | null; // a paid server: the renewal code field (renewCode.ts), filled in with this
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, addons, adminTest, renewCode }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, cashbill, adminTest, renewCode }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -46,14 +49,22 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
           <span className="muted small">{t.renewCodeHint}</span>
         </label>
       )}
-      <p className="muted small">{t.methods}</p>
+      <label className="check">
+        <input name="autoRenew" type="checkbox" defaultChecked={autoRenew} />
+        <span className="stack-tight">
+          <span>{t.autoRenew}</span>
+          <span className="muted small">{t.autoRenewHint}</span>
+        </span>
+      </label>
+      <p className="muted small">{cashbill ? t.methodsSplit : t.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <div className="pay-buttons">
-        <button type="submit" className="pay-button" disabled={pending}>
+        <button type="submit" className="pay-button" {...(cashbill && { name: "method", value: "card" })} disabled={pending}>
           <span className="pay-label">{pending ? t.redirecting : t.checkout}</span>
-          <PayBadges />
+          <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
+        {cashbill && <CashbillButton t={t} disabled={pending} />}
         <PaysafecardButton t={t} what={t.paysafecardFor.renew} disabled={pending} />
       </div>
       <AdminTestBuy show={adminTest} pending={pending} t={t} />
