@@ -651,3 +651,76 @@ export async function curseforgePackOptions(picked?: CurseforgePack) {
   const top = (await topCurseforgePacks()) ?? [];
   return [...(picked ? [picked] : []), ...top.filter((p) => p.slug !== picked?.slug)].map(packOption);
 }
+
+/** A pack whose zip the owner downloaded from CurseForge and uploaded to the server (allowed when its authors keep downloads on CurseForge). */
+export type UploadedPack = Omit<CurseforgePack, "summary" | "icon" | "picture" | "downloads"> & {
+  /** Required mods with no download link: the owner uploads these jars too ("Name|file.jar"). */
+  handMods: { name: string; fileName: string }[];
+};
+export type UploadedPackError = CurseforgeError | "packZipNoManifest" | "packZipMismatch";
+
+/** Reads manifest.json out of an uploaded pack zip as it streams (it's first in CurseForge's exports). */
+export async function readUploadedManifest(res: Response): Promise<Manifest & { name?: string; version?: string } | null> {
+  try {
+    const read = await scanZip(res, "manifest.json");
+    if (!("entry" in read) || !read.entry) return null;
+    return JSON.parse(read.entry.toString("utf8"));
+  } catch (err) {
+    console.warn("uploaded pack: no readable manifest.json", err);
+    await res.body?.cancel().catch(() => {});
+    return null;
+  }
+}
+
+/**
+ * Checks an uploaded pack zip against CurseForge: the pack the link names must
+ * have a file of exactly this size (the zip is really that pack, not something
+ * else under its name), and each mod in the manifest is looked up, so the ones
+ * the image can't download are named before the server tries.
+ */
+export async function resolveUploadedPack(
+  ref: { slug: string; fileId?: number },
+  size: number,
+  manifest: Manifest,
+): Promise<UploadedPack | UploadedPackError> {
+  if (!curseforgeEnabled() || !SLUG.test(ref.slug)) return "modpackNotFound";
+  try {
+    const params = new URLSearchParams({ gameId: String(MINECRAFT), classId: String(MODPACKS), slug: ref.slug });
+    const mod = (await call<{ data: Mod[] }>(`/v1/mods/search?${params}`))?.data.find((m) => m.slug === ref.slug);
+    if (!mod || !SLUG.test(mod.slug) || mod.isAvailable === false) return "modpackNotFound";
+    if (CLIENT_PACKS.has(mod.slug)) return "modpackNotForServers";
+    let file: File | undefined;
+    if (ref.fileId) file = (await call<{ data: File }>(`/v1/mods/${mod.id}/files/${ref.fileId}`))?.data;
+    else {
+      // The link names only the pack: its file of this exact size is the one uploaded.
+      for (let index = 0; index < 500 && !file; index += 50) {
+        const page = (await call<{ data: File[] }>(`/v1/mods/${mod.id}/files?pageSize=50&index=${index}`))?.data ?? [];
+        file = page.find((f) => f.fileLength === size && !f.isServerPack);
+        if (page.length < 50) break;
+      }
+    }
+    if (!file || file.isServerPack || file.fileLength !== size) return "packZipMismatch";
+    const gameVersion = file.gameVersions.filter((v) => GAME_VERSION.test(v)).sort(compareVersions).at(-1);
+    const loader = file.gameVersions.map((v) => v.toLowerCase()).find((v) => LOADERS.includes(v));
+    if (!gameVersion || !loader) return "modpackNotForServers";
+
+    const required = (manifest.files ?? []).filter((f) => f.required !== false && Number.isInteger(f.fileID));
+    const ids = [...new Set(required.map((f) => f.fileID))];
+    const handMods: UploadedPack["handMods"] = [];
+    for (let i = 0; i < ids.length; i += 500) {
+      const asked = ids.slice(i, i + 500);
+      const found = (await call<{ data: File[] }>("/v1/mods/files", { fileIds: asked }))?.data ?? [];
+      for (const f of found) {
+        const clientOnly = f.gameVersions.includes("Client") && !f.gameVersions.includes("Server");
+        if (!f.downloadUrl && !clientOnly) handMods.push({ name: f.displayName.slice(0, 80), fileName: (f.fileName ?? f.displayName).slice(0, 120) });
+      }
+    }
+    const mods = new Set(required.map((f) => f.projectID)).size;
+    const ramGb = ramForMods(mods);
+    if (ramGb > MAX_RAM_GB) return "modpackTooBig";
+    return { id: mod.id, slug: mod.slug, title: mod.name.slice(0, 80), fileId: file.id, fileName: file.displayName.slice(0, 64), gameVersion, loader, mods, ramGb, handMods };
+  } catch (err) {
+    console.error("uploaded curseforge pack lookup failed", ref, err);
+    return "curseforgeUnavailable";
+  }
+}

@@ -80,7 +80,7 @@ var (
 	paperKinds      = map[string]bool{"vanilla": true, "skyblock": true, "skymap": true, "halloween": true, "minigames": true, "oneblock": true}
 	validModpack    = regexp.MustCompile(`^[A-Za-z0-9_-]{2,64}$`) // Modrinth slug or project ID
 	validModrinthID = regexp.MustCompile(`^[A-Za-z0-9]{8}$`)      // Modrinth version ID
-	validCurseFile  = regexp.MustCompile(`^[0-9]{1,12}$`)         // CurseForge file ID
+	validCurseFile  = regexp.MustCompile(`^[0-9]{1,12}$`)         // CurseForge file ID (also the uploaded zip's name, so digits only)
 )
 
 // AuthMeReloaded on Modrinth: on a non-premium server, players register a
@@ -450,7 +450,7 @@ type createRequest struct {
 	LevelType string `json:"levelType"` // normal, flat, large_biomes or amplified (Java); small, medium or large (Terraria)
 
 	// What the server runs: on Java one of kinds; on Terraria vanilla, tshock or tmodloader. For a mod pack, where it comes
-	// from (modrinth, the default, or curseforge), the project's slug and the exact
+	// from (modrinth, the default, curseforge, or curseforge-zip for a zip the owner uploaded), the project's slug and the exact
 	// pack version (a Modrinth version ID or a CurseForge file ID), so players can
 	// install the same one.
 	Kind           string `json:"kind"`
@@ -485,6 +485,18 @@ var (
 	gameModes         = map[string]bool{"survival": true, "creative": true, "adventure": true}
 	difficulties      = map[string]bool{"peaceful": true, "easy": true, "normal": true, "hard": true}
 )
+
+// A CurseForge pack from a zip the owner uploaded (as <file ID>.zip in packUploadDir),
+// for packs whose authors allow downloads only on CurseForge.
+const (
+	curseforgeZip = "curseforge-zip"
+	packUploadDir = "paczka-curseforge" // the panel's PACK_UPLOAD_DIR
+)
+
+// curseforge says the pack comes from CurseForge, downloaded by the image or uploaded.
+func (req *createRequest) curseforge() bool {
+	return req.ModpackSource == "curseforge" || req.ModpackSource == curseforgeZip
+}
 
 func (req *createRequest) validate() error {
 	switch req.Edition {
@@ -524,12 +536,12 @@ func (req *createRequest) validate() error {
 	switch {
 	case !kinds[req.Kind] || (req.Kind != "vanilla" && req.Edition != "JAVA"):
 		return errors.New("kind must be vanilla, skyblock, skymap, halloween, minigames, oneblock, modpack, fabric, forge or neoforge (Java only)")
-	case req.Kind == "modpack" && req.ModpackSource == "curseforge" && (!validModpack.MatchString(req.Modpack) || !validCurseFile.MatchString(req.ModpackVersion)):
+	case req.Kind == "modpack" && req.curseforge() && (!validModpack.MatchString(req.Modpack) || !validCurseFile.MatchString(req.ModpackVersion)):
 		return errors.New("a CurseForge modpack server needs the pack's slug and a file ID as modpackVersion")
-	case req.Kind == "modpack" && req.ModpackSource != "curseforge" && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
+	case req.Kind == "modpack" && !req.curseforge() && (!validModpack.MatchString(req.Modpack) || !validModrinthID.MatchString(req.ModpackVersion)):
 		return errors.New("a modpack server needs a Modrinth modpack and modpackVersion")
-	case req.ModpackSource != "" && (req.Kind != "modpack" || (req.ModpackSource != "modrinth" && req.ModpackSource != "curseforge")):
-		return errors.New("modpackSource must be modrinth or curseforge, for a modpack server")
+	case req.ModpackSource != "" && (req.Kind != "modpack" || (req.ModpackSource != "modrinth" && !req.curseforge())):
+		return errors.New("modpackSource must be modrinth, curseforge or curseforge-zip, for a modpack server")
 	case len(req.Links) > 0 && req.Edition != "JAVA":
 		return errors.New("links need a Java server")
 	case validLinks(req.Links, req.Hostname) != nil:
@@ -942,9 +954,17 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			labels["mchost.minigames"] = "true"
 		case "modpack":
 			// The image installs the pack's mod loader and server-side mods.
-			if req.ModpackSource == "curseforge" {
+			if req.curseforge() {
 				// The pack's manifest says which Minecraft and loader it runs on.
-				env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+req.Modpack, "CF_FILE_ID="+req.ModpackVersion, "PRE_START_SCRIPT="+loginScriptPath)
+				env = append(env, "TYPE=AUTO_CURSEFORGE", "CF_SLUG="+req.Modpack, "PRE_START_SCRIPT="+loginScriptPath)
+				if req.ModpackSource == curseforgeZip {
+					// A pack its authors let others download only on CurseForge: the owner
+					// uploaded its zip, and the mods the image may not download, into the
+					// server's files (the panel's Server type page).
+					env = append(env, "CF_MODPACK_ZIP=/data/"+packUploadDir+"/"+req.ModpackVersion+".zip", "CF_DOWNLOADS_REPO=/data/"+packUploadDir+"/mody")
+				} else {
+					env = append(env, "CF_FILE_ID="+req.ModpackVersion)
+				}
 				if a.cfKey != "" {
 					env = append(env, "CF_API_KEY="+a.cfKey)
 				}

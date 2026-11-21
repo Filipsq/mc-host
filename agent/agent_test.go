@@ -385,6 +385,27 @@ func TestKindEnv(t *testing.T) {
 		t.Errorf("no key, no CF_API_KEY:\n%s", env)
 	}
 
+	// A pack zip the owner uploaded: the image installs from it, and finds hand-downloaded mods next to it.
+	zip := cf
+	zip.ModpackSource, zip.Modpack, zip.ModpackVersion, zip.Version = "curseforge-zip", "cursed-walking-a-modern-zombie-apocalypse", "8603430", "1.20.1"
+	if err := zip.validate(); err != nil {
+		t.Fatal(err)
+	}
+	env = strings.Join(keyed.containerSpec(zip, imageFor(zip.Edition, zip.Version, zip.Kind))["Env"].([]string), "\n") + "\n"
+	for _, want := range []string{"TYPE=AUTO_CURSEFORGE\n", "CF_SLUG=cursed-walking-a-modern-zombie-apocalypse\n", "CF_MODPACK_ZIP=/data/paczka-curseforge/8603430.zip\n", "CF_DOWNLOADS_REPO=/data/paczka-curseforge/mody\n", "CF_API_KEY=$2a$10$key\n"} {
+		if !strings.Contains(env, want) {
+			t.Errorf("uploaded curseforge pack env missing %q:\n%s", want, env)
+		}
+	}
+	if strings.Contains(env, "CF_FILE_ID") {
+		t.Errorf("uploaded pack installs from its zip, not by file ID:\n%s", env)
+	}
+	bad := zip
+	bad.ModpackVersion = "../../etc/x"
+	if bad.validate() == nil {
+		t.Error("an uploaded pack's file ID must be digits")
+	}
+
 	for kind, typ := range map[string]string{"fabric": "FABRIC", "forge": "FORGE", "neoforge": "NEOFORGE"} {
 		mods := base
 		mods.Kind, mods.Version, mods.Plugins = kind, "1.21.1", []string{"gvQqBUqZ", "uXXizFIs"}

@@ -12,6 +12,7 @@ import { onHost } from "@/lib/servers";
 import { kindLabel, typeOfKind, usesMods } from "@/lib/serverType";
 import { latestVersionNumber } from "@/lib/addonVersions";
 import TypeForm from "./TypeForm";
+import UploadPack from "./UploadPack";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ type?: string; mods?: string }> };
 
@@ -65,6 +66,7 @@ export default async function ServerTypePage({ params, searchParams }: Props) {
       ) : (
         <p className="notice">{t.serverType.errors.notOnHost}</p>
       )}
+      {onHost(server) && curseforgeEnabled() && <UploadPack id={server.id} t={t.serverType} server={t.server} />}
     </div>
   );
 }

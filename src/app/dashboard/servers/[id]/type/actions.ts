@@ -9,7 +9,8 @@ import * as agent from "@/lib/agent";
 import { getServerFor } from "@/lib/access";
 import { applyToHost, onHost } from "@/lib/servers";
 import { planById } from "@/lib/plans";
-import { MOD_LOADERS, planAtLeast, planForRam } from "@/lib/modpacks";
+import { MOD_LOADERS, PACK_HAND_MODS_DIR, PACK_UPLOAD_DIR, parseCurseforgeLink, planAtLeast, planForRam } from "@/lib/modpacks";
+import { curseforgeEnabled, readUploadedManifest, resolveUploadedPack, type UploadedPackError } from "@/lib/curseforge";
 import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
 import { LOADER_VERSIONS, MOD_DEFAULT_VERSION } from "@/lib/settings";
 import { PLUGINS_MAX, canRunNonPremium, isProjectId, supportsPlugins } from "@/lib/plugins";
@@ -21,6 +22,79 @@ import type { Messages } from "@/i18n/messages";
 import type { ServerErrorCode } from "../../actions";
 
 export type TypeError = keyof Messages["serverType"]["errors"] | ServerErrorCode;
+export type UploadPackError = UploadedPackError | "modpackLink" | "packNeedsHandMods" | "modpackNeedsPro" | "modpackNeedsMax" | "modpackNeedsStandard" | "needsPlan" | "notOnHost" | "failed";
+export type UploadPackState = { error?: UploadPackError; handMods?: string[] };
+
+// Where the browser puts the zip before it's checked (src/app/dashboard/servers/[id]/type/UploadPack.tsx).
+const uploadPattern = new RegExp(`^${PACK_UPLOAD_DIR}/upload-[a-z0-9]{8,32}\\.zip$`);
+
+/**
+ * Switches the server to a CurseForge pack from a zip the owner downloaded on
+ * CurseForge and uploaded, for packs whose authors allow downloads only there
+ * (the image still downloads every mod it may from CurseForge itself). The
+ * link says which pack it is; the zip's size must match one of its files.
+ */
+export async function uploadPackAction(id: string, path: string, link: string): Promise<UploadPackState> {
+  const session = await getSession();
+  if (!session?.user?.id) redirect("/login");
+  const server = await getServerFor(id, session.user.id, "owner");
+  if (!server || server.edition !== "JAVA") redirect("/dashboard");
+  if (!onHost(server)) return { error: "notOnHost" };
+  if (!uploadPattern.test(path) || !curseforgeEnabled()) return { error: "failed" };
+  const ref = parseCurseforgeLink(link);
+  if (!ref) return { error: "modpackLink" };
+  if (!planAtLeast(server.plan, "STARTER")) return { error: "needsPlan" };
+
+  const drop = () => agent.changeFiles(server.id, { remove: path }).catch(() => {});
+  try {
+    const { entries } = await agent.listFiles(server.id, PACK_UPLOAD_DIR);
+    const size = entries.find((e) => `${PACK_UPLOAD_DIR}/${e.name}` === path)?.size;
+    if (!size) return { error: "failed" };
+    const manifest = await readUploadedManifest(await agent.openFile(server.id, path));
+    if (!manifest) return (await drop(), { error: "packZipNoManifest" });
+    const pack = await resolveUploadedPack(ref, size, manifest);
+    if (typeof pack === "string") {
+      if (pack !== "curseforgeUnavailable") await drop();
+      return { error: pack };
+    }
+    const need = planForRam(pack.ramGb);
+    if (!planAtLeast(server.plan, need)) {
+      return { error: need === "MAX" ? "modpackNeedsMax" : need === "PRO" ? "modpackNeedsPro" : need === "STANDARD" ? "modpackNeedsStandard" : "needsPlan" };
+    }
+    // Mods whose authors forbid downloads outside CurseForge: the owner uploads those jars to the "mody" folder.
+    if (pack.handMods.length) {
+      await agent.changeFiles(server.id, { mkdir: PACK_HAND_MODS_DIR }).catch(() => {});
+      const have = new Set((await agent.listFiles(server.id, PACK_HAND_MODS_DIR)).entries.map((e) => e.name));
+      const missing = pack.handMods.filter((m) => !have.has(m.fileName));
+      if (missing.length) return { error: "packNeedsHandMods", handMods: missing.slice(0, 40).map((m) => `${m.name} (${m.fileName})`) };
+    }
+    // Kept under the pack's file ID: the agent hands it to the image on every start.
+    const kept = `${PACK_UPLOAD_DIR}/${pack.fileId}.zip`;
+    if (kept !== path) {
+      if (entries.some((e) => `${PACK_UPLOAD_DIR}/${e.name}` === kept)) await agent.changeFiles(server.id, { remove: kept });
+      await agent.changeFiles(server.id, { rename: path, to: kept });
+    }
+    await agent.changeFiles(server.id, { mkdir: PACK_HAND_MODS_DIR }).catch(() => {});
+    const choice: PackChoice = {
+      source: "curseforge-zip",
+      slug: pack.slug,
+      title: pack.title,
+      versionId: String(pack.fileId),
+      versionNumber: pack.fileName,
+      gameVersion: pack.gameVersion,
+      loader: pack.loader,
+      ramGb: pack.ramGb,
+    };
+    const dropped = await switchType(server, "modpack", pack.gameVersion, choice, []);
+    if (!dropped) return { error: "failed" };
+  } catch (err) {
+    console.error("uploaded pack failed", server.id, err);
+    return { error: "failed" };
+  }
+  revalidatePath(`/dashboard/servers/${id}`);
+  redirect(`/dashboard/servers/${id}?type=changed`);
+}
+
 export type TypeState = { error?: TypeError; values?: Record<string, string> };
 
 const typeSchema = z.object({
@@ -75,7 +149,22 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
       : type !== "mods" || version === server.version);
   if (same) return { error: "same", values };
 
-  let dropped: string[] = [];
+  // Mods picked before the switch; their versions are checked when the server starts, like any added mod.
+  const picked = type === "mods" ? [...new Set((parsed.data.mods ?? "").split(","))].filter(isProjectId).slice(0, PLUGINS_MAX) : [];
+  const dropped = await switchType(server, kind, version, pack, picked);
+  if (!dropped) return { error: "failed", values };
+  revalidatePath(`/dashboard/servers/${id}`);
+  redirect(`/dashboard/servers/${id}?type=changed${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
+}
+
+type OwnedServer = NonNullable<Awaited<ReturnType<typeof getServerFor>>>;
+
+/**
+ * Puts the server on its new type: a backup first on paid plans, the old mods
+ * moved aside, a fresh world. Returns the plugins dropped for the new version,
+ * or null if it failed.
+ */
+async function switchType(server: OwnedServer, kind: string, version: string, pack: PackChoice | null, picked: string[]): Promise<string[] | null> {
   try {
     if (planById(server.plan).backupsKept > 0) {
       await agent.createBackup(server.id).catch((err) => console.error("pre-type-change backup failed", server.id, err));
@@ -91,9 +180,6 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
     const keepPlugins = supportsPlugins(server) && supportsPlugins({ edition: "JAVA", kind });
     // Plugins kept on another version: the ones with nothing for it leave the list (src/lib/addonVersions.ts).
     const fitted = keepPlugins && version !== server.version ? await fitAddonsToVersion(server, version, kind) : null;
-    dropped = fitted?.dropped ?? [];
-    // Mods picked before the switch; their versions are checked when the server starts, like any added mod.
-    const picked = type === "mods" ? [...new Set((parsed.data.mods ?? "").split(","))].filter(isProjectId).slice(0, PLUGINS_MAX) : [];
     const updated = await db.server.update({
       where: { id: server.id },
       data: {
@@ -111,10 +197,9 @@ export async function changeTypeAction(id: string, _: TypeState, form: FormData)
       },
     });
     await applyToHost(updated);
+    return fitted?.dropped ?? [];
   } catch (err) {
     console.error("change type failed", server.id, err);
-    return { error: "failed", values };
+    return null;
   }
-  revalidatePath(`/dashboard/servers/${id}`);
-  redirect(`/dashboard/servers/${id}?type=changed${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
 }

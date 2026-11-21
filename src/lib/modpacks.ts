@@ -65,10 +65,18 @@ export function parseCurseforgeLink(input: string): { slug: string; fileId?: num
   return m ? { slug: m[1].toLowerCase(), fileId: m[2] ? Number(m[2]) : undefined } : null;
 }
 
+/**
+ * Where a CurseForge pack zip uploaded by the owner lives in the server's files
+ * (as <file ID>.zip), for packs whose authors allow downloads only on CurseForge;
+ * mods the image can't download go in its "mody" folder.
+ */
+export const PACK_UPLOAD_DIR = "paczka-curseforge";
+export const PACK_HAND_MODS_DIR = `${PACK_UPLOAD_DIR}/mody`;
+
 export const LOADER_NAMES: Record<string, string> = { fabric: "Fabric", forge: "Forge", neoforge: "NeoForge", quilt: "Quilt" };
 
 /** Where players download the exact pack version the server runs. */
 export const modpackPage = (slug: string, versionId?: string | null, source?: string | null) =>
-  source === "curseforge"
+  source === "curseforge" || source === "curseforge-zip"
     ? `https://www.curseforge.com/minecraft/modpacks/${slug}${versionId ? `/files/${versionId}` : ""}`
     : `https://modrinth.com/modpack/${slug}${versionId ? `/version/${versionId}` : ""}`;
