@@ -3,9 +3,12 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import type { Payment } from "@prisma/client";
 import type { Currency } from "@/i18n/config";
 
-// BLIK, bank transfers and paysafecard through CashBill (cashbill.pl, "Web
-// Service" REST): Stripe doesn't take paysafecard, and CashBill charges far
-// less for BLIK and transfers on small amounts. Cards stay with Stripe. startCheckout asks CashBill for a payment page and sends the
+// CashBill (cashbill.pl, "Web Service" REST) is the main way to pay: BLIK,
+// Visa/Mastercard and bank transfers, on CashBill's own payment page (the
+// buyer picks the method there). It costs far less than Stripe on small
+// amounts. Stripe is left only for payments in other currencies and for
+// cards saved for automatic renewal before the switch (renewal.ts): CashBill
+// can't charge a saved card. startCheckout asks CashBill for a payment page and sends the
 // buyer there; when the payment's status changes CashBill calls
 // /api/cashbill/notify, which reads the payment back from CashBill and applies
 // it as Stripe's webhook does.
@@ -24,10 +27,19 @@ function config() {
   return { shopId, secret, api: process.env.CASHBILL_TEST === "1" ? TEST_API : API };
 }
 
-/** Whether CashBill (BLIK, transfers, paysafecard) can be offered: it is set up, and the price is in złoty. */
-export function paysafecardEnabled(currency: Currency | string) {
-  return !!process.env.CASHBILL_SHOP_ID && !!process.env.CASHBILL_SECRET && currency === "PLN";
+/**
+ * Whether a payment goes through CashBill: it is set up, and the price is in
+ * złoty. PAYMENTS_PROVIDER=stripe in deploy/.env sends everything back to
+ * Stripe (only while Stripe is still there).
+ */
+export function cashbillEnabled(currency: Currency | string) {
+  return (
+    !!process.env.CASHBILL_SHOP_ID && !!process.env.CASHBILL_SECRET && currency === "PLN" && process.env.PAYMENTS_PROVIDER !== "stripe"
+  );
 }
+
+/** The older name of cashbillEnabled. */
+export const paysafecardEnabled = cashbillEnabled;
 
 const sha1 = (s: string) => createHash("sha1").update(s).digest("hex");
 const md5 = (s: string) => createHash("md5").update(s).digest("hex");
@@ -49,7 +61,7 @@ export async function createCashbillPayment(
     description: opts.title.slice(0, 100),
     negativeReturnUrl: "",
     additionalData: payment.id,
-    // Empty: the buyer picks BLIK, a bank transfer or paysafecard on CashBill's page.
+    // Empty: the buyer picks BLIK, a card or a bank transfer on CashBill's page.
     paymentChannel: process.env.CASHBILL_CHANNEL ?? "",
     languageCode: "PL",
     referer: "",

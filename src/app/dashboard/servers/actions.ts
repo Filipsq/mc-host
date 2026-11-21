@@ -146,7 +146,6 @@ async function checkoutUrl(
   addons: AddonId[] = [],
   creatorId?: string,
   promoCode?: string,
-  paysafecard = false,
   adminTest = false,
   renewCode?: string,
 ) {
@@ -167,7 +166,6 @@ async function checkoutUrl(
     addons,
     creatorId,
     promoCode,
-    paysafecard,
     adminTest,
     renewCode,
   });
@@ -364,7 +362,7 @@ export async function createServerAction(_: CreateServerState, form: FormData): 
   if (paying) {
     let url: string;
     try {
-      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode, form.get("method") === "paysafecard");
+      url = await checkoutUrl(user, server, plan, days, false, addons, creator?.creatorId, promoCode);
     } catch (err) {
       console.error("checkout failed", server.id, err);
       await db.server.delete({ where: { id: server.id } });
@@ -469,7 +467,6 @@ export async function checkoutAction(id: string, _: CheckoutState, form: FormDat
       server.status === "AWAITING_PAYMENT" ? (server.creatorId ?? undefined) : undefined,
       // Likewise the Halloween code, while the event lasts (startCheckout checks).
       server.status === "AWAITING_PAYMENT" ? (server.promoCode ?? undefined) : undefined,
-      form.get("method") === "paysafecard",
       adminTest,
       renewCode || undefined,
     );
@@ -588,7 +585,6 @@ export async function buyXboxAction(id: string, _: CheckoutState, form: FormData
       startConsent: true,
       xbox: { days: XBOX_DAYS, amount: XBOX_PRICE[currency] },
       adminTest,
-      paysafecard: form.get("method") === "paysafecard",
     });
   } catch (err) {
     console.error("console joining checkout failed", server.id, err);
@@ -621,7 +617,6 @@ export async function buyDomainAction(id: string, _: CheckoutState, form: FormDa
       startConsent: true,
       domain: { days: DOMAIN_DAYS, amount: ADDON_SPECS.domain.price[currency] },
       adminTest,
-      paysafecard: form.get("method") === "paysafecard",
     });
   } catch (err) {
     console.error("own domain checkout failed", server.id, err);

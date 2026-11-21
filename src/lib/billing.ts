@@ -3,7 +3,7 @@ import { handOverLate } from "./supportBot";
 import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
-import { createCashbillPayment, paysafecardEnabled } from "./cashbill";
+import { cashbillEnabled, createCashbillPayment } from "./cashbill";
 import * as agent from "./agent";
 import { agentSpec, applyToHost, changePort, destroyServer, getLiveState, moveIfFull, syncHostAliases, syncPeerRoutes } from "./servers";
 import { planById } from "./plans";
@@ -52,7 +52,7 @@ async function renewCodeFits(serverId: string, code: string) {
   return !!s && isRenewCodeFor(s, code);
 }
 
-/** Creates a pending payment and a Stripe Checkout page for it; returns the page URL. */
+/** Creates a pending payment and its payment page (CashBill, or Stripe Checkout outside PLN); returns the page URL. */
 export async function startCheckout(opts: {
   user: Pick<User, "id" | "email">;
   server: Pick<Server, "id" | "name">;
@@ -62,7 +62,7 @@ export async function startCheckout(opts: {
   locale: Locale;
   productName: string;
   startConsent: boolean; // asked for the server to start before the withdrawal period ends
-  autoRenew?: boolean; // save the card and renew automatically (renewal.ts)
+  autoRenew?: boolean; // save the card and renew automatically (renewal.ts); Stripe only, so ignored where CashBill takes the payment
   upgrade?: { from: Plan; amount: number }; // the price difference for the time left (upgrade.ts); days is 0
   addons?: readonly AddonId[]; // every add-on the server has once paid (addons.ts)
   addonsOnly?: { amount: number }; // add-ons bought for the time left (addonCost); days is 0
@@ -71,15 +71,14 @@ export async function startCheckout(opts: {
   creatorId?: string; // a creator code was entered (creator.ts): a new server's first payment costs less
   promoCode?: string; // the Halloween code (halloween.ts): the same, without a creator
   renewCode?: string; // the server's renewal code (renewCode.ts): a fifth off extending it, at most a month's worth
-  paysafecard?: boolean; // paid with paysafecard through CashBill (cashbill.ts) instead of Stripe
   adminTest?: boolean; // an admin's test server (Server.adminTest): bought for 0, applied at once, no Stripe
 }) {
   const { user, server, plan, days, currency, locale, startConsent, upgrade, addonsOnly, xbox, domain } = opts;
   const extra = xbox ?? domain; // days of one feature for a free server
   const addons = addonList(opts.addons);
   const adminTest = !!opts.adminTest;
-  const paysafecard = !!opts.paysafecard && !adminTest;
-  if (paysafecard && !paysafecardEnabled(currency)) throw new Error("paysafecard is not set up");
+  // Every payment in złoty goes through CashBill (cashbill.ts); Payment.paysafecard marks it.
+  const paysafecard = !adminTest && cashbillEnabled(currency);
   // An admin's test purchase saves no card, so it can't renew by itself.
   const autoRenew = !!opts.autoRenew && !upgrade && !addonsOnly && !extra && !paysafecard && !adminTest;
   // Test keys take no money, so only admins may check out with them (to try the site).
@@ -135,7 +134,6 @@ export async function startCheckout(opts: {
     await fulfillPayment(payment.id);
     return `${back}?payment=success`;
   }
-  const cardsOnly = paysafecardEnabled(currency) && !upgrade && !addonsOnly;
   if (paysafecard) {
     const cb = await createCashbillPayment(payment, { title: opts.productName, returnUrl: `${back}?payment=success`, email: user.email });
     await db.payment.update({ where: { id: payment.id }, data: { cashbillId: cb.id } });
@@ -143,11 +141,8 @@ export async function startCheckout(opts: {
   }
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
-    // Card, BLIK and Przelewy24 are switched on in the Stripe Dashboard;
-    // Stripe shows the ones that work for this currency (BLIK needs PLN).
-    // Where CashBill is offered next to it, Stripe takes cards only: BLIK and
-    // transfers cost much less there. Upgrades and add-ons only go through Stripe.
-    ...(cardsOnly && { payment_method_types: ["card" as const] }),
+    // Only payments CashBill can't take get here (other currencies, or
+    // PAYMENTS_PROVIDER=stripe); the Stripe Dashboard decides the methods.
     line_items: [
       {
         quantity: 1,

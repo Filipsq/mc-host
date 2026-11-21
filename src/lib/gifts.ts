@@ -5,6 +5,7 @@ import { messages, format } from "@/i18n/messages";
 import { defaultLocale, isLocale, type Currency, type Locale } from "@/i18n/config";
 import { db } from "./db";
 import { stripe, stripeTestMode } from "./stripe";
+import { cashbillEnabled, createCashbillPayment } from "./cashbill";
 import { BRAND_NAME } from "./brand";
 import { buttonMail, sendMail } from "./mail";
 import { sendPush } from "./push";
@@ -55,7 +56,7 @@ export async function usableGift(typed: string, now = new Date()): Promise<{ gif
   return { gift };
 }
 
-/** Creates a gift code waiting for payment and a Stripe Checkout page for it; returns the page URL. */
+/** Creates a gift code waiting for payment and its payment page (CashBill, or Stripe outside PLN); returns the page URL. */
 export async function startGiftCheckout(opts: {
   user: Pick<User, "id" | "email">;
   plan: Exclude<Plan, "FREE">;
@@ -65,12 +66,13 @@ export async function startGiftCheckout(opts: {
   productName: string;
 }) {
   const { user, plan, days, currency, locale } = opts;
-  if (stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
+  const viaCashbill = cashbillEnabled(currency);
+  if (!viaCashbill && stripeTestMode() && !(await db.user.count({ where: { id: user.id, admin: true } }))) {
     throw new Error("Stripe runs on test keys: only admins can pay");
   }
   const amount = Math.round(priceFor(plan, days, currency) * 100);
   const payment = await db.payment.create({
-    data: { userId: user.id, plan, days, amount, currency, startConsent: true },
+    data: { userId: user.id, plan, days, amount, currency, startConsent: true, paysafecard: viaCashbill },
   });
   // A clash of two random codes is very unlikely; try again if it happens.
   let gift: GiftCode | null = null;
@@ -82,6 +84,11 @@ export async function startGiftCheckout(opts: {
   if (!gift) throw new Error("no free gift code");
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  if (viaCashbill) {
+    const cb = await createCashbillPayment(payment, { title: opts.productName, returnUrl: `${appUrl}/prezent?kupiono=${gift.id}`, email: user.email });
+    await db.payment.update({ where: { id: payment.id }, data: { cashbillId: cb.id } });
+    return cb.url;
+  }
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
     line_items: [
