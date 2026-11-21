@@ -343,6 +343,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("PUT /servers/{id}", a.recreate)
 	mux.HandleFunc("GET /servers/{id}", a.status)
 	mux.HandleFunc("POST /servers/{id}/start", a.start)
+	mux.HandleFunc("PUT /servers/{id}/next", a.putNext)
 	mux.HandleFunc("POST /servers/{id}/stop", a.stop)
 	mux.HandleFunc("DELETE /servers/{id}", a.remove)
 	mux.HandleFunc("DELETE /servers/{id}/container", a.removeContainer)
@@ -730,6 +731,7 @@ func (a *agent) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	a.dropNext(req.ID)
 	if err := a.setDiskLimits(map[string]int64{req.ID: req.DiskMb}, false); err != nil {
 		log.Printf("disk limit %s: %v", req.ID, err)
 	}
@@ -766,23 +768,32 @@ func (a *agent) recreate(w http.ResponseWriter, r *http.Request) {
 		}
 		start = err == nil && (info.State.Status == "running" || info.State.Status == "restarting")
 	}
-	if err := a.docker.StopContainer(r.Context(), name, 60); err != nil && !errors.Is(err, errNotFound) {
-		writeError(w, http.StatusInternalServerError, err.Error())
+	if a.handleDockerErr(w, a.rebuild(r.Context(), req, start)) {
 		return
 	}
-	if err := a.docker.RemoveContainer(r.Context(), name); err != nil && !errors.Is(err, errNotFound) {
-		writeError(w, http.StatusInternalServerError, err.Error())
-		return
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// rebuild replaces the server's container with one made from req, keeping
+// its world, and starts it if start is set. The caller holds lockServer.
+func (a *agent) rebuild(ctx context.Context, req createRequest, start bool) error {
+	name := containerName(req.ID)
+	a.dropNext(req.ID) // this spec is the newest
+	if err := a.docker.StopContainer(ctx, name, 60); err != nil && !errors.Is(err, errNotFound) {
+		return err
+	}
+	if err := a.docker.RemoveContainer(ctx, name); err != nil && !errors.Is(err, errNotFound) {
+		return err
 	}
 	if err := a.setDiskLimits(map[string]int64{req.ID: req.DiskMb}, false); err != nil {
 		log.Printf("disk limit %s: %v", req.ID, err)
 	}
-	if a.handleDockerErr(w, a.run(r.Context(), req, start)) {
-		return
+	if err := a.run(ctx, req, start); err != nil {
+		return err
 	}
 	a.pruneBackups(req.ID, req.Backups) // a smaller plan keeps fewer
 	log.Printf("recreated %s (%d MB, autostop %v, %d backups)", name, req.MemoryMb, req.Autostop, req.Backups)
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	return nil
 }
 
 // run creates the server's container and, if start is set, starts it.
@@ -1198,14 +1209,14 @@ func (a *agent) start(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if a.handleDockerErr(w, a.startServer(r.Context(), id)) {
+	if a.handleDockerErr(w, a.startWithNext(r.Context(), id)) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 func (a *agent) wake(ctx context.Context, id string) error {
-	return a.startServer(ctx, id)
+	return a.startWithNext(ctx, id)
 }
 
 func (a *agent) stop(w http.ResponseWriter, r *http.Request) {
@@ -1248,6 +1259,7 @@ func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.clearMarkers(id)
+	a.dropNext(id)
 	a.diskUsage.Delete(id)
 	if err := a.setDiskLimits(map[string]int64{id: 0}, false); err != nil {
 		log.Printf("disk limit %s: %v", id, err)
