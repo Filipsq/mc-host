@@ -4,7 +4,7 @@ import { resolveModpack, type ResolveError, type ResolvedPack } from "./modrinth
 import { curseforgeEnabled, resolveCurseforgePack, type CurseforgeError } from "./curseforge";
 
 /** A mod pack pinned to one version, from either site; ramGb is what it needs, when we know. */
-export type PackChoice = ResolvedPack & { source: "modrinth" | "curseforge"; ramGb?: number };
+export type PackChoice = ResolvedPack & { source: "modrinth" | "curseforge" | "curseforge-zip"; ramGb?: number };
 export type PackChoiceError = ResolveError | CurseforgeError | "modpackLink";
 
 export type PackForm = { pack?: string; packLink?: string; cfPack?: string };
@@ -59,7 +59,7 @@ export async function resolvePackChoice(f: PackForm): Promise<PackChoice | PackC
 /** The Server fields for a pack (all cleared without one). */
 export const packFields = (pack: PackChoice | null) => ({
   modpack: pack?.slug ?? null,
-  modpackSource: pack?.source === "curseforge" ? "curseforge" : null,
+  modpackSource: pack?.source === "modrinth" ? null : (pack?.source ?? null),
   modpackTitle: pack?.title ?? null,
   modpackVersionId: pack?.versionId ?? null,
   modpackVersion: pack?.versionNumber ?? null,
