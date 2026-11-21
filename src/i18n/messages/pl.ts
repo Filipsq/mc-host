@@ -1284,6 +1284,14 @@ const pl = {
     },
   },
   plugins: {
+    jarTitle: "Wgraj własny plik .jar",
+    jarIntro: "Plugin z innej strony albo płatny? Wybierz plik .jar z komputera, a trafi prosto do folderu plugins.",
+    jarPick: "Pliki .jar",
+    jarSubmit: "Wgraj",
+    jarUploading: "Wgrywanie {name}: {percent}%",
+    jarDone: "Wgrane: {n}. Uruchom serwer ponownie, żeby je wczytał.",
+    jarOnlyJar: "Wybierz pliki .jar.",
+    jarFailed: "Nie udało się wgrać {name}. Spróbuj ponownie albo wgraj go w Plikach.",
     noBuild: "brak wersji na {version}, serwer go pominie",
     droppedOnVersion: "Te pluginy i mody nie mają wersji na nową wersję Minecrafta, więc usunęliśmy je z serwera (ich ustawienia zostały w plikach, wrócą, jeśli dodasz je ponownie): {list}",
     title: "Pluginy",
@@ -1424,6 +1432,8 @@ const pl = {
     cartClear: "Wyczyść",
   },
   mods: {
+    jarTitle: "Wgraj własny mod (.jar)",
+    jarIntro: "Mod spoza listy, np. z CurseForge, którego nie da się dodać automatycznie? Pobierz plik .jar na wersję {loader} {version} i wgraj go tutaj, trafi prosto do folderu mods. Mody „też u graczy” muszą mieć też gracze.",
     title: "Mody",
     manage: "Zarządzaj modami",
     cardCount: "Dodane mody: {n}",
@@ -1438,7 +1448,7 @@ const pl = {
     noPlugins:
       "To serwer z modami na {loader}, więc pluginy (np. EssentialsX, LuckPerms, pliki ze SpigotMC, Hangar czy Bukkit) tu nie działają. Działają tylko na zwykłym serwerze (Paper). Tutaj dodawaj mody, wiele pluginów ma swój odpowiednik wśród modów.",
     noPluginsSwitch: "Wolisz pluginy? Zmień typ serwera na zwykły (serwer zacznie od nowego świata, stary zostanie w Światach).",
-    cfBlockedNote: "Autor pozwala pobierać tylko z CurseForge: wgraj plik .jar sam w Plikach (folder mods).",
+    cfBlockedNote: "Autor pozwala pobierać tylko z CurseForge: pobierz plik .jar sam i wgraj go niżej w „Wgraj własny mod (.jar)”.",
     cfAddLink: "Albo wklej link z CurseForge",
     cfLinkPlaceholder: "np. https://www.curseforge.com/minecraft/mc-mods/jei",
     forPlayers: "też u graczy",

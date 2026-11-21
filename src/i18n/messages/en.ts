@@ -1285,6 +1285,14 @@ const en: Messages = {
     },
   },
   plugins: {
+    jarTitle: "Upload your own .jar",
+    jarIntro: "A plugin from another site, or a paid one? Pick the .jar file on your computer and it goes straight into the plugins folder.",
+    jarPick: ".jar files",
+    jarSubmit: "Upload",
+    jarUploading: "Uploading {name}: {percent}%",
+    jarDone: "Uploaded: {n}. Restart the server to load them.",
+    jarOnlyJar: "Pick .jar files.",
+    jarFailed: "Couldn't upload {name}. Try again, or upload it under Files.",
     noBuild: "no version for {version}, the server skips it",
     droppedOnVersion: "These plugins and mods have no version for the new Minecraft version, so we took them off the server (their settings stay in the files and come back if you add them again): {list}",
     title: "Plugins",
@@ -1425,6 +1433,8 @@ const en: Messages = {
     cartClear: "Clear",
   },
   mods: {
+    jarTitle: "Upload your own mod (.jar)",
+    jarIntro: "A mod that isn't on the list, e.g. from CurseForge, that can't be added automatically? Download the .jar for {loader} {version} and upload it here; it goes straight into the mods folder. Mods players also need, players must install too.",
     title: "Mods",
     manage: "Manage mods",
     cardCount: "Mods added: {n}",
@@ -1439,7 +1449,7 @@ const en: Messages = {
     noPlugins:
       "This is a mod server on {loader}, so plugins (e.g. EssentialsX, LuckPerms, files from SpigotMC, Hangar or Bukkit) don't work here. They only work on a plain (Paper) server. Add mods here: many plugins have a mod that does the same.",
     noPluginsSwitch: "Prefer plugins? Change the server type to plain (the server starts a new world, the old one stays in Worlds).",
-    cfBlockedNote: "Its author allows CurseForge downloads only: upload the .jar yourself in Files (mods folder).",
+    cfBlockedNote: "Its author allows CurseForge downloads only: download the .jar yourself and upload it below under “Upload your own mod (.jar)”.",
     cfAddLink: "Or paste a CurseForge link",
     cfLinkPlaceholder: "e.g. https://www.curseforge.com/minecraft/mc-mods/jei",
     forPlayers: "players too",
