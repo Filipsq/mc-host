@@ -20,6 +20,8 @@ export default function UploadPack({ id, t, server }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [link, setLink] = useState("");
   const [progress, setProgress] = useState<string | null>(null);
+  // How far the upload got (0-100), or null while the server works with no way to tell how far.
+  const [percent, setPercent] = useState<number | null>(null);
   const [state, setState] = useState<UploadPackState & { tooBig?: boolean }>({});
   // The zip already uploaded, kept for the next try once the hand-downloaded mods are in.
   const [uploaded, setUploaded] = useState<string | null>(null);
@@ -30,10 +32,14 @@ export default function UploadPack({ id, t, server }: Props) {
       const xhr = new XMLHttpRequest();
       xhr.open("PUT", `/api/servers/${id}/files?path=${encodeURIComponent(path)}`);
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) setProgress(format(u.uploading, { percent: Math.floor((e.loaded / e.total) * 100) }));
+        if (!e.lengthComputable) return;
+        const done = Math.floor((e.loaded / e.total) * 100);
+        setPercent(done);
+        setProgress(format(u.uploading, { percent: done }));
       };
       xhr.onload = () => resolve(xhr.status < 300);
       xhr.onerror = () => resolve(false);
+      setPercent(0);
       setProgress(format(u.uploading, { percent: 0 }));
       xhr.send(f);
     });
@@ -56,6 +62,7 @@ export default function UploadPack({ id, t, server }: Props) {
   }
 
   async function check(path: string) {
+    setPercent(null);
     setProgress(u.checking);
     // Success moves on to the server's page; only an error comes back.
     const result = await uploadPackAction(id, path, link);
@@ -111,9 +118,12 @@ export default function UploadPack({ id, t, server }: Props) {
       </label>
       <p className="muted small">{u.players}</p>
       {progress && (
-        <p className="muted small" role="status">
-          {progress}
-        </p>
+        <div className="stack-tight" role="status">
+          {/* No value: the bar keeps moving, so a long check doesn't look stuck. */}
+          {percent === null ? <progress className="upload-progress" /> : <progress className="upload-progress" value={percent} max={100} />}
+          <p className="muted small">{progress}</p>
+          {percent === null && <p className="muted small">{u.checkingSlow}</p>}
+        </div>
       )}
       {errorText && <p className="error">{errorText}</p>}
       {state.handMods && state.handMods.length > 0 && (
@@ -126,7 +136,7 @@ export default function UploadPack({ id, t, server }: Props) {
               </li>
             ))}
           </ul>
-          <span className="small">{u.handPickHint}</span>
+          <span className="small">{state.handMods.every((m) => /\.zip$/i.test(m.fileName)) ? u.handPickHintPacks : u.handPickHint}</span>
           <label className="button small">
             {u.handPick}
             <input
