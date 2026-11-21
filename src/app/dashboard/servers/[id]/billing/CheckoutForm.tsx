@@ -8,6 +8,7 @@ import type { ComponentProps } from "react";
 import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
+import PaysafecardButton from "@/components/PaysafecardButton";
 import type { Messages } from "@/i18n/messages";
 
 type Props = {
@@ -20,14 +21,12 @@ type Props = {
   errors: Messages["server"]["errors"];
   legal: Messages["legal"];
   money: { locale: string; currency: string };
-  autoRenew: boolean; // ticked to start with
   addons: ComponentProps<typeof PlanPicker>["addons"];
-  paysafecard: boolean; // offered too (cashbill.ts)
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
   renewCode?: string | null; // a paid server: the renewal code field (renewCode.ts), filled in with this
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, paysafecard, adminTest, renewCode }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, addons, adminTest, renewCode }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
@@ -40,13 +39,6 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
         addons={addons}
       />
       {note && <p className="muted small">{note}</p>}
-      <label className="check">
-        <input name="autoRenew" type="checkbox" defaultChecked={autoRenew} />
-        <span className="stack-tight">
-          <span>{t.autoRenew}</span>
-          <span className="muted small">{t.autoRenewHint}</span>
-        </span>
-      </label>
       {renewCode !== null && renewCode !== undefined && (
         <label className="stack-tight">
           <span>{t.renewCode}</span>
@@ -54,21 +46,15 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, la
           <span className="muted small">{t.renewCodeHint}</span>
         </label>
       )}
-      <p className="muted small">{paysafecard ? t.methodsCashbill : t.methods}</p>
-      {paysafecard && <p className="muted small">{t.paysafecardHint}</p>}
+      <p className="muted small">{t.methods}</p>
       <PaymentConsent legal={legal} />
       {state.error && <p className="error">{errors[state.error]}</p>}
       <div className="pay-buttons">
         <button type="submit" className="pay-button" disabled={pending}>
           <span className="pay-label">{pending ? t.redirecting : t.checkout}</span>
-          <PayBadges method={paysafecard ? "cards" : "stripe"} />
+          <PayBadges />
         </button>
-        {paysafecard && (
-          <button type="submit" className="secondary pay-button" name="method" value="paysafecard" disabled={pending}>
-            <span className="pay-label">{t.paysafecard}</span>
-            <PayBadges method="cashbill" />
-          </button>
-        )}
+        <PaysafecardButton t={t} what={t.paysafecardFor.renew} disabled={pending} />
       </div>
       <AdminTestBuy show={adminTest} pending={pending} t={t} />
     </form>

@@ -23,6 +23,8 @@ type Props = {
   hadUnread: boolean;
   /** `initial` was loaded ahead without marking the chat read: its first poll does that. */
   peeked?: boolean;
+  /** A message written ahead for the user, put in the box to send or change (an empty box only). */
+  draft?: string;
 };
 
 const POLL_MS = 4000;
@@ -59,12 +61,12 @@ function merge(list: ChatMessage[], more: ChatMessage[]) {
 }
 
 /** The chat window: messages that update every few seconds while the page is visible, and a box to write in. */
-export default function SupportChat({ t, initial, chat, otherName, maxLength, rate, hadUnread, peeked = false }: Props) {
+export default function SupportChat({ t, initial, chat, otherName, maxLength, rate, hadUnread, peeked = false, draft }: Props) {
   const router = useRouter();
   const [messages, setMessages] = useState(initial.messages);
   const [seenAt, setSeenAt] = useState(initial.seenAt);
   const [bot, setBot] = useState(initial.bot);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(draft ?? "");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picture, setPicture] = useState<{ file: File; url: string } | null>(null);
@@ -114,6 +116,13 @@ export default function SupportChat({ t, initial, chat, otherName, maxLength, ra
   useEffect(() => {
     void first.current().then(() => setSynced(true));
   }, []);
+
+  // A message written ahead arrives (or changes) while the chat is open: put it in an empty box.
+  useEffect(() => {
+    if (!draft) return;
+    setText((now) => (now.trim() ? now : draft));
+    input.current?.focus();
+  }, [draft]);
 
   useEffect(() => {
     const tick = () => {

@@ -9,7 +9,6 @@ import { getXbox, type XboxStatus } from "@/lib/agent";
 import { XBOX_ADDON_PRICE, XBOX_DAYS, XBOX_PRICE, takesBedrockPlayers, xboxAllowed, xboxPaidFor } from "@/lib/xbox";
 import { canBuyAddons } from "@/lib/addons";
 import { formatPrice } from "@/lib/plans";
-import { paysafecardEnabled } from "@/lib/cashbill";
 import { getPreferences } from "@/i18n/server";
 import BuyXbox from "./BuyXbox";
 import AutoRefresh from "@/components/AutoRefresh";
@@ -49,7 +48,6 @@ export default async function XboxPage({ params }: { params: Promise<{ id: strin
             serverId={server.id}
             price={formatPrice(XBOX_PRICE[currency], currency, locale)}
             days={XBOX_DAYS}
-            paysafecard={paysafecardEnabled(currency)}
             again={paidFor}
             t={t}
             billing={all.billing}

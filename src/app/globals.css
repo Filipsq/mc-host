@@ -1856,6 +1856,10 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 /* Without room next to the words, the marks go under them, on the right. */
 .pay-badges { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; margin-left: auto; }
 .pay-badges svg { display: block; border-radius: 3px; box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15); }
+/* paysafecard doesn't work yet: its button says so under its name and opens the admin chat. */
+.psc-label { display: inline-flex; flex-direction: column; gap: 2px; flex: 1 1 0; min-width: 0; }
+.pay-buttons .psc-button, .new-submit .psc-button { padding-top: 9px; padding-bottom: 9px; flex-wrap: nowrap; }
+.psc-note { font-size: 0.78rem; line-height: 1.3; font-weight: 400; color: var(--muted); white-space: normal; }
 .new-names { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
 
 /* Tiles: the radio is hidden, the whole tile is the choice */
