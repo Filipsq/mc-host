@@ -11,6 +11,10 @@ scoreboard objectives setdisplay sidebar mg_wins
 team add mg_seek
 team add mg_hide
 scoreboard players set #20 mg 20
+scoreboard players set #1200 mg 1200
+# Round length in minutes, set by the owner from the console, e.g.
+# scoreboard players set chowany czas 6  (also spleef, skywars). Kept in the world.
+scoreboard objectives add czas dummy
 # A round cut short by a restart is over: its players go back to the lobby (tick).
 scoreboard players set #sp mg 0
 scoreboard players set #tr mg 0
