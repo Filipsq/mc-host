@@ -6,6 +6,7 @@ execute if score #hs_n mg matches ..1 run return run tag @a remove mg_hs
 tag @a[tag=mg_hs] add mg_game
 scoreboard players set #hs mg 1
 scoreboard players set #hs_t mg 0
+function mg:times
 tag @r[tag=mg_hs] add mg_seek
 team join mg_seek @a[tag=mg_seek]
 team join mg_hide @a[tag=mg_hs,tag=!mg_seek]

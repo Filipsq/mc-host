@@ -1,4 +1,4 @@
-scoreboard players set #hs_s mg 4200
+scoreboard players operation #hs_s mg = #hs_end mg
 scoreboard players operation #hs_s mg -= #hs_t mg
 scoreboard players operation #hs_s mg /= #20 mg
 execute store result score #hs_left mg if entity @a[tag=mg_hs,tag=!mg_seek]

@@ -5,6 +5,7 @@ execute if score #sw_n mg matches 0 run return 0
 tag @a[tag=mg_sw] add mg_game
 scoreboard players set #sw mg 1
 scoreboard players set #sw_t mg -61
+function mg:times
 function mg:skywars/reset
 clear @a[tag=mg_sw]
 effect clear @a[tag=mg_sw]

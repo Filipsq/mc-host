@@ -6,6 +6,7 @@ tag @a[tag=mg_sp] add mg_game
 scoreboard players set #sp mg 1
 # A countdown first (tick): 3, 2, 1, then the shovels.
 scoreboard players set #sp_t mg -61
+function mg:times
 function mg:spleef/reset
 clear @a[tag=mg_sp]
 effect clear @a[tag=mg_sp]
