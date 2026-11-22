@@ -1330,7 +1330,7 @@ func (a *agent) logs(w http.ResponseWriter, r *http.Request) {
 	opts := LogOptions{Tail: 200, Follow: r.URL.Query().Get("follow") != "0"}
 	err := a.docker.Logs(r.Context(), containerName(id), opts, func(line string) error {
 		started = true
-		data, _ := json.Marshal(hidePasswords(line))
+		data, _ := json.Marshal(line)
 		if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
 			return err
 		}
