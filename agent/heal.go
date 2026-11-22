@@ -149,6 +149,18 @@ func (a *agent) healEnv(ctx context.Context, id string) {
 		}
 		why += "with " + strings.Join(missing, ", ") + " a mod needs"
 	}
+	var noDeps []string
+	a.lastStartHad(ctx, id, func(line string) bool {
+		noDeps = append(noDeps, unavailableDeps([]string{line})...)
+		return false
+	})
+	if refit, moved := a.modsWithoutDeps(ctx, id, fixed, noDeps); len(moved) > 0 {
+		fixed = refit
+		if why != "" {
+			why += ", "
+		}
+		why += "with " + strings.Join(moved, ", ") + " installed without a library it lists but can't get here"
+	}
 	if image, _ := c.Config["Image"].(string); a.lastStartHad(ctx, id, javaTooNew.MatchString) {
 		if refit := refitEnv(id, image, fixed); !slices.Equal(refit, fixed) {
 			fixed = refit
