@@ -8,21 +8,22 @@ import { getServerFor } from "@/lib/access";
 import { diskLimitMb, formatMb } from "@/lib/disk";
 import { format } from "@/i18n/messages";
 import { listFiles, type FileEntry } from "@/lib/agent";
-import { canChangeFiles, EDIT_MAX_BYTES } from "@/lib/files";
+import { canChangeFiles, EDIT_MAX_BYTES, type FileError } from "@/lib/files";
 import { supportsPlugins } from "@/lib/plugins";
 import FileBrowser, { type FileRow } from "./FileBrowser";
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ path?: string }> };
+type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ path?: string; zip?: string }> };
 
 export default async function FilesPage({ params, searchParams }: Props) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
-  const [{ id }, { path = "" }] = await Promise.all([params, searchParams]);
+  const [{ id }, { path = "", zip }] = await Promise.all([params, searchParams]);
   const server = await getServerFor(id, session.user.id, "files");
   if (!server) notFound();
 
   const [all, { locale }, { live, agent }] = await Promise.all([getMessages(), getPreferences(), getLiveDetailsOnce(server.id, server.status)]);
   const t = all.files;
+  const zipError = zip && zip in t.errors ? (zip as FileError) : undefined;
   const listing = server.status === "AWAITING_PAYMENT" ? null : await listFiles(server.id, path).catch((err) => err as Error);
   const dir = listing && !(listing instanceof Error) ? listing.path : "";
   const crumbs = dir && dir !== "." ? dir.split("/") : [];
@@ -67,6 +68,7 @@ export default async function FilesPage({ params, searchParams }: Props) {
             rows={fileRows(listing.entries, dir, locale)}
             truncated={listing.truncated}
             canChange={canChangeFiles(server)}
+            zipError={zipError}
             t={t}
           />
           <p className="muted small">

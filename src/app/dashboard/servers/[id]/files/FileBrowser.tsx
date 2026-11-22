@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CornerLeftUp,
@@ -41,13 +41,17 @@ type Props = {
   rows: FileRow[];
   truncated: boolean;
   canChange: boolean; // false while suspended: downloads only
+  zipError?: FileError; // a zip of ticked files that couldn't start (the page opened again with it)
   t: Messages["files"];
 };
 
-export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: Props) {
+export default function FileBrowser({ id, dir, rows, truncated, canChange, zipError, t }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(
+    zipError ? { text: `${t.zipFailed} ${t.errors[zipError] ?? t.errors.failed}`, error: true } : null,
+  );
+  const [zipping, setZipping] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [creating, setCreating] = useState<"folder" | "file" | null>(null);
@@ -61,6 +65,15 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
   const edit = (path: string) => `${base}/edit?path=${encodeURIComponent(path)}`;
   const download = (path: string) => `/api/servers/${id}/files?path=${encodeURIComponent(path)}`;
   const busy = pending || progress !== null;
+
+  // The error is shown once: refreshing the page shouldn't bring it back.
+  useEffect(() => {
+    if (!zipError) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("zip");
+    window.history.replaceState(null, "", url);
+  }, [zipError]);
+
   // Only rows still in this folder count (after a delete or moving to another folder).
   const selected = rows.filter((r) => picked.has(r.path));
   const allPicked = rows.length > 0 && selected.length === rows.length;
@@ -83,6 +96,39 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
       if (res.error) setMessage({ text: `${format(t.deletedMany, { n })} ${t.errors[res.error]}`, error: true });
       else setMessage({ text: format(t.deletedMany, { n }), error: false });
     });
+  }
+
+  // One file comes as it is; more, or a folder, as one zip the browser saves as it's made.
+  function downloadSelected() {
+    setMessage(null);
+    if (selected.length === 1 && selected[0].file) {
+      const a = document.createElement("a");
+      a.href = download(selected[0].path);
+      a.download = selected[0].name;
+      a.click();
+      return;
+    }
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = `/api/servers/${id}/files/zip`;
+    form.hidden = true;
+    for (const [name, value] of [
+      ["dir", dir],
+      ["paths", JSON.stringify(selected.map((r) => r.path))],
+    ]) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = name;
+      input.value = value;
+      form.append(input);
+    }
+    document.body.append(form);
+    form.submit();
+    form.remove();
+    setMessage({ text: t.zipStarted, error: false });
+    // Against a double click starting two downloads.
+    setZipping(true);
+    setTimeout(() => setZipping(false), 4000);
   }
 
   function run(op: FileOp, done?: (files?: number) => string) {
@@ -220,7 +266,7 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
           upload([...e.dataTransfer.files]);
         }}
       >
-        {canChange && rows.length > 0 && (
+        {rows.length > 0 && (
           <div className="file-select-bar">
             <label className="file-check">
               <input
@@ -236,9 +282,19 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
             {selected.length > 0 && (
               <>
                 <span className="muted small">{format(t.selectedCount, { n: selected.length })}</span>
-                <button className="danger small" disabled={busy} onClick={removeSelected}>
-                  <Trash2 size={15} aria-hidden /> {t.deleteSelected}
+                <button
+                  className="secondary small"
+                  disabled={busy || zipping}
+                  onClick={downloadSelected}
+                  title={selected.length === 1 && selected[0].file ? undefined : t.downloadSelectedHint}
+                >
+                  <Download size={15} aria-hidden /> {t.downloadSelected}
                 </button>
+                {canChange && (
+                  <button className="danger small" disabled={busy} onClick={removeSelected}>
+                    <Trash2 size={15} aria-hidden /> {t.deleteSelected}
+                  </button>
+                )}
                 <button className="secondary small" disabled={busy} onClick={() => setPicked(new Set())}>
                   {t.clearSelection}
                 </button>
@@ -280,15 +336,13 @@ export default function FileBrowser({ id, dir, rows, truncated, canChange, t }: 
               </li>
             ) : (
               <li key={r.path} className={picked.has(r.path) ? "picked" : undefined}>
-                {canChange && (
-                  <input
-                    type="checkbox"
-                    className="file-pick"
-                    checked={picked.has(r.path)}
-                    onChange={() => toggle(r.path)}
-                    aria-label={format(t.selectOne, { name: r.name })}
-                  />
-                )}
+                <input
+                  type="checkbox"
+                  className="file-pick"
+                  checked={picked.has(r.path)}
+                  onChange={() => toggle(r.path)}
+                  aria-label={format(t.selectOne, { name: r.name })}
+                />
                 <span className="file-name">
                   {r.dir ? (
                     <Folder size={18} aria-hidden className="file-icon dir" />

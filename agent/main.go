@@ -367,6 +367,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("POST /servers/{id}/files/mkdir", a.filesMkdir)
 	mux.HandleFunc("POST /servers/{id}/files/rename", a.filesRename)
 	mux.HandleFunc("POST /servers/{id}/files/unzip", a.filesUnzip)
+	mux.HandleFunc("POST /servers/{id}/files/zip", a.filesZip)
 	mux.HandleFunc("GET /servers/{id}/bedrock-packs", a.bedrockPacksList)
 	mux.HandleFunc("POST /servers/{id}/bedrock-packs/import", a.bedrockPacksImport)
 	mux.HandleFunc("DELETE /servers/{id}/bedrock-packs/{uuid}", a.bedrockPackRemove)

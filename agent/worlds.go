@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
-	"io"
 	"io/fs"
 	"log"
 	"net/http"
@@ -254,7 +253,7 @@ func (a *agent) worldDownload(w http.ResponseWriter, r *http.Request) {
 		parts = append(parts, [2]string{name + "_the_end/DIM1", into + "DIM1/"})
 	}
 	for _, p := range parts {
-		if err := s.zipFolder(zw, p[0], p[1]); err != nil {
+		if err := s.zipTree(zw, p[0], p[1], false); err != nil {
 			// The response has started, so all that's left is to cut it short.
 			log.Printf("world download %s/%s: %v", id, name, err)
 			return
@@ -263,42 +262,6 @@ func (a *agent) worldDownload(w http.ResponseWriter, r *http.Request) {
 	if err := zw.Close(); err != nil {
 		log.Printf("world download %s/%s: %v", id, name, err)
 	}
-}
-
-// zipFolder adds a folder's files to the zip under prefix; a missing folder adds nothing.
-func (s *serverFiles) zipFolder(zw *zip.Writer, dir, prefix string) error {
-	if _, err := s.root.Lstat(dir); errors.Is(err, fs.ErrNotExist) {
-		return nil
-	}
-	return fs.WalkDir(s.root.FS(), dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		// session.lock belongs to the running server; links aren't followed.
-		if !d.Type().IsRegular() || d.Name() == "session.lock" {
-			return nil
-		}
-		fi, err := d.Info()
-		if err != nil {
-			return nil // removed meanwhile
-		}
-		h := &zip.FileHeader{Name: prefix + strings.TrimPrefix(p, dir+"/"), Method: zip.Deflate, Modified: fi.ModTime()}
-		// Region and Bedrock database files are compressed already.
-		if ext := path.Ext(p); ext == ".mca" || ext == ".mcc" || ext == ".ldb" {
-			h.Method = zip.Store
-		}
-		out, err := zw.CreateHeader(h)
-		if err != nil {
-			return err
-		}
-		f, err := s.root.OpenFile(p, os.O_RDONLY|syscall.O_NONBLOCK, 0)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		_, err = io.Copy(out, f)
-		return err
-	})
 }
 
 // worldImport makes the world ?name= from an uploaded zip (?path=), which is
