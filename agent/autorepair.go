@@ -273,6 +273,8 @@ func crashCauseFrom(lines []string, env []string) string {
 		return "alpha builds"
 	case !findModCrash(lines).empty():
 		return "broken mods"
+	case slices.ContainsFunc(env, func(e string) bool { _, ok := loaderTypes[strings.ToLower(strings.TrimPrefix(e, "TYPE="))]; return ok }) && len(unavailableDeps(lines)) > 0:
+		return "mod needs " + strings.Join(unavailableDeps(lines), ",")
 	case network:
 		return causeNetwork
 	case len(unknownPlayers(lines)) > 0:
