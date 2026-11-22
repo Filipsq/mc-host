@@ -453,6 +453,11 @@ export async function openFile(id: string, path: string, opts: { signal?: AbortS
   return agentFetch(`/servers/${id}/files/content?path=${encodeURIComponent(path)}${max}`, { signal: opts.signal });
 }
 
+/** Opens files and folders (with everything in them) as one zip for download. */
+export async function openFilesZip(id: string, paths: string[], signal: AbortSignal) {
+  return agentFetch(`/servers/${id}/files/zip`, { method: "POST", body: JSON.stringify({ paths }), signal });
+}
+
 /** Saves a file: an upload streamed through from the browser, an edit, or a plugin the panel downloaded. */
 export async function writeFile(id: string, path: string, body: ReadableStream<Uint8Array> | string | Uint8Array<ArrayBuffer>, length?: number) {
   await agentFetch(`/servers/${id}/files/content?path=${encodeURIComponent(path)}`, {
