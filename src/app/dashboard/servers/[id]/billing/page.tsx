@@ -147,6 +147,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         // ?dni=7 comes from the queue window: a week of Starter to skip the wait.
         defaultDays={PERIOD_DAYS.find((d) => String(d) === query.dni)}
         note={activePaid ? `${b.extendNote} ${b.credit}` : undefined}
+        current={activePaid ? server.plan : undefined}
         t={b}
         labels={{ plan: b.choosePlan, period: t.server.period }}
         errors={t.server.errors}

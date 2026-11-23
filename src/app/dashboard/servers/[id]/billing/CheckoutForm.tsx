@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
+import { format } from "@/i18n/messages";
 import type { Plan } from "@prisma/client";
 import { checkoutAction } from "../../actions";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
@@ -29,10 +30,16 @@ type Props = {
   cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
   renewCode?: string | null; // a paid server: the renewal code field (renewCode.ts), filled in with this
+  current?: Plan; // the plan of a server in a paid period: picking a smaller one is warned about, since paying changes the server to it
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays, note, t, labels, errors, legal, money, autoRenew, addons, cashbill, adminTest, renewCode }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays, note, t, labels, errors, legal, money, autoRenew, addons, cashbill, adminTest, renewCode, current }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
+  const [plan, setPlan] = useState<Plan>(defaultPlan);
+  // Plans come smallest first, so a lower index is a smaller plan.
+  const rank = (id: Plan) => plans.findIndex((p) => p.id === id);
+  const smaller = !!current && rank(plan) < rank(current);
+  const name = (id: Plan) => plans.find((p) => p.id === id)?.name ?? id;
   return (
     <form action={action} className="card stack">
       <PlanPicker
@@ -43,7 +50,9 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays
         labels={{ ...labels, total: t.total }}
         formatMoney={money}
         addons={addons}
+        onPlanChange={setPlan}
       />
+      {smaller && current && <p className="notice warn">{format(t.smallerPlan, { plan: name(plan), current: name(current) })}</p>}
       {note && <p className="muted small">{note}</p>}
       {renewCode !== null && renewCode !== undefined && (
         <label className="stack-tight">
