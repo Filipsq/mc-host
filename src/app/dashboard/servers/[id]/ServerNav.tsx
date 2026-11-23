@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSheetDrag } from "@/components/useSheetDrag";
@@ -20,7 +20,8 @@ import {
   LayoutDashboard,
   Link2,
   Menu,
-  MoreHorizontal,
+  LayoutGrid,
+  X,
   PackagePlus,
   Palette,
   Puzzle,
@@ -59,7 +60,7 @@ type Props = {
   groups: NavGroup[];
   // The user's other servers, to jump between them like between tabs.
   others: { id: string; name: string }[];
-  t: { menu: string; servers: string; switchServer: string; more: string };
+  t: { menu: string; servers: string; switchServer: string; more: string; close: string };
 };
 
 /** The server panel's menu: down the left on a computer, folded under a button on a phone. */
@@ -118,7 +119,12 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
       </button>
       {open && <div className="server-nav-shade" ref={shade} onClick={closeMenu} aria-hidden />}
       <nav className="server-nav-body" aria-label={t.menu} ref={body}>
-        <div className="sheet-grip" ref={grip} aria-hidden><span /></div>
+        <div className="sheet-grip" ref={grip}>
+          <span aria-hidden />
+          <button type="button" className="sheet-close secondary" onClick={closeMenu} aria-label={t.close}>
+            <X size={20} aria-hidden />
+          </button>
+        </div>
         {others.length > 0 ? (
           <details className="server-switch">
             <summary title={t.switchServer}>
@@ -147,9 +153,11 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
             {group.items.map((item) => {
               const Icon = ICONS[item.key];
               const active = isActive(item);
+              // On a phone the open menu is a grid of tiles; each comes in a moment after the one before.
+              const style = { "--i": all.indexOf(item) } as CSSProperties;
               return (
-                <Link key={item.key} href={base + item.path} onClick={go(item)} className={active ? "active" : undefined} aria-current={active ? "page" : undefined}>
-                  <Icon size={18} aria-hidden /> {item.label}
+                <Link key={item.key} href={base + item.path} onClick={go(item)} className={active ? "active" : undefined} aria-current={active ? "page" : undefined} style={style}>
+                  <Icon size={18} aria-hidden /> <span>{item.label}</span>
                 </Link>
               );
             })}
@@ -176,7 +184,7 @@ export default function ServerNav({ id, name, groups, others, t }: Props) {
               setOpen(true);
             }}
           >
-            <MoreHorizontal size={20} aria-hidden />
+            <LayoutGrid size={20} aria-hidden />
             <span>{t.more}</span>
           </button>
         </nav>
