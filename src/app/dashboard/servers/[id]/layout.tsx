@@ -29,6 +29,7 @@ import { ADSENSE_SLOT } from "@/lib/ads";
 import LeaveButton from "./LeaveButton";
 import ServerControls from "./ServerControls";
 import QueueNotice from "./QueueNotice";
+import { queuePlace } from "@/lib/startQueue";
 import LiveBadge from "./LiveBadge";
 import ServerNav, { type NavGroup } from "./ServerNav";
 import PanelSearch, { type SearchItem } from "./PanelSearch";
@@ -175,11 +176,16 @@ export default async function ServerLayout({ children, params }: { children: Rea
   const search = <PanelSearch id={server.id} items={searchItems} t={all.panelSearch} />;
 
   const { locale, currency } = await getPreferences();
+  const queued = !!server.queuedAt && server.plan === "FREE" && !(live === "online" || live === "starting");
+  const queue = queued ? await queuePlace(server.queuedAt!).catch(() => null) : null;
   const banners = (
     <>
-      {server.queuedAt && server.plan === "FREE" && !(live === "online" || live === "starting") && (
+      {queued && queue && (
         <QueueNotice
           id={server.id}
+          since={server.queuedAt!.getTime()}
+          waiting={queue.waiting}
+          place={queue.place}
           owner={can("owner")}
           price={formatPrice(periodPrice(planById("STARTER").price[currency], 7), currency, locale)}
           t={t.queue}

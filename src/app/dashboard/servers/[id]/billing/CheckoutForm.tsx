@@ -11,11 +11,13 @@ import PayBadges from "@/components/PayBadges";
 import PaysafecardButton from "@/components/PaysafecardButton";
 import CashbillButton from "@/components/CashbillButton";
 import type { Messages } from "@/i18n/messages";
+import type { PeriodDays } from "@/lib/periods";
 
 type Props = {
   serverId: string;
   plans: PlanOption[];
   defaultPlan: Plan;
+  defaultDays?: PeriodDays;
   note?: string;
   t: Messages["billing"];
   labels: { plan: string; period: string };
@@ -29,13 +31,14 @@ type Props = {
   renewCode?: string | null; // a paid server: the renewal code field (renewCode.ts), filled in with this
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, note, t, labels, errors, legal, money, autoRenew, addons, cashbill, adminTest, renewCode }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays, note, t, labels, errors, legal, money, autoRenew, addons, cashbill, adminTest, renewCode }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   return (
     <form action={action} className="card stack">
       <PlanPicker
         plans={plans}
         defaultPlan={defaultPlan}
+        defaultDays={defaultDays}
         periodLabels={{ days: t.periodDays, off: t.periodOff }}
         labels={{ ...labels, total: t.total }}
         formatMoney={money}

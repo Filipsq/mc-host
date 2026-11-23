@@ -14,6 +14,8 @@ export type AddonOption = { id: AddonId; name: string; hint: string; monthly: nu
 type Props = {
   plans: PlanOption[];
   defaultPlan: Plan;
+  /** The period ticked to start with (e.g. a week from the queue window's "skip the wait"). */
+  defaultDays?: PeriodDays;
   /** A plan picked elsewhere on the page (the players slider); the picker follows it. */
   plan?: Plan;
   periodLabels: { days: string; off: string }; // "{days} days", "−{n}%"
@@ -32,9 +34,9 @@ type Props = {
 };
 
 /** Radio cards for plan + period, with a live total. Submits `plan` and `days`. */
-export default function PlanPicker({ plans, defaultPlan, plan: outside, periodLabels, labels, formatMoney, onPlanChange, onTotalChange, addons }: Props) {
+export default function PlanPicker({ plans, defaultPlan, defaultDays, plan: outside, periodLabels, labels, formatMoney, onPlanChange, onTotalChange, addons }: Props) {
   const [plan, setPlan] = useState<Plan>(defaultPlan);
-  const [days, setDays] = useState<PeriodDays>(DEFAULT_PERIOD);
+  const [days, setDays] = useState<PeriodDays>(defaultDays ?? DEFAULT_PERIOD);
   useEffect(() => {
     if (outside) setPlan(outside);
   }, [outside]);
