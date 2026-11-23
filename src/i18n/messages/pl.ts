@@ -433,6 +433,7 @@ const pl = {
     upgradeHint: "Ulepsz plan teraz i dopłać tylko różnicę za dni, które zostały. Świat zostaje.",
     credit: "Niewykorzystane dni obecnego planu przeliczymy na nowy plan.",
     extendNote: "Opłacony czas doliczymy do obecnego okresu.",
+    smallerPlan: "Uwaga: {plan} to mniejszy plan niż obecny {current}. Po zapłacie serwer zmieni się na {plan} (mniej RAM-u), a pozostałe dni planu {current} przeliczymy na dni planu {plan}. Chcesz tylko przedłużyć? Wybierz {current}.",
     renewCode: "Kod rabatowy",
     renewCodeHint: "Masz kod na przedłużenie? Wpisz go tutaj, zniżkę odejmiemy na stronie płatności.",
     renewCodeTitle: "−{n}% na przedłużenie serwera",

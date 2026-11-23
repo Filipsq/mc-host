@@ -434,6 +434,7 @@ const en: Messages = {
     upgradeHint: "Upgrade your plan now and pay only the difference for the days left. Your world stays.",
     credit: "Unused days on your current plan are converted to the new plan.",
     extendNote: "The time you pay for is added to your current period.",
+    smallerPlan: "Note: {plan} is a smaller plan than your current {current}. After paying, the server changes to {plan} (less RAM) and the days left on {current} turn into days of {plan}. Just want to extend? Pick {current}.",
     renewCode: "Discount code",
     renewCodeHint: "Got a renewal code? Type it here and the discount comes off on the payment page.",
     renewCodeTitle: "{n}% off renewing your server",
