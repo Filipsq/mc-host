@@ -1000,6 +1000,7 @@ const en: Messages = {
     servers: "Your servers",
     switchServer: "Switch server",
     tabMore: "More",
+    closeMenu: "Close menu",
     overview: "Overview",
     manage: "Manage",
     game: "Game",

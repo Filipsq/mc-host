@@ -297,7 +297,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
           name={server.name}
           groups={groups}
           others={others}
-          t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer, more: p.tabMore }}
+          t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer, more: p.tabMore, close: p.closeMenu }}
         />
         <div className="server-content">{children}</div>
         {sideAd && (

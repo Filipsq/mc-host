@@ -999,6 +999,7 @@ const pl = {
     servers: "Twoje serwery",
     switchServer: "Przełącz serwer",
     tabMore: "Więcej",
+    closeMenu: "Zamknij menu",
     overview: "Przegląd",
     manage: "Zarządzanie",
     game: "Gra",

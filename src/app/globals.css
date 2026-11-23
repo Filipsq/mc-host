@@ -2202,19 +2202,24 @@ button.pay-button { display: flex; flex-wrap: wrap; align-items: center; justify
 @media (max-width: 900px) {
   .server-tabbar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-    padding: 6px max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
-    background: rgb(15 20 27 / 0.94); border-top: 1px solid var(--border); backdrop-filter: blur(10px);
+    padding: 8px max(8px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); gap: 4px;
+    /* Set apart from the page: lighter, a green line on top and a shadow, so people notice it. */
+    background: rgb(26 34 44 / 0.97); border-top: 2px solid var(--accent); backdrop-filter: blur(10px);
+    box-shadow: 0 -10px 30px rgb(0 0 0 / 0.45); border-radius: 18px 18px 0 0;
   }
   .server-tabbar a, .server-tabbar button {
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 52px; padding: 4px 2px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 60px; padding: 6px 2px;
     background: none; border: 0; box-shadow: none; border-radius: var(--radius-sm); color: var(--muted);
-    font: inherit; font-size: 0.7rem; font-weight: 600; text-decoration: none; white-space: nowrap;
+    font: inherit; font-size: 0.72rem; font-weight: 600; text-decoration: none; white-space: nowrap;
   }
   .server-tabbar span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .server-tabbar a:hover, .server-tabbar button:hover:not(:disabled) { background: none; color: var(--fg); transform: none; }
   .server-tabbar a.active, .server-tabbar a.active:hover, .server-tabbar button.active, .server-tabbar button.active:hover { color: var(--accent-strong); background: var(--accent-soft); }
-  body:has(.server-tabbar) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
-  body:has(.server-tabbar) .help { bottom: max(80px, calc(env(safe-area-inset-bottom) + 76px)); }
+  /* "More" opens every section: a filled green button, so it stands out from the plain tabs. */
+  .server-tabbar button:last-child, .server-tabbar button:last-child:hover:not(:disabled) { color: var(--accent-ink); background: var(--accent); }
+  .server-tabbar button:last-child.active, .server-tabbar button:last-child.active:hover { color: var(--accent-ink); background: var(--accent-strong); }
+  body:has(.server-tabbar) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  body:has(.server-tabbar) .help { bottom: max(94px, calc(env(safe-area-inset-bottom) + 90px)); }
   /* The phone menu folds open smoothly instead of jumping. */
   .server-nav.open .server-nav-body { animation: menu-open 0.16s ease-out; transform-origin: top; }
   @keyframes menu-open { from { opacity: 0; transform: translate3d(0, -6px, 0); } to { opacity: 1; transform: none; } }
@@ -2337,7 +2342,7 @@ input[aria-invalid="true"], textarea[aria-invalid="true"], select[aria-invalid="
 /* "Zapisano" toast at the bottom; a short note that the toast already says leaves the page. */
 .ui-toasted { display: none; }
 .ui-toast-area { position: fixed; left: 0; right: 0; bottom: max(20px, env(safe-area-inset-bottom)); z-index: 150; display: flex; justify-content: center; pointer-events: none; padding: 0 16px; }
-body:has(.server-tabbar) .ui-toast-area { bottom: max(84px, calc(env(safe-area-inset-bottom) + 76px)); }
+body:has(.server-tabbar) .ui-toast-area { bottom: max(98px, calc(env(safe-area-inset-bottom) + 90px)); }
 @media (min-width: 901px) { body:has(.server-tabbar) .ui-toast-area { bottom: max(20px, env(safe-area-inset-bottom)); } }
 .ui-toast {
   display: inline-flex; align-items: center; gap: 10px; max-width: min(420px, 100%); padding: 10px 16px 10px 10px;
@@ -2382,7 +2387,28 @@ body:has(.server-tabbar) .ui-toast-area { bottom: max(84px, calc(env(safe-area-i
   }
   .sheet-grip span, .help-head::before { width: 40px; height: 5px; border-radius: 3px; background: var(--border-strong); }
   .server-nav-group a { min-height: 44px; }
+  .server-nav.open .server-nav-body { z-index: 80; } /* above the bottom bar, so its last row isn't hidden */
+  .server-nav.open .sheet-grip:has(.sheet-close) { padding: 22px 0 18px; }
+  .sheet-close { position: absolute; right: 8px; top: 50%; translate: 0 -50%; width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+  /* The open phone menu: every section as a tile, four to a row, so all of them fit without hunting down a long list. */
+  .server-nav.open .server-nav-group { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .server-nav.open .server-nav-title { grid-column: 1 / -1; margin: 2px 0 0; padding: 0 2px; }
+  .server-nav.open .server-nav-group a {
+    flex-direction: column; justify-content: center; gap: 6px; min-height: 76px; padding: 10px 4px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: none;
+    text-align: center; font-size: 0.74rem; line-height: 1.2; color: var(--fg);
+    transition: transform 0.15s var(--ease-out-ui), background 0.15s;
+    animation: tile-in 0.22s var(--ease-out-ui) both; animation-delay: calc(60ms + min(var(--i, 0), 12) * 16ms);
+  }
+  .server-nav.open .server-nav-group a svg { width: 22px; height: 22px; color: var(--accent-strong); }
+  .server-nav.open .server-nav-group a span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; hyphens: auto; text-wrap: balance; }
+  .server-nav.open .server-nav-group a:active { transform: scale(0.97); }
+  .server-nav.open .server-nav-group a.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-strong); box-shadow: none; }
+  /* Overview, the one item with no group, is a wide bar on top. */
+  .server-nav.open .server-nav-group:not(:has(.server-nav-title)) a { grid-column: 1 / -1; flex-direction: row; min-height: 48px; font-size: 0.9rem; }
 }
+@keyframes tile-in { from { opacity: 0; transform: scale(0.97) translate3d(0, 4px, 0); } }
+@media (prefers-reduced-motion: reduce) { .server-nav.open .server-nav-group a { animation: none; } }
 @keyframes sheet-up { from { transform: translate3d(0, 100%, 0); } }
 /* The phone chat: a grab bar on its header, which can be pulled down to close. */
 @media (max-width: 640px) {
