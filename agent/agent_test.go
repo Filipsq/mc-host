@@ -60,7 +60,7 @@ func TestContainerSpecJava(t *testing.T) {
 	if !strings.Contains(env, "ENABLE_AUTOSTOP=TRUE") || !strings.Contains(env, "AUTOSTOP_TIMEOUT_EST=300") {
 		t.Fatalf("autostop env missing: %s", env)
 	}
-	for _, want := range []string{"USE_AIKAR_FLAGS=true", "VIEW_DISTANCE=8", "SIMULATION_DISTANCE=6", "INIT_MEMORY=1024M", "MAX_MEMORY=2048M", "G1PeriodicGCInterval"} {
+	for _, want := range []string{"USE_AIKAR_FLAGS=true", "VIEW_DISTANCE=8", "SIMULATION_DISTANCE=6", "INIT_MEMORY=1024M", "MAX_MEMORY=2048M", "G1PeriodicGCInterval", "MaxDirectMemorySize=512m"} {
 		if !strings.Contains(env, want) {
 			t.Fatalf("missing %s: %s", want, env)
 		}
@@ -619,5 +619,17 @@ func TestIdleLimitWaitsForFirstPlayer(t *testing.T) {
 	}
 	if got := (&agent{idle: 10 * time.Minute}).idleLimit(false); got != 10*time.Minute {
 		t.Errorf("long idle period: %v", got)
+	}
+}
+
+func TestDirectMemoryScalesWithPlan(t *testing.T) {
+	for _, c := range []struct {
+		mb        int
+		crossplay bool
+		want      int
+	}{{2048, false, 512}, {2048, true, 768}, {8192, false, 1024}, {16384, false, 1024}} {
+		if got := directMemoryMb(createRequest{MemoryMb: c.mb, Crossplay: c.crossplay}); got != c.want {
+			t.Errorf("plan %d MB crossplay %v: direct memory %d, want %d", c.mb, c.crossplay, got, c.want)
+		}
 	}
 }

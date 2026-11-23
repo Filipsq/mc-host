@@ -863,7 +863,13 @@ func (a *agent) containerSpec(req createRequest, image string) map[string]any {
 // top, at least 1 GB: with only 512 MB a Starter with Geyser was OOM-killed
 // right after starting. Network buffers are capped (by default they may grow
 // as big as the heap) so they stay inside that room.
-const directMemoryMb = 256
+func directMemoryMb(req createRequest) int {
+	// Half of that room, between 512 MB and 1 GB. 256 MB was too little: a
+	// Paper server with BetterView (2026-11-23) spammed "Cannot reserve ... of
+	// direct buffer memory" at 256 MB. The container's limit doesn't change, so
+	// a machine holds just as many servers as before.
+	return min(1024, max(512, (javaLimitMb(req)-req.MemoryMb)/2))
+}
 
 // oomScoreAdj is how readily the kernel kills a server's processes when the
 // machine runs out of memory: a free one (autostop) first. On n6 (2026-11-18,
@@ -1033,7 +1039,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		// need, up to the plan; an idle one gives memory back to the machine.
 		// Aikar's garbage collector flags avoid the pauses that stall chunk loading.
 		env = append(env, fmt.Sprintf("INIT_MEMORY=%dM", min(req.MemoryMb, initialHeapMb)), fmt.Sprintf("MAX_MEMORY=%dM", req.MemoryMb),
-			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000 -XX:MaxDirectMemorySize="+fmt.Sprint(directMemoryMb)+"m", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true", noWatchdog,
+			"JVM_XX_OPTS=-XX:G1PeriodicGCInterval=300000 -XX:MaxDirectMemorySize="+fmt.Sprint(directMemoryMb(req))+"m", "USE_AIKAR_FLAGS=true", "ENABLE_RCON=true", noWatchdog,
 			"MOTD="+motd, "MODE="+req.GameMode, fmt.Sprintf("PVP=%v", pvp), fmt.Sprintf("ENABLE_WHITELIST=%v", req.Whitelist))
 		if req.Whitelist {
 			players := whitelistEntries(&req)
