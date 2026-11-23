@@ -110,6 +110,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 	a.clearMarkers(id)
 	a.healEnv(ctx, id)
 	a.fixPaperConfig(ctx, id)
+	a.syncHardcore(ctx, id)
 	a.limitPaperEntities(ctx, id)
 	a.fixBrokenMods(ctx, id)
 	a.notePackNeeds(ctx, id)
