@@ -82,3 +82,16 @@ export async function startQueued(now = new Date()): Promise<number> {
   }
   return started;
 }
+
+/**
+ * Where a waiting server stands: how many free servers wait in all, and its own
+ * place (1 = next to start). Shown in the queue window on its panel.
+ */
+export async function queuePlace(queuedAt: Date) {
+  const where = { queuedAt: { not: null }, plan: "FREE", status: "STOPPED" } as const;
+  const [waiting, ahead] = await Promise.all([
+    db.server.count({ where }),
+    db.server.count({ where: { ...where, queuedAt: { lt: queuedAt } } }),
+  ]);
+  return { waiting: Math.max(waiting, ahead + 1), place: ahead + 1 };
+}

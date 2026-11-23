@@ -22,7 +22,7 @@ import { paysafecardEnabled } from "@/lib/cashbill";
 
 const HOUR = 60 * 60 * 1000;
 
-export default async function BillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ plan?: string; kod?: string }> }) {
+export default async function BillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ plan?: string; kod?: string; dni?: string }> }) {
   const session = await getSession();
   if (!session?.user?.id) redirect("/login");
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -144,6 +144,8 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         plans={planOptions(t, currency, (p) => p !== "FREE")}
         // ?plan= comes from a "needs more space" link, e.g. on the Worlds page.
         defaultPlan={plans.find((p) => p.id !== "FREE" && p.id === query.plan)?.id ?? (server.plan === "FREE" ? "STARTER" : server.plan)}
+        // ?dni=7 comes from the queue window: a week of Starter to skip the wait.
+        defaultDays={PERIOD_DAYS.find((d) => String(d) === query.dni)}
         note={activePaid ? `${b.extendNote} ${b.credit}` : undefined}
         t={b}
         labels={{ plan: b.choosePlan, period: t.server.period }}
