@@ -2623,7 +2623,19 @@ html { scrollbar-color: var(--border-strong) var(--bg); }
   margin: 22px -8px 0; border-bottom: 3px solid #3a2a1c; /* a strip of dirt to stand on */
   background: linear-gradient(to top, rgb(91 194 54 / 0.18) 0 3px, transparent 3px);
 }
-.queue-heads { display: flex; align-items: flex-end; gap: 8px; }
+.queue-line { position: relative; overflow: hidden; --pitch: 40px; }
+.queue-heads {
+  position: relative; flex: none; height: 40px; width: calc(var(--count) * var(--pitch));
+  transition: width 650ms var(--ease-out-ui);
+}
+/* Each head stands in a slot counted from the front (0 = next to the server) and slides when it changes. */
+.queue-slot {
+  position: absolute; right: 0; bottom: 0; width: var(--pitch); display: flex; justify-content: center; align-items: flex-end;
+  transform: translateX(calc(var(--slot) * -1 * var(--pitch)));
+  transition: transform 650ms var(--ease-out-ui), opacity 300ms 300ms ease-out;
+}
+/* Got in: walks off at the front, into the server (or the crowd ahead) and fades. */
+.queue-slot.gone { opacity: 0; transform: translateX(calc(var(--slot) * -1 * var(--pitch))) scale(0.6); }
 .queue-head {
   --tone: #c58f5e; position: relative; flex: none; width: 30px; height: 30px; border-radius: 3px;
   background: var(--tone); box-shadow: inset 0 -5px 0 rgb(0 0 0 / 0.22), inset 0 5px 0 rgb(255 255 255 / 0.08);
@@ -2678,6 +2690,16 @@ html { scrollbar-color: var(--border-strong) var(--bg); }
 .queue-stat-label { font-size: 0.8rem; color: var(--muted); }
 .queue-stat { font-family: var(--font-display); font-size: 2.2rem; line-height: 1; font-weight: 400; font-variant-numeric: tabular-nums; }
 .queue-stats > div:first-child .queue-stat { color: var(--accent-strong); }
+/* A number that changed pops in once (keyed by its value), no counting. */
+.queue-stat { animation: ui-enter var(--dur-enter) var(--ease-out-ui); }
+/* Heads that join later, and steps forward while the view follows you. */
+.queue-slot.joined .queue-head { animation: queue-join 450ms var(--ease-out-ui) both, queue-shuffle 3.6s calc(900ms + var(--i) * 90ms) ease-in-out infinite; }
+.queue-slot .queue-head.queue-walk { animation: queue-step 600ms calc(var(--i) * 50ms) var(--ease-out-ui) both, queue-shuffle 3.6s calc(1500ms + var(--i) * 90ms) ease-in-out infinite; }
+.queue-ground {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 3px; pointer-events: none;
+  background: repeating-linear-gradient(90deg, rgb(114 217 75 / 0.7) 0 10px, transparent 10px 20px);
+  animation: queue-ground 700ms var(--ease-out-ui) both;
+}
 
 .queue-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
 .queue-actions > * { width: 100%; justify-content: center; }
@@ -2707,13 +2729,20 @@ html { scrollbar-color: var(--border-strong) var(--bg); }
   91% { transform: translateY(-6px) scale(0.96, 1.05); }
   96% { transform: translateY(0) scale(1.04, 0.95); }
 }
+@keyframes queue-join { from { opacity: 0; transform: translateX(-16px); } }
+@keyframes queue-step {
+  0% { transform: none; }
+  35% { transform: translateY(-8px) rotate(4deg) scale(0.96, 1.05); }
+  70% { transform: translateY(0) scale(1.08, 0.9); }
+  100% { transform: none; }
+}
+@keyframes queue-ground { from { background-position: 0 0; opacity: 1; } to { background-position: 40px 0; opacity: 0; } }
 @keyframes queue-shine { 0%, 70% { transform: translateX(-120%); } 85%, 100% { transform: translateX(120%); } }
 @keyframes queue-zap { 0%, 72%, 84%, 100% { transform: none; } 76% { transform: scale(1.25) rotate(-8deg); } 80% { transform: scale(0.95); } }
 
 @media (max-width: 480px) {
   .queue-dialog { padding: 20px 18px; }
-  .queue-line { gap: 10px; }
-  .queue-heads { gap: 5px; }
+  .queue-line { gap: 10px; --pitch: 31px; }
   .queue-head { width: 24px; height: 24px; }
   .queue-eyes { top: 9px; left: 5px; right: 5px; height: 4px; }
   .queue-eyes::before, .queue-eyes::after { width: 4px; height: 4px; }
@@ -2722,5 +2751,6 @@ html { scrollbar-color: var(--border-strong) var(--bg); }
   .queue-server { width: 38px; height: 54px; padding: 0 7px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .queue-head, .queue-server, .queue-more, .queue-light::after, .queue-boost::after, .queue-boost svg { animation: none; }
+  .queue-slot, .queue-heads { transition: none; }
+  .queue-head, .queue-slot .queue-head, .queue-stat, .queue-ground, .queue-server, .queue-more, .queue-light::after, .queue-boost::after, .queue-boost svg { animation: none; }
 }

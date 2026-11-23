@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Hourglass, X, Zap } from "lucide-react";
@@ -41,7 +41,14 @@ export default function QueueNotice({ id, since, waiting, place, owner, price, t
       const result = await startServerAction(id).catch(() => null);
       if (result && !result.queued) router.refresh();
     }, 45_000);
-    return () => clearInterval(timer);
+    // The numbers in the window: fresh every 20 s, so the line moves while you watch.
+    const numbers = setInterval(() => {
+      if (!document.hidden) router.refresh();
+    }, 20_000);
+    return () => {
+      clearInterval(timer);
+      clearInterval(numbers);
+    };
   }, [id, router]);
 
   useEffect(() => {
@@ -104,15 +111,15 @@ export default function QueueNotice({ id, since, waiting, place, owner, price, t
         <button className="queue-close" aria-label={t.close} onClick={() => dialog.current?.close()}>
           <X size={18} aria-hidden />
         </button>
-        <QueueLine waiting={waiting} place={place} you={t.you} />
+        <QueueLine key={since} waiting={waiting} place={place} you={t.you} />
         <div className="queue-stats">
           <div>
             <span className="queue-stat-label">{t.place}</span>
-            <strong className="queue-stat">{place}.</strong>
+            <strong key={place} className="queue-stat">{place}.</strong>
           </div>
           <div>
             <span className="queue-stat-label">{t.waiting}</span>
-            <strong className="queue-stat">{waiting}</strong>
+            <strong key={waiting} className="queue-stat">{waiting}</strong>
           </div>
         </div>
         <h3 id="queue-dialog-title">{t.popupTitle}</h3>
@@ -135,42 +142,86 @@ export default function QueueNotice({ id, since, waiting, place, owner, price, t
   );
 }
 
-/** A row of block heads walking to a full server: yours glows, the rest wait their turn. */
+/**
+ * A row of block heads walking to a full server: yours glows, the rest wait their turn.
+ * Each head is someone's ticket (place + how many got in since the window opened), so
+ * when the line moves the same heads slide forward: the front ones walk into the server,
+ * newcomers join at the back. While many are ahead the view follows you: the heads step
+ * and the ground scrolls under them, and the "+N" in front counts down.
+ */
 function QueueLine({ waiting, place, you }: { waiting: number; place: number; you: string }) {
-  const ahead = Math.min(place - 1, AHEAD_SHOWN);
-  const behind = Math.min(waiting - place, BEHIND_SHOWN);
-  const moreAhead = place - 1 - ahead;
-  // Left to right: the back of the line, you, those in front, then the server.
-  const heads = [
-    ...Array.from({ length: behind }, (_, i) => ({ me: false, tone: TONES[(place + 1 + i) % TONES.length] })).reverse(),
-    { me: true, tone: "" },
-    ...Array.from({ length: ahead }, (_, i) => ({ me: false, tone: TONES[(place - 2 - i) % TONES.length] })).reverse(),
-  ];
-  const n = heads.length;
+  const [served, setServed] = useState(0);
+  const [shown, setShown] = useState(place);
+  const [leaving, setLeaving] = useState<{ ticket: number; slot: number }[]>([]);
+  const [walking, setWalking] = useState(0);
+  const mounted = useRef(false);
+
+  // Where the line stands now, in tickets.
+  const me = shown + served;
+  const ahead = Math.min(shown - 1, AHEAD_SHOWN);
+  const behind = Math.max(0, Math.min(waiting - shown, BEHIND_SHOWN));
+  const first = me - ahead; // the visible head nearest the server
+  const tickets = Array.from({ length: ahead + 1 + behind }, (_, i) => first + i);
+  const slotOf = (ticket: number) => ticket - first; // 0 = next to the server
+
+  useEffect(() => {
+    if (place >= shown) {
+      if (place !== shown) setShown(place);
+      return;
+    }
+    const step = shown - place;
+    const nextServed = served + step;
+    const nextFirst = nextServed + place - Math.min(place - 1, AHEAD_SHOWN);
+    // Heads that were in view and now are ahead of it walk out at the front.
+    const gone = tickets.filter((t) => t < nextFirst).map((t) => ({ ticket: t, slot: -1 - (nextFirst - 1 - t) }));
+    setLeaving(gone);
+    setServed(nextServed);
+    setShown(place);
+    // The view only follows you while the front of the line is out of sight.
+    if (first > served + 1) setWalking((w) => w + 1);
+    const done = setTimeout(() => setLeaving([]), 800);
+    return () => clearTimeout(done);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [place]);
+
+  useEffect(() => {
+    mounted.current = true;
+  }, []);
+
+  const moreAhead = shown - 1 - ahead;
+  const count = tickets.length;
   return (
-    <div className="queue-line" aria-hidden>
-      <div className="queue-heads">
-        {heads.map((h, i) => {
-          // Staggered from the front of the line back: those nearest the server move first.
-          const fromFront = n - 1 - i;
-          return (
-            <span
-              key={i}
-              className={`queue-head${h.me ? " me" : ""}`}
-              style={{ "--tone": h.tone || undefined, "--i": fromFront } as React.CSSProperties}
-            >
-              {h.me && <span className="queue-you">{you}</span>}
-              <span className="queue-eyes" />
-            </span>
-          );
-        })}
-        {moreAhead > 0 && <span className="queue-more">+{moreAhead}</span>}
+    <div className={`queue-line${walking ? " walked" : ""}`} aria-hidden>
+      <div className="queue-heads" style={{ "--count": count } as React.CSSProperties}>
+        {[...leaving.map((l) => ({ ticket: l.ticket, slot: l.slot, gone: true })), ...tickets.map((t) => ({ ticket: t, slot: slotOf(t), gone: false }))].map(
+          ({ ticket, slot, gone }) => {
+            const isMe = ticket === me;
+            return (
+              <span
+                key={ticket}
+                className={`queue-slot${gone ? " gone" : ""}${mounted.current ? " joined" : ""}`}
+                style={{ "--slot": slot } as React.CSSProperties}
+              >
+                <span
+                  key={walking}
+                  className={`queue-head${isMe ? " me" : ""}${walking && !gone ? " queue-walk" : ""}`}
+                  style={{ "--tone": isMe ? undefined : TONES[ticket % TONES.length], "--i": Math.max(slot, 0) } as React.CSSProperties}
+                >
+                  {isMe && <span className="queue-you">{you}</span>}
+                  <span className="queue-eyes" />
+                </span>
+              </span>
+            );
+          },
+        )}
       </div>
+      <span className="queue-more">{moreAhead > 0 ? `+${moreAhead}` : ""}</span>
       <span className="queue-server">
         <span className="queue-light" />
         <span className="queue-light" />
         <span className="queue-light" />
       </span>
+      {walking > 0 && <span key={walking} className="queue-ground" />}
     </div>
   );
 }
