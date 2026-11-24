@@ -17,6 +17,7 @@ import HalloweenDecor from "@/components/HalloweenDecor";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { BRAND_NAME } from "@/lib/brand";
 import { siteUrl } from "@/lib/site";
+import JsonLd from "@/components/JsonLd";
 import { ADSENSE_CLIENT } from "@/lib/ads";
 import { isAdminAccount } from "@/lib/admin";
 import { adminOnline } from "@/lib/presence";
@@ -33,7 +34,8 @@ export const viewport: Viewport = { themeColor: "#0b0f14" };
 
 export async function generateMetadata(): Promise<Metadata> {
   const [t, { locale }] = await Promise.all([getMessages(), getPreferences()]);
-  const title = `${BRAND_NAME} · ${t.meta.title}`;
+  // Brand last: Google weighs the first words, and people search "hosting Minecraft", not the brand.
+  const title = `${t.meta.title} · ${BRAND_NAME}`;
   return {
     metadataBase: new URL(siteUrl()),
     title: { default: title, template: `%s · ${BRAND_NAME}` },
@@ -73,6 +75,16 @@ export default async function RootLayout({
   return (
     <html lang={locale}>
       <body className={halloween ? "halloween" : undefined}>
+        {/* Tells Google the site's name and logo, shown next to its search results. */}
+        <JsonLd
+          data={{
+            "@context": "https://schema.org",
+            "@graph": [
+              { "@type": "Organization", name: BRAND_NAME, url: siteUrl(), logo: `${siteUrl()}/apple-icon.png` },
+              { "@type": "WebSite", name: BRAND_NAME, alternateName: ["MC Hosting", "mchosting.pl"], url: siteUrl(), inLanguage: locale === "pl" ? "pl-PL" : "en" },
+            ],
+          }}
+        />
         <ServiceWorker />
         {/* AdSense: shows Google's cookie consent message and fills the panel's ad box. */}
         <Script
@@ -153,6 +165,7 @@ export default async function RootLayout({
               <Link href="/#jak-to-dziala">{t.nav.howItWorks}</Link>
               <Link href="/#faq">{t.nav.faq}</Link>
               <Link href="/porownanie">{t.compare.nav}</Link>
+              <Link href="/poradniki">{t.footer.guides}</Link>
               <Link href="/prezent">{t.gifts.homeTitle}</Link>
               <Link href="/aplikacja">{t.mobileApp.nav}</Link>
             </div>

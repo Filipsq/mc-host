@@ -2,7 +2,7 @@ import type { Messages } from "../messages";
 
 const en: Messages = {
   meta: {
-    title: "Free and paid Minecraft server hosting",
+    title: "Free Minecraft server hosting · Java and Bedrock",
     description:
       "Free and paid Minecraft server hosting for Java and Bedrock, with crossplay between computers, phones and consoles. Create a server in a minute, with a console, plugins, mods and backups.",
   },
@@ -241,6 +241,7 @@ const en: Messages = {
     compareLink: "Compare our free plan with Aternos, FalixNodes and Cloudly",
   },
   footer: {
+    guides: "Guides (Polish)",
     tagline: "Free and paid Minecraft servers for Java and Bedrock, and Terraria servers.",
     site: "Site",
     account: "Account",
