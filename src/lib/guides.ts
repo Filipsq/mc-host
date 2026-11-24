@@ -6,6 +6,8 @@ import { planById } from "@/lib/plans";
 // Inline links use [text](/path); a line starting with "- " is a list item.
 
 export type GuideSection = { heading: string; body: string[] };
+// A short vertical video from our TikTok/YouTube, served from public/poradniki.
+export type GuideVideo = { src: string; poster: string; name: string; seconds: number; uploaded: string };
 export type Guide = {
   slug: string;
   title: string; // <title> and the card on /poradniki
@@ -13,6 +15,7 @@ export type Guide = {
   description: string; // meta description, ~150 characters
   updated: string; // YYYY-MM-DD
   intro: string;
+  video?: GuideVideo;
   sections: GuideSection[];
   faq: { q: string; a: string }[];
 };
@@ -33,6 +36,7 @@ export function guides(): Guide[] {
       updated: "2026-11-24",
       intro:
         "Własny serwer Minecraft to najprostszy sposób, żeby grać ze znajomymi na jednym świecie, nawet gdy Ciebie nie ma w grze. Nie musisz mieć mocnego komputera ani zostawiać go włączonego całą noc: serwer może działać na hostingu Minecraft. Poniżej pokazujemy, jak założyć go za darmo w kilka minut.",
+      video: { src: "/poradniki/jak-zalozyc-serwer.mp4", poster: "/poradniki/jak-zalozyc-serwer.jpg", name: "Jak założyć serwer Minecraft w minutę", seconds: 29, uploaded: "2026-11-24" },
       sections: [
         {
           heading: "Serwer w domu czy hosting Minecraft?",
@@ -109,6 +113,7 @@ export function guides(): Guide[] {
       updated: "2026-11-24",
       intro:
         "RAM to pamięć, w której serwer trzyma świat, graczy i mody. Za mało RAM-u oznacza lagi i wyłączanie się serwera, a za dużo to przepłacanie. Ile go naprawdę potrzebujesz, zależy głównie od dwóch rzeczy: czy masz mody i ilu graczy gra naraz.",
+      video: { src: "/poradniki/ile-ram.mp4", poster: "/poradniki/ile-ram.jpg", name: "Ile RAM-u potrzebuje serwer Minecraft? Wytłumaczone na karczmie", seconds: 50, uploaded: "2026-11-24" },
       sections: [
         {
           heading: "Szybka odpowiedź",
@@ -182,6 +187,7 @@ export function guides(): Guide[] {
       updated: "2026-11-24",
       intro:
         "Serwer z modami daje dużo więcej niż zwykły Minecraft: nowe wymiary, maszyny, magię i bossów. Najważniejsze jest to, żeby serwer i gracze mieli te same mody w tych samych wersjach. Pokażemy, jak to zrobić bez ręcznego wgrywania plików.",
+      video: { src: "/poradniki/serwer-z-modami.mp4", poster: "/poradniki/serwer-z-modami.jpg", name: "Serwer Minecraft z modami bez crashy", seconds: 46, uploaded: "2026-11-24" },
       sections: [
         {
           heading: "Gotowa paczka czy własne mody?",

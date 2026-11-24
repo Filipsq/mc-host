@@ -2810,3 +2810,6 @@ main.guide .faq { margin-top: 8px; }
 .guide-card h2, .guide-card h3 { margin: 0 0 6px; color: var(--accent); }
 .guide-card p { margin: 0; }
 .home-guides { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.guide-video { margin: 0 auto 28px; max-width: 320px; text-align: center; }
+.guide-video video { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: var(--radius); border: 1px solid var(--border); background: #000; }
+.guide-video figcaption { margin-top: 8px; }
