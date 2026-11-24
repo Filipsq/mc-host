@@ -4,6 +4,7 @@ import type { Server } from "@prisma/client";
 import { getMessages } from "@/i18n/server";
 import { format } from "@/i18n/messages";
 import { listFiles } from "@/lib/agent";
+import PlayerMods from "./PlayerMods";
 
 const LOADERS: Record<string, string> = { fabric: "Fabric", forge: "Forge", neoforge: "NeoForge", quilt: "Quilt" };
 
@@ -35,6 +36,7 @@ export default async function PackMods({ server, q }: { server: Server; q: strin
           {t.addButton}
         </Link>
       </div>
+      {jars.length > 0 && <PlayerMods server={server} />}
       {listing === null ? (
         <p className="notice">{t.notYet}</p>
       ) : listing === "error" ? (

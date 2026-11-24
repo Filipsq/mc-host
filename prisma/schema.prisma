@@ -377,6 +377,10 @@ model Server {
   pluginVersions       String[]       @default([])
   // The list changed while the server ran; the container gets it on its next rebuild.
   pluginsPending       Boolean        @default(false)
+  // "Mody dla graczy" (src/lib/playerMods.ts): the secret in the players' download link (null: no link),
+  // and each mods/ jar's hashes and side by name, size and date, so unchanged jars aren't read again.
+  playerModsToken      String?        @unique
+  playerModsHashes     Json?
   // Terraria only: the password players type to join; none if null.
   serverPassword       String?
   // Host port of the server: behind the router for Java, public for Bedrock (UDP) and Terraria (TCP).

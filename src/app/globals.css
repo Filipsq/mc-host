@@ -2780,3 +2780,19 @@ html { scrollbar-color: var(--border-strong) var(--bg); }
   .queue-slot, .queue-heads { transition: none; }
   .queue-head, .queue-slot .queue-head, .queue-stat, .queue-ground, .queue-server, .queue-more, .queue-light::after, .queue-boost::after, .queue-boost svg { animation: none; }
 }
+
+/* "Mody dla graczy" (mods/PlayerMods.tsx) and the players' page (/mody/<token>) */
+button.link { all: unset; cursor: pointer; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; min-height: 44px; display: inline-flex; align-items: center; }
+button.link:hover:not(:disabled) { color: var(--accent-strong); background: none; transform: none; }
+button.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+button.link:disabled { opacity: 0.5; cursor: default; }
+.player-mods-downloads { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; }
+.player-mods-downloads .button { justify-content: center; }
+.player-mods-link { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.player-mods-link input { flex: 1 1 260px; min-width: 0; font-size: 0.9rem; }
+.player-mods-list { list-style: none; padding: 0; margin: 0; columns: 2 220px; column-gap: 24px; max-height: 22rem; overflow-y: auto; }
+.player-mods-list li { break-inside: avoid; padding: 3px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-mods-list.muted a { color: var(--muted); }
+.player-mods-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.player-mods-steps ol { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; list-style: decimal; }
+.player-mods-steps li::marker { color: var(--accent); font-weight: 700; }
