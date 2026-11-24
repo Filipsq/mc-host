@@ -35,6 +35,7 @@ import { shownVersion } from "@/lib/serverType";
 import { KNOWN_TMOD_TITLES, POPULAR_TMOD_MODS, workshopPage } from "@/lib/terraria";
 import { getWorkshopTitles } from "@/lib/steam";
 import JarUpload from "./JarUpload";
+import PlayerMods from "../mods/PlayerMods";
 import { canChangeFiles } from "@/lib/files";
 import { AddPluginButton, AddSetButton, AddWorkshopForm, ApplyPlugins, PluginVersionPicker, RemovePluginButton } from "./PluginButtons";
 
@@ -210,9 +211,11 @@ export default async function PluginsPage({ params, searchParams }: Props) {
       <ApplyPlugins id={server.id} pending={server.pluginsPending} t={t} />
 
       <section className="stack" id="szukaj">
-        {onServer > 0 && (
+        {(onServer > 0 || type === "mod") && (
           <p className="small">
-            <a href="#na-serwerze">{format(t.onServerCount, { n: onServer })}</a>
+            {onServer > 0 && <a href="#na-serwerze">{format(t.onServerCount, { n: onServer })}</a>}
+            {onServer > 0 && type === "mod" && " · "}
+            {type === "mod" && <a href="#dla-graczy">{all.playerMods.title}</a>}
           </p>
         )}
         {sources.length > 0 && (
@@ -447,6 +450,8 @@ export default async function PluginsPage({ params, searchParams }: Props) {
           {t.config} <Link href={`/dashboard/servers/${server.id}/files?path=${type === "mod" ? "config" : "plugins"}`}>{t.openConfig}</Link>
         </p>
       </section>
+
+      {type === "mod" && <PlayerMods server={server} />}
 
       {allows(access, "files") && canChangeFiles(server) && (
         <JarUpload
