@@ -32,7 +32,13 @@ import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
 import { halloweenOn } from "@/lib/halloween";
 import HalloweenBand from "@/components/HalloweenBand";
 import { HuntPumpkin } from "@/components/Halloween";
+import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
+import { guides } from "@/lib/guides";
 import { REFERRAL_COOKIE, REFERRAL_DAYS, REFERRAL_MIN_DAYS } from "@/lib/referrals";
+
+// One address for the home page, so Google doesn't split it between "/" and "/?ref=...".
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 // How far a hero layer drifts with the mouse, in px (see HeroStage).
 const depth = (dx: number, dy: number) => ({ "--dx": dx, "--dy": dy }) as CSSProperties;
@@ -63,6 +69,10 @@ export default async function Home() {
   const titleTail = comma > 0 ? h.title.slice(comma + 2) : "";
   // The pumpkin hunt (lib/halloween.ts): one pumpkin hidden in each of these spots.
   const halloween = halloweenOn();
+  const faq = h.faq.map((item) => ({
+    q: item.q,
+    a: format(item.a, { domain, gb: free.ramGb, n: free.maxPlayers ?? 0, days: REFERRAL_DAYS, min: REFERRAL_MIN_DAYS }),
+  }));
   const pumpkin = (id: string) => halloween && <HuntPumpkin id={id} label={t.halloween.pumpkin} className={`hunt-${id}`} />;
 
   return (
@@ -407,6 +417,26 @@ export default async function Home() {
       </section>
 
 
+      {/* Guides are in Polish only; they also give Google more pages about Minecraft servers. */}
+      {locale === "pl" && (
+        <section className="section" id="poradniki">
+          <div className="container">
+            <header className="section-head">
+              <h2 className="display">Poradniki</h2>
+              <p className="muted">Jak założyć serwer Minecraft, ile RAM-u wybrać i jak grać na modach.</p>
+            </header>
+            <div className="home-guides">
+              {guides().map((g) => (
+                <Link key={g.slug} href={`/poradniki/${g.slug}`} className="card guide-card">
+                  <h3>{g.h1}</h3>
+                  <p className="muted small">{g.description}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="section hunt-spot" id="faq">
         {pumpkin("faq")}
         <div className="container narrow-container">
@@ -414,15 +444,21 @@ export default async function Home() {
             <h2 className="display">{h.faqTitle}</h2>
           </header>
           <div className="faq">
-            {h.faq.map((item) => (
+            {faq.map((item) => (
               <details key={item.q}>
                 <summary>{item.q}</summary>
-                <p className="muted">
-                  {format(item.a, { domain, gb: free.ramGb, n: free.maxPlayers ?? 0, days: REFERRAL_DAYS, min: REFERRAL_MIN_DAYS })}
-                </p>
+                <p className="muted">{item.a}</p>
               </details>
             ))}
           </div>
+          {/* Lets Google show these questions under the site in search results. */}
+          <JsonLd
+            data={{
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faq.map((item) => ({ "@type": "Question", name: item.q, acceptedAnswer: { "@type": "Answer", text: item.a } })),
+            }}
+          />
         </div>
       </section>
 

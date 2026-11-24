@@ -1,6 +1,6 @@
 const pl = {
   meta: {
-    title: "Hosting serwerów Minecraft za darmo",
+    title: "Hosting Minecraft za darmo · serwer Java i Bedrock",
     description:
       "Darmowy i płatny hosting serwerów Minecraft na Javę i Bedrock, z crossplay między komputerem, telefonem i konsolą. Załóż serwer w minutę, z konsolą, pluginami, modami i kopiami zapasowymi. Płatność BLIK, Przelewy24 i kartą.",
   },
@@ -239,6 +239,7 @@ const pl = {
     compareLink: "Porównaj nasz darmowy plan z Aternos, FalixNodes i Cloudly",
   },
   footer: {
+    guides: "Poradniki",
     tagline: "Darmowe i płatne serwery Minecraft na Javę i Bedrock oraz serwery Terrarii.",
     site: "Serwis",
     account: "Konto",

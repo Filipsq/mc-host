@@ -2796,3 +2796,17 @@ button.link:disabled { opacity: 0.5; cursor: default; }
 .player-mods-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
 .player-mods-steps ol { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; list-style: decimal; }
 .player-mods-steps li::marker { color: var(--accent); font-weight: 700; }
+
+/* Guides (/poradniki) */
+main.guide .lead { max-width: none; }
+main.guide section { margin-top: 8px; }
+main.guide .faq { margin-top: 8px; }
+.guide-crumbs { margin: 0 0 12px; }
+.guide-cta { margin: 32px 0; padding: 24px 28px; gap: 20px; flex-wrap: wrap; }
+.guide-cta h2 { font-size: 1.6rem; margin-top: 0; }
+.guide-list { display: grid; gap: 14px; margin-top: 20px; }
+.guide-card, .legal .guide-card { display: block; color: inherit; text-decoration: none; transition: border-color 150ms; }
+.guide-card:hover { border-color: var(--border-strong); color: inherit; }
+.guide-card h2, .guide-card h3 { margin: 0 0 6px; color: var(--accent); }
+.guide-card p { margin: 0; }
+.home-guides { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
