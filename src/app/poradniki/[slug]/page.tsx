@@ -49,6 +49,20 @@ export default async function GuidePage({ params }: Props) {
               author: { "@type": "Organization", name: BRAND_NAME, url: base },
               publisher: { "@type": "Organization", name: BRAND_NAME, url: base },
             },
+            ...(guide.video
+              ? [
+                  {
+                    "@type": "VideoObject",
+                    name: guide.video.name,
+                    description: guide.description,
+                    thumbnailUrl: `${base}${guide.video.poster}`,
+                    contentUrl: `${base}${guide.video.src}`,
+                    uploadDate: guide.video.uploaded,
+                    duration: `PT${guide.video.seconds}S`,
+                    inLanguage: "pl-PL",
+                  },
+                ]
+              : []),
             {
               "@type": "BreadcrumbList",
               itemListElement: [
@@ -74,6 +88,14 @@ export default async function GuidePage({ params }: Props) {
       <h1>{guide.h1}</h1>
       <p className="muted small">Aktualizacja: {date}</p>
       <p className="lead">{guide.intro}</p>
+      {guide.video && (
+        <figure className="guide-video">
+          <video controls playsInline preload="none" poster={guide.video.poster} width={720} height={1280}>
+            <source src={guide.video.src} type="video/mp4" />
+          </video>
+          <figcaption className="muted small">{guide.video.name}</figcaption>
+        </figure>
+      )}
       {guide.sections.map((s) => (
         <section key={s.heading}>
           <h2>{s.heading}</h2>
