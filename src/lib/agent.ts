@@ -394,6 +394,23 @@ export async function getMetrics(id: string, range: MetricsRange): Promise<Serve
   return res.json();
 }
 
+/** A month's players on a server (agent/monthstats.go): counted since the agent learned to, in Polish time. */
+export type MonthSummary = {
+  month: string; // "2026-11"
+  players: number;
+  playerMinutes: number;
+  activeMinutes: number;
+  peak: number;
+  peakAt?: number;
+  busiestDay?: string; // "2026-11-14"
+  top: { name: string; minutes: number }[];
+};
+
+export async function getMonthSummary(id: string, month: string): Promise<MonthSummary> {
+  const res = await agentFetch(`/servers/${id}/summary?month=${encodeURIComponent(month)}`, { timeoutMs: 5_000 });
+  return res.json();
+}
+
 /** The console's last lines (the agent sends its last 200 and stops), for the admins' helper. */
 export async function readLogTail(id: string): Promise<string[]> {
   const res = await agentFetch(`/servers/${id}/logs?follow=0`, { timeoutMs: 10_000 });

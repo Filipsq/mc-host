@@ -98,6 +98,7 @@ export default async function ServerLayout({ children, params }: { children: Rea
       title: p.game,
       items: [
         live !== "awaitingPayment" && can("files") && isMinecraft(server.edition) && { key: "worlds" as const, label: all.worlds.title, path: "/worlds" },
+        live !== "awaitingPayment" && server.edition !== "HYTALE" && { key: "summary" as const, label: all.summary.nav, path: "/summary" },
         addonsTitle && can("plugins") && { key: "plugins" as const, label: addonsTitle, path: "/plugins" },
         live !== "awaitingPayment" && can("files") && takesBedrockAddons(server) && { key: "bedrockAddons" as const, label: all.bedrockAddons.title, path: "/bedrock-addons" },
         (offersModPicker(server) || server.kind === "modpack") && can("plugins") && { key: "mods" as const, label: all.mods.title, path: "/mods" },

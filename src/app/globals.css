@@ -2883,3 +2883,11 @@ a.quest-item:hover { background: var(--surface-2); }
   .quest-book, .quest-box.pop { animation: none; }
   .quest-bar span { transition: none; }
 }
+
+/* Podsumowanie miesiąca: the picture beside its buttons, under it on a phone. */
+.summary-wrap { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.summary-image {
+  width: min(100%, 340px); height: auto; aspect-ratio: 9 / 16; border-radius: var(--radius);
+  border: 1px solid var(--border-strong); background: var(--surface); box-shadow: 0 20px 50px rgb(0 0 0 / 0.35);
+}
+.summary-actions { flex: 1 1 240px; max-width: 420px; }
