@@ -510,6 +510,17 @@ export async function changeFiles(
 export type World = { name: string; size: number; modified: string; newGame?: boolean; savedBy?: string };
 
 /** The server's worlds by name, and the one it runs. */
+/** A Java world from above as a PNG (agent/worldmap.go), size×size blocks around its spawn; null when it has no map yet. */
+export async function getWorldMap(id: string, name: string, size = 384, timeoutMs = 20_000): Promise<ArrayBuffer | null> {
+  try {
+    const res = await agentFetch(`/servers/${id}/worlds/${encodeURIComponent(name)}/map?size=${size}`, { timeoutMs });
+    return await res.arrayBuffer();
+  } catch (err) {
+    if (err instanceof AgentError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function listWorlds(id: string, edition: Edition): Promise<{ worlds: World[]; active: string }> {
   const res = await agentFetch(`/servers/${id}/worlds?edition=${edition}`, { timeoutMs: 30_000 });
   return res.json();

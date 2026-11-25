@@ -2891,3 +2891,13 @@ a.quest-item:hover { background: var(--surface-2); }
   border: 1px solid var(--border-strong); background: var(--surface); box-shadow: 0 20px 50px rgb(0 0 0 / 0.35);
 }
 .summary-actions { flex: 1 1 240px; max-width: 420px; }
+
+/* Światy: the world from above, pixel for pixel. */
+.world-map h3 { margin: 0; }
+.world-map-img {
+  width: 100%; max-width: 512px; height: auto; aspect-ratio: 1; image-rendering: pixelated;
+  border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: #0e1218;
+}
+.world-map-img.loading { animation: map-wait 1.2s ease-in-out infinite alternate; }
+@keyframes map-wait { from { opacity: 0.55; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .world-map-img.loading { animation: none; } }

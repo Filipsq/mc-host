@@ -1162,6 +1162,12 @@ const pl = {
   },
   worlds: {
     title: "Światy",
+    map: {
+      title: "Mapa świata",
+      hint: "Widok z góry na {size} × {size} kratek wokół spawnu. Odświeża się co kilka minut.",
+      alt: "Mapa świata {name} z góry",
+      none: "Mapa pojawi się, gdy ktoś pogra na tym świecie.",
+    },
     cardText: "Pobierz świat, wgraj własny albo zacznij nowy.",
     cardCurrent: "teraz: {name}",
     open: "Otwórz światy",
@@ -1876,6 +1882,8 @@ const pl = {
     productName: "Ulepszenie {from} → {to}: {server}",
   },
   planMail: {
+    mapCaption: "Tak z góry wygląda dziś świat serwera {server}. Po usunięciu zniknie na zawsze.",
+    mapAlt: "Mapa świata serwera {server}",
     reminderCodeSubject: "Serwer {server} kończy się {date}: −{n}% na przedłużenie",
     reminderCode: [
       "Mamy dla Ciebie kod −{n}% na przedłużenie serwera {server}: {code}",

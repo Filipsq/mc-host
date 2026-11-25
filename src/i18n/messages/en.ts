@@ -1163,6 +1163,12 @@ const en: Messages = {
   },
   worlds: {
     title: "Worlds",
+    map: {
+      title: "World map",
+      hint: "Top view of {size} × {size} blocks around spawn. Refreshes every few minutes.",
+      alt: "Map of world {name} from above",
+      none: "The map shows up once someone has played in this world.",
+    },
     cardText: "Download a world, upload your own, or start a new one.",
     cardCurrent: "now: {name}",
     open: "Open worlds",
@@ -1877,6 +1883,8 @@ const en: Messages = {
     productName: "Upgrade {from} → {to}: {server}",
   },
   planMail: {
+    mapCaption: "This is what {server}'s world looks like from above today. Once deleted, it's gone for good.",
+    mapAlt: "Map of {server}'s world",
     reminderCodeSubject: "{server} ends on {date}: {n}% off renewing it",
     reminderCode: [
       "Here's a code for {n}% off renewing {server}: {code}",

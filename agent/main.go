@@ -378,6 +378,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("POST /servers/{id}/worlds/import", a.worldImport)
 	mux.HandleFunc("DELETE /servers/{id}/worlds/{name}", a.worldDelete)
 	mux.HandleFunc("GET /servers/{id}/worlds/{name}/trim", a.worldTrimPreview)
+	mux.HandleFunc("GET /servers/{id}/worlds/{name}/map", a.worldMap)
 	mux.HandleFunc("POST /servers/{id}/worlds/{name}/trim", a.worldTrim)
 	mux.HandleFunc("GET /servers/{id}/usage", a.filesUsage)
 	return a.auth(mux)
