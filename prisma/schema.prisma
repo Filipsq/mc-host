@@ -381,6 +381,9 @@ model Server {
   // and each mods/ jar's hashes and side by name, size and date, so unchanged jars aren't read again.
   playerModsToken      String?        @unique
   playerModsHashes     Json?
+  // Księga questów (src/lib/quests.ts): the first-steps quests the owner has done, and whether they hid the book.
+  questsDone           String[]       @default([])
+  questsHidden         Boolean        @default(false)
   // Terraria only: the password players type to join; none if null.
   serverPassword       String?
   // Host port of the server: behind the router for Java, public for Bedrock (UDP) and Terraria (TCP).

@@ -25,6 +25,11 @@ export const plans: PlanSpec[] = [
 
 export const planById = (id: Plan) => plans.find((p) => p.id === id)!;
 
+/** A 30-day price per day, rounded up to the next grosz/cent so it never looks cheaper than it is. */
+export function dayPrice(monthly: number) {
+  return Math.ceil((monthly / 30) * 100 - 1e-9) / 100;
+}
+
 export function formatPrice(amount: number, currency: Currency, locale: string) {
   return new Intl.NumberFormat(locale, {
     style: "currency",

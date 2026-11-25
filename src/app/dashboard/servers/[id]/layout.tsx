@@ -36,6 +36,8 @@ import PanelSearch, { type SearchItem } from "./PanelSearch";
 import ClassicBack from "./ClassicBack";
 import PanelViewToggle from "./PanelViewToggle";
 import { usesClassicPanel } from "@/lib/panelView";
+import QuestBook from "./QuestBook";
+import { questsFor } from "@/lib/quests";
 
 // Every page of a server's panel sits in one frame: the server's name, state
 // and Start/Stop buttons on top, and its menu down the left. Someone opening
@@ -258,9 +260,13 @@ export default async function ServerLayout({ children, params }: { children: Rea
 
   // Free servers get a tall ad right of the panel on wide screens; paid ones never see ads.
   const sideAd = !!ADSENSE_SLOT && server.plan === "FREE" && !server.adminTest;
+  // The Księga questów: the owner's own first steps only (not a friend's, not an admin helping).
+  const q = all.quests;
+  const quests = access.role === "owner" ? questsFor(groups, addons, q.items) : [];
+  const side = quests.length > 0 || sideAd;
 
   return (
-    <main className={sideAd ? "server-panel with-side-ad" : "server-panel"}>
+    <main className={["server-panel", side && "with-side", quests.length > 0 && "has-quests"].filter(Boolean).join(" ")}>
       {banners}
       {/* The same spot as in the classic look, so switching back and forth stays under the cursor. */}
       <div className="row classic-top">
@@ -305,12 +311,26 @@ export default async function ServerLayout({ children, params }: { children: Rea
           others={others}
           t={{ menu: p.menu, servers: p.servers, switchServer: p.switchServer, more: p.tabMore, close: p.closeMenu }}
         />
-        <div className="server-content">{children}</div>
-        {sideAd && (
-          <div className="side-ad">
-            <AdBox label={all.dashboard.adLabel} blockedLabel={all.dashboard.adBlocked} variant="side" />
-          </div>
+        {side && (
+          <aside className="panel-side">
+            {quests.length > 0 && (
+              <QuestBook
+                id={server.id}
+                quests={quests}
+                done={server.questsDone}
+                hidden={server.questsHidden}
+                running={live === "online"}
+                t={q}
+              />
+            )}
+            {sideAd && (
+              <div className="side-ad">
+                <AdBox label={all.dashboard.adLabel} blockedLabel={all.dashboard.adBlocked} variant="side" />
+              </div>
+            )}
+          </aside>
         )}
+        <div className="server-content">{children}</div>
       </div>
       {(live === "starting" || live === "restarting") && <AutoRefresh />}
     </main>
