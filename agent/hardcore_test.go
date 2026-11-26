@@ -118,3 +118,74 @@ func TestFindHardcoreBadNBT(t *testing.T) {
 		}
 	}
 }
+
+// testLevelDat26 is a 26.1+ level.dat: hardcore sits in Data.difficulty_settings.
+func testLevelDat26(hardcore byte) []byte {
+	var b []byte
+	b = append(b, nbtName(10, "")...)
+	b = append(b, nbtName(10, "Data")...)
+	b = append(b, nbtName(8, "LevelName")...)
+	b = append(b, 0, 1, 'w')
+	b = append(b, nbtName(10, "difficulty_settings")...)
+	b = append(b, nbtName(8, "difficulty")...)
+	b = append(b, 0, 4, 'h', 'a', 'r', 'd')
+	b = append(b, nbtName(1, "hardcore")...)
+	b = append(b, hardcore)
+	b = append(b, nbtName(1, "locked")...)
+	b = append(b, 0)
+	b = append(b, 0) // end difficulty_settings
+	b = append(b, nbtName(3, "version")...)
+	b = append(b, 0, 0, 0, 1)
+	b = append(b, 0, 0)
+	return b
+}
+
+func testPlayer(gameType byte) []byte {
+	var b []byte
+	b = append(b, nbtName(10, "")...)
+	b = append(b, nbtName(6, "AbsorptionAmount")...)
+	b = append(b, 0, 0, 0, 0, 0, 0, 0, 0)
+	b = append(b, nbtName(3, "playerGameType")...)
+	b = append(b, 0, 0, 0, gameType)
+	return append(b, 0)
+}
+
+func TestSetWorldHardcore26(t *testing.T) {
+	dir := t.TempDir()
+	for name, b := range map[string][]byte{
+		"world/level.dat":              testLevelDat26(1),
+		"world/players/data/dead.dat":  testPlayer(3),
+		"world/players/data/alive.dat": testPlayer(0),
+		"world/playerdata/old.dat":     testPlayer(3),
+	} {
+		os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o755)
+		os.WriteFile(filepath.Join(dir, name), gz(t, b), 0o644)
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := &serverFiles{id: "abc12345", root: root, dir: dir, uid: os.Getuid(), gid: os.Getgid()}
+	defer s.Close()
+	read := func(name string) []byte {
+		b, err := s.readNBT(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	if changed, err := s.setWorldHardcore("world/level.dat", false); err != nil || !changed {
+		t.Fatalf("turning off: changed=%v err=%v", changed, err)
+	}
+	if !bytes.Equal(read("world/level.dat"), testLevelDat26(0)) {
+		t.Fatal("difficulty_settings.hardcore not turned off")
+	}
+	if n := s.reviveSpectators("world"); n != 2 {
+		t.Errorf("revived %d, want 2", n)
+	}
+	for _, name := range []string{"world/players/data/dead.dat", "world/players/data/alive.dat", "world/playerdata/old.dat"} {
+		if !bytes.Equal(read(name), testPlayer(0)) {
+			t.Errorf("%s not in survival", name)
+		}
+	}
+}

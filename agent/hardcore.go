@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
+	"io/fs"
 	"log"
 	"path"
 	"strings"
@@ -17,7 +18,9 @@ import (
 // panel's Settings changed the file but the world stayed hardcore (players who
 // died still became spectators). Unlike difficulty there's no command for it,
 // so before each start, while the server is stopped, the agent sets the flag
-// in level.dat to the one from the settings.
+// in level.dat to the one from the settings. When it turns hardcore off, the
+// players who died in it (left in spectator mode, which each player's own file
+// keeps) are put back in survival.
 func (a *agent) syncHardcore(ctx context.Context, id string) {
 	if a.volumesDir == "" || a.docker == nil {
 		return
@@ -43,91 +46,164 @@ func (a *agent) syncHardcore(ctx context.Context, id string) {
 	if level == "" {
 		level = "world"
 	}
-	changed, err := s.setWorldHardcore(path.Clean(level)+"/level.dat", want)
+	level = path.Clean(level)
+	changed, err := s.setWorldHardcore(level+"/level.dat", want)
 	if err != nil {
 		log.Printf("hardcore %s: %v", id, err)
-	} else if changed {
-		log.Printf("hardcore %s: set hardcore=%v in %s/level.dat", id, want, level)
+		return
+	}
+	if !changed {
+		return
+	}
+	log.Printf("hardcore %s: set hardcore=%v in %s/level.dat", id, want, level)
+	if !want {
+		if n := s.reviveSpectators(level); n > 0 {
+			log.Printf("hardcore %s: put %d players in spectator mode back in survival", id, n)
+		}
 	}
 }
 
-// setWorldHardcore sets Data.hardcore in a gzipped level.dat, reporting
+// setWorldHardcore sets the hardcore flag in a gzipped level.dat, reporting
 // whether it had to change. A world not made yet (no level.dat) is left to the
 // server, which makes it from server.properties.
 func (s *serverFiles) setWorldHardcore(name string, want bool) (bool, error) {
-	if strings.HasPrefix(name, "../") || name == ".." {
-		return false, errBadPath
-	}
-	f, err := s.root.Open(name)
-	if err != nil {
+	data, err := s.readNBT(name)
+	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
-	}
-	zr, err := gzip.NewReader(io.LimitReader(f, 64<<20))
-	if err != nil {
-		f.Close()
-		return false, err
-	}
-	data, err := io.ReadAll(io.LimitReader(zr, 64<<20))
-	f.Close()
-	if err != nil {
+	} else if err != nil {
 		return false, err
 	}
 	at, err := findHardcore(data)
 	if err != nil {
 		return false, err
 	}
-	var v byte
-	if want {
-		v = 1
-	}
 	if (data[at] != 0) == want {
 		return false, nil
 	}
-	data[at] = v
+	data[at] = 0
+	if want {
+		data[at] = 1
+	}
+	return true, s.writeNBT(name, data)
+}
+
+// reviveSpectators puts every player of the world in spectator mode back in
+// survival, returning how many. 26.1+ keeps players in players/data, older
+// versions in playerdata.
+func (s *serverFiles) reviveSpectators(level string) int {
+	n := 0
+	for _, dir := range []string{level + "/players/data", level + "/playerdata"} {
+		f, err := s.root.Open(dir)
+		if err != nil {
+			continue
+		}
+		names, _ := f.Readdirnames(-1)
+		f.Close()
+		for _, name := range names {
+			if !strings.HasSuffix(name, ".dat") {
+				continue
+			}
+			p := dir + "/" + name
+			data, err := s.readNBT(p)
+			if err != nil {
+				continue
+			}
+			at, err := findRootTag(data, "playerGameType", nbtIntTag)
+			if err != nil || binary.BigEndian.Uint32(data[at:]) != 3 { // 3 = spectator
+				continue
+			}
+			binary.BigEndian.PutUint32(data[at:], 0) // survival
+			if err := s.writeNBT(p, data); err != nil {
+				log.Printf("hardcore %s %s: %v", s.id, p, err)
+				continue
+			}
+			n++
+		}
+	}
+	return n
+}
+
+// readNBT reads a gzipped NBT file (level.dat, a player's .dat).
+func (s *serverFiles) readNBT(name string) ([]byte, error) {
+	f, err := s.root.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	zr, err := gzip.NewReader(io.LimitReader(f, 64<<20))
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(io.LimitReader(zr, 64<<20))
+}
+
+// writeNBT writes data gzipped over name, in place of the file.
+func (s *serverFiles) writeNBT(name string, data []byte) error {
 	var out bytes.Buffer
 	zw := gzip.NewWriter(&out)
 	if _, err := zw.Write(data); err != nil {
-		return false, err
+		return err
 	}
 	if err := zw.Close(); err != nil {
-		return false, err
+		return err
 	}
-	if _, err := s.writeFile(name, &out); err != nil {
-		return false, err
-	}
-	return true, nil
+	_, err := s.writeFile(name, &out)
+	return err
 }
 
-var errNoHardcore = errors.New("level.dat has no Data.hardcore")
+var errNoHardcore = errors.New("level.dat has no hardcore flag")
 
-// findHardcore is where the value of the byte tag Data.hardcore is in an
+// findHardcore is where the value of the world's hardcore byte is in an
 // uncompressed level.dat (NBT: a root compound holding the compound Data).
+// Up to 1.21.11 it is Data.hardcore; 26.1 moved it to
+// Data.difficulty_settings.hardcore, next to the difficulty.
 func findHardcore(b []byte) (int, error) {
 	r := &nbtReader{b: b}
-	t, err := r.u8()
-	if err != nil || t != nbtCompound {
-		return 0, errNoHardcore
-	}
-	if _, err := r.str(); err != nil {
+	if err := r.enterRoot(); err != nil {
 		return 0, err
 	}
-	for _, want := range []struct {
-		name string
-		tag  byte
-	}{{"Data", nbtCompound}, {"hardcore", nbtByte}} {
-		if err := r.findInCompound(want.name, want.tag); err != nil {
+	if err := r.findInCompound("Data", nbtCompound); err != nil {
+		return 0, err
+	}
+	for {
+		t, name, err := r.next()
+		if err != nil {
+			return 0, err
+		}
+		switch {
+		case t == nbtByte && name == "hardcore":
+			return r.p, nil
+		case t == nbtCompound && name == "difficulty_settings":
+			if err := r.findInCompound("hardcore", nbtByte); err != nil {
+				return 0, err
+			}
+			return r.p, nil
+		}
+		if err := r.skip(t, 0); err != nil {
 			return 0, err
 		}
 	}
-	if r.p >= len(b) {
-		return 0, errNoHardcore
+}
+
+// findRootTag is where the value of the root compound's tag name is.
+func findRootTag(b []byte, name string, tag byte) (int, error) {
+	r := &nbtReader{b: b}
+	if err := r.enterRoot(); err != nil {
+		return 0, err
 	}
-	return r.p, nil
+	if err := r.findInCompound(name, tag); err != nil {
+		return 0, err
+	}
+	if _, err := r.take(map[byte]int{nbtByte: 1, nbtIntTag: 4}[tag]); err != nil {
+		return 0, err
+	}
+	return r.p - map[byte]int{nbtByte: 1, nbtIntTag: 4}[tag], nil
 }
 
 const (
 	nbtEnd      = 0
 	nbtByte     = 1
+	nbtIntTag   = 3
 	nbtList     = 9
 	nbtCompound = 10
 	nbtMaxDepth = 512
@@ -174,18 +250,35 @@ func (r *nbtReader) str() (string, error) {
 	return string(s), err
 }
 
+// enterRoot reads the root compound's type and name, leaving r at its first tag.
+func (r *nbtReader) enterRoot() error {
+	t, err := r.u8()
+	if err != nil || t != nbtCompound {
+		return errBadNBT
+	}
+	_, err = r.str()
+	return err
+}
+
+// next reads the type and name of the next tag of the compound r is in;
+// errNoHardcore at its end.
+func (r *nbtReader) next() (byte, string, error) {
+	t, err := r.u8()
+	if err != nil {
+		return 0, "", err
+	}
+	if t == nbtEnd {
+		return 0, "", errNoHardcore
+	}
+	n, err := r.str()
+	return t, n, err
+}
+
 // findInCompound reads the tags of the compound it's in until the one named
 // name with type tag, leaving r at that tag's value.
 func (r *nbtReader) findInCompound(name string, tag byte) error {
 	for {
-		t, err := r.u8()
-		if err != nil {
-			return err
-		}
-		if t == nbtEnd {
-			return errNoHardcore
-		}
-		n, err := r.str()
+		t, n, err := r.next()
 		if err != nil {
 			return err
 		}
