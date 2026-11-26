@@ -141,13 +141,13 @@ async function ServerCard({ s, open, all, f }: { s: CardServer; open: boolean; a
   );
 }
 
-/** The customer's servers as cards; a lone server starts open. */
+/** The customer's servers as cards; all closed until clicked (Fiq asked 2026-11-26). */
 export default async function ServerInfoCards({ servers, all, f }: { servers: CardServer[]; all: Messages; f: Formats }) {
   if (servers.length === 0) return <p className="muted small">{all.admin.nav.servers}: {all.support.admin.noServers}</p>;
   return (
     <div className="srv-cards">
       {servers.map((s) => (
-        <ServerCard key={s.id} s={s} open={servers.length === 1} all={all} f={f} />
+        <ServerCard key={s.id} s={s} open={false} all={all} f={f} />
       ))}
     </div>
   );
