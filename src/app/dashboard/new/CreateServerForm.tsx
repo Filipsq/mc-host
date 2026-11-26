@@ -7,7 +7,6 @@ import { createServerAction } from "../servers/actions";
 import PlanPicker, { type AddonOption, type PlanOption } from "@/components/PlanPicker";
 import { addonFits, addonList, type AddonId } from "@/lib/addons";
 import PayBadges from "@/components/PayBadges";
-import PaysafecardButton from "@/components/PaysafecardButton";
 import CashbillButton from "@/components/CashbillButton";
 import PaymentConsent from "@/components/PaymentConsent";
 import { format, type Messages } from "@/i18n/messages";
@@ -641,7 +640,6 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         )}
         {/* Every way to pay stays in sight together. */}
         {paying && cashbill && <CashbillButton t={billing} disabled={pending} />}
-        {paying && <PaysafecardButton t={billing} what={billing.paysafecardFor.newServer} disabled={pending} />}
         {/* A paid plan is ticked, but the free server is still one tap away. */}
         {plan !== "FREE" && freeOk && !gifted && !forUser && (
           <button type="submit" name="plan" value="FREE" formNoValidate disabled={pending} className="secondary free-alt">

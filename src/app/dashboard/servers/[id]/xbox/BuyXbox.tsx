@@ -5,7 +5,6 @@ import { buyXboxAction } from "../../actions";
 import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
-import PaysafecardButton from "@/components/PaysafecardButton";
 import CashbillButton from "@/components/CashbillButton";
 import { format, type Messages } from "@/i18n/messages";
 
@@ -39,7 +38,6 @@ export default function BuyXbox({ serverId, price, days, again, t, billing, lega
           <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
         {cashbill && <CashbillButton t={billing} disabled={pending} />}
-        <PaysafecardButton t={billing} what={billing.paysafecardFor.xbox} disabled={pending} />
       </div>
       <AdminTestBuy show={adminTest} pending={pending} t={billing} />
     </form>

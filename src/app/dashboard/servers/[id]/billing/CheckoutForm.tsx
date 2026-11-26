@@ -9,7 +9,6 @@ import type { ComponentProps } from "react";
 import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
-import PaysafecardButton from "@/components/PaysafecardButton";
 import CashbillButton from "@/components/CashbillButton";
 import type { Messages } from "@/i18n/messages";
 import type { PeriodDays } from "@/lib/periods";
@@ -77,7 +76,6 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays
           <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
         {cashbill && <CashbillButton t={t} disabled={pending} />}
-        <PaysafecardButton t={t} what={t.paysafecardFor.renew} disabled={pending} />
       </div>
       <AdminTestBuy show={adminTest} pending={pending} t={t} />
     </form>
