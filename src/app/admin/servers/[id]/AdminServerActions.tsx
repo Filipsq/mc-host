@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { Trash2 } from "lucide-react";
-import { deleteServerAdminAction, giftDaysAction, moveServerAdminAction, playerSlotsAction, type GiftState, type MoveState, type SlotsState } from "../../actions";
+import { adminChangePlanAction, deleteServerAdminAction, giftDaysAction, moveServerAdminAction, playerSlotsAction, type GiftState, type MoveState, type PlanChangeState, type SlotsState } from "../../actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -19,6 +19,54 @@ export function GiftForm({ id, t }: { id: string; t: Messages["admin"]["gift"] }
       </div>
       {state.error && <p className={state.error === "failed" ? "notice warn" : "error"}>{t.errors[state.error]}</p>}
       {state.days && !state.error && <p className="notice success">{format(t.done, { n: state.days, date: state.date ?? "" })}</p>}
+    </form>
+  );
+}
+
+export function PlanChangeForm({
+  id,
+  name,
+  current,
+  plans,
+  t,
+}: {
+  id: string;
+  name: string;
+  current: string;
+  plans: { id: string; label: string }[];
+  t: Messages["admin"]["planChange"];
+}) {
+  const [state, action, pending] = useActionState<PlanChangeState, FormData>(adminChangePlanAction.bind(null, id), {});
+  const label = (plan: string) => plans.find((p) => p.id === plan)?.label ?? plan;
+  return (
+    <form
+      action={action}
+      className="stack"
+      onSubmit={(e) => {
+        const data = new FormData(e.currentTarget);
+        const msg = format(t.confirm, { name, plan: label(String(data.get("plan"))), days: String(data.get("days")) });
+        if (!confirm(msg)) e.preventDefault();
+      }}
+    >
+      <div className="row gift-row">
+        <label>
+          {t.plan}
+          <select name="plan" defaultValue={plans.some((p) => p.id === current) ? current : plans[0]?.id} required>
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t.days}
+          <input name="days" type="number" min={0} max={365} defaultValue={30} required />
+        </label>
+        <button disabled={pending}>{t.submit}</button>
+      </div>
+      {state.error && <p className={state.error === "failed" ? "notice warn" : "error"}>{t.errors[state.error]}</p>}
+      {state.plan && !state.error && <p className="notice success">{format(t.done, { plan: label(state.plan), date: state.date ?? "" })}</p>}
     </form>
   );
 }

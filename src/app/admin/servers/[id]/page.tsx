@@ -10,8 +10,9 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { formats } from "../../format";
 import { EDITION_NAMES } from "@/lib/editions";
 import PaymentTable from "../../PaymentTable";
-import { DeleteButton, GiftForm, MoveForm, SlotsForm } from "./AdminServerActions";
+import { DeleteButton, GiftForm, MoveForm, PlanChangeForm, SlotsForm } from "./AdminServerActions";
 import { nodes } from "@/lib/nodes";
+import { plans } from "@/lib/plans";
 import CopyForClaude from "@/components/CopyForClaude";
 import { HistoryList } from "../../ServerInfoCards";
 import { serverHistory } from "@/lib/serverEvents";
@@ -113,6 +114,17 @@ export default async function AdminServer({ params }: Props) {
             <GiftForm id={server.id} t={t.gift} />
           </section>
         )}
+        <section className="card stack">
+          <h3>{t.planChange.title}</h3>
+          <p className="muted small">{t.planChange.hint}</p>
+          <PlanChangeForm
+            id={server.id}
+            name={server.name}
+            current={server.plan}
+            plans={plans.filter((p) => p.id !== "FREE").map((p) => ({ id: p.id, label: `${all.plans[p.id]} · ${f.gb(p.ramGb * 1024)}` }))}
+            t={t.planChange}
+          />
+        </section>
         {(server.edition === "JAVA" || server.edition === "BEDROCK") && (
           <section className="card stack">
             <h3>{t.slots.title}</h3>

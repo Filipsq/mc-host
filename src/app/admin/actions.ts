@@ -4,7 +4,7 @@ import { logServerEvent } from "@/lib/serverEvents";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
-import { REMOVABLE_PAYMENTS, TEST_PAYMENTS, giftDays } from "@/lib/billing";
+import { REMOVABLE_PAYMENTS, TEST_PAYMENTS, adminChangePlan, giftDays } from "@/lib/billing";
 import { db } from "@/lib/db";
 import { ANNOUNCEMENT_MAX, sayOnAllServers, setAnnouncement } from "@/lib/announcement";
 import { applyToHost, destroyServer, moveServer, onHost } from "@/lib/servers";
@@ -33,6 +33,23 @@ export async function giftDaysAction(id: string, _: GiftState, form: FormData): 
   const { locale } = await getPreferences();
   const date = server?.paidUntil?.toLocaleString(locale, { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Warsaw" });
   return { error, days, date };
+}
+
+export type PlanChangeState = { error?: "invalid" | "noDays" | "soldOut" | "failed"; plan?: string; date?: string };
+
+const ADMIN_PLANS = ["STARTER", "STANDARD", "PRO", "MAX"] as const;
+
+/** Switches any server, a free one too, to a paid plan for free (see adminChangePlan). */
+export async function adminChangePlanAction(id: string, _: PlanChangeState, form: FormData): Promise<PlanChangeState> {
+  await requireAdmin();
+  const plan = ADMIN_PLANS.find((p) => p === form.get("plan"));
+  const days = Number(form.get("days"));
+  if (!plan || !Number.isInteger(days) || days < 0 || days > 365) return { error: "invalid" };
+  const { error, server } = await adminChangePlan(id, plan, days);
+  revalidatePath(`/admin/servers/${id}`);
+  const { locale } = await getPreferences();
+  const date = server?.paidUntil?.toLocaleString(locale, { dateStyle: "long", timeStyle: "short", timeZone: "Europe/Warsaw" });
+  return { error, plan, date };
 }
 
 export async function deleteServerAdminAction(id: string): Promise<{ error?: "failed" }> {
