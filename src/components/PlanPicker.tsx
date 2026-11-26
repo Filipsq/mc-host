@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { Plan } from "@prisma/client";
 import { format } from "@/i18n/messages";
 import type { Currency } from "@/i18n/config";
-import { formatPrice } from "@/lib/plans";
+import { dayPrice, formatPrice } from "@/lib/plans";
 import { DEFAULT_PERIOD, PERIODS, periodPrice, type PeriodDays } from "@/lib/periods";
 import type { AddonId } from "@/lib/addons";
 
@@ -19,7 +19,7 @@ type Props = {
   /** A plan picked elsewhere on the page (the players slider); the picker follows it. */
   plan?: Plan;
   periodLabels: { days: string; off: string }; // "{days} days", "−{n}%"
-  labels: { plan: string; period: string; total: string };
+  labels: { plan: string; period: string; total: string; perDay?: string }; // perDay: "{price} a day"
   formatMoney: { locale: string; currency: string };
   onPlanChange?: (plan: Plan) => void;
   /** The total to pay as text (null on the free plan), for a pay button shown elsewhere. */
@@ -68,7 +68,12 @@ export default function PlanPicker({ plans, defaultPlan, defaultDays, plan: outs
               />
               <span className="stack-tight">
                 <strong>{p.name}</strong>
-                <span>{money.format(p.monthly)}</span>
+                <span>
+                  {money.format(p.monthly)}
+                  {labels.perDay && p.monthly > 0 && (
+                    <span className="muted small"> · {format(labels.perDay, { price: money.format(dayPrice(p.monthly)) })}</span>
+                  )}
+                </span>
                 <span className="muted small">{p.disabledNote ?? p.summary}</span>
               </span>
             </label>

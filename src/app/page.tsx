@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { format } from "@/i18n/messages";
-import { formatPrice, planById, plans } from "@/lib/plans";
+import { dayPrice, formatPrice, planById, plans } from "@/lib/plans";
 import { periodPrice } from "@/lib/periods";
 import { gamePluginTitles, offeredGames } from "@/lib/games";
 import { CURATED_PACKS } from "@/lib/modpacks";
@@ -327,6 +327,9 @@ export default async function Home() {
                   <p className="price">
                     {formatPrice(p.price[currency], currency, locale)} <span>{h.perMonth}</span>
                   </p>
+                  {p.price[currency] > 0 && (
+                    <p className="price-day">{format(h.perDay, { price: formatPrice(dayPrice(p.price[currency]), currency, locale) })}</p>
+                  )}
                   <p className="price-note">
                     {p.price[currency] > 0
                       ? format(h.longerPeriod, { price: formatPrice(periodPrice(p.price[currency], 90), currency, locale) })

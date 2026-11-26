@@ -7,6 +7,9 @@ import { buttonMail, sendMail } from "./mail";
 import { sendPush } from "./push";
 import { formatPrice, planById } from "./plans";
 import { periodPrice } from "./periods";
+import { getWorldMap } from "./agent";
+import { activeLevel } from "./worlds";
+import { worldMapLink } from "./worldMap";
 
 // Emails about a server's paid plan: when a payment arrives, a few days
 // before the paid period ends (plans don't renew by themselves), when the
@@ -63,6 +66,12 @@ export async function sendPlanMail(
     (withCode ? `?kod=${encodeURIComponent(extra.code)}` : "");
   const paragraphs =
     kind === "paid" && server.autoRenew ? [t.paragraphs[0], all.planMail.paidAutoRenew] : withCode ? [...t.paragraphs, ...all.planMail.reminderCode] : t.paragraphs;
+  // Before a Java server is deleted, a picture of its world says what is about to go. Only
+  // when the agent can draw it now (the server is on its machine and has been played on).
+  const showMap = (kind === "deletion" || kind === "inactive") && server.edition === "JAVA" && deleteOn;
+  const map = showMap && (await getWorldMap(server.id, activeLevel(server), 384, 15_000).catch(() => null))
+    ? { url: worldMapLink(app, server.id, new Date(deleteOn.getTime() + 7 * 86_400_000)), alt: format(all.planMail.mapAlt, vars), caption: format(all.planMail.mapCaption, vars) }
+    : undefined;
   const mail = buttonMail({
     to: server.owner.email,
     subject: format(withCode ? all.planMail.reminderCodeSubject : t.subject, vars),
@@ -71,6 +80,7 @@ export async function sendPlanMail(
     button: t.button,
     url: page,
     footer: format(all.planMail.footer, { brand: BRAND_NAME, contact: `${app}/kontakt` }),
+    image: map,
   });
   // The phone notification says the same in short; the email stays the full record.
   await sendPush([server.ownerId], { title: mail.subject, body: format(withCode ? all.planMail.reminderCodePush : t.paragraphs[0], vars), url: page });

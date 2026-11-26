@@ -27,6 +27,7 @@ import {
   Puzzle,
   SlidersHorizontal,
   Terminal,
+  Trophy,
   Users,
 } from "lucide-react";
 
@@ -49,6 +50,7 @@ export const ICONS = {
   addons: PackagePlus,
   access: Users,
   creator: Gift,
+  summary: Trophy,
 };
 
 export type NavItem = { key: keyof typeof ICONS; label: string; path: string; also?: string[] };

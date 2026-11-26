@@ -552,7 +552,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         defaultPlan={plan}
         plan={plan}
         periodLabels={{ days: billing.periodDays, off: billing.periodOff }}
-        labels={{ plan: plan === "FREE" ? t.paidPlans : t.plan, period: t.period, total: billing.total }}
+        labels={{ plan: plan === "FREE" ? t.paidPlans : t.plan, period: t.period, total: billing.total, perDay: t.perDay }}
         formatMoney={money}
         onPlanChange={setPlan}
         onTotalChange={setTotal}

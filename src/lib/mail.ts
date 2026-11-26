@@ -45,6 +45,8 @@ export function buttonMail(o: {
   url: string;
   footer: string;
   unsubscribe?: { label: string; url: string };
+  /** A picture under the text (e.g. the world map before a deletion), with a line under it. */
+  image?: { url: string; alt: string; caption: string };
 }): Mail {
   const u = o.unsubscribe;
   const text = [...o.paragraphs, o.url, o.footer, ...(u ? [`${u.label}: ${u.url}`] : [])].join("\n\n");
@@ -52,6 +54,8 @@ export function buttonMail(o: {
 <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:12px;padding:28px">
 <p style="margin:0 0 20px;font-size:20px;font-weight:bold">${escape(BRAND_NAME)}</p>
 ${o.paragraphs.map((p) => `<p style="margin:0 0 16px;font-size:15px;line-height:1.5">${escape(p)}</p>`).join("\n")}
+${o.image ? `<img src="${escape(o.image.url)}" alt="${escape(o.image.alt)}" width="424" style="display:block;width:100%;max-width:424px;height:auto;border-radius:8px;image-rendering:pixelated;margin:8px 0 8px" />
+<p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#52525b">${escape(o.image.caption)}</p>` : ""}
 <p style="margin:24px 0"><a href="${escape(o.url)}" style="display:inline-block;background:#5bc236;color:#0b0f14;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px">${escape(o.button)}</a></p>
 <p style="margin:0 0 16px;font-size:13px;line-height:1.5;color:#52525b;word-break:break-all">${escape(o.url)}</p>
 <p style="margin:0;font-size:13px;line-height:1.5;color:#52525b">${escape(o.footer)}</p>

@@ -423,6 +423,7 @@ button.pack-hit:hover:not(:disabled) { background: var(--surface-2); border-colo
 .price { margin: 0; font-size: 2.2rem; font-weight: 800; letter-spacing: -0.02em; }
 .price span { font-size: 0.95rem; font-weight: 500; color: var(--muted); letter-spacing: 0; }
 .price-note { margin: -0.4rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.price-day { margin: -0.6rem 0 0; font-size: 0.9rem; font-weight: 600; color: var(--accent-strong); font-variant-numeric: tabular-nums; }
 .features { display: flex; flex-direction: column; gap: 9px; margin: 0; font-size: 0.95rem; }
 .features li { display: flex; gap: 8px; align-items: flex-start; }
 .features svg { color: var(--accent); flex-shrink: 0; margin-top: 3px; }
@@ -821,10 +822,22 @@ main.compare { max-width: 1080px; }
 .thanks-card .adsbygoogle[data-ad-status="unfilled"] { display: none !important; }
 /* A free server's panel: a tall ad in a third column, only where the screen has room for it. */
 .side-ad { display: none; }
+/* The right column (Księga questów, and a free server's ad): above the page's content until the
+   screen is wide enough for a third column. */
+.panel-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.panel-side:not(:has(.quest-book, .quest-reopen)) { display: none; }
+@media (min-width: 901px) and (max-width: 1279px) {
+  .has-quests .server-nav { grid-row: 1 / span 2; }
+  .has-quests .panel-side { grid-column: 2; grid-row: 1; }
+  .has-quests .server-content { grid-column: 2; grid-row: 2; }
+}
 @media (min-width: 1280px) {
-  main.server-panel.with-side-ad { max-width: 1440px; }
-  .with-side-ad .server-body { grid-template-columns: 240px minmax(0, 1fr) 192px; }
-  .with-side-ad .side-ad { display: block; position: sticky; top: 84px; }
+  main.server-panel.with-side { max-width: 1460px; }
+  .with-side .server-body { grid-template-columns: 240px minmax(0, 1fr) 236px; }
+  .with-side .server-nav { grid-row: 1; grid-column: 1; }
+  .with-side .server-content { grid-row: 1; grid-column: 2; }
+  .with-side .panel-side { grid-row: 1; grid-column: 3; position: sticky; top: 84px; display: flex; }
+  .with-side .side-ad { display: block; }
   .thanks-card.side { padding: 14px 16px; }
   .thanks-card.side .adsbygoogle { min-height: 600px; }
 }
@@ -2813,3 +2826,78 @@ main.guide .faq { margin-top: 8px; }
 .guide-video { margin: 0 auto 28px; max-width: 320px; text-align: center; }
 .guide-video video { display: block; width: 100%; height: auto; aspect-ratio: 9 / 16; border-radius: var(--radius); border: 1px solid var(--border); background: #000; }
 .guide-video figcaption { margin-top: 8px; }
+
+/* Księga questów: the first steps as a game's quest log, on the panel's right. */
+.quest-book { padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px; animation: quest-in var(--dur-enter) var(--ease-out-ui) both; }
+@keyframes quest-in { from { opacity: 0; transform: scale(0.97); } }
+.quest-head { display: flex; align-items: center; gap: 8px; }
+.quest-head strong { white-space: nowrap; font-family: var(--font-display); font-size: 1.3rem; font-weight: 400; line-height: 1; letter-spacing: 0.02em; }
+.quest-icon { color: var(--gold); flex-shrink: 0; }
+.quest-count { margin-left: auto; color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.quest-close {
+  display: grid; place-items: center; width: 28px; height: 28px; margin: -6px -6px -6px 0; padding: 0;
+  background: transparent; border: 0; box-shadow: none; color: var(--muted); border-radius: 8px; position: relative;
+}
+.quest-close::before { content: ""; position: absolute; inset: -8px; } /* 44 px to tap */
+.quest-close:hover { color: var(--fg); background: var(--surface-2); }
+.quest-bar { height: 6px; border-radius: 3px; background: var(--bg); border: 1px solid var(--border); overflow: hidden; }
+.quest-bar span { display: block; height: 100%; background: var(--accent); transition: width 0.5s var(--ease-out-ui); }
+.quest-next {
+  display: flex; flex-direction: column; gap: 1px; padding: 9px 11px; border-radius: var(--radius-sm);
+  background: var(--accent-soft); border: 1px solid rgb(91 194 54 / 0.35); color: var(--fg); text-decoration: none; font-weight: 600;
+}
+.quest-next:hover { border-color: var(--accent); }
+.quest-next-label { color: var(--accent-strong); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+.quest-done-all { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; font-size: 0.9rem; color: var(--muted); }
+.quest-done-all strong { color: var(--accent-strong); }
+.quest-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.quest-item {
+  display: flex; align-items: center; gap: 10px; min-height: 36px; padding: 4px 6px; margin: 0 -6px;
+  border-radius: 8px; color: var(--fg); text-decoration: none; font-size: 0.92rem;
+}
+a.quest-item:hover { background: var(--surface-2); }
+.quest-box {
+  flex-shrink: 0; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 4px;
+  border: 2px solid var(--border-strong); background: var(--bg); color: var(--accent-ink);
+}
+.quest-list li.done .quest-box { background: var(--accent); border-color: var(--accent); }
+.quest-list li.done .quest-label { color: var(--muted); text-decoration: line-through; text-decoration-color: rgb(163 177 196 / 0.5); }
+.quest-box.pop { animation: quest-pop 0.42s var(--ease-out-ui); }
+@keyframes quest-pop { 0% { transform: scale(0.6); } 55% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.quest-more { display: none; }
+.quest-reopen {
+  display: inline-flex; align-items: center; gap: 8px; align-self: flex-start;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--border); box-shadow: none; font-size: 0.88rem; min-height: 40px;
+}
+.quest-reopen .quest-count { margin-left: 2px; }
+/* Narrower than three columns: only the next quest, the rest behind "Wszystkie questy". */
+@media (max-width: 1279px) {
+  .quest-book:not(.open) .quest-list { display: none; }
+  .quest-more {
+    display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; padding: 4px 0; min-height: 32px;
+    background: none; border: 0; box-shadow: none; color: var(--muted); font-size: 0.85rem;
+  }
+  .quest-book.open .quest-more svg { transform: rotate(180deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-book, .quest-box.pop { animation: none; }
+  .quest-bar span { transition: none; }
+}
+
+/* Podsumowanie miesiąca: the picture beside its buttons, under it on a phone. */
+.summary-wrap { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+.summary-image {
+  width: min(100%, 340px); height: auto; aspect-ratio: 9 / 16; border-radius: var(--radius);
+  border: 1px solid var(--border-strong); background: var(--surface); box-shadow: 0 20px 50px rgb(0 0 0 / 0.35);
+}
+.summary-actions { flex: 1 1 240px; max-width: 420px; }
+
+/* Światy: the world from above, pixel for pixel. */
+.world-map h3 { margin: 0; }
+.world-map-img {
+  width: 100%; max-width: 512px; height: auto; aspect-ratio: 1; image-rendering: pixelated;
+  border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: #0e1218;
+}
+.world-map-img.loading { animation: map-wait 1.2s ease-in-out infinite alternate; }
+@keyframes map-wait { from { opacity: 0.55; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .world-map-img.loading { animation: none; } }

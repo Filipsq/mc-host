@@ -264,6 +264,7 @@ func (a *agent) sampleServer(ctx context.Context, id string) {
 	if count < 0 {
 		count = len(players)
 	}
+	a.noteMonth(id, now, players, count)
 
 	m.mu.Lock()
 	defer m.mu.Unlock()

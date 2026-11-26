@@ -13,6 +13,7 @@ import { planById } from "@/lib/plans";
 import { biggerPlans, canUpgrade } from "@/lib/upgrade";
 import { serverAddons } from "@/lib/addons";
 import { activeLevel, canTrim, nextWorldName, worldTypes } from "@/lib/worlds";
+import WorldMapImage from "./WorldMapImage";
 import { DeleteWorldButton, NewWorldForm, PlayWorldButton, UploadWorld, type MoreSpace } from "./WorldControls";
 import { isMinecraft } from "@/lib/otherGames";
 import { shownVersion } from "@/lib/serverType";
@@ -135,6 +136,18 @@ export default async function WorldsPage({ params, searchParams }: Props) {
         <p className="muted small">{java ? t.downloadHint : t.downloadHintBedrock}</p>
         {gameMode && <p className="muted small">{t.gameModeNote}</p>}
       </section>
+
+      {java && made && (
+        <section className="card stack world-map">
+          <h3>{t.map.title}</h3>
+          <WorldMapImage
+            src={`/api/servers/${server.id}/worlds/map?name=${encodeURIComponent(active)}`}
+            alt={format(t.map.alt, { name: active })}
+            none={t.map.none}
+          />
+          <p className="muted small">{format(t.map.hint, { size: 512 })}</p>
+        </section>
+      )}
 
       {canChange && canTrim(server) && worlds.length > 0 && (
         <section className="card row">

@@ -194,6 +194,7 @@ type agent struct {
 	docker      *Docker
 	token       string
 	stateDir    string        // marker files recording why a server was stopped
+	months      sync.Map      // id -> *monthEntry: this month's players (monthstats.go)
 	idle        time.Duration // free servers sleep after this long with no players
 	memoryLimit int           // MB of plan memory servers may hold in total; 0 means no limit
 	overbook    float64       // how many times memoryLimit the panel sells to paid plans (see capacity.go)
@@ -353,6 +354,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("DELETE /servers/{id}/xbox", a.xboxDelete)
 	mux.HandleFunc("POST /servers/{id}/command", a.command)
 	mux.HandleFunc("GET /servers/{id}/metrics", a.metricsHandler)
+	mux.HandleFunc("GET /servers/{id}/summary", a.monthSummaryHandler)
 	mux.HandleFunc("GET /servers/{id}/backups", a.backupsList)
 	mux.HandleFunc("POST /servers/{id}/backups", a.backupsCreate)
 	mux.HandleFunc("GET /servers/{id}/backups/{file}", a.backupDownload)
@@ -376,6 +378,7 @@ func (a *agent) routes() http.Handler {
 	mux.HandleFunc("POST /servers/{id}/worlds/import", a.worldImport)
 	mux.HandleFunc("DELETE /servers/{id}/worlds/{name}", a.worldDelete)
 	mux.HandleFunc("GET /servers/{id}/worlds/{name}/trim", a.worldTrimPreview)
+	mux.HandleFunc("GET /servers/{id}/worlds/{name}/map", a.worldMap)
 	mux.HandleFunc("POST /servers/{id}/worlds/{name}/trim", a.worldTrim)
 	mux.HandleFunc("GET /servers/{id}/usage", a.filesUsage)
 	return a.auth(mux)
@@ -1267,6 +1270,7 @@ func (a *agent) remove(w http.ResponseWriter, r *http.Request) {
 	}
 	a.clearMarkers(id)
 	a.dropNext(id)
+	a.dropMonths(id)
 	a.diskUsage.Delete(id)
 	if err := a.setDiskLimits(map[string]int64{id: 0}, false); err != nil {
 		log.Printf("disk limit %s: %v", id, err)

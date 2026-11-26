@@ -394,6 +394,23 @@ export async function getMetrics(id: string, range: MetricsRange): Promise<Serve
   return res.json();
 }
 
+/** A month's players on a server (agent/monthstats.go): counted since the agent learned to, in Polish time. */
+export type MonthSummary = {
+  month: string; // "2026-11"
+  players: number;
+  playerMinutes: number;
+  activeMinutes: number;
+  peak: number;
+  peakAt?: number;
+  busiestDay?: string; // "2026-11-14"
+  top: { name: string; minutes: number }[];
+};
+
+export async function getMonthSummary(id: string, month: string): Promise<MonthSummary> {
+  const res = await agentFetch(`/servers/${id}/summary?month=${encodeURIComponent(month)}`, { timeoutMs: 5_000 });
+  return res.json();
+}
+
 /** The console's last lines (the agent sends its last 200 and stops), for the admins' helper. */
 export async function readLogTail(id: string): Promise<string[]> {
   const res = await agentFetch(`/servers/${id}/logs?follow=0`, { timeoutMs: 10_000 });
@@ -493,6 +510,17 @@ export async function changeFiles(
 export type World = { name: string; size: number; modified: string; newGame?: boolean; savedBy?: string };
 
 /** The server's worlds by name, and the one it runs. */
+/** A Java world from above as a PNG (agent/worldmap.go), size×size blocks around its spawn; null when it has no map yet. */
+export async function getWorldMap(id: string, name: string, size = 384, timeoutMs = 20_000): Promise<ArrayBuffer | null> {
+  try {
+    const res = await agentFetch(`/servers/${id}/worlds/${encodeURIComponent(name)}/map?size=${size}`, { timeoutMs });
+    return await res.arrayBuffer();
+  } catch (err) {
+    if (err instanceof AgentError && err.status === 404) return null;
+    throw err;
+  }
+}
+
 export async function listWorlds(id: string, edition: Edition): Promise<{ worlds: World[]; active: string }> {
   const res = await agentFetch(`/servers/${id}/worlds?edition=${edition}`, { timeoutMs: 30_000 });
   return res.json();
