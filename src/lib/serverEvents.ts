@@ -39,6 +39,7 @@ export const EVENT_KINDS = [
   "move",
   "suspended",
   "giftDays",
+  "planChange",
   "slots",
   "minigamesOn",
   "minigamesOff",

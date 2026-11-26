@@ -10,7 +10,7 @@ import { agentSpec, applyToHost, changePort, destroyServer, getLiveState, moveIf
 import { planById } from "./plans";
 import { nodes } from "./nodes";
 import { periodPrice, type PeriodDays } from "./periods";
-import { canSellMemory } from "./capacity";
+import { canSellMemory, heldMemoryMb } from "./capacity";
 import { diskLimitMb } from "./disk";
 import { addonList, domainPaidFor, domainUntilAfter, hasOwnDomain, monthlyWithAddons, type AddonId } from "./addons";
 import {
@@ -442,6 +442,47 @@ export async function giftDays(serverId: string, days: number, why = "admin gift
   });
   console.info(why, server.id, days, "days, paid until", server.paidUntil?.toISOString());
   await logServerEvent(server, "giftDays", `+${days} dni (${why}), do ${server.paidUntil?.toISOString().slice(0, 10)}`);
+  if (server.status === "PROVISIONING" && !(await provision(server))) return { error: "failed", server };
+  return { server };
+}
+
+export type AdminPlanResult = { error?: "noDays" | "soldOut" | "failed"; server?: Server };
+
+/**
+ * An admin switches any server, a free one too, to a paid plan for free (Fiq asked
+ * 2026-11-26): the same world, the plan's RAM and disk, and `days` more of it. Like a
+ * payment for that plan, days left of another paid plan become days of the new one by
+ * price. A free server becomes a normal paid one: always on, never deleted for being
+ * idle; when the days run out it is suspended like any other. Automatic card renewal is
+ * turned off on a plan change, so the customer is never charged for a plan they didn't pick.
+ */
+export async function adminChangePlan(serverId: string, plan: Exclude<Plan, "FREE">, days: number): Promise<AdminPlanResult> {
+  const now = new Date();
+  const s = await db.server.findUnique({ where: { id: serverId } });
+  if (!s) return {};
+  const start = creditStart(s, plan, now);
+  if (days <= 0 && start <= now) return { error: "noDays" };
+  const planChanged = s.plan !== plan;
+  const needsHost = planChanged || s.status === "AWAITING_PAYMENT" || s.status === "SUSPENDED";
+  // As when paying: the extra memory on its machine, or the whole plan on one it can move to (moveIfFull).
+  const planMb = planById(plan).ramGb * 1024;
+  if (needsHost && !(await canSellMemory(planMb - heldMemoryMb(s), planMb, s.node)) && !(await canSellMemory(planMb))) {
+    return { error: "soldOut" };
+  }
+  const server = await db.server.update({
+    where: { id: s.id },
+    data: {
+      plan,
+      memoryMb: planMb,
+      paidUntil: new Date(start.getTime() + days * DAY),
+      deletionWarnedAt: null,
+      ...(planChanged && s.autoRenew && { autoRenew: false }),
+      ...(needsHost && { status: "PROVISIONING" }),
+    },
+  });
+  const until = server.paidUntil?.toISOString().slice(0, 10);
+  console.info("admin plan change", server.id, s.plan, "->", plan, days, "days, paid until", until);
+  await logServerEvent(server, "planChange", `${s.plan} → ${plan}, +${days} dni za darmo, do ${until}`);
   if (server.status === "PROVISIONING" && !(await provision(server))) return { error: "failed", server };
   return { server };
 }
