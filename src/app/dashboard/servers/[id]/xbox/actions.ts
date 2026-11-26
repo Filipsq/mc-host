@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
@@ -33,6 +34,7 @@ export async function enableXboxAction(id: string): Promise<XboxActionState> {
       return { error: "failed" };
     }
   }
+  await logServerEvent(server, "xboxOn");
   revalidatePath(`/dashboard/servers/${id}/xbox`);
   return {};
 }
@@ -41,6 +43,7 @@ export async function enableXboxAction(id: string): Promise<XboxActionState> {
 export async function disableXboxAction(id: string): Promise<XboxActionState> {
   const server = await ownServer(id);
   await db.server.update({ where: { id: server.id }, data: { xbox: false } });
+  await logServerEvent(server, "xboxOff");
   try {
     await disableXbox(server.id);
   } catch (err) {

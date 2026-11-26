@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
@@ -27,7 +28,9 @@ export async function fileAction(id: string, op: FileOp): Promise<FileResult> {
   if ("removeMany" in op) {
     const paths = op.removeMany;
     if (!Array.isArray(paths) || paths.length === 0 || paths.length > MAX_MANY || !paths.every(okPath)) return { error: "badName" };
-    return removeMany(server.id, [...new Set(paths)]);
+    const result = await removeMany(server.id, [...new Set(paths)]);
+    await logServerEvent(server, "fileDelete", `${result.files ?? 0}: ${paths.slice(0, 5).join(", ")}${paths.length > 5 ? "…" : ""}`);
+    return result;
   }
   if (!Object.values(op).every(okPath)) return { error: "badName" };
   try {
@@ -37,6 +40,9 @@ export async function fileAction(id: string, op: FileOp): Promise<FileResult> {
       return {};
     }
     const res = await agent.changeFiles(server.id, op);
+    if ("remove" in op) await logServerEvent(server, "fileDelete", op.remove);
+    else if ("rename" in op) await logServerEvent(server, "fileRename", `${op.rename} → ${op.to}`);
+    else if ("unzip" in op) await logServerEvent(server, "fileUpload", `rozpakowano ${op.unzip}`);
     revalidatePath(`/dashboard/servers/${server.id}/files`);
     return { files: res.files };
   } catch (err) {

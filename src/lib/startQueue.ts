@@ -1,4 +1,5 @@
 import "server-only";
+import { logServerEvent } from "./serverEvents";
 import { db } from "./db";
 import * as agent from "./agent";
 import { agentSpec, startElsewhere } from "./servers";
@@ -71,6 +72,7 @@ export async function startQueued(now = new Date()): Promise<number> {
     });
     if (claim.count === 0) continue;
     started++;
+    await logServerEvent(s, "queueStart", s.node, { system: true });
     const t =
       messages[isLocale(s.owner.locale) ? s.owner.locale : defaultLocale].server
         .queue;

@@ -13,6 +13,8 @@ import PaymentTable from "../../PaymentTable";
 import { DeleteButton, GiftForm, MoveForm, SlotsForm } from "./AdminServerActions";
 import { nodes } from "@/lib/nodes";
 import CopyForClaude from "@/components/CopyForClaude";
+import { HistoryList } from "../../ServerInfoCards";
+import { serverHistory } from "@/lib/serverEvents";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -32,9 +34,10 @@ export default async function AdminServer({ params }: Props) {
   });
   if (!server) notFound();
 
-  const [all, { locale }, state] = await Promise.all([
+  const [all, { locale }, history, state] = await Promise.all([
     getMessages(),
     getPreferences(),
+    serverHistory(server.id, 60),
     server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED"
       ? ("unknown" as const)
       : getServerState(server.id).catch((err) => (err instanceof AgentError && err.status === 404 ? ("missing" as const) : ("unknown" as const))),
@@ -125,6 +128,11 @@ export default async function AdminServer({ params }: Props) {
           </section>
         )}
       </div>
+
+      <section className="stack" id="historia">
+        <h3>{t.history.title}</h3>
+        <HistoryList list={history} all={all} f={f} />
+      </section>
 
       <section className="stack">
         <h3>{t.payments}</h3>

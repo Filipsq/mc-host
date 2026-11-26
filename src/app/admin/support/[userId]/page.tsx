@@ -6,6 +6,8 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { CHAT_RATE, MAX_LENGTH, readChat } from "@/lib/support";
 import SupportChat from "@/components/SupportChat";
 import CopyForClaude from "@/components/CopyForClaude";
+import ServerInfoCards, { SERVER_CARD_FIELDS } from "../../ServerInfoCards";
+import { formats } from "../../format";
 
 type Props = { params: Promise<{ userId: string }> };
 
@@ -21,7 +23,7 @@ export default async function AdminChat({ params }: Props) {
         id: true,
         email: true,
         supportChat: { select: { staffUnread: true } },
-        servers: { orderBy: { createdAt: "desc" }, select: { id: true, name: true, plan: true, status: true } },
+        servers: { orderBy: { createdAt: "desc" }, select: SERVER_CARD_FIELDS },
       },
     }),
   ]);
@@ -42,18 +44,7 @@ export default async function AdminChat({ params }: Props) {
           <Link className="button secondary small" href={`/admin/users/${user.id}`}>{t.admin.profile}</Link>
         </div>
       </header>
-      <div className="chat-servers">
-        <span className="muted small">{all.admin.nav.servers}:</span>
-        {user.servers.length === 0 ? (
-          <span className="muted small">{t.admin.noServers}</span>
-        ) : (
-          user.servers.map((s) => (
-            <Link key={s.id} className="chip" href={`/admin/servers/${s.id}`}>
-              {s.name} · {all.plans[s.plan]} · {all.admin.statuses[s.status]}
-            </Link>
-          ))
-        )}
-      </div>
+      <ServerInfoCards servers={user.servers} all={all} f={formats(locale)} />
       <SupportChat
         t={t}
         initial={state}

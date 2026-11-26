@@ -1,5 +1,6 @@
 "use server";
 
+import { change, kindText, logServerEvent } from "@/lib/serverEvents";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -197,6 +198,7 @@ async function switchType(server: OwnedServer, kind: string, version: string, pa
       },
     });
     await applyToHost(updated);
+    await logServerEvent(server, "type", change(kindText(server), kindText(updated)) + (fitted?.dropped.length ? ` (bez: ${fitted.dropped.join(", ")})` : ""));
     return fitted?.dropped ?? [];
   } catch (err) {
     console.error("change type failed", server.id, err);

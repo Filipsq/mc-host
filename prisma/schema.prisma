@@ -440,12 +440,33 @@ model Server {
   // Friends the owner let into the server's panel.
   members              ServerMember[]
   adWatches            AdWatch[]
+  events               ServerEvent[]
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 
   @@unique([node, port])
   @@index([ownerId])
   @@index([creatorId])
+}
+
+// What happened to a server, for its history in the admin's chat and server page
+// (src/lib/serverEvents.ts): type and version changes, starts, crashes, plugins, worlds...
+// Payments aren't copied here: the history reads them from Payment.
+model ServerEvent {
+  id         String   @id @default(cuid())
+  server     Server   @relation(fields: [serverId], references: [id], onDelete: Cascade)
+  serverId   String
+  kind       String // see EVENT_KINDS in src/lib/serverEvents.ts
+  detail     String   @default("") // e.g. "1.21.4 → 1.21.8", a plugin's name, a file's path
+  // Who did it: "owner", "friend", "admin" or "system" (billing, auto-repair, start queue).
+  actor      String   @default("system")
+  actorEmail String?
+  // Keeps an event seen many times (a crash noticed on every refresh) to one row.
+  ref        String?
+  createdAt  DateTime @default(now())
+
+  @@unique([serverId, kind, ref])
+  @@index([serverId, createdAt])
 }
 
 // One rewarded ad watched to the end for a free server (src/lib/adReward.ts).

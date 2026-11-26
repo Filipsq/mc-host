@@ -30,6 +30,7 @@ import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
 import { xboxOn } from "./xbox";
 import { adBonus } from "./adReward";
+import { kindText, logServerEvent } from "./serverEvents";
 
 export type LiveState =
   | "starting"
@@ -54,11 +55,24 @@ export async function getLiveDetails(server: Pick<Server, "id" | "status">): Pro
   if (server.status === "AWAITING_PAYMENT" || server.status === "SUSPENDED") return { live: liveStateFrom(server, "unknown") };
   try {
     const agent = await getServerState(server.id);
-    return { live: liveStateFrom(server, agent), agent };
+    const live = liveStateFrom(server, agent);
+    noteCrash(server, agent);
+    return { live, agent };
   } catch (err) {
     if (err instanceof AgentError) return { live: liveStateFrom(server, err.status === 404 ? "missing" : "unknown") };
     throw err;
   }
+}
+
+/**
+ * A crash or an auto-repair the agent reports goes on the server's history once
+ * (keyed by when that run started), so admins see crashes without the console.
+ */
+function noteCrash(server: Pick<Server, "id" | "status"> & { ownerId?: string }, agent: AgentState) {
+  if (agent.state === "running" || !agent.startedAt) return;
+  const kind = agent.stopReason === "crashed" && server.status !== "STOPPED" ? "crash" : agent.stopReason === "repairing" ? "repair" : null;
+  if (!kind) return;
+  void logServerEvent({ id: server.id, ownerId: server.ownerId ?? "" }, kind, agent.exitCode ? `kod ${agent.exitCode}` : "", { system: true, ref: agent.startedAt });
 }
 
 /** getLiveDetails asked once per request, so the panel's frame and its page share the answer. */
@@ -145,7 +159,9 @@ export async function setNode(server: Server, to: string): Promise<Server | null
     const port = clash ? await freePortOn(to) : server.port;
     if (port === null) return null;
     try {
-      return await db.server.update({ where: { id: server.id }, data: { node: to, port } });
+      const moved = await db.server.update({ where: { id: server.id }, data: { node: to, port } });
+      if (server.node !== to) await logServerEvent(server, "move", `${server.node} → ${to}`);
+      return moved;
     } catch (err) {
       if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
     }
@@ -165,7 +181,9 @@ export async function createServerRecord(data: Omit<Prisma.ServerUncheckedCreate
     try {
       // Mods' jetpacks and wings need flying, or the server kicks their players.
       const allowFlight = data.allowFlight ?? (data.kind === "modpack" || isModLoader(data.kind));
-      return await db.server.create({ data: { ...data, allowFlight, port } });
+      const created = await db.server.create({ data: { ...data, allowFlight, port } });
+      await logServerEvent(created, "created", `${created.edition === "JAVA" ? kindText(created) : `${created.edition.toLowerCase()} ${created.version}`} · ${created.plan} · ${created.node}`);
+      return created;
     } catch (err) {
       if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
       const fields = (err.meta?.target as string[] | undefined) ?? [];

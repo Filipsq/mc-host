@@ -2901,3 +2901,35 @@ a.quest-item:hover { background: var(--surface-2); }
 .world-map-img.loading { animation: map-wait 1.2s ease-in-out infinite alternate; }
 @keyframes map-wait { from { opacity: 0.55; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .world-map-img.loading { animation: none; } }
+
+/* The customer's servers at the top of an admin's chat (src/app/admin/ServerInfoCards.tsx). */
+.srv-cards { display: grid; gap: 8px; }
+.srv-card { border: 1px solid var(--border); border-radius: 12px; background: var(--bg-alt); }
+.srv-card > summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 10px 40px 10px 14px; position: relative; min-height: 44px; }
+.srv-card > summary::-webkit-details-marker { display: none; }
+.srv-card > summary::after { content: ""; position: absolute; right: 16px; top: 18px; width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1); }
+.srv-card[open] > summary::after { transform: rotate(-135deg); top: 22px; }
+.srv-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.srv-card-name { font-weight: 600; overflow-wrap: anywhere; }
+.srv-card-sub { overflow-wrap: anywhere; }
+.srv-card-body { padding: 4px 14px 14px; display: grid; gap: 12px; border-top: 1px solid var(--border); }
+.srv-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 16px; margin: 10px 0 0; }
+.srv-facts dt { font-size: 0.78rem; color: var(--muted); }
+.srv-facts dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.srv-card-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.srv-history-title { margin: 4px 0 0; font-size: 0.95rem; }
+.srv-history { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.srv-history li { display: grid; grid-template-columns: 9.5em 1fr; gap: 2px 12px; padding: 7px 0 7px 14px; border-top: 1px solid var(--border); position: relative; font-size: 0.9rem; }
+.srv-history li:first-child { border-top: 0; }
+.srv-history li::before { content: ""; position: absolute; left: 0; top: 13px; width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+.srv-history li.bad::before { background: var(--error); }
+.srv-history li.bad strong { color: var(--error); }
+.srv-history li.money::before { background: var(--accent-strong); }
+.srv-history time { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+.srv-history-what { overflow-wrap: anywhere; }
+.srv-history-detail, .srv-history-who { color: var(--muted); }
+.srv-bad { color: var(--error); font-weight: 600; }
+@media (max-width: 640px) {
+  .srv-facts { grid-template-columns: 1fr 1fr; }
+  .srv-history li { grid-template-columns: 1fr; }
+}

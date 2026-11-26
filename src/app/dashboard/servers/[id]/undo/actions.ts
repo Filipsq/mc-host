@@ -1,5 +1,6 @@
 "use server";
 
+import { change, kindText, logServerEvent } from "@/lib/serverEvents";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -84,6 +85,7 @@ export async function undoChangeAction(id: string) {
       },
     });
     await applyToHost(updated);
+    await logServerEvent(server, "undo", change(kindText(server), kindText(updated)));
   } catch (err) {
     console.error("undo change failed", server.id, err);
     redirect(done("failed"));

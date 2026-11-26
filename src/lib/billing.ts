@@ -1,4 +1,5 @@
 import "server-only";
+import { logServerEvent } from "./serverEvents";
 import { handOverLate } from "./supportBot";
 import type { Payment, Plan, Prisma, Server, ServerStatus, User } from "@prisma/client";
 import { db } from "./db";
@@ -440,6 +441,7 @@ export async function giftDays(serverId: string, days: number, why = "admin gift
     },
   });
   console.info(why, server.id, days, "days, paid until", server.paidUntil?.toISOString());
+  await logServerEvent(server, "giftDays", `+${days} dni (${why}), do ${server.paidUntil?.toISOString().slice(0, 10)}`);
   if (server.status === "PROVISIONING" && !(await provision(server))) return { error: "failed", server };
   return { server };
 }
@@ -685,6 +687,7 @@ export async function runBillingJob(now = new Date()) {
     });
     if (count === 0) continue;
     result.suspended++;
+    await logServerEvent(s, "suspended", `opłacony do ${s.paidUntil?.toISOString().slice(0, 10)}`, { system: true });
     await sendPlanMail("suspended", s);
   }
 

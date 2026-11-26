@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { Server } from "@prisma/client";
@@ -8,7 +9,7 @@ import { db } from "@/lib/db";
 import * as agent from "@/lib/agent";
 import { agentSpec } from "@/lib/servers";
 import { getServerFor } from "@/lib/access";
-import { PAPER_INSTALL_LOADERS, addonBuilds, addonLoaders, getAddon, projectsWithoutBuild } from "@/lib/modrinth";
+import { PAPER_INSTALL_LOADERS, addonBuilds, addonLoaders, getAddon, getPluginInfos, projectsWithoutBuild } from "@/lib/modrinth";
 import { downloadVersion, versionsToCheck } from "@/lib/addonVersions";
 import { curseforgeModId, pinCurseforgeMods } from "@/lib/curseforge";
 import { apiTooNew, downloadSitePlugin, pluginApiVersion, sitePluginFromLink } from "@/lib/sitePlugins";
@@ -256,12 +257,24 @@ export async function applyPluginsAction(id: string): Promise<PluginResult> {
   return {};
 }
 
+/** Puts added and removed plugins or mods, by name where Modrinth knows it, on the server's history. */
+async function logPluginChange(server: Server, plugins: string[]) {
+  const added = plugins.filter((p) => !server.plugins.includes(p));
+  const removed = server.plugins.filter((p) => !plugins.includes(p));
+  if (!added.length && !removed.length) return;
+  const names = await getPluginInfos([...added, ...removed].filter(isProjectId)).catch(() => new Map<string, { title: string }>());
+  const label = (ids: string[]) => ids.map((p) => names.get(p)?.title ?? p).join(", ");
+  if (added.length) await logServerEvent(server, "pluginAdd", label(added));
+  if (removed.length) await logServerEvent(server, "pluginRemove", label(removed));
+}
+
 /**
  * Saves the list. A server that's off gets it right away (its next start
  * installs them); a running one keeps playing until its owner restarts it.
  */
 async function savePlugins(server: Server, plugins: string[], pluginVersions?: string[]): Promise<PluginResult> {
   const updated = await db.server.update({ where: { id: server.id }, data: { plugins, ...(pluginVersions && { pluginVersions }) } });
+  await logPluginChange(server, plugins);
   revalidatePath(`/dashboard/servers/${server.id}`, "layout");
   // Not on the game host (unpaid): the list is used when it's created again.
   if (!["RUNNING", "STOPPED", "SLEEPING"].includes(server.status)) return {};

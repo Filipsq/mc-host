@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
@@ -33,6 +34,7 @@ export async function setDomainAction(id: string, _: DomainState, form: FormData
     return { error: "taken" };
   }
   await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
+  await logServerEvent(server, "domain", domain);
   revalidatePath(`/dashboard/servers/${id}/addons`);
   revalidatePath(`/dashboard/servers/${id}/address`);
   return { saved: true };
@@ -43,6 +45,7 @@ export async function clearDomainAction(id: string) {
   const server = await ownedServer(id);
   if (!server) return;
   await db.server.update({ where: { id: server.id }, data: { customDomain: null } });
+  await logServerEvent(server, "domain", "usunięta");
   await syncHostAliases().catch((err) => console.error("host aliases not sent", err));
   revalidatePath(`/dashboard/servers/${id}/addons`);
   revalidatePath(`/dashboard/servers/${id}/address`);

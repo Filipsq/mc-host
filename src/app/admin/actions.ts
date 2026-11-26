@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
@@ -79,6 +80,7 @@ export async function playerSlotsAction(id: string, _: SlotsState, form: FormDat
   const server = await db.server.update({ where: { id }, data: { playerSlots: slots } }).catch(() => null);
   if (!server) return { error: "invalid" };
   console.info("admin set player slots", id, slots);
+  await logServerEvent(server, "slots", slots === null ? "jak w planie" : String(slots));
   revalidatePath(`/admin/servers/${id}`);
   if (onHost(server)) {
     try {
