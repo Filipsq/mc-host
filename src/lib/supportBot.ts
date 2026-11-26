@@ -182,12 +182,12 @@ async function postBotMessage(userId: string, text: string, picture?: { data: Ui
 const HANDOVER_TEXT: Record<string, Record<"failed" | "timeout" | "asked", string>> = {
   pl: {
     failed: "🤖 Przekazałem Twoje pytanie administratorowi. Odpowie tutaj, a dostaniesz też e-mail.",
-    timeout: "🤖 Przekazałem Twoje pytanie administratorowi. Odpowie tutaj, a dostaniesz też e-mail.",
+    timeout: "🤖 Odpowiedź zajmuje mi dłużej, więc na wszelki wypadek przekazałem pytanie też administratorowi. Ktoś z nas odpowie tutaj, a dostaniesz też e-mail.",
     asked: "🤖 Jasne, przekazałem rozmowę administratorowi. Odpowie tutaj, a dostaniesz też e-mail.",
   },
   en: {
     failed: "🤖 I've passed your question to an admin. They'll answer here and you'll get an email too.",
-    timeout: "🤖 I've passed your question to an admin. They'll answer here and you'll get an email too.",
+    timeout: "🤖 This is taking me longer, so I've also passed your question to an admin. One of us will answer here and you'll get an email too.",
     asked: "🤖 Sure, I've passed the chat to an admin. They'll answer here and you'll get an email too.",
   },
 };
@@ -269,8 +269,14 @@ export async function handleBotReply(
   const screenKey = screenshot || marked.key;
   if (body.length > MAX_LENGTH) return { ok: false, error: "tooLong", status: 400 };
   const chat = await db.supportChat.findUnique({ where: { userId }, select: { botWaitingSince: true } });
-  // Answered already, handed over after the wait, or an admin answered first.
-  if (!chat?.botWaitingSince) return { ok: false, error: "notWaiting", status: 409 };
+  // Over ANSWER_WAIT_MS the question went to the admins, but an answer that comes
+  // while the token is valid and no admin has answered still helps (Fiq 2026-11-25:
+  // OpenBot knew the answer and got 409).
+  const late = !chat?.botWaitingSince && (await lateAnswerWelcome(userId, askedAt));
+  // Answered already, an admin answered first, or the user asked for a person.
+  if (!chat?.botWaitingSince && !late) return { ok: false, error: "notWaiting", status: 409 };
+  // Already with the admins: a late hand-over changes nothing.
+  if (late && escalate) return { ok: true };
   if (escalate) {
     await handOver(userId, body ? body : null, "bot");
     return { ok: true };
@@ -283,13 +289,31 @@ export async function handleBotReply(
   }
   if (!body && !picture) return { ok: false, error: "empty", status: 400 };
   await postBotMessage(userId, body, picture);
+  if (late) {
+    // The bot works after all: it isn't quiet for the day the timeout set.
+    await db.supportChat.update({ where: { userId }, data: { botPausedUntil: null } });
+    console.log(`[support-bot] chat ${userId}: late answer accepted`);
+  }
   await db.supportBotCase
-    .updateMany({ where: { userId, askedAt, result: null }, data: { result: "answered", answer: body || "[zdjęcie]", answeredAt: new Date() } })
+    .updateMany({ where: { userId, askedAt, result: late ? "timeout" : null }, data: { result: "answered", answer: body || "[zdjęcie]", answeredAt: new Date() } })
     .catch(() => {});
   // A question the user sent after this one still waits for its own answer.
   await db.supportChat.updateMany({ where: { userId, botWaitingSince: { lte: askedAt } }, data: { botWaitingSince: null } });
   after(() => notifyUserIfAway(userId, body));
   return { ok: true };
+}
+
+/**
+ * Whether a bot answer that came after the wait may still go to the chat: the
+ * question timed out (not handed over by the bot or at the user's wish) and no
+ * admin has written since it was asked.
+ */
+async function lateAnswerWelcome(userId: string, askedAt: Date) {
+  const [timedOut, admin] = await Promise.all([
+    db.supportBotCase.findFirst({ where: { userId, askedAt, result: "timeout" }, select: { id: true } }),
+    db.supportMessage.findFirst({ where: { chatId: userId, fromStaff: true, bot: false, deletedAt: null, createdAt: { gt: askedAt } }, select: { id: true } }),
+  ]);
+  return !!timedOut && !admin;
 }
 
 /** Like an admin's answer: the user gets an email if they aren't looking at the chat. */
