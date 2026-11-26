@@ -59,18 +59,17 @@ function Transfer() {
 }
 
 /**
- * The marks for one pay button: cards (Visa, Mastercard; Stripe), BLIK and
- * bank transfers (CashBill), paysafecard (PaysafecardButton, for now the admin
- * chat), or "main" for one button that takes everything (Stripe without CashBill).
+ * The marks for one pay button: cards (Visa, Mastercard; Stripe), BLIK, bank
+ * transfers and paysafecard (CashBill), or "main" for one button that takes everything (Stripe without CashBill).
  */
-export default function PayBadges({ method = "main" }: { method?: "main" | "cards" | "cashbill" | "paysafecard" }) {
+export default function PayBadges({ method = "main" }: { method?: "main" | "cards" | "cashbill" }) {
   return (
     <span className="pay-badges">
-      {method === "paysafecard" && <Paysafecard />}
       {method === "cashbill" && (
         <>
           <Blik />
           <Transfer />
+          <Paysafecard />
         </>
       )}
       {method === "cards" && (

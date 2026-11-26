@@ -2,7 +2,7 @@ import type { Messages } from "@/i18n/messages";
 import PayBadges from "./PayBadges";
 
 /**
- * The BLIK and bank transfer pay button: submits its form with method=cashbill,
+ * The BLIK, bank transfer and paysafecard pay button: submits its form with method=cashbill,
  * which the server sends to CashBill (cashbill.ts). Cards go through the main
  * button (method=card, Stripe). Shown only where CashBill is set up.
  */

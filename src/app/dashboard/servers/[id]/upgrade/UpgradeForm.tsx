@@ -7,7 +7,6 @@ import { upgradeAction } from "../../actions";
 import PaymentConsent from "@/components/PaymentConsent";
 import AdminTestBuy from "@/components/AdminTestBuy";
 import PayBadges from "@/components/PayBadges";
-import PaysafecardButton from "@/components/PaysafecardButton";
 import CashbillButton from "@/components/CashbillButton";
 import type { Messages } from "@/i18n/messages";
 
@@ -129,7 +128,6 @@ export default function UpgradeForm({ serverId, current, plans, costHint, moveNo
             <PayBadges method={cashbill ? "cards" : "main"} />
           </button>
           {cashbill && <CashbillButton t={billing} disabled={pending} />}
-          <PaysafecardButton t={billing} what={billing.paysafecardFor.upgrade} disabled={pending} />
         </div>
         <AdminTestBuy show={adminTest} pending={pending} t={billing} />
       </div>

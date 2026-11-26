@@ -9,7 +9,7 @@ import type { ChatRate, ChatState } from "@/lib/support";
 import SupportChat from "./SupportChat";
 import LobbyChat from "./LobbyChat";
 import { useSheetDrag } from "./useSheetDrag";
-import { HELP_OPEN_EVENT, type HelpOpenDetail } from "./PaysafecardButton";
+import { HELP_OPEN_EVENT, type HelpOpenDetail } from "./helpOpen";
 
 type Props = {
   t: Messages["support"];
@@ -146,7 +146,7 @@ export default function HelpBubble({ t, lobby, signedIn, admin, adminOnline, max
     return () => clearTimeout(timer);
   }, [online, admin, hidden]);
 
-  // Another part of the page asks for the admin chat (PaysafecardButton): open it on
+  // Another part of the page asks for the admin chat (HELP_OPEN_EVENT): open it on
   // that tab with the message typed in. Where the bubble is hidden, or for admins,
   // the caller goes to the chat page instead.
   useEffect(() => {

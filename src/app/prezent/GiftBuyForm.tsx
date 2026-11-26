@@ -5,7 +5,6 @@ import type { Plan } from "@prisma/client";
 import PlanPicker, { type PlanOption } from "@/components/PlanPicker";
 import LinkedText from "@/components/legal/LinkedText";
 import PayBadges from "@/components/PayBadges";
-import PaysafecardButton from "@/components/PaysafecardButton";
 import CashbillButton from "@/components/CashbillButton";
 import type { Messages } from "@/i18n/messages";
 import { buyGiftAction } from "./actions";
@@ -50,7 +49,6 @@ export default function GiftBuyForm({ plans, defaultPlan, t, billing, legal, lab
           <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
         {cashbill && <CashbillButton t={billing} disabled={pending} />}
-        <PaysafecardButton t={billing} what={billing.paysafecardFor.gift} disabled={pending} />
       </div>
     </form>
   );

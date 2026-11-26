@@ -3,7 +3,6 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { buyAddonsAction, buyDomainAction, removeAddonAction } from "../../actions";
 import PayBadges from "@/components/PayBadges";
-import PaysafecardButton from "@/components/PaysafecardButton";
 import CashbillButton from "@/components/CashbillButton";
 import CopyButton from "@/components/CopyButton";
 import { clearDomainAction, setDomainAction } from "./actions";
@@ -71,7 +70,6 @@ export function BuyAddonsForm({ serverId, options, costs, prices, t, billing, le
           <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
         {key && cashbill && <CashbillButton t={billing} disabled={pending} />}
-        {key && <PaysafecardButton t={billing} what={billing.paysafecardFor.addon} disabled={pending} />}
       </div>
       {key && <AdminTestBuy show={adminTest} pending={pending} t={billing} />}
     </form>
@@ -261,7 +259,6 @@ export function BuyDomainForm({ serverId, price, days, again, t, billing, legal,
           <PayBadges method={cashbill ? "cards" : "main"} />
         </button>
         {cashbill && <CashbillButton t={billing} disabled={pending} />}
-        <PaysafecardButton t={billing} what={billing.paysafecardFor.addon} disabled={pending} />
       </div>
       <AdminTestBuy show={adminTest} pending={pending} t={billing} />
     </form>
