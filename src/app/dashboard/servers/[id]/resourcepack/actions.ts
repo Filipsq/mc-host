@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
@@ -60,6 +61,7 @@ export async function savePackAction(id: string, _: PackState, form: FormData): 
     console.error("apply resource pack failed", server.id, err);
     return { error: "applyFailed" };
   }
+  await logServerEvent(server, "resourcePack", uploaded ? "wgrana paczka" : url);
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   return { saved: true };
 }
@@ -78,6 +80,7 @@ export async function removePackAction(id: string): Promise<PackState> {
     console.error("remove resource pack failed", server.id, err);
     return { error: "applyFailed" };
   }
+  await logServerEvent(server, "resourcePack", "usunięta");
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   return { removed: true };
 }

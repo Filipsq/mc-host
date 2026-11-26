@@ -1,4 +1,5 @@
 import { getSession } from "@/lib/session";
+import { logServerEvent } from "@/lib/serverEvents";
 import { openFile, writeFile } from "@/lib/agent";
 import { getServerFor } from "@/lib/access";
 import { fileError, canChangeFiles } from "@/lib/files";
@@ -51,6 +52,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   if (nbt) return saveNbt(found.server.id, found.path, req, nbt);
   try {
     await writeFile(found.server.id, found.path, req.body, Number.isFinite(length) ? length : undefined);
+    // One line per folder per 10 minutes, so uploading 100 files isn't 100 lines.
+    const folder = found.path.includes("/") ? found.path.slice(0, found.path.lastIndexOf("/")) : ".";
+    await logServerEvent(found.server, "fileEdit", found.path, { ref: `${folder}@${Math.floor(Date.now() / 600_000)}` });
     return Response.json({ ok: true });
   } catch (err) {
     return Response.json({ error: fileError(err) }, { status: 400 });

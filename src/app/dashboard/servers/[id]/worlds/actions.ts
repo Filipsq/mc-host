@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Server } from "@prisma/client";
@@ -88,6 +89,7 @@ export async function switchWorldAction(id: string, name: string): Promise<World
   } catch (err) {
     return { error: worldError(err) };
   }
+  await logServerEvent(server, "worldSwitch", name);
   revalidatePath(`/dashboard/servers/${id}`);
   redirect(`/dashboard/servers/${id}/worlds?switched=${encodeURIComponent(name)}`);
 }
@@ -112,6 +114,7 @@ export async function newWorldAction(id: string, _: WorldState, form: FormData):
   } catch (err) {
     return { error: worldError(err), values };
   }
+  await logServerEvent(server, "worldNew", `${name}${version && version !== server.version ? `, wersja ${server.version} → ${version}` : ""}${seed ? `, seed ${seed}` : ""}`);
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   const params = new URLSearchParams({ switched: name, ...(dropped.length && { dropped: dropped.join(", ").slice(0, 300) }) });
   redirect(`/dashboard/servers/${id}/worlds?${params}`);
@@ -139,6 +142,7 @@ export async function importWorldAction(id: string, upload: string, name: string
   } catch (err) {
     return { error: worldError(err) };
   }
+  await logServerEvent(server, "worldImport", `${name}${play ? " (gra na nim)" : ""}`);
   revalidatePath(`/dashboard/servers/${id}`);
   redirect(`/dashboard/servers/${id}/worlds?${play ? "switched" : "uploaded"}=${encodeURIComponent(name)}`);
 }
@@ -153,6 +157,7 @@ export async function deleteWorldAction(id: string, name: string): Promise<World
   } catch (err) {
     return { error: worldError(err) };
   }
+  await logServerEvent(server, "worldDelete", name);
   revalidatePath(`/dashboard/servers/${id}/worlds`);
   redirect(`/dashboard/servers/${id}/worlds?deleted=1`);
 }
@@ -193,6 +198,7 @@ export async function trimWorldAction(id: string, _: WorldState, form: FormData)
   } catch (err) {
     return { error: worldError(err), values };
   }
+  await logServerEvent(server, "worldTrim", `${name}, promień ${radius} wokół ${x},${z}, usunięto ${result.files} plików`);
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   const params = new URLSearchParams({ world: name, x: String(x), z: String(z), done: `${result.files}.${result.bytes}.${radius}`, ...(backup && { backup: "1" }) });
   redirect(`/dashboard/servers/${id}/worlds/trim?${params}`);

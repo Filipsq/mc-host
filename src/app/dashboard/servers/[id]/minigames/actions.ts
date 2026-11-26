@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
@@ -63,6 +64,7 @@ export async function enableMinigamesAction(id: string) {
       },
     });
     await applyToHost(updated);
+    await logServerEvent(server, "minigamesOn", `z ${server.kind}`);
   } catch (err) {
     console.error("enable minigames failed", server.id, err);
     redirect(page(id, "failed"));
@@ -93,6 +95,7 @@ export async function leaveMinigamesAction(id: string) {
       },
     });
     await applyToHost(updated);
+    await logServerEvent(server, "minigamesOff", `na ${back.kind}`);
   } catch (err) {
     console.error("leave minigames failed", server.id, err);
     redirect(page(id, "failed"));

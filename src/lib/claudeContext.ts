@@ -6,6 +6,7 @@ import { getLiveDetails } from "./servers";
 import { getPluginInfos } from "./modrinth";
 import { curseforgeMod, isProjectId, sitePlugin } from "./plugins";
 import { BRAND_NAME } from "./brand";
+import { historyText, serverHistory } from "./serverEvents";
 
 // "Kopiuj dla Claude" (Fiq asked 2026-11-14): one click on an admin's chat with a
 // customer or on a server copies everything Claude needs to help (the server's
@@ -45,7 +46,7 @@ const time = (d: Date) => d.toISOString().slice(0, 16).replace("T", " ") + " UTC
 
 /** One server as text: what it is, its state right now and the owner's plugins or mods by name. */
 async function describeServer(s: ServerFacts) {
-  const live = await getLiveDetails(s).catch(() => null);
+  const [live, history] = await Promise.all([getLiveDetails(s).catch(() => null), serverHistory(s.id, 10).catch(() => [])]);
   const names = await getPluginInfos(s.plugins.filter(isProjectId));
   const plugins = s.plugins.map((p) => {
     if (curseforgeMod(p)) return `${p} (CurseForge)`;
@@ -61,7 +62,10 @@ async function describeServer(s: ServerFacts) {
     `- status w bazie ${s.status}, stan teraz: ${live?.live ?? "nie wiadomo (agent nie odpowiedział)"}${agent ? ` (kontener ${agent.state}, exitCode ${agent.exitCode}, restarty ${agent.restartCount}${agent.stopReason ? `, powód ${agent.stopReason}` : ""}${agent.startedAt ? `, start ${agent.startedAt}` : ""})` : ""}`,
     `- adres ${s.subdomain ? `${s.subdomain}.mchosting.pl` : "–"}${s.port ? `, port ${s.port}` : ""}; non-premium ${s.onlineMode ? "wył." : "wł."}, crossplay ${s.crossplay ? "wł." : "wył."}`,
     `- pluginy/mody właściciela: ${plugins.length ? plugins.join(", ") : "brak"}`,
-  ].join("\n");
+    history.length ? `- historia (najnowsze pierwsze, UTC):\n${historyText(history)}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 async function consoleBlock(s: Pick<Server, "id" | "name">) {

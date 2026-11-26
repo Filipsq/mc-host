@@ -1,5 +1,6 @@
 "use server";
 
+import { change, logServerEvent } from "@/lib/serverEvents";
 import { isRenewCodeFor } from "@/lib/renewCode";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -677,6 +678,25 @@ async function serverOrThrow(id: string, need: ServerNeed) {
 }
 
 export async function startServerAction(id: string): Promise<{ error?: ServerErrorCode; queued?: boolean }> {
+  return startAndLog(id, "start");
+}
+
+/** Starts the server and puts how it went on its history. */
+async function startAndLog(id: string, kind: "start" | "restart"): Promise<{ error?: ServerErrorCode; queued?: boolean }> {
+  const server = await serverOrThrow(id, "view");
+  try {
+    const result = await startServer(id);
+    if (result.queued) await logServerEvent(server, "queued");
+    else if (result.error) await logServerEvent(server, "startFailed", result.error);
+    else await logServerEvent(server, kind, server.node);
+    return result;
+  } catch (err) {
+    await logServerEvent(server, "startFailed", err instanceof Error ? err.message.slice(0, 120) : "");
+    throw err;
+  }
+}
+
+async function startServer(id: string): Promise<{ error?: ServerErrorCode; queued?: boolean }> {
   const server = await serverOrThrow(id, "view");
   // Unpaid servers stay off until someone pays.
   if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
@@ -751,6 +771,7 @@ export async function stopServerAction(id: string) {
   const server = await serverOrThrow(id, "view");
   await agent.stopServer(server.id);
   await db.server.update({ where: { id: server.id }, data: { status: "STOPPED", queuedAt: null } });
+  await logServerEvent(server, "stop");
   revalidatePath(`/dashboard/servers/${id}`, "layout");
 }
 
@@ -759,7 +780,7 @@ export async function restartServerAction(id: string): Promise<{ error?: ServerE
   const server = await serverOrThrow(id, "view");
   if (server.status === "SUSPENDED" || server.status === "AWAITING_PAYMENT") return {};
   await agent.stopServer(server.id);
-  return startServerAction(id);
+  return startAndLog(id, "restart");
 }
 
 export async function deleteServerAction(id: string) {
@@ -789,6 +810,7 @@ export async function createBackupAction(id: string): Promise<BackupResult> {
     console.error("backup failed", server.id, err);
     return { error: "backupFailed" };
   }
+  await logServerEvent(server, "backup");
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   return {};
 }
@@ -802,6 +824,7 @@ export async function restoreBackupAction(id: string, name: string): Promise<Bac
     console.error("restore failed", server.id, name, err);
     return { error: "restoreFailed" };
   }
+  await logServerEvent(server, "restore", name);
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   return {};
 }
@@ -901,6 +924,9 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
     },
   });
 
+  if (version !== server.version) await logServerEvent(server, "version", change(server.version, version) + (dropped.length ? ` (bez: ${dropped.join(", ")})` : ""));
+  const changed = SETTING_FIELDS.filter((k) => JSON.stringify(server[k]) !== JSON.stringify(updated[k]));
+  if (changed.length) await logServerEvent(server, "settings", changed.map((k) => settingText(k, updated[k])).join(", "));
   try {
     if (onHost(server) && version !== server.version && planById(server.plan).backupsKept > 0) {
       await agent.createBackup(server.id).catch((err) => console.error("pre-update backup failed", server.id, err));
@@ -912,6 +938,57 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
   }
   revalidatePath(`/dashboard/servers/${id}`, "layout");
   redirect(`/dashboard/servers/${id}?settings=saved${dropped.length ? `&dropped=${encodeURIComponent(dropped.join(", ").slice(0, 300))}` : ""}`);
+}
+
+// Settings worth a line on the server's history when they change (src/lib/serverEvents.ts).
+const SETTING_FIELDS = [
+  "gameMode",
+  "difficulty",
+  "motd",
+  "pvp",
+  "maxPlayers",
+  "allowFlight",
+  "hardcore",
+  "commandBlocks",
+  "allowNether",
+  "allowEnd",
+  "forceGamemode",
+  "spawnMonsters",
+  "spawnProtection",
+  "viewDistance",
+  "whitelist",
+  "whitelistPlayers",
+  "onlineMode",
+  "crossplay",
+] as const;
+
+// Polish names, since the history is read by the admin (Fiq writes Polish).
+const SETTING_NAMES: Record<(typeof SETTING_FIELDS)[number], string> = {
+  gameMode: "tryb gry",
+  difficulty: "trudność",
+  motd: "opis",
+  pvp: "PvP",
+  maxPlayers: "max graczy",
+  allowFlight: "latanie",
+  hardcore: "hardcore",
+  commandBlocks: "bloki poleceń",
+  allowNether: "Nether",
+  allowEnd: "End",
+  forceGamemode: "wymuszony tryb",
+  spawnMonsters: "potwory",
+  spawnProtection: "ochrona spawnu",
+  viewDistance: "zasięg widzenia",
+  whitelist: "whitelista",
+  whitelistPlayers: "whitelista",
+  onlineMode: "premium",
+  crossplay: "crossplay",
+};
+
+function settingText(key: (typeof SETTING_FIELDS)[number], value: unknown) {
+  if (key === "onlineMode") return value ? "premium" : "non-premium";
+  if (key === "whitelistPlayers") return `whitelista: ${(value as string[]).length} graczy`;
+  if (typeof value === "boolean") return `${SETTING_NAMES[key]} ${value ? "wł." : "wył."}`;
+  return `${SETTING_NAMES[key]}: ${value === null ? "domyślnie" : String(value).slice(0, 40)}`;
 }
 
 export type NameState = { error?: "invalidName" | "invalidSubdomain" | "subdomainTaken" | "applyFailed" };
@@ -947,6 +1024,7 @@ export async function renameServerAction(id: string, _: NameState, form: FormDat
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return { error: "subdomainTaken" };
     throw err;
   }
+  await logServerEvent(server, "rename", [name !== server.name && change(server.name, name), moved && `adres ${change(server.subdomain, subdomain)}`].filter(Boolean).join(", "));
   if (moved) {
     try {
       if (onHost(updated)) await applyToHost(updated);

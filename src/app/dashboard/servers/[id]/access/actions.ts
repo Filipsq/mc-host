@@ -1,5 +1,6 @@
 "use server";
 
+import { logServerEvent } from "@/lib/serverEvents";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
@@ -33,6 +34,7 @@ export async function inviteFriendAction(id: string, _: InviteState, form: FormD
   const { locale } = await getPreferences();
   const error = await inviteFriend(server, parsed.data, permsFrom(form), locale);
   if (error) return { error, email: raw };
+  await logServerEvent(server, "friendAdd", parsed.data);
   revalidatePath(`/dashboard/servers/${id}/access`);
   return { sent: parsed.data };
 }
@@ -46,7 +48,9 @@ export async function updateFriendAction(id: string, memberId: string, form: For
 
 export async function removeFriendAction(id: string, memberId: string) {
   const server = await managedServer(id);
+  const gone = await db.serverMember.findFirst({ where: { id: memberId, serverId: server.id }, select: { email: true } });
   await db.serverMember.deleteMany({ where: { id: memberId, serverId: server.id } });
+  if (gone) await logServerEvent(server, "friendRemove", gone.email);
   revalidatePath(`/dashboard/servers/${id}/access`);
 }
 
