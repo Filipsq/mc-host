@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { getMessages, getPreferences } from "@/i18n/server";
 import { allows, getServerAccess } from "@/lib/access";
 import { LOGIN_MODS, canCrossplay, canRunNonPremium, loginLoader } from "@/lib/plugins";
+import { canHubLink } from "@/lib/hubLink";
 import { bedrockHost } from "@/lib/servers";
 import { maxPlayersFor, serverPlayerLimit, viewDistanceDefault, viewDistanceMax } from "@/lib/settings";
 import { planById } from "@/lib/plans";
@@ -147,6 +148,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
             ? { offered: canCrossplay(server), on: server.crossplay, host: bedrockHost(server), port: server.port ?? 0 }
             : undefined
         }
+        hubLink={server.edition === "JAVA" ? { offered: canHubLink(server), on: server.hubLink } : undefined}
         initial={{
           version: server.version,
           gameMode: server.gameMode,

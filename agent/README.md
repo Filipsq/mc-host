@@ -31,6 +31,7 @@ go test ./...
 | `UPLOAD_MAX_MB` | `1024` | The biggest file the file manager takes; a zip may unpack to 4 times this |
 | `MIN_FREE_DISK_MB` | `4096` | Uploads and unzipping stop short of leaving less disk free than this |
 | `MEMORY_LIMIT_MB` | `0` (no limit) | Plan memory all servers may hold together. Paid servers hold theirs even when stopped (unless suspended); a free server only while awake, and it isn't started when it doesn't fit |
+| `HUB_LINK_JAR_URL` | the latest mchosting-link release on GitHub | Where the mchosting-link plugin is downloaded from for servers with the hub link (hublink.go); cached, fetched again every 6 hours |
 | `CF_API_KEY` | | CurseForge API key, given to servers running a CurseForge mod pack so the image can download it |
 | `MEMORY_OVERBOOK` | `1` | Overbooking: running servers may hold this many times `MEMORY_LIMIT_MB` (1 to 4). Above 1, stopped paid servers don't count, and a free server also needs the machine's `MemAvailable` to have its memory plus 1 GB |
 

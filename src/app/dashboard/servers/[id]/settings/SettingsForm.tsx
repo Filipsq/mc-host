@@ -20,6 +20,7 @@ type Props = {
   // Java only; offered on Paper servers, and on mod loaders only on the versions their login mod runs on
   nonPremium?: { offered: boolean; on: boolean; ownLogin?: boolean; loginHint: string; versions?: readonly string[] };
   crossplay?: { offered: boolean; on: boolean; host: string; port: number }; // the same, with where Bedrock players join
+  hubLink?: { offered: boolean; on: boolean }; // Java only: /hub to the network's hub (src/lib/hubLink.ts)
   initial: {
     version: string;
     gameMode: string;
@@ -42,7 +43,7 @@ type Props = {
   t: Messages["settings"];
 };
 
-export default function SettingsForm({ serverId, edition, name, versions, latestLabel, versionNote, versionHint, playerLimit, viewDistance, nonPremium, crossplay, initial, t }: Props) {
+export default function SettingsForm({ serverId, edition, name, versions, latestLabel, versionNote, versionHint, playerLimit, viewDistance, nonPremium, crossplay, hubLink, initial, t }: Props) {
   const [state, action, pending] = useActionState(saveSettingsAction.bind(null, serverId), {});
   const [version, setVersion] = useState(initial.version);
   const [whitelist, setWhitelist] = useState(initial.whitelist);
@@ -215,6 +216,16 @@ export default function SettingsForm({ serverId, edition, name, versions, latest
         </label>
       )}
       {crossplay && !crossplay.offered && <p className="muted small">{t.crossplayPaperOnly}</p>}
+      {hubLink?.offered && (
+        <label className="check">
+          <input type="checkbox" name="hubLink" defaultChecked={hubLink.on} />
+          <span className="stack-tight">
+            <span>{t.hubLink}</span>
+            <span className="muted small">{t.hubLinkHint}</span>
+          </span>
+        </label>
+      )}
+      {hubLink && !hubLink.offered && <p className="muted small">{t.hubLinkPaperOnly}</p>}
       <label className="check">
         <input type="checkbox" name="whitelist" checked={whitelist} onChange={(e) => setWhitelist(e.target.checked)} />
         <span>{t.whitelist}</span>

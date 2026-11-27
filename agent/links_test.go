@@ -39,10 +39,10 @@ func TestLinksValidateAndEnv(t *testing.T) {
 	if err := validLinks([]serverLink{{Name: "x", Host: "x.mchosting.pl"}}, "me.mchosting.pl"); err != nil {
 		t.Error(err)
 	}
-	if env := strings.Join(linksEnv([]serverLink{{Name: "x", Host: "x.mchosting.pl"}}), " "); env != "ACCEPTS_TRANSFERS=true FUNCTION_PERMISSION_LEVEL=3" {
+	if env := strings.Join(linksEnv([]serverLink{{Name: "x", Host: "x.mchosting.pl"}}, false), " "); env != "ACCEPTS_TRANSFERS=true FUNCTION_PERMISSION_LEVEL=3" {
 		t.Error(env)
 	}
-	if env := strings.Join(linksEnv(nil), " "); env != "ACCEPTS_TRANSFERS=false FUNCTION_PERMISSION_LEVEL=2" {
+	if env := strings.Join(linksEnv(nil, false), " "); env != "ACCEPTS_TRANSFERS=false FUNCTION_PERMISSION_LEVEL=2" {
 		t.Error(env)
 	}
 }

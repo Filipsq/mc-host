@@ -933,6 +933,10 @@ const en: Messages = {
       "Players of Minecraft on a phone, console or Windows 10/11 join with the address {host} and port {port}, without a Java account. Their names start with a dot. They need the latest version of the game. The whitelist only lets in Java players.",
     crossplayPaperOnly: "Crossplay with Bedrock works on servers without mods.",
     crossplayOn: "crossplay",
+    hubLink: "Link to the mchosting.pl hub: the /hub command",
+    hubLinkHint:
+      "Players type /hub and land in the mchosting.pl network's hub (minigames, modes, other players' servers). In the hub they type /wroc or click the door to come back here. We add the mchosting-link plugin and let transferred players in. Works from Minecraft 1.20.6; players need 1.20.6 or newer too.",
+    hubLinkPaperOnly: "The hub link works on servers without mods, from version 1.20.6.",
     restartNote: "Settings apply when the server restarts. A running server restarts right away; a stopped one uses them next time it starts.",
     save: "Save settings",
     saving: "Saving...",

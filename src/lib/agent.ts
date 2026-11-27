@@ -125,6 +125,7 @@ export type CreateServerSpec = {
   pluginVersions?: Record<string, string>; // Modrinth plugins and mods: the build the owner picked (project ID -> version ID)
   plugins: string[]; // Modrinth project IDs: plugins for Paper servers, mods for mod loader servers; Steam Workshop IDs on tModLoader
   links?: { name: string; host: string }[]; // Java only: linked servers players can go to (/trigger <name>)
+  hubLink?: { serverId: string; privateKey: string; hubHost: string; hubPort: number }; // Java on Paper: /hub to the network's hub (src/lib/hubLink.ts)
   hytale?: HytaleSpec; // Hytale only: added here, fresh for each new container (src/lib/hytale.ts)
 };
 
