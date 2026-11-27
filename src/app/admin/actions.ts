@@ -19,6 +19,7 @@ import { sendPaymentHelp } from "@/lib/paymentHelp";
 import { deleteAccount } from "@/lib/accountDeletion";
 import type { DeleteAccountState } from "@/components/DeleteAccountForm";
 import { startServerAction } from "@/app/dashboard/servers/actions";
+import { newDeployKey } from "@/lib/deployKey";
 import { PAYMENT_PERIODS, parseDay } from "@/lib/machinePayments";
 
 export type GiftState = { error?: "invalid" | "free" | "soldOut" | "failed"; days?: number; date?: string };
@@ -272,4 +273,29 @@ export async function restartCrashedAction(ids: string[]): Promise<Record<string
   }
   revalidatePath("/admin");
   return out;
+}
+
+export type DeployKeyState = { key?: string; removed?: boolean; error?: "failed" };
+
+/** Makes a new deploy key for the server (src/lib/deployKey.ts), dropping the old one. Shown once. */
+export async function createDeployKeyAction(id: string): Promise<DeployKeyState> {
+  await requireAdmin();
+  const { key, hash } = newDeployKey(id);
+  const server = await db.server.update({ where: { id }, data: { deployKeyHash: hash } }).catch(() => null);
+  if (!server) return { error: "failed" };
+  console.info("admin made a deploy key", id);
+  await logServerEvent(server, "settings", "nowy klucz do wgrywania");
+  revalidatePath(`/admin/servers/${id}`);
+  return { key };
+}
+
+/** Takes the server's deploy key away: scripts with it stop working at once. */
+export async function removeDeployKeyAction(id: string): Promise<DeployKeyState> {
+  await requireAdmin();
+  const server = await db.server.update({ where: { id }, data: { deployKeyHash: null } }).catch(() => null);
+  if (!server) return { error: "failed" };
+  console.info("admin removed a deploy key", id);
+  await logServerEvent(server, "settings", "usunięty klucz do wgrywania");
+  revalidatePath(`/admin/servers/${id}`);
+  return { removed: true };
 }

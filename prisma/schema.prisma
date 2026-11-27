@@ -344,6 +344,9 @@ model Server {
   hubLink              Boolean        @default(false)
   hubLinkPrivateKey    String?
   hubLinkPublicKey     String?
+  // A deploy key (src/lib/deployKey.ts): a script may put plugins on this server and restart it,
+  // without signing in. Made by an admin; only the key's SHA-256 is kept. null: no key.
+  deployKeyHash        String?
   // Console players (Xbox, PlayStation, Switch) join from their Friends tab through an Xbox account the owner signs in (src/lib/xbox.ts)
   xbox                 Boolean        @default(false)
   // A free server's console joining is paid for on its own, per 30 days, until this date (paid plans have it included).

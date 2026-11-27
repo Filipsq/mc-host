@@ -10,7 +10,7 @@ import { getMessages, getPreferences } from "@/i18n/server";
 import { formats } from "../../format";
 import { EDITION_NAMES } from "@/lib/editions";
 import PaymentTable from "../../PaymentTable";
-import { DeleteButton, GiftForm, MoveForm, PlanChangeForm, SlotsForm } from "./AdminServerActions";
+import { DeleteButton, DeployKeyForm, GiftForm, MoveForm, PlanChangeForm, SlotsForm } from "./AdminServerActions";
 import { nodes } from "@/lib/nodes";
 import { plans } from "@/lib/plans";
 import CopyForClaude from "@/components/CopyForClaude";
@@ -130,6 +130,13 @@ export default async function AdminServer({ params }: Props) {
             <h3>{t.slots.title}</h3>
             <p className="muted small">{t.slots.hint}</p>
             <SlotsForm id={server.id} slots={server.playerSlots} t={t.slots} />
+          </section>
+        )}
+        {server.edition === "JAVA" && (
+          <section className="card stack">
+            <h3>{t.deployKey.title}</h3>
+            <p className="muted small">{t.deployKey.hint}</p>
+            <DeployKeyForm id={server.id} hasKey={server.deployKeyHash !== null} t={t.deployKey} />
           </section>
         )}
         {otherNodes.length > 0 && server.status !== "AWAITING_PAYMENT" && (

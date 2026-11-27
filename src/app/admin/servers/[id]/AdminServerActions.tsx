@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
-import { adminChangePlanAction, deleteServerAdminAction, giftDaysAction, moveServerAdminAction, playerSlotsAction, type GiftState, type MoveState, type PlanChangeState, type SlotsState } from "../../actions";
+import { KeyRound, Trash2 } from "lucide-react";
+import { adminChangePlanAction, createDeployKeyAction, deleteServerAdminAction, removeDeployKeyAction, giftDaysAction, moveServerAdminAction, playerSlotsAction, type DeployKeyState, type GiftState, type MoveState, type PlanChangeState, type SlotsState } from "../../actions";
 import type { Messages } from "@/i18n/messages";
 import { format } from "@/i18n/messages";
 
@@ -130,5 +130,50 @@ export function MoveForm({ id, nodes, t }: { id: string; nodes: { id: string; la
       {state.error && <p className={state.error === "failed" ? "notice warn" : "error"}>{t.errors[state.error]}</p>}
       {state.moved && !state.error && <p className="notice success">{format(t.done, { node: state.moved })}</p>}
     </form>
+  );
+}
+
+/** Deploy key (src/lib/deployKey.ts): make one, shown once to copy into a script, or take it away. */
+export function DeployKeyForm({ id, hasKey, t }: { id: string; hasKey: boolean; t: Messages["admin"]["deployKey"] }) {
+  const [pending, startTransition] = useTransition();
+  const [state, setState] = useState<DeployKeyState>({});
+  const has = state.key ? true : state.removed ? false : hasKey;
+  const run = (action: (id: string) => Promise<DeployKeyState>) =>
+    startTransition(async () => setState(await action(id).catch(() => ({ error: "failed" as const }))));
+  return (
+    <div className="stack">
+      <p className="small">{has ? t.active : t.none}</p>
+      <div className="row">
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (has && !confirm(t.confirmNew)) return;
+            run(createDeployKeyAction);
+          }}
+        >
+          <KeyRound size={16} aria-hidden /> {has ? t.renew : t.create}
+        </button>
+        {has && (
+          <button
+            type="button"
+            className="secondary"
+            disabled={pending}
+            onClick={() => {
+              if (confirm(t.confirmRemove)) run(removeDeployKeyAction);
+            }}
+          >
+            {t.remove}
+          </button>
+        )}
+      </div>
+      {state.key && (
+        <div className="stack tight">
+          <p className="notice success">{t.showOnce}</p>
+          <input className="mono" readOnly value={state.key} onFocus={(e) => e.currentTarget.select()} aria-label={t.create} />
+        </div>
+      )}
+      {state.error && <p className="notice warn">{t.failed}</p>}
+    </div>
   );
 }
