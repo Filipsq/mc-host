@@ -29,10 +29,11 @@ type Props = {
   cashbill: boolean; // BLIK and transfers through CashBill get their own button; cards go to Stripe (method=card)
   adminTest?: boolean; // an admin's test server: a free test purchase is offered too
   renewCode?: string | null; // a paid server: the renewal code field (renewCode.ts), filled in with this
+  sale?: ComponentProps<typeof PlanPicker>["sale"]; // the Black Friday sale (blackFriday.ts), while it lasts
   current?: Plan; // the plan of a server in a paid period: picking a smaller one is warned about, since paying changes the server to it
 };
 
-export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays, note, t, labels, errors, legal, money, autoRenew, addons, cashbill, adminTest, renewCode, current }: Props) {
+export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays, note, t, labels, errors, legal, money, autoRenew, addons, cashbill, adminTest, renewCode, current, sale }: Props) {
   const [state, action, pending] = useActionState(checkoutAction.bind(null, serverId), {});
   const [plan, setPlan] = useState<Plan>(defaultPlan);
   // Plans come smallest first, so a lower index is a smaller plan.
@@ -50,6 +51,7 @@ export default function CheckoutForm({ serverId, plans, defaultPlan, defaultDays
         formatMoney={money}
         addons={addons}
         onPlanChange={setPlan}
+        sale={sale}
       />
       {smaller && current && <p className="notice warn">{format(t.smallerPlan, { plan: name(plan), current: name(current) })}</p>}
       {note && <p className="muted small">{note}</p>}

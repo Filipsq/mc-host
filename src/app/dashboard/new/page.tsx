@@ -16,6 +16,7 @@ import { isAdmin } from "@/lib/admin";
 import { CREATOR_DISCOUNT, FREE_STARTER_DAYS, suggestedCreatorCode } from "@/lib/creator";
 import { usableGift } from "@/lib/gifts";
 import { HALLOWEEN_CODE, HALLOWEEN_DISCOUNT, halloweenOn } from "@/lib/halloween";
+import { BLACK_FRIDAY_DISCOUNT, blackFridayOn } from "@/lib/blackFriday";
 import CreateServerForm from "./CreateServerForm";
 import { paysafecardEnabled } from "@/lib/cashbill";
 
@@ -95,6 +96,7 @@ export default async function NewServerPage({ searchParams }: Props) {
         defaultPlan={defaultPlan}
         initialGame={initialGame}
         halloween={halloweenOn()}
+        sale={blackFridayOn() && !forUser ? { percent: BLACK_FRIDAY_DISCOUNT, note: format(t.blackFriday.note, { percent: BLACK_FRIDAY_DISCOUNT }) } : undefined}
         initialPack={cfPack ? curseforgePackValue(cfPack.slug) : mrPack ? "custom" : chosen?.slug}
         initialPackLink={mrPack && `https://modrinth.com/modpack/${mrPack}`}
         cfPacks={cfPacks}

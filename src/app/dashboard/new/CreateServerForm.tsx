@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useState } from "react";
+import { startTransition, useActionState, useEffect, useState, type ComponentProps } from "react";
 import Link from "next/link";
 import type { Edition, Plan } from "@prisma/client";
 import { createServerAction } from "../servers/actions";
@@ -48,6 +48,7 @@ type Props = {
   domain: string;
   money: { locale: string; currency: string };
   initialGame?: GameId; // a game or pack picked on the home page or the empty panel
+  sale?: ComponentProps<typeof PlanPicker>["sale"]; // the Black Friday sale (blackFriday.ts), while it lasts
   halloween: boolean; // Halloween on the site: its game is offered (src/lib/halloween.ts)
   initialPack?: string;
   initialPackLink?: string; // a Modrinth pack picked as "another pack" from a link on the home page
@@ -99,7 +100,7 @@ function slugify(name: string) {
   return toAddress(name).replace(/-+$/, "");
 }
 
-export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, forUser, cashbill, creator, gift, ai }: Props) {
+export default function CreateServerForm({ title, t, helper, paidAddons, terraria, gameShort, otherGames, valheimPassword, initialEdition, settings, billing, legal, plans, addonOptions, defaultPlan, domain, money, initialGame, sale, halloween, initialPack, initialPackLink, packIcons, cfPacks, cfPicked, curseforge, admin, forUser, cashbill, creator, gift, ai }: Props) {
   const [state, action, pending] = useActionState(createServerAction, {});
   const [testing, setTesting] = useState(false);
   const v = state.values ?? {};
@@ -555,6 +556,7 @@ export default function CreateServerForm({ title, t, helper, paidAddons, terrari
         formatMoney={money}
         onPlanChange={setPlan}
         onTotalChange={setTotal}
+        sale={gifted ? undefined : sale}
         // A gift pays for the plan alone; add-ons can be bought later in the panel.
         addons={gifted ? undefined : {
           // The own domain is for Java addresses only, console joining for Minecraft.
