@@ -932,6 +932,10 @@ const pl = {
       "Gracze z Minecrafta na telefonie, konsoli albo Windows 10/11 dołączą przez adres {host} i port {port}, bez konta Java. Ich nicki zaczynają się od kropki. Potrzebują aktualnej wersji gry. Biała lista wpuszcza tylko graczy z Javy.",
     crossplayPaperOnly: "Crossplay z Bedrockiem działa na serwerach bez modów.",
     crossplayOn: "crossplay",
+    hubLink: "Połączenie z hubem mchosting.pl: komenda /hub",
+    hubLinkHint:
+      "Gracze wpisują /hub i trafiają do huba sieci mchosting.pl (minigry, tryby, serwery innych graczy). W hubie wpisują /wroc albo klikają drzwi i wracają tutaj. Dodamy plugin mchosting-link i włączymy przyjmowanie przeniesionych graczy. Działa od Minecrafta 1.20.6, gracze też potrzebują 1.20.6 lub nowszej.",
+    hubLinkPaperOnly: "Połączenie z hubem działa na serwerach bez modów od wersji 1.20.6.",
     restartNote: "Ustawienia zaczną działać po ponownym uruchomieniu. Włączony serwer uruchomimy ponownie od razu, a wyłączony zastosuje je przy następnym starcie.",
     save: "Zapisz ustawienia",
     saving: "Zapisywanie...",

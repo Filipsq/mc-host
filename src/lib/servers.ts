@@ -29,6 +29,7 @@ import { addonType, canCrossplay, canRunNonPremium, pinsFor, sitePlugin, withNee
 import { isPreYearVersion, maxPlayersFor, viewDistanceMax } from "./settings";
 import { isModLoader } from "./modpacks";
 import { xboxOn } from "./xbox";
+import { hubLinkSpec } from "./hubLink";
 import { adBonus } from "./adReward";
 import { kindText, logServerEvent } from "./serverEvents";
 
@@ -363,6 +364,7 @@ export function agentSpec(server: Server): CreateServerSpec {
             return i > 0 ? [{ name: l.slice(0, i), host: l.slice(i + 1) }] : [];
           })
         : [],
+    hubLink: hubLinkSpec(server),
   };
 }
 
@@ -531,7 +533,8 @@ export async function moveServer(server: Server, to: string): Promise<Server | n
 // Also the mail names OVH's default DNS zone defines: they have records of
 // their own, so the wildcard that sends players to the router doesn't cover them.
 const RESERVED = new Set(
-  "www api app panel admin mail status help support play ftp imap pop3 smtp webmail autoconfig autodiscover".split(" "),
+  // hub and lobby: the mchosting.pl network's hub (src/lib/hubLink.ts HUB_HOST).
+  "www api app panel admin mail status help support play ftp imap pop3 smtp webmail autoconfig autodiscover hub lobby".split(" "),
 );
 
 export function isValidSubdomain(s: string) {

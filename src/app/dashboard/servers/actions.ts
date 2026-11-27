@@ -65,6 +65,7 @@ import { CURATED_PACKS, MODPACK_MIN_PLAN, MOD_LOADERS, planAtLeast, planForRam }
 import { fitAddonsToVersion, offeredVersions } from "@/lib/addonVersions";
 import { canChangeFiles } from "@/lib/files";
 import { GAME_IDS, gameById } from "@/lib/games";
+import { canHubLink, hubLinkKeys } from "@/lib/hubLink";
 import { KNOWN_PLUGINS, PLUGIN_SETS, addonType, canCrossplay, canRunNonPremium, isProjectId, pluginIds, setFits, supportsPlugins, type KnownPlugin } from "@/lib/plugins";
 import { XBOX_DAYS, XBOX_PRICE, takesBedrockPlayers } from "@/lib/xbox";
 import { uninstallableProjects } from "@/lib/modrinth";
@@ -851,6 +852,7 @@ const settingsSchema = z.object({
   players: z.string().default(""),
   nonPremium: z.literal("on").optional(),
   crossplay: z.literal("on").optional(),
+  hubLink: z.literal("on").optional(),
 });
 
 /** Saves the game settings and rebuilds the server with them (a running one restarts). */
@@ -889,6 +891,9 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
     ({ plugins, dropped } = fitted);
   }
 
+  // Checked on the version saved now; kept as it was where there's no checkbox (mods).
+  const hubLink = canHubLink({ ...server, version }) ? s.hubLink === "on" : server.hubLink;
+
   const updated = await db.server.update({
     where: { id: server.id },
     data: {
@@ -919,6 +924,9 @@ export async function saveSettingsAction(id: string, _: SettingsState, form: For
       ownLogin: server.onlineMode ? true : server.ownLogin,
       // Kept as it was on a mod server, which has no checkbox for it.
       crossplay: canCrossplay(server) ? s.crossplay === "on" : server.crossplay,
+      hubLink,
+      // Made once and kept: players' return tickets stay valid while the link is on.
+      ...(hubLink && !server.hubLinkPrivateKey && hubLinkKeys()),
       // A new version can be taken back with "Cofnij zmianę" (src/lib/undoChange.ts).
       ...(version !== server.version && { undoChange: undoSnapshot(server, "version", activeLevel(server)) }),
     },
@@ -960,6 +968,7 @@ const SETTING_FIELDS = [
   "whitelistPlayers",
   "onlineMode",
   "crossplay",
+  "hubLink",
 ] as const;
 
 // Polish names, since the history is read by the admin (Fiq writes Polish).
@@ -982,6 +991,7 @@ const SETTING_NAMES: Record<(typeof SETTING_FIELDS)[number], string> = {
   whitelistPlayers: "whitelista",
   onlineMode: "premium",
   crossplay: "crossplay",
+  hubLink: "połączenie z hubem",
 };
 
 function settingText(key: (typeof SETTING_FIELDS)[number], value: unknown) {

@@ -116,6 +116,7 @@ func (a *agent) startServer(ctx context.Context, id string) error {
 	a.notePackNeeds(ctx, id)
 	a.fixOwners(ctx, id)
 	a.fixCrossplay(ctx, id)
+	a.fixHubLink(ctx, id)
 	a.fixLogin(ctx, id)
 	a.refreshMinigames(ctx, id)
 	if a.udp != nil {

@@ -338,6 +338,12 @@ model Server {
   // Java on Paper only: Bedrock players (phones, consoles, Windows) join too, through the
   // Geyser plugin on the server's port over UDP.
   crossplay            Boolean        @default(false)
+  // Java on Paper 1.20.6+ only: the mchosting-link plugin, /hub to the mchosting.pl network's hub
+  // and /wroc back (src/lib/hubLink.ts). The key pair signs players' return tickets; made the
+  // first time it's turned on and kept, so tickets players carry stay valid across restarts.
+  hubLink              Boolean        @default(false)
+  hubLinkPrivateKey    String?
+  hubLinkPublicKey     String?
   // Console players (Xbox, PlayStation, Switch) join from their Friends tab through an Xbox account the owner signs in (src/lib/xbox.ts)
   xbox                 Boolean        @default(false)
   // A free server's console joining is paid for on its own, per 30 days, until this date (paid plans have it included).

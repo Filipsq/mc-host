@@ -45,9 +45,11 @@ func validLinks(links []serverLink, self string) error {
 }
 
 // linksEnv lets transferred players in and lets the data pack's functions use transfer.
-func linksEnv(links []serverLink) []string {
+// The hub link (hublink.go) needs transferred players in too (they come back with /wroc),
+// but no data pack, so functions stay at level 2.
+func linksEnv(links []serverLink, hubLink bool) []string {
 	if len(links) == 0 {
-		return []string{"ACCEPTS_TRANSFERS=false", "FUNCTION_PERMISSION_LEVEL=2"}
+		return []string{fmt.Sprintf("ACCEPTS_TRANSFERS=%v", hubLink), "FUNCTION_PERMISSION_LEVEL=2"}
 	}
 	return []string{"ACCEPTS_TRANSFERS=true", "FUNCTION_PERMISSION_LEVEL=3"}
 }

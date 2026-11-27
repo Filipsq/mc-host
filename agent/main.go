@@ -472,6 +472,8 @@ type createRequest struct {
 	PluginVersions map[string]string `json:"pluginVersions"`
 	// Java only: the owner's other servers players can go to from this one (links.go).
 	Links []serverLink `json:"links"`
+	// Java on Paper only: /hub to the mchosting.pl network's hub (hublink.go); off if missing.
+	HubLink *hubLink `json:"hubLink"`
 	// Hytale only: the sign-ins the server and its downloader use (hytale.go).
 	Hytale *hytaleAuth `json:"hytale"`
 	// Bedrock, or Java with crossplay: console players join through the
@@ -598,6 +600,10 @@ func (req *createRequest) validate() error {
 		return errors.New("modpackLoader is for a modpack server")
 	case req.Crossplay && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
 		return errors.New("only Java servers on Paper can run crossplay")
+	case req.HubLink != nil && (req.Edition != "JAVA" || !paperKinds[req.Kind]):
+		return errors.New("only Java servers on Paper can link to the hub")
+	case req.HubLink.valid() != nil:
+		return req.HubLink.valid()
 	case req.VoiceHost != "" && (req.Edition != "JAVA" || !validHost.MatchString(req.VoiceHost) || req.webMapPort() > 65535):
 		return errors.New("voiceHost needs a Java server, a valid hostname and a port that leaves room for the voice and map ports")
 	case req.ResourcePack != nil && req.Edition != "JAVA":
@@ -834,6 +840,7 @@ func (a *agent) run(ctx context.Context, req createRequest, start bool) error {
 		a.prepareMinigames(ctx, req.ID, req.Kind, req.level())
 		a.prepareEnd(ctx, req)
 		a.prepareLinks(ctx, req.ID, req.level(), req.Links)
+		a.prepareHubLink(ctx, req.ID, req.HubLink)
 	}
 	a.syncXboxLater(ctx, req)
 	if !start {
@@ -1028,7 +1035,7 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 			}
 		}
 		env = append(env, req.ResourcePack.env()...)
-		env = append(env, linksEnv(req.Links)...)
+		env = append(env, linksEnv(req.Links, req.HubLink != nil)...)
 		if req.Level != "" {
 			env = append(env, "LEVEL="+req.Level)
 		}
@@ -1068,6 +1075,9 @@ func (a *agent) gameSpec(req createRequest, image string) map[string]any {
 		containerPort = "25565/tcp"
 		hostIP = "127.0.0.1" // players come in through the router, not directly
 		limitMb = javaLimitMb(req)
+		if req.HubLink != nil {
+			labels[hubLinkLabel] = "true" // startServer puts mchosting-link in (hublink.go)
+		}
 		if req.Crossplay {
 			labels["mchost.crossplay"] = "true" // startServer puts Geyser and Floodgate in (crossplay.go)
 			// Bedrock has no hostname to route by, so Geyser gets the server's own
