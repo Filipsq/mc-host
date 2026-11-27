@@ -7,6 +7,7 @@ import type { Currency } from "@/i18n/config";
 import { dayPrice, formatPrice } from "@/lib/plans";
 import { DEFAULT_PERIOD, PERIODS, periodPrice, type PeriodDays } from "@/lib/periods";
 import type { AddonId } from "@/lib/addons";
+import { salePrice } from "@/lib/blackFriday";
 
 export type PlanOption = { id: Plan; name: string; summary: string; monthly: number; disabledNote?: string };
 export type AddonOption = { id: AddonId; name: string; hint: string; monthly: number };
@@ -31,10 +32,12 @@ type Props = {
     labels: { title: string; hint: string; price: string }; // price: "+{price} / 30 days"
     onChange?: (ticked: AddonId[]) => void;
   };
+  /** A sale running now (blackFriday.ts): prices shown with `percent` off, as checkout takes it, and `note` under the total. */
+  sale?: { percent: number; note: string };
 };
 
 /** Radio cards for plan + period, with a live total. Submits `plan` and `days`. */
-export default function PlanPicker({ plans, defaultPlan, defaultDays, plan: outside, periodLabels, labels, formatMoney, onPlanChange, onTotalChange, addons }: Props) {
+export default function PlanPicker({ plans, defaultPlan, defaultDays, plan: outside, periodLabels, labels, formatMoney, onPlanChange, onTotalChange, addons, sale }: Props) {
   const [plan, setPlan] = useState<Plan>(defaultPlan);
   const [days, setDays] = useState<PeriodDays>(defaultDays ?? DEFAULT_PERIOD);
   useEffect(() => {
@@ -45,7 +48,17 @@ export default function PlanPicker({ plans, defaultPlan, defaultDays, plan: outs
   const selected = plans.find((p) => p.id === plan);
   const paid = plan !== "FREE";
   const extra = paid && addons ? addons.options.filter((o) => ticked.includes(o.id)).reduce((sum, o) => sum + o.monthly, 0) : 0;
-  const total = paid && selected ? money.format(periodPrice(Math.round((selected.monthly + extra) * 100) / 100, days)) : null;
+  const full = paid && selected ? periodPrice(Math.round((selected.monthly + extra) * 100) / 100, days) : null;
+  const total = full === null ? null : money.format(sale ? salePrice(full, sale.percent) : full);
+  /** A price, crossed out next to its sale price while a sale runs. */
+  const priced = (amount: number) =>
+    sale && amount > 0 ? (
+      <>
+        <s className="muted">{money.format(amount)}</s> <strong className="sale-price">{money.format(salePrice(amount, sale.percent))}</strong>
+      </>
+    ) : (
+      money.format(amount)
+    );
   useEffect(() => onTotalChange?.(total), [total, onTotalChange]);
 
   return (
@@ -69,9 +82,9 @@ export default function PlanPicker({ plans, defaultPlan, defaultDays, plan: outs
               <span className="stack-tight">
                 <strong>{p.name}</strong>
                 <span>
-                  {money.format(p.monthly)}
+                  {priced(p.monthly)}
                   {labels.perDay && p.monthly > 0 && (
-                    <span className="muted small"> · {format(labels.perDay, { price: money.format(dayPrice(p.monthly)) })}</span>
+                    <span className="muted small"> · {format(labels.perDay, { price: money.format(dayPrice(sale ? salePrice(p.monthly, sale.percent) : p.monthly)) })}</span>
                   )}
                 </span>
                 <span className="muted small">{p.disabledNote ?? p.summary}</span>
@@ -126,9 +139,10 @@ export default function PlanPicker({ plans, defaultPlan, defaultDays, plan: outs
       )}
       {paid && selected && (
         <p className="total">
-          {labels.total}: <strong>{total}</strong>
+          {labels.total}: {sale && full !== null && <s className="muted">{money.format(full)}</s>} <strong>{total}</strong>
         </p>
       )}
+      {paid && sale && <p className="notice sale-note">{sale.note}</p>}
     </div>
   );
 }

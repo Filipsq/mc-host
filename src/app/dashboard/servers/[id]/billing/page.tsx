@@ -11,6 +11,7 @@ import { addonFits, serverAddons } from "@/lib/addons";
 import { formatPrice, plans } from "@/lib/plans";
 import { canUpgrade } from "@/lib/upgrade";
 import { START_OFFER_DISCOUNT, startOfferEnds } from "@/lib/startOffer";
+import { BLACK_FRIDAY_DISCOUNT, blackFridayOn } from "@/lib/blackFriday";
 import { RENEW_CODE_DISCOUNT, activeRenewCode } from "@/lib/renewCode";
 import { RENEW_BEFORE_MS } from "@/lib/renewal";
 import { renewalPriceFor } from "@/lib/priceChange";
@@ -128,7 +129,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         </p>
       )}
 
-      {offerEnds && (
+      {offerEnds && !blackFridayOn() && (
         <p className="notice success">
           {format(t.startOffer.billing, {
             n: START_OFFER_DISCOUNT,
@@ -155,6 +156,7 @@ export default async function BillingPage({ params, searchParams }: { params: Pr
         money={{ locale, currency }}
         adminTest={server.adminTest && (await isAdmin(session.user.id))}
         renewCode={codeField}
+        sale={blackFridayOn() ? { percent: BLACK_FRIDAY_DISCOUNT, note: format(t.blackFriday.note, { percent: BLACK_FRIDAY_DISCOUNT }) } : undefined}
         addons={{
           // The own domain is for Java addresses only.
           options: addonOptions(t, currency).filter((o) => addonFits(o.id, server.edition)),

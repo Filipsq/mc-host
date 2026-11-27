@@ -29,6 +29,7 @@ import { REFERRAL_DAYS, claimReferral, sendReferralMail, type Inviter } from "./
 import { countCreatorServer, sendCreatorRewardMail, withCreatorDiscount, type CreatorReward } from "./creator";
 import { fulfillGiftPurchase } from "./gifts";
 import { isHalloweenCode, withHalloweenDiscount } from "./halloween";
+import { BLACK_FRIDAY_CODE, blackFridayOn, withBlackFridayDiscount } from "./blackFriday";
 import { startOffers, startOfferEnds, withStartOfferDiscount } from "./startOffer";
 import { RENEW_CODE_DISCOUNT, isRenewCodeFor, issueRenewCode, normalizeRenewCode, renewCodeDiscount } from "./renewCode";
 import { startQueued } from "./startQueue";
@@ -92,15 +93,20 @@ export async function startCheckout(opts: {
   const oneOff = upgrade?.amount ?? addonsOnly?.amount ?? extra?.amount ?? 0;
   const full = Math.round((upgrade || addonsOnly || extra || !days ? oneOff : priceFor(plan, days, currency, addons)) * 100);
   const plain = !!days && !upgrade && !addonsOnly && !extra && !adminTest; // a plan bought or extended: codes and offers apply
+  // The Black Friday sale (blackFriday.ts) beats every code and offer and isn't stacked with them;
+  // a creator still gets the server counted.
+  const sale = plain && blackFridayOn();
   const creatorId = plain ? opts.creatorId : undefined;
-  const promoCode = plain && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
+  const promoCode = plain && !sale && !creatorId && opts.promoCode && isHalloweenCode(opts.promoCode) ? opts.promoCode : undefined;
   // Without a code, a first payment while the user's start offer runs (startOffer.ts) is cheaper too.
   const renewCode =
-    plain && !creatorId && !promoCode && opts.renewCode && (await renewCodeFits(server.id, opts.renewCode)) ? normalizeRenewCode(opts.renewCode) : undefined;
-  const startOffer = plain && !creatorId && !promoCode && !renewCode && (await startOfferEnds(user.id)) ? "start" : undefined;
+    plain && !sale && !creatorId && !promoCode && opts.renewCode && (await renewCodeFits(server.id, opts.renewCode)) ? normalizeRenewCode(opts.renewCode) : undefined;
+  const startOffer = plain && !sale && !creatorId && !promoCode && !renewCode && (await startOfferEnds(user.id)) ? "start" : undefined;
   const amount = adminTest
     ? 0
-    : creatorId
+    : sale
+      ? withBlackFridayDiscount(full)
+      : creatorId
       ? withCreatorDiscount(full)
       : promoCode
         ? withHalloweenDiscount(full)
@@ -125,7 +131,7 @@ export async function startCheckout(opts: {
       xboxDays: xbox?.days ?? 0,
       domainDays: domain?.days ?? 0,
       creatorId,
-      promoCode: promoCode ?? renewCode ?? startOffer,
+      promoCode: sale ? BLACK_FRIDAY_CODE : (promoCode ?? renewCode ?? startOffer),
       paysafecard,
     },
   });

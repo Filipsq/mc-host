@@ -1713,6 +1713,13 @@ const pl = {
       button: "Odbierz nagrodę",
     },
   },
+  blackFriday: {
+    bar: "Black Friday: -{percent}% na wszystkie serwery, tylko dziś do północy!",
+    barLink: "Zobacz ceny",
+    left: "Zostało {time}",
+    pricing: "Black Friday: -{percent}% na każdy plan i każdy okres, tylko dziś do północy.",
+    note: "Black Friday: -{percent}% jest już w cenie. Liczy się samo, kod nie jest potrzebny i nie łączy się z innymi kodami. Dotyczy tej płatności, kolejne przedłużenia mają zwykłą cenę.",
+  },
   halloween: {
     bar: "Halloween na MCHosting: znajdź {total} dyń ukrytych na stronie głównej i zgarnij {percent}% zniżki na serwer. Tylko do 1 listopada!",
     barLink: "Szukaj dyń",

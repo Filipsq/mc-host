@@ -23,6 +23,8 @@ import { isAdminAccount } from "@/lib/admin";
 import { adminOnline } from "@/lib/presence";
 import { getAnnouncement } from "@/lib/announcement";
 import { HALLOWEEN_DISCOUNT, HUNT_PUMPKINS, halloweenOn } from "@/lib/halloween";
+import { BLACK_FRIDAY_DISCOUNT, BLACK_FRIDAY_END, blackFridayOn } from "@/lib/blackFriday";
+import BlackFridayBar from "@/components/BlackFridayBar";
 import { format } from "@/i18n/messages";
 import { CHAT_RATE, MAX_LENGTH } from "@/lib/support";
 import { lobbyOn } from "@/lib/lobby";
@@ -145,6 +147,14 @@ export default async function RootLayout({
               <Link href="/#halloween">{t.halloween.barLink}</Link>
             </span>
           </div>
+        )}
+        {blackFridayOn() && (
+          <BlackFridayBar
+            endsAt={BLACK_FRIDAY_END.getTime()}
+            text={format(t.blackFriday.bar, { percent: BLACK_FRIDAY_DISCOUNT })}
+            link={t.blackFriday.barLink}
+            left={t.blackFriday.left}
+          />
         )}
         {announcement && (
           <div className="announcement-bar" role="status">

@@ -2929,3 +2929,18 @@ a.quest-item:hover { background: var(--surface-2); }
   .srv-facts { grid-template-columns: 1fr 1fr; }
   .srv-history li { grid-template-columns: 1fr; }
 }
+
+/* Black Friday (lib/blackFriday.ts): a black-and-yellow bar with a countdown, sale prices next to crossed-out ones. */
+.black-friday-bar { background: #000; color: #fff; border-top-color: #ffd23f; border-bottom-color: #000; }
+.black-friday-bar svg { color: #ffd23f; }
+.black-friday-bar a { color: #ffd23f; font-weight: 700; white-space: nowrap; }
+.black-friday-timer { font-variant-numeric: tabular-nums; color: #ffd23f; font-weight: 700; white-space: nowrap; }
+.price-was { margin: 0; font-size: 1rem; color: var(--muted); }
+.price-was s { text-decoration-thickness: 2px; }
+.sale-badge {
+  display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px; background: #000; color: #ffd23f;
+  font-size: 0.8rem; font-weight: 800; letter-spacing: 0; vertical-align: middle;
+}
+.sale-price { color: var(--accent-strong); }
+.sale-note { border-left-color: #ffd23f; }
+.plans-sale { margin: 0 auto 16px; max-width: 720px; text-align: center; font-weight: 700; }

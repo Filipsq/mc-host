@@ -1714,6 +1714,13 @@ const en: Messages = {
       button: "Claim your reward",
     },
   },
+  blackFriday: {
+    bar: "Black Friday: {percent}% off every server, today only until midnight (Polish time)!",
+    barLink: "See prices",
+    left: "{time} left",
+    pricing: "Black Friday: {percent}% off every plan and period, today only until midnight (Polish time).",
+    note: "Black Friday: {percent}% off is already in the price. No code needed, and it doesn't stack with other codes. It applies to this payment; later renewals cost the usual price.",
+  },
   halloween: {
     bar: "Halloween at MCHosting: find {total} pumpkins hidden on the home page and get {percent}% off a server. Only until November 1!",
     barLink: "Hunt pumpkins",

@@ -30,6 +30,7 @@ import { getPackArt } from "@/lib/modrinth";
 import { topCurseforgePacks } from "@/lib/curseforge";
 import { DESCRIPTION_MAX, aiEnabled } from "@/lib/ai";
 import { halloweenOn } from "@/lib/halloween";
+import { BLACK_FRIDAY_DISCOUNT, blackFridayOn, salePrice } from "@/lib/blackFriday";
 import HalloweenBand from "@/components/HalloweenBand";
 import { HuntPumpkin } from "@/components/Halloween";
 import type { Metadata } from "next";
@@ -69,6 +70,7 @@ export default async function Home() {
   const titleTail = comma > 0 ? h.title.slice(comma + 2) : "";
   // The pumpkin hunt (lib/halloween.ts): one pumpkin hidden in each of these spots.
   const halloween = halloweenOn();
+  const sale = blackFridayOn();
   const faq = h.faq.map((item) => ({
     q: item.q,
     a: format(item.a, { domain, gb: free.ramGb, n: free.maxPlayers ?? 0, days: REFERRAL_DAYS, min: REFERRAL_MIN_DAYS }),
@@ -317,22 +319,31 @@ export default async function Home() {
             <span><Check size={16} aria-hidden /> {t.plans.support}</span>
             <span><Check size={16} aria-hidden /> {t.plans.ddos}</span>
           </p>
+          {sale && <p className="notice sale-note plans-sale">{format(t.blackFriday.pricing, { percent: BLACK_FRIDAY_DISCOUNT })}</p>}
           <ul className="plans">
             {plans.map((p) => {
               const recommended = p.id === "STANDARD";
+              // While the Black Friday sale lasts, what checkout takes (blackFriday.ts).
+              const monthly = p.price[currency];
+              const price = sale ? salePrice(monthly) : monthly;
               return (
                 <li key={p.id} className={`plan${recommended ? " recommended" : ""}`}>
                   {recommended && <span className="ribbon">{h.recommended}</span>}
                   <h3>{t.plans[p.id]}</h3>
+                  {sale && monthly > 0 && (
+                    <p className="price-was">
+                      <s>{formatPrice(monthly, currency, locale)}</s> <span className="sale-badge">-{BLACK_FRIDAY_DISCOUNT}%</span>
+                    </p>
+                  )}
                   <p className="price">
-                    {formatPrice(p.price[currency], currency, locale)} <span>{h.perMonth}</span>
+                    {formatPrice(price, currency, locale)} <span>{h.perMonth}</span>
                   </p>
-                  {p.price[currency] > 0 && (
-                    <p className="price-day">{format(h.perDay, { price: formatPrice(dayPrice(p.price[currency]), currency, locale) })}</p>
+                  {monthly > 0 && (
+                    <p className="price-day">{format(h.perDay, { price: formatPrice(dayPrice(price), currency, locale) })}</p>
                   )}
                   <p className="price-note">
-                    {p.price[currency] > 0
-                      ? format(h.longerPeriod, { price: formatPrice(periodPrice(p.price[currency], 90), currency, locale) })
+                    {monthly > 0
+                      ? format(h.longerPeriod, { price: formatPrice(sale ? salePrice(periodPrice(monthly, 90)) : periodPrice(monthly, 90), currency, locale) })
                       : h.freeForever}
                   </p>
                   <ul className="features">
